@@ -10,7 +10,7 @@
 #' @export
 #' @useDynLib miic
 
-discretizeMutual <- function(myDist1 = NULL, myDist2 = NULL, maxbins=50)
+discretizeMutual <- function(myDist1 = NULL, myDist2 = NULL, maxbins=50, plot=T)
 {
   result = list()
   #### Check the input arguments
@@ -43,6 +43,77 @@ discretizeMutual <- function(myDist1 = NULL, myDist2 = NULL, maxbins=50)
 
   library(infotheo)
   result$info = infotheo::mutinformation(cut(myDist1, result$cutpoints1), cut(myDist2, result$cutpoints2))
+  result$infobits = infotheo::natstobits(result$info)
+
+  if(plot) {
+    require(ggplot2)
+    require(gridExtra)
+    jointplot = jointplot_hist(myDist1, myDist2, result)
+    result$plot = jointplot
+    jointplot
+  }
 
   result
+}
+
+axisprint <- function(x) sprintf("%.2f", x)
+
+jointplot_hist <- function(myDist1, myDist2, result, title="Joint histogram"){
+
+  library(ggplot2)
+  cut_points1 = result$cutpoints1
+  cut_points2 = result$cutpoints2
+  info = result$info
+
+  hist1 = ggplot(data.frame(myDist1), aes(x=myDist1)) +
+    geom_histogram(aes(y=..density..),      # Histogram with density instead of count on y-axis
+                   breaks = cut_points1,
+                   colour="black", fill="white") +
+    geom_density(adjust=0.5, alpha=.5, fill="#c1c6ee") +  # Overlay with transparent density plot
+    theme(line = element_blank(),
+          text = element_blank(),
+          title = element_blank(),
+          plot.margin = margin(5.5, 5.5, -5, 42,"pt"),
+          panel.background = element_rect(fill = "white", colour = "white"))
+
+  hist2 = ggplot(data.frame(myDist2), aes(x=myDist2)) +
+    geom_histogram(aes(y=..density..),      # Histogram with density instead of count on y-axis
+                   breaks = cut_points2,
+                   colour="black", fill="white") +
+    geom_density(adjust=0.5, alpha=.5, fill="#c1c6ee") +  # Overlay with transparent density plot
+    theme(line = element_blank(),
+          text = element_blank(),
+          title = element_blank(),
+          plot.margin = margin(5.5, 5.5, 30, -5,"pt"),
+          panel.background = element_rect(fill = "white", colour = "white")) +
+    coord_flip()
+
+  hist2d = ggplot(data.frame(myDist1, myDist2), aes(x=myDist1, y=myDist2)) +
+    stat_bin2d(aes(fill = ..density..), breaks=list(x=cut_points1, y=cut_points2), show.legend = F) +
+    scale_fill_gradient(low = "#e1e3f2", high = "#0013a3") +
+    geom_vline(xintercept=cut_points1, linetype="dashed", color="grey") +
+    geom_hline(yintercept=cut_points2, linetype="dashed", color="grey") +
+    geom_point(shape=21, alpha=.7, fill="#ffef77", size=2) +
+    theme_classic() +
+    scale_y_continuous(labels=axisprint)
+
+  I2 = info
+  N = length(myDist1)
+  rp = length(cut_points1)
+  rq = length(cut_points2)
+  bic = 1/2*(rp-1)*(rq-1)*log(N)
+  cpl = log(choose(N-1, rp-1))+ log(choose(N-1, rq-1))
+  I2p = I2 - cpl/N
+
+  empty <- ggplot()+geom_point(aes(1,1), colour="white")+
+    geom_text(aes(x=1, y=0.5, label=paste("I(X;Y) =", round(I2,3)))) +
+    geom_text(aes(x=1, y=0, label=paste("I(X;Y)-kBIC =", round(I2p,3)))) +
+    theme(axis.ticks=element_blank(),
+          panel.background=element_blank(),
+          axis.text.x=element_blank(), axis.text.y=element_blank(),
+          axis.title.x=element_blank(), axis.title.y=element_blank())
+
+
+  return(gridExtra::grid.arrange(hist1, empty, hist2d, hist2, ncol=2, nrow=2,
+                                 widths=c(4, 1), heights=c(1, 4), bottom=title))
 }
