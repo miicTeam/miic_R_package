@@ -16,6 +16,13 @@ discretizeMutual <- function(myDist1 = NULL, myDist2 = NULL, maxbins=50)
   #### Check the input arguments
   if( is.null( myDist1 ) || is.null(myDist2) )
   { stop("The input data file is required") }
+
+  if(maxbins > length(myDist1))
+    maxbins=length(myDist1)
+
+  myDist1[is.na(myDist1)] = -1
+  myDist2[is.na(myDist2)] = -1
+
   if (base::requireNamespace("Rcpp", quietly = TRUE)) {
     rescpp <- .Call('mydiscretizeMutual', myDist1, myDist2, maxbins, PACKAGE = "miic")
   }
@@ -33,6 +40,9 @@ discretizeMutual <- function(myDist1 = NULL, myDist2 = NULL, maxbins=50)
   }
   result$cutpoints1 = result[[paste0("iteration", niterations)]]$cutpoints1
   result$cutpoints2 = result[[paste0("iteration", niterations)]]$cutpoints2
+
+  library(infotheo)
+  result$info = infotheo::mutinformation(cut(myDist1, result$cutpoints1), cut(myDist2, result$cutpoints2))
 
   result
 }
