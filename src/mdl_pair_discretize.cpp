@@ -67,34 +67,6 @@ double logdbico(int n,	int k, double** looklbc){
 	}
 }
 
-double compute_parametric_complexity(int n, int K, double** sc_look){
-
-  if(sc_look[n-1][K-1] != 0){
-    return(sc_look[n-1][K-1]);
-  }
-
-  double res;
-  if(K==1){
-    res = 1;
-  } else if(K==2){
-    if(n<1000){
-      res = 0;
-      for(int i=0 ; i <= n; i++){
-        int h1 = i;
-        int h2 = n - h1;
-        res = res + exp(ramanujan(n) - ramanujan(h1) - ramanujan(h2)) * pow((1.0*h1/n),h1) * pow((1.0*h2/n),h2);
-      }
-    } else{
-      res = sqrt((n*M_PI)/2) * exp(sqrt(8./(9.*n*M_PI)) + (3*M_PI-16)/(36.*n*M_PI));
-    }
-  } else {
-    res = compute_parametric_complexity(n, K-1, sc_look) + 1.0*n/(K-2) * compute_parametric_complexity(n, K-2, sc_look);
-  }
-
-  sc_look[n-1][K-1] = res;
-  return(res);
-}
-
 ///////////////////////////////////////////////////////////////////////////////////////////
 
 //GENERAL VARIABLES NOTATION
@@ -443,7 +415,7 @@ double optfun_onerun_kmdl_coarse(int *sortidx_var, int *data, int nbrV, int **fa
 			//k iterator on possible cuts
 			nkforward=0;//iterator on values
 			//it iterator on not repeated values
-
+			
 			for(k=0;k<=j-1;k++){//k=1...n-2 possible cuts
 
 						ir=0;//iterator on not repeated values
@@ -727,12 +699,15 @@ int** compute_Ixy_alg1(int** data, int** sortidx, int* ptr_cnt, int* ptrVarIdx, 
 				//optimize on x
 				//I(x;y)
 
-				sc=0.5*(r[1]-1);
 
 				factors1[0]=datafactors[1];//xy
 				optfun1[0]=-1;//xy
 				optfun1[1]=1;//x
-				rt1[0]=r[1];//xy
+				if (stop == 1){
+					rt1[0] = INIT_BIN;
+				}
+				else rt1[0]=r[1];//xy
+				sc=0.5*(rt1[0]-1);
 
 				#if _MY_DEBUG_MInoU
 					printf("start optfun\n ");
@@ -784,12 +759,15 @@ int** compute_Ixy_alg1(int** data, int** sortidx, int* ptr_cnt, int* ptrVarIdx, 
 				//opt y
 				//I(x;y)
 
-				sc=0.5*(r[0]-1);
 
 				factors1[0]=datafactors[0];//xy
 				optfun1[0]=-1;//xy
 				optfun1[1]=1;//y
-				rt1[0]=r[0];//xy
+				if (stop == 1){
+					rt1[0] = INIT_BIN;
+				}
+				else rt1[0]=r[0];//xy
+				sc=0.5*(rt1[0]-1);
 
 				// printf("AllLevels=%d\n",AllLevels[ptrVarIdx[1]]);fflush(stdout);
 				// cout << "levelsCallOpt: " << AllLevels[ptrVarIdx[1]] << endl;
