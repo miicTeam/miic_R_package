@@ -46,8 +46,8 @@ int reconstruction_cut_coarse(int *memory_cuts, int *memory_cuts2, int np, int n
 
 		if(memory_cuts[np-1]==0){
 
-			fprintf(stderr,"\n one bin!");// bin [0 n]
-			exit(1);
+			//fprintf(stderr,"\n one bin!");// bin [0 n]
+			//exit(1);
 		}
 
 		l=memory_cuts[np-1];
