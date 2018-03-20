@@ -48,7 +48,7 @@ using namespace std;
 
 //compute log dbico from lookup table
 
-#define COEFF_COMB 1
+#define COEFF_COMB 0
 
 inline __attribute__((always_inline))
 double logdbico(int n,	int k, double** looklbc){
@@ -358,10 +358,11 @@ double optfun_onerun_kmdl_coarse(int *sortidx_var, int *data, int nbrV, int **fa
 
 			I_0k[j]=0;
 			for(m=0;m<nbrV+1;m++) if(optfun[m] != 0)	I_0k[j]+=optfun[m]*H_0k[m][j];
+			I[j] = I_0k[j];
 
 			//complexity terms (local version)
 
-			k_sc=sc*looklog[(nj+1)];
+			k_sc=sc*looklog[n];
 
 			//computing complexity term for the [0 j] interval
 			// for the 2 bins combinatorial term : [0 k][k+1 j] mode
@@ -384,7 +385,8 @@ double optfun_onerun_kmdl_coarse(int *sortidx_var, int *data, int nbrV, int **fa
 			// }
 
 			// formule 7 part, here combinat
-			sc2=2*k_sc+ COEFF_COMB*logdbico(nj,1,looklbc);
+			//sc2=2*k_sc+ COEFF_COMB*logdbico(nj,1,looklbc);
+			sc2=k_sc+ COEFF_COMB*logdbico(nj,1,looklbc);
 
 
 
@@ -429,6 +431,7 @@ double optfun_onerun_kmdl_coarse(int *sortidx_var, int *data, int nbrV, int **fa
 										nxyu_k[m][xyu]--;
 
 										H_kj[m]-= lookH[nxyu_k[m][xyu]];
+										// lookH[i] = i*log(i)-(i+1)*log(i+1);
 									}
 
 								}
@@ -474,7 +477,7 @@ double optfun_onerun_kmdl_coarse(int *sortidx_var, int *data, int nbrV, int **fa
 						// 	scr=(nc[k]+1)*k_sc+ v;
 						// }
 
-						scr=(nc[k]+1)*k_sc+ COEFF_COMB*logdbico(nj,nc[k],looklbc);
+						//scr=k_sc+ COEFF_COMB*logdbico(nj,nc[k],looklbc);
 
 						// if(looklbc[nxj][nc[k]]==-1) looklbc[nxj][nc[k]]=log(dbico(nxj,nc[k]));
 						// scr=(nc[k]+1)*k_sc+looklbc[nxj][nc[k]];
@@ -498,23 +501,41 @@ double optfun_onerun_kmdl_coarse(int *sortidx_var, int *data, int nbrV, int **fa
 
 						nk=nkforward-1;//position of the actual possible cut
 
-						if( I_0k[k] - sc2 > I[k] - scr ){ //one cut in k ore more?
-								t=I_0k[k] + I_kj-sc2;
-								if (fmax<t){
-									c=-k-1;// convention to refers to the two bins [0 k] [k+1 j]
-									c2=nk;
-									fmax=t;
-									sctemp=sc2;
-									nctemp=2;
-								}
-						}else{//more cuts
-							t=I[k] + I_kj-scr;//[0.. cuts.. k-1][k j]
+						//if( I_0k[k] - sc2 > I[k] - scr ){ //one cut in k ore more?
+						//		t=I_0k[k] + I_kj-sc2;
+						//		if (fmax<t){
+						//			c=-k-1;// convention to refers to the two bins [0 k] [k+1 j]
+						//			c2=nk;
+						//			fmax=t;
+						//			sctemp=sc2;
+						//			nctemp=2;
+						//		}
+						//}else{//more cuts
+						//	t=I[k] + I_kj-scr;//[0.. cuts.. k-1][k j]
+						//	if (fmax<t){
+						//		c=k+1;
+						//		c2=nk;
+						//		fmax=t;
+						//		sctemp=scr;
+						//		nctemp=nc[k]+1;
+						//	}
+						//}
+						if( I[k] + I_kj - sc2 > I[j]){ 
+							t=I[k] + I_kj - sc2; //[0.. cuts.. k-1][k j]
 							if (fmax<t){
 								c=k+1;
 								c2=nk;
 								fmax=t;
-								sctemp=scr;
 								nctemp=nc[k]+1;
+								// optimized function for the interval [0 j]
+								I[j]=fmax;
+								// number of optimal cuts
+								nc[j]=nctemp;
+								//cout << "fmax : " << fmax << "\tnctemp : " << nctemp << "\tnc[j] : " << nc[j] << "\tt : " << t <<"\n" ;
+								// index  of the (last) optimal cut
+								memory_cuts_idx[j]=c;
+								// position  of the (last) optimal cut
+								memory_cuts_pos[j]=c2;
 							}
 						}
 
@@ -523,14 +544,6 @@ double optfun_onerun_kmdl_coarse(int *sortidx_var, int *data, int nbrV, int **fa
 						#endif
 			}
 
-			// optimized function for the interval [0 j]
-			I[j]=fmax+sctemp;
-			// number of optimal cuts
-			nc[j]=nctemp;
-			// index  of the (last) optimal cut
-			memory_cuts_idx[j]=c;
-			// position  of the (last) optimal cut
-			memory_cuts_pos[j]=c2;
 
 			#if _MY_DEBUG_NEW_OPTFUN
 				printf("\n>>>j=%d: fmax=%lf cut[%d]=%d ncut=%d\n",j,fmax,j,memory_cuts_idx[j],nc[j]);fflush(stdout);
