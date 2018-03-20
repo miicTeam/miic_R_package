@@ -59,13 +59,13 @@ discretizeMutual <- function(myDist1 = NULL, myDist2 = NULL, maxbins=50, plot=T)
 #####
 # Plot functions
 
-axisprint <- function(x) sprintf("%.2f", x)
+axisprint <- function(x) sprintf("%6s", x)
 
 theme_side_hist <- function () {
   theme_classic() %+replace%
     theme(title = element_text(family = "", face = "plain",
                               color = NA, size = theme_classic()$text$size),
-          axis.text = element_text(color = "NA", size = theme_classic()$axis.text$size),
+          axis.text = element_text(color = NA, size = theme_classic()$axis.text$size),
           axis.line.x = element_line(colour = NA),
           axis.line.y = element_line(colour = NA),
           axis.ticks = element_blank(),
@@ -81,23 +81,6 @@ jointplot_hist <- function(myDist1, myDist2, result, title="Joint histogram"){
   cut_points2 = result$cutpoints2
   info = result$info
 
-  hist1 = ggplot(data.frame(myDist1), aes(x=myDist1)) +
-    geom_histogram(aes(y=..density..),      # Histogram with density instead of count on y-axis
-                   breaks = cut_points1,
-                   colour="black", fill="white") +
-    geom_density(adjust=0.5, alpha=.5, fill="#c1c6ee") +  # Overlay with transparent density plot
-    theme_side_hist() %+replace% theme(plot.margin = margin(5.5,5.5,-25,5.5,"pt")) +
-    scale_y_continuous(labels=axisprint, expand=c(0,0))
-
-  hist2 = ggplot(data.frame(myDist2), aes(x=myDist2)) +
-    geom_histogram(aes(y=..density..),      # Histogram with density instead of count on y-axis
-                   breaks = cut_points2,
-                   colour="black", fill="white") +
-    geom_density(adjust=0.5, alpha=.5, fill="#c1c6ee") +  # Overlay with transparent density plot
-    theme_side_hist() %+replace% theme(plot.margin = margin(5.5,5.5,5.5,-30,"pt")) +
-    scale_y_continuous(expand=c(0,0)) +
-    coord_flip()
-
   bin_count = table(cut(myDist1, cut_points1), cut(myDist2, cut_points2))
   bin_areas =
     (cut_points1[-1] - cut_points1[1:(length(cut_points1)-1)]) %*%
@@ -111,16 +94,34 @@ jointplot_hist <- function(myDist1, myDist2, result, title="Joint histogram"){
            yend   = as.numeric(substr(Var2, regexpr(",", Var2)+1, regexpr("]", Var2)-1)))
   fill_density[fill_density$density==0, "density"] = NA
 
-  
   hist2d = ggplot(fill_density) + 
     geom_rect(aes(xmin=xstart, xmax=xend, ymin=ystart, ymax=yend, fill=density), na.rm = T, show.legend = F) + 
     scale_fill_gradient(low = "#e1e3f2", high = "#0013a3", position = "left", na.value = "white") +
     geom_vline(xintercept=cut_points1, linetype="dashed", color="grey") +
     geom_hline(yintercept=cut_points2, linetype="dashed", color="grey") +
     geom_point(data = data.frame(myDist1, myDist2), aes(x=myDist1, y=myDist2), shape=21, alpha=.7, fill="#ffef77", size=2) +
-    scale_y_continuous(labels=axisprint) +
-    scale_x_continuous(labels=axisprint) +
     theme_classic()
+
+  g = ggplot_build(hist2d)
+  labels = g$layout$panel_ranges[[1]]$y.labels
+
+
+  side_hist_top = ggplot(data.frame(myDist1), aes(x=myDist1)) +
+    geom_histogram(aes(y=..density..),      # Histogram with density instead of count on y-axis
+                   breaks = cut_points1,
+                   colour="black", fill="white") +
+    geom_density(adjust=0.5, alpha=.5, fill="#c1c6ee") +  # Overlay with transparent density plot
+    theme_side_hist() %+replace% theme(plot.margin = margin(5.5,5.5,-25,5.5,"pt")) +
+    scale_y_continuous(labels=labels, breaks=seq(0,1,length.out = length(labels)), expand=c(0,0)) #Pass hist2d's labels to align both X axes
+
+  side_hist_bot = ggplot(data.frame(myDist2), aes(x=myDist2)) +
+    geom_histogram(aes(y=..density..),      # Histogram with density instead of count on y-axis
+                   breaks = cut_points2,
+                   colour="black", fill="white") +
+    geom_density(adjust=0.5, alpha=.5, fill="#c1c6ee") +  # Overlay with transparent density plot
+    theme_side_hist() %+replace% theme(plot.margin = margin(5.5,5.5,5.5,-30,"pt")) +
+    scale_y_continuous(expand=c(0,0)) +
+    coord_flip()
 
   I2 = info
   N = length(myDist1)
@@ -139,6 +140,6 @@ jointplot_hist <- function(myDist1, myDist2, result, title="Joint histogram"){
           axis.title.x=element_blank(), axis.title.y=element_blank())
 
 
-  return(gridExtra::grid.arrange(hist1, empty, hist2d, hist2, ncol=2, nrow=2,
+  return(gridExtra::grid.arrange(side_hist_top, empty, hist2d, side_hist_bot, ncol=2, nrow=2,
                                  widths=c(4.2, 1), heights=c(1, 4.2), bottom=title))
 }
