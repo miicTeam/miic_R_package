@@ -58,6 +58,28 @@ discretizeMutual <- function(myDist1 = NULL, myDist2 = NULL, maxbins=50, plot=T)
 
 axisprint <- function(x) sprintf("%.2f", x)
 
+theme_side_hist <- function () {
+  theme_classic() %+replace%
+    theme(title = element_text(family = "", face = "plain",
+                              color = NA, size = theme_classic()$text$size,
+                              hjust = 0.5, vjust = 0.5, angle = 0, lineheight = 0.9,
+                              margin = margin(), debug = FALSE),
+          text = element_text(family = "", face = "plain",
+                              color = NA, size = theme_classic()$text$size,
+                              hjust = 0.5, vjust = 0.5, angle = 0, lineheight = 0.9,
+                              margin = margin(), debug = FALSE),
+          axis.text = element_text(family = "", face = "plain",
+                              color = NA, size = theme_classic()$text$size,
+                              hjust = 0.5, vjust = 0.5, angle = 0, lineheight = 0.9,
+                              margin = margin(), debug = FALSE),
+          axis.line.x = element_line(colour = NA),
+          axis.line.y = element_line(colour = NA),
+          axis.ticks = element_blank(),
+          panel.background = element_rect(fill = "white", colour = "white")
+          )
+}
+
+
 jointplot_hist <- function(myDist1, myDist2, result, title="Joint histogram"){
 
   library(ggplot2)
@@ -70,22 +92,15 @@ jointplot_hist <- function(myDist1, myDist2, result, title="Joint histogram"){
                    breaks = cut_points1,
                    colour="black", fill="white") +
     geom_density(adjust=0.5, alpha=.5, fill="#c1c6ee") +  # Overlay with transparent density plot
-    theme(line = element_blank(),
-          text = element_blank(),
-          title = element_blank(),
-          plot.margin = margin(5.5, 5.5, -5, 42,"pt"),
-          panel.background = element_rect(fill = "white", colour = "white"))
+    theme_side_hist() %+replace% theme(plot.margin = margin(5.5,5.5,-25,5.5,"pt")) +
+    scale_y_continuous(labels=axisprint)
 
   hist2 = ggplot(data.frame(myDist2), aes(x=myDist2)) +
     geom_histogram(aes(y=..density..),      # Histogram with density instead of count on y-axis
                    breaks = cut_points2,
                    colour="black", fill="white") +
     geom_density(adjust=0.5, alpha=.5, fill="#c1c6ee") +  # Overlay with transparent density plot
-    theme(line = element_blank(),
-          text = element_blank(),
-          title = element_blank(),
-          plot.margin = margin(5.5, 5.5, 30, -5,"pt"),
-          panel.background = element_rect(fill = "white", colour = "white")) +
+    theme_side_hist() %+replace% theme(plot.margin = margin(5.5,5.5,5.5,-25,"pt")) +
     coord_flip()
 
   hist2d = ggplot(data.frame(myDist1, myDist2), aes(x=myDist1, y=myDist2)) +
@@ -95,7 +110,8 @@ jointplot_hist <- function(myDist1, myDist2, result, title="Joint histogram"){
     geom_hline(yintercept=cut_points2, linetype="dashed", color="grey") +
     geom_point(shape=21, alpha=.7, fill="#ffef77", size=2) +
     theme_classic() +
-    scale_y_continuous(labels=axisprint)
+    scale_y_continuous(labels=axisprint) +
+    scale_x_continuous(labels=axisprint)
 
   I2 = info
   N = length(myDist1)
