@@ -527,8 +527,8 @@ int** compute_Ixy_alg1(int** data, int** sortidx, int* ptr_cnt, int* ptrVarIdx, 
 	/////////////////////////////////////
 
 	double* res=(double *)calloc(2,sizeof(double));//results res[0]->I,res[1]->I-k
-	int** iterative_cuts = (int **)calloc(STEPMAX, sizeof(int*));
-	for(int i=0; i<STEPMAX; i++){
+	int** iterative_cuts = (int **)calloc(STEPMAX+1, sizeof(int*));
+	for(int i=0; i<STEPMAX+1; i++){
 		iterative_cuts[i] = (int *)calloc(maxbins*2, sizeof(int));
 	}
 
@@ -622,7 +622,7 @@ int** compute_Ixy_alg1(int** data, int** sortidx, int* ptr_cnt, int* ptrVarIdx, 
 		double sc_levels_y; // Number of levels of the second variable
 		int rx;
 		int ry;
-		for(stop=1;stop<STEPMAX-1;stop++)
+		for(stop=1;stop<STEPMAX;stop++)
 		{
 
 			///////////////////////////////////////////
@@ -640,7 +640,8 @@ int** compute_Ixy_alg1(int** data, int** sortidx, int* ptr_cnt, int* ptrVarIdx, 
 				optfun1[1]=1;//x
 				rt1[0]=r[1];//xy
 				if (stop == 1){
-					sc_levels_y = INIT_BIN-1;
+					sc_levels_y = INIT_BIN;
+					rt1[0] = INIT_BIN;
 				}
 				//else sc_levels_y = 0.5*(rt1[0]-1);
 				else sc_levels_y = (sc_levels_y*(stop-1) + rt1[0])/stop; //Harmonic mean of previous levels.
@@ -650,14 +651,13 @@ int** compute_Ixy_alg1(int** data, int** sortidx, int* ptr_cnt, int* ptrVarIdx, 
 					printf("start optfun\n ");
 					fflush(stdout);
 				#endif
-
 				rx = r[0];
+				
 				// Run optimization on X.
 				MInew=optfun_onerun_kmdl_coarse(sortidx[ptrVarIdx[0]], data[ptrVarIdx[0]],1, factors1, rt1, optfun1, sc, sc_levels_y, n,
 												AllLevels[ptrVarIdx[0]], cut[0], &(r[0]), maxbins, looklog, looklbc, lookH, sc_look, cplx);
 
-				//if (stop > 1) update_datafactors(sortidx, ptrVarIdx[0], datafactors, 0, n, cut);
-				update_datafactors(sortidx, ptrVarIdx[0], datafactors, 0, n, cut);
+				if (stop > 1) update_datafactors(sortidx, ptrVarIdx[0], datafactors, 0, n, cut);
 
 				if(AllLevels[ptrVarIdx[0]] > maxbins) np=maxbins;
 				else np=AllLevels[ptrVarIdx[0]];
@@ -681,18 +681,19 @@ int** compute_Ixy_alg1(int** data, int** sortidx, int* ptr_cnt, int* ptrVarIdx, 
 				rt1[0] = r[0];//xy
 				if (stop == 1){
 					sc_levels_x = INIT_BIN;
+					rt1[0] = INIT_BIN;
 				}
 				//else sc_levels_x = 0.5*(rt1[0]-1);
 				else sc_levels_x = (sc_levels_x*(stop-1) + rt1[0])/stop; //Harmonic mean of previous levels.
 				sc = 0.5*(sc_levels_x-1);
-
 				ry = r[1];
+
 				// Run optimization on Y.
 				MInew=optfun_onerun_kmdl_coarse(sortidx[ptrVarIdx[1]], data[ptrVarIdx[1]],1, factors1, rt1, optfun1, sc, sc_levels_x, n,
-												AllLevels[ptrVarIdx[1]], cut[1], &(r[1]),maxbins, looklog, looklbc, lookH, sc_look, cplx);
+												AllLevels[ptrVarIdx[1]], cut[1], &(r[1]), maxbins, looklog, looklbc, lookH, sc_look, cplx);
 
 				update_datafactors(sortidx, ptrVarIdx[1], datafactors, 1, n, cut);
-				//if (stop == 1) update_datafactors(sortidx, ptrVarIdx[0], datafactors, 0, n, cut);
+				if (stop == 1) update_datafactors(sortidx, ptrVarIdx[0], datafactors, 0, n, cut);
 
 				//
 				if(AllLevels[ptrVarIdx[1]] > maxbins) np=maxbins;
@@ -715,11 +716,10 @@ int** compute_Ixy_alg1(int** data, int** sortidx, int* ptr_cnt, int* ptrVarIdx, 
 			r_temp[1]=r[1];
 			r_temp[2]=rxy;
 
-			//nml
-			if(cplx == 1)
-				res=computeMI_knml(datafactors[0],datafactors[1],xy_factors,r_temp,n,c2terms, looklog);
-			else
+			if (cplx==0) //MDL
 				res=computeMI_kmdl(datafactors[0],datafactors[1],xy_factors,r_temp,n, looklog);
+			else if(cplx == 1) //NML
+				res=computeMI_knml(datafactors[0],datafactors[1],xy_factors,r_temp,n,c2terms, looklog);
 			res[1]-=sc_comb/n;
 
 			#if _MY_DEBUG_MInoU
@@ -731,8 +731,7 @@ int** compute_Ixy_alg1(int** data, int** sortidx, int* ptr_cnt, int* ptrVarIdx, 
 
 			for(i=stop-1;i>0;i--){
 				if( (fabs(res[1]-MIk[i]) < EPS) && // If no real improvement over last information  AND
-					(rx == r[0]) && (ry == r[1])) {
-					 //(fabs(sc_levels_x - r[0]) < 1 && fabs(sc_levels_y-r[1]) < 1)) || //If the harmonic mean has "catched up" to the number of levels (< 1) ?
+					(rx == r[0]) && (ry == r[1])) { // If the number of bins hasn't changed on both variables
 					flag=1;
 					Ik_av=MIk[i];
 					I_av=MI[i];
@@ -751,8 +750,8 @@ int** compute_Ixy_alg1(int** data, int** sortidx, int* ptr_cnt, int* ptrVarIdx, 
 			MI[stop]=res[0];
 
 		}//for
-		iterative_cuts[stop-1][0]=-1; // mark where we stopped iterating
-		iterative_cuts[stop-1][maxbins]=-1;
+		iterative_cuts[stop][0]=-1; // mark where we stopped iterating
+		iterative_cuts[stop][maxbins]=-1;
 
 		if(flag){
 		res[0]=I_av;
@@ -1256,7 +1255,7 @@ extern "C" SEXP mydiscretizeMutual(SEXP RmyDist1, SEXP RmyDist2, SEXP RmaxBins){
   int niterations=0;
   int ncutpoints1;
   int ncutpoints2;
-  for(int l=0; l<STEPMAX; l++){
+  for(int l=0; l<STEPMAX+1; l++){
 	if((iterative_cuts[l][0]==-1) && (iterative_cuts[l][maxbins]==-1) ){
 		niterations=l;
 		break;
