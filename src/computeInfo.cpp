@@ -4,6 +4,7 @@
 #include <math.h>
 #include <stdint.h>
 #include <cmath>
+#include <iostream>
 #include "computeInfo.h"
 
 # define M_PI		3.14159265358979323846	/* pi */
@@ -350,5 +351,53 @@ double computeLogC( int N, int r, double* c2terms)
 		}
   	}
 
+	return logC;
+}
+
+
+double computeLogC( int N, int r, double** cterms)
+{
+    if(cterms[r][N] != -1){
+      return(cterms[r][N]);
+    }
+
+    double* c2terms = cterms[2];
+	double C2, logC, D;
+	int rr,h;
+
+	if(N<=10)
+	{
+		if(c2terms[N] == -1){
+			C2=0;
+			for( h = 0; h <= N; h++ )
+			{
+				C2 = C2 + binomialCoeff( N, h )*pow( ( h/( (double)N ) ), h )*pow( ( ( N-h )/( (double)N ) ), ( N-h ) );
+	   		}
+            C2 = log(C2);
+	   	} else {
+	   		C2 = c2terms[N];
+	   	}
+	} else {
+    	if(c2terms[N] == -1){
+       		C2 = sqrt( N * M_PI_2)*exp( sqrt( 8/( 9*N*M_PI ) ) + ( 3*M_PI-16 )/( 36*N*M_PI ) );
+            C2 = log(C2);
+	   	} else {
+	   		C2 = c2terms[N];
+	   	}
+	}
+
+	logC=C2;
+	D=exp(C2);
+
+	if( r > 2 )
+	{
+    	for( rr = 3; rr <= r; rr++)
+		{
+		  D=1+(N/(1.0*(rr-2)*D));
+		  logC=logC+log(D);
+		}
+  	}
+
+    cterms[r][N]=logC;
 	return logC;
 }

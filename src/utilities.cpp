@@ -961,3 +961,31 @@ double logchoose(int n, int k){
 	double res = ramanujan(n) - ramanujan(k) - ramanujan(n-k);
 	return(res);
 }
+
+double compute_parametric_complexity(int n, int K, double** sc_look){
+
+  if(sc_look[n-1][K-1] != 0){
+    return(sc_look[n-1][K-1]);
+  }
+
+  double res;
+  if(K==1){
+    res = 1;
+  } else if(K==2){
+    if(n<1000){
+      res = 0;
+      for(int i=0 ; i <= n; i++){
+        int h1 = i;
+        int h2 = n - h1;
+        res = res + exp(ramanujan(n) - ramanujan(h1) - ramanujan(h2)) * pow((1.0*h1/n),h1) * pow((1.0*h2/n),h2);
+      }
+    } else{
+      res = sqrt((n*M_PI)/2) * exp(sqrt(8./(9.*n*M_PI)) + (3*M_PI-16)/(36.*n*M_PI));
+    }
+  } else {
+    res = compute_parametric_complexity(n, K-1, sc_look) + 1.0*n/(K-2) * compute_parametric_complexity(n, K-2, sc_look);
+  }
+
+  sc_look[n-1][K-1] = res;
+  return(res);
+}
