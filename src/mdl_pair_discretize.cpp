@@ -135,7 +135,7 @@ double logdbico(int n,	int k, double** looklbc){
 //int *memory_cut: output vector of optimal cuts :
 //
 inline __attribute__((always_inline))
-double optfun_onerun_kmdl_coarse(int *sortidx_var, int *data, int nbrV, int **factors, int *r, int *optfun, double sc_levels,
+double optfun_onerun_kmdl_coarse(int *sortidx_var, int *data, int nbrV, int **factors, int *r, int *optfun, double sc, double sc_levels,
 								 int n, int nnr,int *cut, int *r_opt, int maxbins, double* looklog, double** looklbc,
 								 double* lookH, double** sc_look, int cplx)
 {
@@ -154,7 +154,6 @@ double optfun_onerun_kmdl_coarse(int *sortidx_var, int *data, int nbrV, int **fa
 		int *memory_cuts_pos=(int *)calloc(np,sizeof(int));//positions of the cuts (1..n)
 
 		//variables for the computation of the complexity
-		double sc = 0.5*(sc_levels-1); // MDL complexity
 		double sc2; // The cost for adding one bin.
 
 
@@ -283,8 +282,11 @@ double optfun_onerun_kmdl_coarse(int *sortidx_var, int *data, int nbrV, int **fa
 		memory_cuts_idx[0]=0;
 		I[0]=I_0k[0];
 		nc[0]=1;
-
-		if(cplx==1){ //NML
+		
+		if(cplx==0){ //MDL
+			I[0] -= sc * looklog[n];
+		}
+		else if(cplx==1){ //NML
 			I[0] -= computeLogC(nj, sc_levels, sc_look);
 		}
 
@@ -355,7 +357,10 @@ double optfun_onerun_kmdl_coarse(int *sortidx_var, int *data, int nbrV, int **fa
 
 			//complexity terms (local version)
 
-			if(cplx==1){ //NML complexity
+			if(cplx==0){ //MDL
+				I[j] -= sc * looklog[n];
+			}
+			else if(cplx==1){ //NML complexity
 				I[j] -= computeLogC(nj, sc_levels, sc_look);// - log(nj);
 			}
 
@@ -406,6 +411,7 @@ double optfun_onerun_kmdl_coarse(int *sortidx_var, int *data, int nbrV, int **fa
 						//nx=nxj-(k+1)*coarse;
 						nkj=njforward-nkforward;
 						if(optfun[nbrV] != 0) H_kj[nbrV]=-nkj*looklog[nkj];
+
 						if(cplx == 0){ //MDL
 							sc2 = sc*looklog[n]; // Constant
 						}
@@ -614,6 +620,8 @@ int** compute_Ixy_alg1(int** data, int** sortidx, int* ptr_cnt, int* ptrVarIdx, 
 
 		double sc_levels_x; // Number of levels of the first variable
 		double sc_levels_y; // Number of levels of the second variable
+		int rx;
+		int ry;
 		for(stop=1;stop<STEPMAX-1;stop++)
 		{
 
@@ -636,14 +644,16 @@ int** compute_Ixy_alg1(int** data, int** sortidx, int* ptr_cnt, int* ptrVarIdx, 
 				}
 				//else sc_levels_y = 0.5*(rt1[0]-1);
 				else sc_levels_y = (sc_levels_y*(stop-1) + rt1[0])/stop; //Harmonic mean of previous levels.
+				sc = 0.5*(sc_levels_y-1);
 
 				#if _MY_DEBUG_MInoU
 					printf("start optfun\n ");
 					fflush(stdout);
 				#endif
 
+				rx = r[0];
 				// Run optimization on X.
-				MInew=optfun_onerun_kmdl_coarse(sortidx[ptrVarIdx[0]], data[ptrVarIdx[0]],1, factors1, rt1, optfun1, sc_levels_y, n,
+				MInew=optfun_onerun_kmdl_coarse(sortidx[ptrVarIdx[0]], data[ptrVarIdx[0]],1, factors1, rt1, optfun1, sc, sc_levels_y, n,
 												AllLevels[ptrVarIdx[0]], cut[0], &(r[0]), maxbins, looklog, looklbc, lookH, sc_look, cplx);
 
 				//if (stop > 1) update_datafactors(sortidx, ptrVarIdx[0], datafactors, 0, n, cut);
@@ -674,10 +684,11 @@ int** compute_Ixy_alg1(int** data, int** sortidx, int* ptr_cnt, int* ptrVarIdx, 
 				}
 				//else sc_levels_x = 0.5*(rt1[0]-1);
 				else sc_levels_x = (sc_levels_x*(stop-1) + rt1[0])/stop; //Harmonic mean of previous levels.
-				sc = sc_levels_x;
+				sc = 0.5*(sc_levels_x-1);
 
+				ry = r[1];
 				// Run optimization on Y.
-				MInew=optfun_onerun_kmdl_coarse(sortidx[ptrVarIdx[1]], data[ptrVarIdx[1]],1, factors1, rt1, optfun1, sc_levels_x, n,
+				MInew=optfun_onerun_kmdl_coarse(sortidx[ptrVarIdx[1]], data[ptrVarIdx[1]],1, factors1, rt1, optfun1, sc, sc_levels_x, n,
 												AllLevels[ptrVarIdx[1]], cut[1], &(r[1]),maxbins, looklog, looklbc, lookH, sc_look, cplx);
 
 				update_datafactors(sortidx, ptrVarIdx[1], datafactors, 1, n, cut);
@@ -719,9 +730,9 @@ int** compute_Ixy_alg1(int** data, int** sortidx, int* ptr_cnt, int* ptrVarIdx, 
 
 
 			for(i=stop-1;i>0;i--){
-				if( ((res[1]-MIk[i] > -EPS && res[1]-MIk[i] < EPS) && // If no real improvement over last information  AND
-					 (fabs(sc_levels_x - r[1]) < 1 && fabs(sc_levels_y-r[0]) < 1)) || //If the harmonic mean has "catched up" to the number of levels (< 1) ?
-					fabs(res[1]-MIk[i])<1e-10 ) { // If information value stayed the same. 
+				if( (fabs(res[1]-MIk[i]) < EPS) && // If no real improvement over last information  AND
+					(rx == r[0]) && (ry == r[1])) {
+					 //(fabs(sc_levels_x - r[0]) < 1 && fabs(sc_levels_y-r[1]) < 1)) || //If the harmonic mean has "catched up" to the number of levels (< 1) ?
 					flag=1;
 					Ik_av=MIk[i];
 					I_av=MI[i];
@@ -1233,8 +1244,8 @@ extern "C" SEXP mydiscretizeMutual(SEXP RmyDist1, SEXP RmyDist2, SEXP RmaxBins){
   }
 
 
-  //int cplx(1); //NML
-  int cplx(0); //MDL
+  int cplx(1); //NML
+  //int cplx(0); //MDL
 
   int** iterative_cuts = compute_mi_cond_alg1(dataNumeric_red, dataNumericIdx_red, AllLevels_red,
   											  cnt_red, posArray_red, nbrUi, n, maxbins, c2terms,
