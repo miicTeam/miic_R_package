@@ -147,6 +147,7 @@ double optfun_onerun_kmdl_coarse(int *sortidx_var, int *data, int nbrV, int **fa
 		int coarse=ceil(1.0*nnr/maxbins);//step coarse graining
 		if (coarse<1) coarse=1;
 		coarse= cbrt(n);
+		//coarse=1;
 		int np=ceil(1.0*nnr/coarse); //number of possible cuts
 
 		//temp variables to memorize optimization cuts
@@ -282,7 +283,7 @@ double optfun_onerun_kmdl_coarse(int *sortidx_var, int *data, int nbrV, int **fa
 		memory_cuts_idx[0]=0;
 		I[0]=I_0k[0];
 		nc[0]=1;
-		
+
 		if(cplx==0){ //MDL
 			I[0] -= sc * looklog[n];
 		}
@@ -416,7 +417,7 @@ double optfun_onerun_kmdl_coarse(int *sortidx_var, int *data, int nbrV, int **fa
 							sc2 = sc*looklog[n]; // Constant
 						}
 						if(cplx == 1){ //NML
-							sc2 = computeLogC(nkj, ceil(2*sc+1), sc_look); // Dependant on nkj, the number of values in the new bin
+							sc2 = computeLogC(nkj, sc_levels, sc_look); // Dependent on nkj, the number of values in the new bin
 						}
 
 						//if(optfun[nbrV] != 0) H_kj[nbrV]=-lookH[nkj];
@@ -445,7 +446,7 @@ double optfun_onerun_kmdl_coarse(int *sortidx_var, int *data, int nbrV, int **fa
 
 						nk=nkforward-1;//position of the actual possible cut
 
-						if( I[k] + I_kj - sc2 > I[j] ){
+						if( (I[k] + I_kj - sc2 > I[j]) ){
 							t=I[k] + I_kj - sc2; //[0.. cuts.. k-1][k j]
 							if (fmax<t){
 								fmax=t;
@@ -489,7 +490,7 @@ double optfun_onerun_kmdl_coarse(int *sortidx_var, int *data, int nbrV, int **fa
 
 	// reconstruction of the optimal cuts from the memory cuts indexes and positions
 	*r_opt=reconstruction_cut_coarse(memory_cuts_idx,memory_cuts_pos, np, n, cut);
-
+	
 	free(memory_cuts_idx);
 	free(memory_cuts_pos);
 	return I[np-1]/n;
@@ -652,12 +653,13 @@ int** compute_Ixy_alg1(int** data, int** sortidx, int* ptr_cnt, int* ptrVarIdx, 
 					fflush(stdout);
 				#endif
 				rx = r[0];
-				
+
 				// Run optimization on X.
 				MInew=optfun_onerun_kmdl_coarse(sortidx[ptrVarIdx[0]], data[ptrVarIdx[0]],1, factors1, rt1, optfun1, sc, sc_levels_y, n,
 												AllLevels[ptrVarIdx[0]], cut[0], &(r[0]), maxbins, looklog, looklbc, lookH, sc_look, cplx);
 
-				if (stop > 1) update_datafactors(sortidx, ptrVarIdx[0], datafactors, 0, n, cut);
+				//update_datafactors(sortidx, ptrVarIdx[0], datafactors, 0, n, cut);
+				//if (stop > 1) update_datafactors(sortidx, ptrVarIdx[0], datafactors, 0, n, cut);
 
 				if(AllLevels[ptrVarIdx[0]] > maxbins) np=maxbins;
 				else np=AllLevels[ptrVarIdx[0]];
@@ -679,6 +681,7 @@ int** compute_Ixy_alg1(int** data, int** sortidx, int* ptr_cnt, int* ptrVarIdx, 
 				optfun1[0]=-1;//xy
 				optfun1[1]=1;//y
 				rt1[0] = r[0];//xy
+				rt1[0] = rx;//xy
 				if (stop == 1){
 					sc_levels_x = INIT_BIN;
 					rt1[0] = INIT_BIN;
@@ -693,7 +696,8 @@ int** compute_Ixy_alg1(int** data, int** sortidx, int* ptr_cnt, int* ptrVarIdx, 
 												AllLevels[ptrVarIdx[1]], cut[1], &(r[1]), maxbins, looklog, looklbc, lookH, sc_look, cplx);
 
 				update_datafactors(sortidx, ptrVarIdx[1], datafactors, 1, n, cut);
-				if (stop == 1) update_datafactors(sortidx, ptrVarIdx[0], datafactors, 0, n, cut);
+				update_datafactors(sortidx, ptrVarIdx[0], datafactors, 0, n, cut);
+				//if (stop == 1) update_datafactors(sortidx, ptrVarIdx[0], datafactors, 0, n, cut);
 
 				//
 				if(AllLevels[ptrVarIdx[1]] > maxbins) np=maxbins;
@@ -730,8 +734,8 @@ int** compute_Ixy_alg1(int** data, int** sortidx, int* ptr_cnt, int* ptrVarIdx, 
 
 
 			for(i=stop-1;i>0;i--){
-				if( (fabs(res[1]-MIk[i]) < EPS) && // If no real improvement over last information  AND
-					(rx == r[0]) && (ry == r[1])) { // If the number of bins hasn't changed on both variables
+				if( (fabs(res[1]-MIk[i]) < EPS)){ // If no real improvement over last information
+					//(rx == r[0]) && (ry == r[1])) { // If the number of bins hasn't changed on both variables
 					flag=1;
 					Ik_av=MIk[i];
 					I_av=MI[i];
