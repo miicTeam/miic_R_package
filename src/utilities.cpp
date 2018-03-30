@@ -950,15 +950,28 @@ void sort2arraysConfidence(int len, int a[], int brr[]){
 double ramanujan(int n){
 	// Returns log(fac(n)) with Ramanujan's approximation.
     if(n==0){
-      return(1);
+    	return(0);
     }
     double N = n*log(n) - n + log(1.0*n*(1 + 4*n*(1+2*n)))/6 + log(M_PI)/2L;
     return(N);
 }
+ 
+double lnfactorial(int n, double* looklog) {
+	int y;
+	double z;
+	if (n == 0){
+		z=1;
+	}
+	else {
+		z = 0;
+		for (y=2; y<=n; y++) z += looklog[y];
+	}
+	return z;
+}
 
-double logchoose(int n, int k){
-	// Returns the log of n choose k with Ramanujan's approximation.
-	double res = ramanujan(n) - ramanujan(k) - ramanujan(n-k);
+double logchoose(int n, int k, double* looklog){
+	double res = lnfactorial(n, looklog) - lnfactorial(k, looklog) - lnfactorial(n-k, looklog);
+	//double res = ramanujan(n) - ramanujan(k) - ramanujan(n-k);
 	return(res);
 }
 

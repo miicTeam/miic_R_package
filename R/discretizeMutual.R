@@ -10,21 +10,24 @@
 #' @export
 #' @useDynLib miic
 
-discretizeMutual <- function(myDist1 = NULL, myDist2 = NULL, maxbins=50, plot=T)
+discretizeMutual <- function(myDist1 = NULL, myDist2 = NULL, maxbins=NULL, initbins=NULL, plot=T)
 {
   result = list()
   #### Check the input arguments
   if( is.null( myDist1 ) || is.null(myDist2) )
   { stop("The input data file is required") }
 
-  if(maxbins > length(myDist1))
+  if((maxbins > length(myDist1)) || is.null(maxbins))
     maxbins=length(myDist1)
+
+  if((initbins > length(myDist1)) || is.null(initbins))
+    initbins=round(length(myDist1)**(1/3))
 
   myDist1[is.na(myDist1)] = -1
   myDist2[is.na(myDist2)] = -1
 
   if (base::requireNamespace("Rcpp", quietly = TRUE)) {
-    rescpp <- .Call('mydiscretizeMutual', myDist1, myDist2, maxbins, PACKAGE = "miic")
+    rescpp <- .Call('mydiscretizeMutual', myDist1, myDist2, maxbins, initbins, PACKAGE = "miic")
   }
   niterations = length(rescpp$cutpoints1)/maxbins
 
@@ -77,6 +80,8 @@ theme_side_hist <- function () {
 jointplot_hist <- function(myDist1, myDist2, result, title="Joint histogram"){
 
   library(ggplot2)
+  library(dplyr)
+  library(data.table)
   cut_points1 = result$cutpoints1
   cut_points2 = result$cutpoints2
   info = result$info
@@ -96,7 +101,7 @@ jointplot_hist <- function(myDist1, myDist2, result, title="Joint histogram"){
 
   hist2d = ggplot(fill_density) + 
     geom_rect(aes(xmin=xstart, xmax=xend, ymin=ystart, ymax=yend, fill=density), na.rm = T, show.legend = F) + 
-    scale_fill_gradient(low = "#e1e3f2", high = "#0013a3", position = "left", na.value = "white") +
+    scale_fill_gradient(low = "#e1e3f2", high = "#0013a3", position = "left", na.value = "white", limits=c(0,max(fill_density$density))) +
     geom_vline(xintercept=cut_points1, linetype="dashed", color="grey") +
     geom_hline(yintercept=cut_points2, linetype="dashed", color="grey") +
     geom_point(data = data.frame(myDist1, myDist2), aes(x=myDist1, y=myDist2), shape=21, alpha=.7, fill="#ffef77", size=2) +
