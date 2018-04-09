@@ -5,12 +5,21 @@
 #' A vector that contains the observational data of the first variable.
 #' @param myDist2 [a vector]
 #' A vector that contains the observational data of the second variable.
-#' @param maxbins [an int] The maximum number of bins to test for.
+#' @param matrixU [a numeric matrix]
+#' The matrix containing the values of the conditioning variables with as many columns as variables.
+#' @param maxbins [an int] 
+#' The maximum number of bins desired in the discretization.
+#' @param initbins [an int]
+#' The number of bins of the equal
+#' @param cplx [a string]
+#' The complexity used in the dynamic programming. Either "mdl" for Minimum description Length or "nml" for
+#' Normalized Maximum Likelihood, which is less punitive in the finite sample case and will create more bins than mdl.
+#'
 #' @return A list with the two vectors containing the cutpoints of the best discretization for both variables.
 #' @export
 #' @useDynLib miic
 
-discretizeMutual <- function(myDist1 = NULL, myDist2 = NULL, maxbins=NULL, initbins=NULL, plot=T)
+discretizeMutual <- function(myDist1 = NULL, myDist2 = NULL, matrixU=NULL, maxbins=NULL, initbins=NULL, cplx="mdl", plot=T)
 {
   result = list()
   #### Check the input arguments
@@ -26,8 +35,26 @@ discretizeMutual <- function(myDist1 = NULL, myDist2 = NULL, maxbins=NULL, initb
   myDist1[is.na(myDist1)] = -1
   myDist2[is.na(myDist2)] = -1
 
+
+  if(is.null(matrixU)){
+    nbrU = 0
+    flatU = c(0)
+  } else{
+    nbrU = dim(matrixU)[2]
+    flatU <- as.vector(as.matrix(matrixU))
+  }
+
+  if(cplx=="mdl"){
+    intcplx = 0
+  } else if (cplx=="nml"){
+    intcplx = 1
+  } else {
+    print("cplx parameter not understood, please specify either \'mdl\' or \'nml\'. Running with the default option (mdl).")
+    intcplx = 0
+  }
+
   if (base::requireNamespace("Rcpp", quietly = TRUE)) {
-    rescpp <- .Call('mydiscretizeMutual', myDist1, myDist2, maxbins, initbins, PACKAGE = "miic")
+    rescpp <- .Call('mydiscretizeMutual', myDist1, myDist2, flatU, nbrU, maxbins, initbins, intcplx, PACKAGE = "miic")
   }
   niterations = length(rescpp$cutpoints1)/maxbins
 
