@@ -971,6 +971,209 @@ int** compute_Ixy_cond_u_alg1(int** data, int** sortidx, int* ptr_cnt, int* ptrV
 	for(stop1=1;stop1<STEPMAX1;stop1++)
 	  {
 
+		for(stop=1;stop<STEPMAX;stop++) //optimize I(y;xu) over x and I(x;yu) over y
+		{
+			///////////////////////////////////////////
+
+		    flag=0;
+			sc_comb=0;
+
+
+			//optimize I(y;xu) over x and I(x;yu) over y
+
+			//compute joint factors u yu xu xyu
+			if(ptr_cnt[ptrVarIdx[0]]==1 || ptr_cnt[ptrVarIdx[1]]==1){
+			  jointfactors_uiyx(datafactors, -1, n, nbrUi, r, uiyxfactors, ruiyx);
+			}
+
+			if(ptr_cnt[ptrVarIdx[0]]==1){
+
+				//optimize on x
+				//I(y;xu)
+
+ 			        //compute joint factors u yu xu xyu
+			        //jointfactors_uiyx(datafactors,0,  n, nbrUi, r, uiyxfactors, ruiyx);
+
+				//init variables for the optimization run
+
+				//sc=0.5*(r[1]-1)*(ruiyx[0]); // herve
+
+
+				//factors1[0]=datafactors[1];//y
+				//factors1[1]=singlefactor;// one single bin for x initially //herve
+				factors1[0]=uiyxfactors[1];//uy
+				factors1[1]=uiyxfactors[0];//u
+				//factors1[1]=singlefactor; //x
+
+				rt1[0]=ruiyx[1]; //uy
+				rt1[1]=ruiyx[0]; //u
+				//rt1[1]=1; //x
+				if (stop == 1){
+					sc_levels_y = r[1];//rt1[0]
+				}
+				//else sc_levels_y = 0.5*(rt1[0]-1);
+				else sc_levels_y = (sc_levels_y*(stop-1) + r[1])/stop; //Harmonic mean of previous levels.
+				sc = 0.5*(sc_levels_y-1);
+
+				#if _MY_DEBUG_MInoU
+					printf("start optfun\n ");
+					fflush(stdout);
+				#endif
+
+				rx = r[0];
+				//sc_levels_y = rt1[0];
+				sc_levels1 = sc_levels_y; //herve
+				sc_levels2 = sc_levels_x; //herve
+				// Run optimization on X.
+				//MInew=optfun_onerun_kmdl_coarse(sortidx[ptrVarIdx[0]], data[ptrVarIdx[0]],1, factors1, rt1, optfun1, sc, sc_levels_y, n, AllLevels[ptrVarIdx[0]], cut[0], &(r[0]), maxbins, looklog, looklbc, lookH, sc_look, cplx);
+
+				MInew=optfun_onerun_kmdl_coarse(sortidx[ptrVarIdx[0]], data[ptrVarIdx[0]],2, factors1, rt1,
+												1, sc, sc_levels1, sc_levels2, n, AllLevels[ptrVarIdx[0]],
+												cut[0], &(r[0]), maxbins, looklog, looklbc, lookH, sc_look, cplx); // 2 factors //herve
+
+				//update_datafactors(sortidx, ptrVarIdx[0], datafactors, 0, n, cut);
+
+				//sc_comb += COEFF_COMB*logdbico(np,r[0]-1,looklbc);
+
+			}
+
+			////////////////////////////////////////////////
+
+			if(ptr_cnt[ptrVarIdx[1]]==1){
+
+
+				//opt y
+				//I(x;yu)
+
+ 			        //compute joint factors u xu yu xyu
+			        //jointfactors_uiyx(datafactors,1,  n, nbrUi, r, uiyxfactors, ruiyx);
+
+				//init variables for the optimization run
+
+				//sc=0.5*(r[0]-1)*(ruiyx[0]); //herve
+
+
+				//factors1[0]=datafactors[0];//x
+				//factors1[1]=singlefactor;// one single bin for y initially //herve
+				factors1[0]=uiyxfactors[2];//xu
+				factors1[1]=uiyxfactors[0];//u
+				//factors1[1]=singlefactor;//u //herve
+
+				//optfun1[0]=-1;//xy
+				//optfun1[1]=1;//y
+				//rt1[0] = r[0];//xy
+				rt1[0]=ruiyx[2];
+				rt1[1]=ruiyx[0];
+				//rt1[1]=1; // one single bin for y initially //herve
+				if (stop == 1){
+					sc_levels_x = r[0];//rt1[0];
+				}
+				//else sc_levels_x = 0.5*(rt1[0]-1);
+				else sc_levels_x = (sc_levels_x*(stop-1) + r[0])/stop; //Harmonic mean of previous levels.
+				sc = 0.5*(sc_levels_x-1);
+
+				ry = r[1];
+				//sc_levels_x = rt1[0];
+				sc_levels1 = sc_levels_x; //herve
+				sc_levels2 = sc_levels_y; //herve
+				// Run optimization on Y.
+				//MInew=optfun_onerun_kmdl_coarse(sortidx[ptrVarIdx[1]], data[ptrVarIdx[1]],1, factors1, rt1, optfun1, sc, sc_levels_x, n, AllLevels[ptrVarIdx[1]], cut[1], &(r[1]), maxbins, looklog, looklbc, lookH, sc_look, cplx);
+				MInew=optfun_onerun_kmdl_coarse(sortidx[ptrVarIdx[1]], data[ptrVarIdx[1]],2, factors1, rt1,
+												1, sc, sc_levels1, sc_levels2, n, AllLevels[ptrVarIdx[1]],
+												cut[1], &(r[1]), maxbins, looklog, looklbc, lookH, sc_look, cplx); // 2 factors //herve
+
+
+
+				update_datafactors(sortidx, ptrVarIdx[1], datafactors, 1, n, cut);
+				update_datafactors(sortidx, ptrVarIdx[0], datafactors, 0, n, cut);
+
+				//
+
+				//sc_comb += COEFF_COMB*logdbico(np,r[1]-1, looklbc);
+
+			}
+
+			//////////////////////////////////////////
+
+			//jointfactors_u(datafactors,ptr,n, 2, r, xy_factors, &rxy,&Hxy);
+			//compute joint factors u yu xu xyu
+			jointfactors_uiyx(datafactors,-1,  n, nbrUi, r, uiyxfactors, ruiyx); //herve
+			//uiyxfactors[0];//u
+			//uiyxfactors[1];//yu
+			//uiyxfactors[2];//xu
+ 			//uiyxfactors[3];//xyu
+			//ruiyx -> 0:u,1:uy,2:ux,3:uyx
+
+      		double* res = (double*) calloc(2, sizeof(double));
+      		double* res_y = (double*) calloc(2, sizeof(double));
+
+
+			if (cplx == 0){ //MDL //cplx
+			  r_temp[2]=ruiyx[3];
+			  r_temp[0]=r[0];
+			  r_temp[1]=ruiyx[1];
+			  res=computeMI_kmdl(datafactors[0],uiyxfactors[1],uiyxfactors[3],r_temp,n, looklog);
+
+			  r_temp[0]=r[1];
+			  r_temp[1]=ruiyx[2];
+			  res_y = computeMI_kmdl(datafactors[1],uiyxfactors[2],uiyxfactors[3],r_temp,n, looklog);
+			  res[0] += res_y[0];
+			  res[1] += res_y[1];
+
+			}else if(cplx == 1){ //NML
+			  r_temp[2]=ruiyx[3]; //xyu
+			  r_temp[0]=r[0]; //x
+			  r_temp[1]=ruiyx[1]; //uy
+			  res=computeMI_knml(datafactors[0],uiyxfactors[1],uiyxfactors[3],r_temp,n,c2terms, looklog);
+
+			  r_temp[0]=r[1]; //y
+			  r_temp[1]=ruiyx[2]; //ux
+			  res_y = computeMI_knml(datafactors[1],uiyxfactors[2],uiyxfactors[3],r_temp,n,c2terms, looklog);
+			  res[0] += res_y[0];
+			  res[1] += res_y[1];
+			}
+			//res[1]-=sc_comb/n;
+
+			#if _MY_DEBUG_MInoU
+			printf("%d: I_xz=%lf Ik_xz=%lf\n",stop,res[0],res[1]);
+			for(ll=0;ll<nbrUi+2;ll++) printf("r[%d]=%d ",ll,r[ll]);
+			printf("\n");fflush(stdout);
+			#endif
+
+
+			for(i=stop-1;i>0;i--){
+				if( (fabs(res[1]-MIk[i]) < EPS) || // If no real improvement over last information  AND
+					((rx == r[0]) && (ry == r[1])) ) { // If the number of bins hasn't changed on both variables
+					flag=1;
+					Ik_av=MIk[i];
+					I_av=MI[i];
+
+					for(j=i+1;j<stop;j++){
+						Ik_av+=MIk[j];
+						I_av+=MI[j];
+					}
+					Ik_av/=(stop-i); //average over the periodic cycle
+					I_av/=(stop-i);
+					break;
+				}
+			}
+			if(flag) break;
+			MIk[stop]=res[1];
+			MI[stop]=res[0];
+
+		}//for
+
+		if(flag){
+		res[0]=I_av;
+		res[1]=Ik_av;
+		}
+
+        // Reset MIk and MI
+		for(i=0;i<STEPMAX;i++){
+	        MIk[i]=0;
+	        MI[i]=0;
+        }
+
 	      //////////////////////////////////////////////////////////////////////////////////////
 	      // optimize  pxy * [ I(y;xu) + I(x;yu) ] + (1 - pxy) [ I(y;u) + I(x;u) ]  over u
 
@@ -1040,7 +1243,7 @@ int** compute_Ixy_cond_u_alg1(int** data, int** sortidx, int* ptr_cnt, int* ptrV
 			//////////////////////////////////////////
 
 			//jointfactors_u(datafactors,ptr,n, 2, r, xy_factors, &rxy,&Hxy);
-			//compute joint factors u xu yu xyu
+			//compute joint factors u yu xu xyu
 			jointfactors_uiyx(datafactors,-1,  n, nbrUi, r, uiyxfactors, ruiyx); //herve
 			//uiyxfactors[0];//u
 			//uiyxfactors[1];//yu
@@ -1048,7 +1251,7 @@ int** compute_Ixy_cond_u_alg1(int** data, int** sortidx, int* ptr_cnt, int* ptrV
  			//uiyxfactors[3];//xyu
 			//ruiyx -> 0:u,1:uy,2:ux,3:uyx
 
-      		double* res = (double*) calloc(2, sizeof(double));
+      		double* res = (double*) calloc(2, sizeof(double)); //memleak?
       		double* res_x = (double*) calloc(2, sizeof(double));
       		double* res_y = (double*) calloc(2, sizeof(double));
       		double* res_xu = (double*) calloc(2, sizeof(double));
@@ -1083,44 +1286,44 @@ int** compute_Ixy_cond_u_alg1(int** data, int** sortidx, int* ptr_cnt, int* ptrV
 			  res[1] += (1-pxy)*res_yu[1];
 
 			}else if(cplx == 1){ //NML
-			  r_temp[2]=ruiyx[3];
-			  r_temp[0]=r[0];
-			  r_temp[1]=ruiyx[1];
-			  res_x = computeMI_knml(datafactors[0],uiyxfactors[1],uiyxfactors[3],r_temp,n,c2terms, looklog);
+			  r_temp[2]=ruiyx[3]; //xyu
+			  r_temp[0]=r[0]; //x
+			  r_temp[1]=ruiyx[1]; //uy
+			  res_x = computeMI_knml(datafactors[0],uiyxfactors[1],uiyxfactors[3],r_temp,n,c2terms, looklog); //I(x;uy)
 			  res[0] += pxy*res_x[0];
 			  res[1] += pxy*res_x[1];
 
-			  r_temp[0]=r[1];
-			  r_temp[1]=ruiyx[2];
-			  res_y = computeMI_knml(datafactors[1],uiyxfactors[2],uiyxfactors[3],r_temp,n,c2terms, looklog);
+			  r_temp[0]=r[1]; //y
+			  r_temp[1]=ruiyx[2]; //ux
+			  res_y = computeMI_knml(datafactors[1],uiyxfactors[2],uiyxfactors[3],r_temp,n,c2terms, looklog); //I(y;ux)
 			  res[0] += pxy*res_y[0];
 			  res[1] += pxy*res_y[1];
 
 			  r_temp[2]=ruiyx[2];
 			  r_temp[0]=r[0];
 			  r_temp[1]=ruiyx[0];
-			  res_xu = computeMI_knml(datafactors[0],uiyxfactors[0],uiyxfactors[2],r_temp,n, c2terms, looklog);
+			  res_xu = computeMI_knml(datafactors[0],uiyxfactors[0],uiyxfactors[2],r_temp,n, c2terms, looklog); //I(x;u)
 			  res[0] += (1-pxy)*res_xu[0];
 			  res[1] += (1-pxy)*res_xu[1];
 
 			  r_temp[2]=ruiyx[1];
 			  r_temp[0]=r[1];
 			  r_temp[1]=ruiyx[0];
-			  res_yu = computeMI_knml(datafactors[1],uiyxfactors[0],uiyxfactors[1],r_temp,n, c2terms, looklog);
+			  res_yu = computeMI_knml(datafactors[1],uiyxfactors[0],uiyxfactors[1],r_temp,n, c2terms, looklog); //I(y;u)
 			  res[0] += (1-pxy)*res_yu[0];
 			  res[1] += (1-pxy)*res_yu[1];
 			}
 			res[1]-=sc_comb/n;
 
-			#if _MY_DEBUG_MInoU
-			printf("%d: I_xz=%lf Ik_xz=%lf\n",stop,res[0],res[1]);
+			//#if _MY_DEBUG_MInoU
+			printf("%d: I=%lf Ik=%lf\n",stop,res[0],res[1]);
 			for(ll=0;ll<(nbrUi+2);ll++) printf("r[%d]=%d ",ll,r[ll]);
 			printf("\n");fflush(stdout);
-			#endif
+			//#endif
 
 
 			for(i=stop-1;i>0;i--){
-				if( (fabs(res[1]-MIk[i]) < EPS)){ // If no real improvement over last information  AND
+				if( (fabs(res[0]-MI[i]) < EPS)){ // If no real improvement over last information  AND
 					//(rx == r[0]) && (ry == r[1])) { // If the number of bins hasn't changed on both variables
 					flag=1;
 					Ik_av=MIk[i];
@@ -1140,211 +1343,6 @@ int** compute_Ixy_cond_u_alg1(int** data, int** sortidx, int* ptr_cnt, int* ptrV
 			MI[stop]=res[0];
 
 		}// end stop for u
-
-        // Reset MIk and MI
-		for(i=0;i<STEPMAX;i++){
-	        MIk[i]=0;
-	        MI[i]=0;
-        }
-
-	      for(stop=1;stop<STEPMAX;stop++) //optimize I(y;xu) over x and I(x;yu) over y
-		{
-			///////////////////////////////////////////
-
-		    flag=0;
-			sc_comb=0;
-
-
-			//optimize I(y;xu) over x and I(x;yu) over y
-
-			//compute joint factors u yu xu xyu
-			if(ptr_cnt[ptrVarIdx[0]]==1 || ptr_cnt[ptrVarIdx[1]]==1){
-			  jointfactors_uiyx(datafactors, -1, n, nbrUi, r, uiyxfactors, ruiyx);
-			}
-
-			if(ptr_cnt[ptrVarIdx[0]]==1){
-
-				//optimize on x
-				//I(y;xu)
-
- 			        //compute joint factors u yu xu xyu
-			        //jointfactors_uiyx(datafactors,0,  n, nbrUi, r, uiyxfactors, ruiyx);
-
-				//init variables for the optimization run
-
-				//sc=0.5*(r[1]-1)*(ruiyx[0]); // herve
-
-
-				//factors1[0]=datafactors[1];//y
-				//factors1[1]=singlefactor;// one single bin for x initially //herve
-				factors1[0]=uiyxfactors[1];//uy
-				factors1[1]=uiyxfactors[0];//u
-				factors1[1]=singlefactor; //x
-
-				rt1[0]=ruiyx[1]; //uy
-				rt1[1]=ruiyx[0]; //u
-				rt1[1]=1; //x
-				if (stop == 1){
-					sc_levels_y = rt1[0];
-				}
-				//else sc_levels_y = 0.5*(rt1[0]-1);
-				else sc_levels_y = (sc_levels_y*(stop-1) + rt1[0])/stop; //Harmonic mean of previous levels.
-				sc = 0.5*(sc_levels_y-1);
-
-				#if _MY_DEBUG_MInoU
-					printf("start optfun\n ");
-					fflush(stdout);
-				#endif
-
-				rx = r[0];
-				pxy = 1; //herve
-				//sc_levels_y = rt1[0];
-				sc_levels1 = sc_levels_y; //herve
-				sc_levels2 = sc_levels_x; //herve
-				// Run optimization on X.
-				//MInew=optfun_onerun_kmdl_coarse(sortidx[ptrVarIdx[0]], data[ptrVarIdx[0]],1, factors1, rt1, optfun1, sc, sc_levels_y, n, AllLevels[ptrVarIdx[0]], cut[0], &(r[0]), maxbins, looklog, looklbc, lookH, sc_look, cplx);
-
-				MInew=optfun_onerun_kmdl_coarse(sortidx[ptrVarIdx[0]], data[ptrVarIdx[0]],2, factors1, rt1,
-												pxy, sc, sc_levels1, sc_levels2, n, AllLevels[ptrVarIdx[0]],
-												cut[0], &(r[0]), maxbins, looklog, looklbc, lookH, sc_look, cplx); // 2 factors //herve
-
-				//update_datafactors(sortidx, ptrVarIdx[0], datafactors, 0, n, cut);
-
-				//sc_comb += COEFF_COMB*logdbico(np,r[0]-1,looklbc);
-
-			}
-
-			////////////////////////////////////////////////
-
-			if(ptr_cnt[ptrVarIdx[1]]==1){
-
-
-				//opt y
-				//I(x;yu)
-
- 			        //compute joint factors u xu yu xyu
-			        //jointfactors_uiyx(datafactors,1,  n, nbrUi, r, uiyxfactors, ruiyx);
-
-				//init variables for the optimization run
-
-				//sc=0.5*(r[0]-1)*(ruiyx[0]); //herve
-
-
-				//factors1[0]=datafactors[0];//x
-				//factors1[1]=singlefactor;// one single bin for y initially //herve
-				factors1[0]=uiyxfactors[2];//xu
-				factors1[1]=uiyxfactors[0];//u
-				factors1[1]=singlefactor;//u //herve
-
-				//optfun1[0]=-1;//xy
-				//optfun1[1]=1;//y
-				//rt1[0] = r[0];//xy
-				rt1[0]=ruiyx[2];
-				rt1[1]=ruiyx[0];
-				rt1[1]=1; // one single bin for y initially //herve
-				if (stop == 1){
-					sc_levels_x = rt1[0];
-				}
-				//else sc_levels_x = 0.5*(rt1[0]-1);
-				else sc_levels_x = (sc_levels_x*(stop-1) + rt1[0])/stop; //Harmonic mean of previous levels.
-				sc = 0.5*(sc_levels_x-1);
-
-				ry = r[1];
-				pxy = 1; //herve
-				//sc_levels_x = rt1[0];
-				sc_levels1 = sc_levels_x; //herve
-				sc_levels2 = sc_levels_y; //herve
-				// Run optimization on Y.
-				//MInew=optfun_onerun_kmdl_coarse(sortidx[ptrVarIdx[1]], data[ptrVarIdx[1]],1, factors1, rt1, optfun1, sc, sc_levels_x, n, AllLevels[ptrVarIdx[1]], cut[1], &(r[1]), maxbins, looklog, looklbc, lookH, sc_look, cplx);
-				MInew=optfun_onerun_kmdl_coarse(sortidx[ptrVarIdx[1]], data[ptrVarIdx[1]],2, factors1, rt1,
-												pxy, sc, sc_levels1, sc_levels2, n, AllLevels[ptrVarIdx[1]],
-												cut[1], &(r[1]), maxbins, looklog, looklbc, lookH, sc_look, cplx); // 2 factors //herve
-
-
-
-				update_datafactors(sortidx, ptrVarIdx[1], datafactors, 1, n, cut);
-				update_datafactors(sortidx, ptrVarIdx[0], datafactors, 0, n, cut);
-
-				//
-
-				//sc_comb += COEFF_COMB*logdbico(np,r[1]-1, looklbc);
-
-			}
-
-			//////////////////////////////////////////
-
-			//jointfactors_u(datafactors,ptr,n, 2, r, xy_factors, &rxy,&Hxy);
-			//compute joint factors u yu xu xyu
-			jointfactors_uiyx(datafactors,-1,  n, nbrUi, r, uiyxfactors, ruiyx); //herve
-			//uiyxfactors[0];//u
-			//uiyxfactors[1];//yu
-			//uiyxfactors[2];//xu
- 			//uiyxfactors[3];//xyu
-			//ruiyx -> 0:u,1:uy,2:ux,3:uyx
-
-      		double* res = (double*) calloc(2, sizeof(double));
-      		double* res_y = (double*) calloc(2, sizeof(double));
-
-
-			if (cplx == 0){ //MDL //cplx
-			  r_temp[2]=ruiyx[3];
-			  r_temp[0]=r[0];
-			  r_temp[1]=ruiyx[1];
-			  res=computeMI_kmdl(datafactors[0],uiyxfactors[1],uiyxfactors[3],r_temp,n, looklog);
-
-			  r_temp[0]=r[1];
-			  r_temp[1]=ruiyx[2];
-			  res_y = computeMI_kmdl(datafactors[1],uiyxfactors[2],uiyxfactors[3],r_temp,n, looklog);
-			  res[0] += res_y[0];
-			  res[1] += res_y[1];
-
-			}else if(cplx == 1){ //NML
-			  r_temp[2]=ruiyx[3];
-			  r_temp[0]=r[0];
-			  r_temp[1]=ruiyx[1];
-			  res=computeMI_knml(datafactors[0],uiyxfactors[1],uiyxfactors[3],r_temp,n,c2terms, looklog);
-
-			  r_temp[0]=r[1];
-			  r_temp[1]=ruiyx[2];
-			  res_y = computeMI_knml(datafactors[1],uiyxfactors[2],uiyxfactors[3],r_temp,n,c2terms, looklog);
-			  res[0] += res_y[0];
-			  res[1] += res_y[1];
-			}
-			//res[1]-=sc_comb/n;
-
-			#if _MY_DEBUG_MInoU
-			printf("%d: I_xz=%lf Ik_xz=%lf\n",stop,res[0],res[1]);
-			for(ll=0;ll<nbrUi+2;ll++) printf("r[%d]=%d ",ll,r[ll]);
-			printf("\n");fflush(stdout);
-			#endif
-
-
-			for(i=stop-1;i>0;i--){
-				if( (fabs(res[1]-MIk[i]) < EPS) || // If no real improvement over last information  AND
-					((rx == r[0]) && (ry == r[1])) ) { // If the number of bins hasn't changed on both variables
-					flag=1;
-					Ik_av=MIk[i];
-					I_av=MI[i];
-
-					for(j=i+1;j<stop;j++){
-						Ik_av+=MIk[j];
-						I_av+=MI[j];
-					}
-					Ik_av/=(stop-i); //average over the periodic cycle
-					I_av/=(stop-i);
-					break;
-				}
-			}
-			if(flag) break;
-			MIk[stop]=res[1];
-			MI[stop]=res[0];
-
-		}//for
-
-		if(flag){
-		res[0]=I_av;
-		res[1]=Ik_av;
-		}
 
 
 		#if _MY_DEBUG_MInoU
