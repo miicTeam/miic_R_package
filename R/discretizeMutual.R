@@ -19,12 +19,21 @@
 #' @export
 #' @useDynLib miic
 
-discretizeMutual <- function(myDist1 = NULL, myDist2 = NULL, matrixU=NULL, maxbins=NULL, initbins=NULL, cplx="mdl", plot=T)
+discretizeMutual <- function(myDist1 = NULL, myDist2 = NULL, matrixU=NULL, maxbins=NULL, initbins=NULL, cplx="mdl", pxy=1, plot=T)
 {
   result = list()
   #### Check the input arguments
-  if( is.null( myDist1 ) || is.null(myDist2) )
-  { stop("The input data file is required") }
+  if( !is.vector(myDist1) || !is.vector(myDist2) ) {
+    stop("Please provide the two samples myDist1 and myDist2 as vectors.")
+  }
+
+  if( length(myDist1) != length(myDist2) ){
+    stop(paste("The two samples must have the same number of observation (", length(myDist1), "vs",length(myDist2), ")."))
+  }
+
+  if( (!is.null(matrixU) && !is.matrix(matrixU)) || (!is.null(matrixU) && nrow(matrixU) != length(myDist1)) ) {
+    stop("matrixU is not a matrix or its number of rows differs from the number of observations.")
+  }
 
   if((maxbins > length(myDist1)) || is.null(maxbins))
     maxbins=length(myDist1)
@@ -54,25 +63,33 @@ discretizeMutual <- function(myDist1 = NULL, myDist2 = NULL, matrixU=NULL, maxbi
   }
 
   if (base::requireNamespace("Rcpp", quietly = TRUE)) {
-    rescpp <- .Call('mydiscretizeMutual', myDist1, myDist2, flatU, nbrU, maxbins, initbins, intcplx, PACKAGE = "miic")
+    rescpp <- .Call('mydiscretizeMutual', myDist1, myDist2, flatU, nbrU, maxbins, initbins, intcplx, pxy, PACKAGE = "miic")
   }
   niterations = length(rescpp$cutpoints1)/maxbins
 
   result$niterations = niterations
   for(i in 0:(niterations-1)){
-    clean_cutpoints1 = rescpp$cutpoints1[(maxbins*i)+(1:maxbins)]
-    clean_cutpoints1 = clean_cutpoints1[clean_cutpoints1 != -1]
-    clean_cutpoints1 = unique(sort(myDist1)[c(1, clean_cutpoints1+1, length(myDist1))])
-    clean_cutpoints2 = rescpp$cutpoints2[(maxbins*i)+(1:maxbins)]
-    clean_cutpoints2 = clean_cutpoints2[clean_cutpoints2 != -1]
-    clean_cutpoints2 = unique(sort(myDist2)[c(1, clean_cutpoints2+1, length(myDist2))])
-    result[[paste0("iteration",i+1)]] = list(cutpoints1=clean_cutpoints1, cutpoints2=clean_cutpoints2)
+      result[[paste0("iteration",i+1)]] = list()
+    for(l in 1:(nbrU+2)){
+      clean_cutpoints = rescpp$cutpointsmatrix[,l][(maxbins*i)+(1:maxbins)]
+      clean_cutpoints = clean_cutpoints[clean_cutpoints != -1]
+      if(l==1) clean_cutpoints = unique(sort(myDist1)[c(1, clean_cutpoints+1, length(myDist1))])
+      else if(l==2) clean_cutpoints = unique(sort(myDist2)[c(1, clean_cutpoints+1, length(myDist1))])
+      else clean_cutpoints = unique(sort(matrixU[,l-2])[c(1, clean_cutpoints+1, length(myDist1))])
+      result[[paste0("iteration",i+1)]][[paste0("cutpoints",l)]] = clean_cutpoints
+    }
   }
-  result$cutpoints1 = result[[paste0("iteration", niterations)]]$cutpoints1
-  result$cutpoints2 = result[[paste0("iteration", niterations)]]$cutpoints2
+  for(l in 1:(nbrU+2)){
+    result[[paste0("cutpoints",l)]] = result[[paste0("iteration", niterations)]][[paste0("cutpoints",l)]]
+  }
 
   library(infotheo)
   result$info = infotheo::mutinformation(cut(myDist1, result$cutpoints1), cut(myDist2, result$cutpoints2))
+  if(nbrU>0){
+    result$info = infotheo::condinformation(X = cut(myDist1, result$cutpoints1),
+                                            Y = cut(myDist2, result$cutpoints2), 
+                                            S = cut(matrixU[,1], result$cutpoints3))
+  }
   result$infobits = infotheo::natstobits(result$info)
 
   if(plot) {
@@ -107,28 +124,31 @@ theme_side_hist <- function () {
 jointplot_hist <- function(myDist1, myDist2, result, title="Joint histogram"){
 
   library(ggplot2)
-  library(dplyr)
-  library(data.table)
   cut_points1 = result$cutpoints1
   cut_points2 = result$cutpoints2
   info = result$info
 
+  # Custom density matrix for colour filling relative to 2D bin area in the 2d histogram
   bin_count = table(cut(myDist1, cut_points1), cut(myDist2, cut_points2))
   bin_areas =
-    (cut_points1[-1] - cut_points1[1:(length(cut_points1)-1)]) %*%
+     (cut_points1[-1] - cut_points1[1:(length(cut_points1)-1)]) %*%
     t(cut_points2[-1] - cut_points2[1:(length(cut_points2)-1)])
-  fill_density = bin_count/bin_areas
+  fill_density = bin_count / bin_areas
   fill_density = fill_density / sum(fill_density)
-  fill_density = melt(fill_density, value.name="density") %>% 
-    mutate(xstart = as.numeric(substr(Var1, 2, regexpr(",", Var1)-1)),
-           xend   = as.numeric(substr(Var1, regexpr(",", Var1)+1, regexpr("]", Var1)-1)),
-           ystart = as.numeric(substr(Var2, 2, regexpr(",", Var2)-1)),
-           yend   = as.numeric(substr(Var2, regexpr(",", Var2)+1, regexpr("]", Var2)-1)))
-  fill_density[fill_density$density==0, "density"] = NA
+  fill_density_flat = data.frame(xstart=numeric(), xend=numeric(),
+                                 ystart=numeric(), yend=numeric(), density=numeric())
+  for(j in 1:(ncol(fill_density))) {
+    for(i in 1:(nrow(fill_density))) {
+      fill_density_flat[(j-1)*nrow(fill_density)+i,] = c(cut_points1[i], cut_points1[i+1],
+                                                         cut_points2[j], cut_points2[j+1],
+                                                         fill_density[i,j])
+    }
+  }
+  fill_density_flat[fill_density_flat$density==0, "density"] = NA
 
-  hist2d = ggplot(fill_density) + 
+  hist2d = ggplot(fill_density_flat) + 
     geom_rect(aes(xmin=xstart, xmax=xend, ymin=ystart, ymax=yend, fill=density), na.rm = T, show.legend = F) + 
-    scale_fill_gradient(low = "#e1e3f2", high = "#0013a3", position = "left", na.value = "white", limits=c(0,max(fill_density$density))) +
+    scale_fill_gradient(low = "#e1e3f2", high = "#0013a3", position = "left", na.value = "white", limits=c(0,max(fill_density_flat$density))) +
     geom_vline(xintercept=cut_points1, linetype="dashed", color="grey") +
     geom_hline(yintercept=cut_points2, linetype="dashed", color="grey") +
     geom_point(data = data.frame(myDist1, myDist2), aes(x=myDist1, y=myDist2), shape=21, alpha=.7, fill="#ffef77", size=2) +
