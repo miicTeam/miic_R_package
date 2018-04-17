@@ -14,12 +14,18 @@
 #' @param cplx [a string]
 #' The complexity used in the dynamic programming. Either "mdl" for Minimum description Length or "nml" for
 #' Normalized Maximum Likelihood, which is less punitive in the finite sample case and will create more bins than mdl.
+#' @param is_discrete [a vector of booleans]
+#' Specify if each variable is to be treated as discrete (TRUE) or continuous (FALSE) in a vector of length nbrU+2, where
+#' nbrU is the number of conditioning variables. By default all variables are treated as continuous.
 #'
-#' @return A list with the two vectors containing the cutpoints of the best discretization for both variables.
+#' @return A list with the two vectors containing the cutpoints of the best discretization for each variable.
+#' cutpoints1 corresponds to myDist1, cutpoints2 corresponds to myDist2 and cutpoints3 and above correspond to the 
+#' conditioning variables and above.
 #' @export
 #' @useDynLib miic
 
-discretizeMutual <- function(myDist1 = NULL, myDist2 = NULL, matrixU=NULL, maxbins=NULL, initbins=NULL, cplx="mdl", pxy=1, plot=T)
+discretizeMutual <- function(myDist1 = NULL, myDist2 = NULL, matrixU=NULL, maxbins=NULL, initbins=NULL, 
+                             cplx="mdl", pxy=1, is_discrete=NULL, plot=T)
 {
   result = list()
   #### Check the input arguments
@@ -35,6 +41,18 @@ discretizeMutual <- function(myDist1 = NULL, myDist2 = NULL, matrixU=NULL, maxbi
     stop("matrixU is not a matrix or its number of rows differs from the number of observations.")
   }
 
+  if(is.null(matrixU)){
+    nbrU = 0
+    flatU = c(0)
+  } else{
+    nbrU = ncol(matrixU)
+    flatU <- as.vector(as.matrix(matrixU))
+  }
+
+  if( !is.null(is_discrete) && ( length(is_discrete) != (2+nbrU)) ){
+    stop("The vector passed as is_discrete argument must have the same length as the number of variables, which is ncol(matrixU)+2.")
+  }
+
   if((maxbins > length(myDist1)) || is.null(maxbins))
     maxbins=length(myDist1)
 
@@ -45,13 +63,10 @@ discretizeMutual <- function(myDist1 = NULL, myDist2 = NULL, matrixU=NULL, maxbi
   myDist2[is.na(myDist2)] = -1
 
 
-  if(is.null(matrixU)){
-    nbrU = 0
-    flatU = c(0)
-  } else{
-    nbrU = dim(matrixU)[2]
-    flatU <- as.vector(as.matrix(matrixU))
-  }
+
+  if(is.null(is_discrete)){
+    cnt_vec = rep(1, nbrU+2)
+  } else cnt_vec = as.numeric(!is_discrete)
 
   if(cplx=="mdl"){
     intcplx = 0
@@ -62,8 +77,17 @@ discretizeMutual <- function(myDist1 = NULL, myDist2 = NULL, matrixU=NULL, maxbi
     intcplx = 0
   }
 
+  nlevels=numeric(nbrU+2)
+  for(i in 1:(nbrU+2)){
+    if(i==1) nlevels[i] = length(unique(myDist1))
+    else if(i==2) nlevels[i] = length(unique(myDist2))
+    else nlevels[i] = length(unique(matrixU[,i-2]))
+  }
+
+
   if (base::requireNamespace("Rcpp", quietly = TRUE)) {
-    rescpp <- .Call('mydiscretizeMutual', myDist1, myDist2, flatU, nbrU, maxbins, initbins, intcplx, pxy, PACKAGE = "miic")
+    rescpp <- .Call('mydiscretizeMutual', myDist1, myDist2, flatU, nbrU, maxbins, initbins, intcplx, 
+                                         pxy, cnt_vec, nlevels, PACKAGE = "miic")
   }
   niterations = length(rescpp$cutpoints1)/maxbins
 
