@@ -27,54 +27,54 @@
 discretizeMutual <- function(myDist1 = NULL, myDist2 = NULL, matrixU=NULL, maxbins=NULL, initbins=NULL, 
                              cplx="mdl", pxy=1, is_discrete=NULL, plot=T)
 {
-  result = list()
+  result <- list()
   #### Check the input arguments
-  if( !is.vector(myDist1) || !is.vector(myDist2) ) {
+  if ( !is.vector(myDist1) || !is.vector(myDist2) ) {
     stop("Please provide the two samples myDist1 and myDist2 as vectors.")
   }
 
-  if( length(myDist1) != length(myDist2) ){
+  if ( length(myDist1) != length(myDist2) ){
     stop(paste("The two samples must have the same number of observation (", length(myDist1), "vs",length(myDist2), ")."))
   }
 
-  if( (!is.null(matrixU) && !is.matrix(matrixU)) || (!is.null(matrixU) && nrow(matrixU) != length(myDist1)) ) {
+  if ( (!is.null(matrixU) && !is.matrix(matrixU)) || (!is.null(matrixU) && nrow(matrixU) != length(myDist1)) ) {
     stop("matrixU is not a matrix or its number of rows differs from the number of observations.")
   }
 
-  if(is.null(matrixU)){
-    nbrU = 0
-    flatU = c(0)
+  if (is.null(matrixU)){
+    nbrU <- 0
+    flatU <- c(0)
   } else{
-    nbrU = ncol(matrixU)
+    nbrU <- ncol(matrixU)
     flatU <- as.vector(as.matrix(matrixU))
   }
 
-  if( !is.null(is_discrete) && ( length(is_discrete) != (2+nbrU)) ){
+  if ( !is.null(is_discrete) && ( length(is_discrete) != (2+nbrU)) ){
     stop("The vector passed as is_discrete argument must have the same length as the number of variables, which is ncol(matrixU)+2.")
   }
 
   if((maxbins > length(myDist1)) || is.null(maxbins))
-    maxbins=length(myDist1)
+    maxbins <- length(myDist1)
 
   if((initbins > length(myDist1)) || is.null(initbins))
-    initbins=round(length(myDist1)**(1/3))
+    initbins <- round(length(myDist1)**(1/3) )
 
-  myDist1[is.na(myDist1)] = -1
-  myDist2[is.na(myDist2)] = -1
+  myDist1[is.na(myDist1)] <- -1
+  myDist2[is.na(myDist2)] <- -1
 
 
 
-  if(is.null(is_discrete)){
-    cnt_vec = rep(1, nbrU+2)
-  } else cnt_vec = as.numeric(!is_discrete)
+  if (is.null(is_discrete)){
+    cnt_vec <- rep(1, nbrU+2)
+  } else cnt_vec <- as.numeric(!is_discrete)
 
-  if(cplx=="mdl"){
-    intcplx = 0
+  if (cplx=="mdl"){
+    intcplx <- 0
   } else if (cplx=="nml"){
-    intcplx = 1
+    intcplx <- 1
   } else {
-    print("cplx parameter not understood, please specify either \'mdl\' or \'nml\'. Running with the default option (mdl).")
-    intcplx = 0
+    warning("cplx parameter not understood, please specify either \'mdl\' or \'nml\'. Running with the default option (mdl).")
+    intcplx <- 0
   }
 
   nlevels=numeric(nbrU+2)
@@ -89,7 +89,7 @@ discretizeMutual <- function(myDist1 = NULL, myDist2 = NULL, matrixU=NULL, maxbi
     rescpp <- .Call('mydiscretizeMutual', myDist1, myDist2, flatU, nbrU, maxbins, initbins, intcplx, 
                                          pxy, cnt_vec, nlevels, PACKAGE = "miic")
   }
-  niterations = length(rescpp$cutpoints1)/maxbins
+  niterations = nrow(rescpp$cutpointsmatrix)/maxbins
 
   result$niterations = niterations
   for(i in 0:(niterations-1)){
@@ -107,14 +107,8 @@ discretizeMutual <- function(myDist1 = NULL, myDist2 = NULL, matrixU=NULL, maxbi
     result[[paste0("cutpoints",l)]] = result[[paste0("iteration", niterations)]][[paste0("cutpoints",l)]]
   }
 
-  library(infotheo)
-  result$info = infotheo::mutinformation(cut(myDist1, result$cutpoints1), cut(myDist2, result$cutpoints2))
-  if(nbrU>0){
-    result$info = infotheo::condinformation(X = cut(myDist1, result$cutpoints1),
-                                            Y = cut(myDist2, result$cutpoints2), 
-                                            S = cut(matrixU[,1], result$cutpoints3))
-  }
-  result$infobits = infotheo::natstobits(result$info)
+  result$info = rescpp$info
+  result$infok = rescpp$infok
 
   if(plot) {
     require(ggplot2)
@@ -150,7 +144,6 @@ jointplot_hist <- function(myDist1, myDist2, result, title="Joint histogram"){
   library(ggplot2)
   cut_points1 = result$cutpoints1
   cut_points2 = result$cutpoints2
-  info = result$info
 
   # Custom density matrix for colour filling relative to 2D bin area in the 2d histogram
   bin_count = table(cut(myDist1, cut_points1), cut(myDist2, cut_points2))
@@ -199,17 +192,12 @@ jointplot_hist <- function(myDist1, myDist2, result, title="Joint histogram"){
     scale_y_continuous(expand=c(0,0)) +
     coord_flip()
 
-  I2 = info
-  N = length(myDist1)
-  rp = length(cut_points1)
-  rq = length(cut_points2)
-  bic = 1/2*(rp-1)*(rq-1)*log(N)
-  cpl = log(choose(N-1, rp-1))+ log(choose(N-1, rq-1))
-  I2p = I2 - cpl/N
+  I2 = result$info
+  I2p = result$infok
 
   empty <- ggplot()+geom_point(aes(1,1), colour="white")+
-    geom_text(aes(x=1, y=0.5, label=paste("I(X;Y) =", round(I2,3)))) +
-    geom_text(aes(x=1, y=0, label=paste("I(X;Y)-kBIC =", round(I2p,3)))) +
+    geom_text(aes(x=1, y=0.5, label=paste("I =", round(I2,3)))) +
+    geom_text(aes(x=1, y=0, label=paste("Ik =", round(I2p,3)))) +
     theme(axis.ticks=element_blank(),
           panel.background=element_blank(),
           axis.text.x=element_blank(), axis.text.y=element_blank(),

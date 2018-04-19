@@ -23,6 +23,7 @@
 #define EPS 0.01
 #define INIT_EQUAL_WIDTH false
 #define ALPHA_EFF_LVLS 1
+#define MIN_BIN_SIZE 50
 
 using namespace Rcpp;
 using namespace std;
@@ -479,7 +480,7 @@ double optfun_onerun_kmdl_coarse(int *sortidx_var, int *data, int nbrV, int **fa
 
 					nk=nkforward-1;//position of the actual possible cut
 
-					if( I[k] + I_kj > I[j] ){ //herve
+					if( (I[k] + I_kj > I[j]) && (nkj > MIN_BIN_SIZE) ){ //herve
 						t=I[k] + I_kj; //[0.. cuts.. k-1][k j] //herve
 						if (Imax<t){
 							Imax=t;
@@ -659,8 +660,8 @@ int** compute_Ixy_alg1(int** data, int** sortidx, int* ptr_cnt, int* ptrVarIdx, 
 
 		double sc_levels_x(init_bin); // Number of levels of the first variable
 		double sc_levels_y(init_bin); // Number of levels of the second variable
-		int rx;
-		int ry;
+		int rx(init_bin);
+		int ry(init_bin);
 		for(stop=1;stop<STEPMAX;stop++)
 		{
 
@@ -687,6 +688,7 @@ int** compute_Ixy_alg1(int** data, int** sortidx, int* ptr_cnt, int* ptrVarIdx, 
 				}
 				//else sc_levels_y = 0.5*(rt1[0]-1);
 				else sc_levels_y = (sc_levels_y*(stop-1) + rt1[0])/stop; //Harmonic mean of previous levels.
+				//sc_levels_y = rt1[0];
 				sc = 0.5*(sc_levels_y-1);
 
 				#if _MY_DEBUG_MInoU
@@ -725,25 +727,28 @@ int** compute_Ixy_alg1(int** data, int** sortidx, int* ptr_cnt, int* ptrVarIdx, 
 
 				//rt1[0] = r[0];//xy
 				rt1[0] = rx;
+				//rt1[0] = r[0];
 				rt1[1]=1; // one single bin for y initially //herve
 				if (stop == 1){
 					if(ptr_cnt[ptrVarIdx[0]]==1){
 						rt1[0] = init_bin;
 					}
-					sc_levels_y = rt1[0];
+					sc_levels_x = rt1[0];
 				}
 				//else sc_levels_x = 0.5*(rt1[0]-1);
 				else sc_levels_x = (sc_levels_x*(stop-1) + rt1[0])/stop; //Harmonic mean of previous levels.
+				//sc_levels_x = rt1[0];
 				sc = 0.5*(sc_levels_x-1);
 
 				ry = r[1];
 				pxy = 1; //herve
 				sc_levels1 = sc_levels_x;
 				sc_levels2 = sc_levels_y;
-				//sc_levels1 = rx;
-				//sc_levels2 = ry;
+				//sc_levels1 = r[0];
+				//sc_levels2 = r[1];
 				// Run optimization on Y.
 				//MInew=optfun_onerun_kmdl_coarse(sortidx[ptrVarIdx[1]], data[ptrVarIdx[1]],1, factors1, rt1, optfun1, sc, sc_levels_x, n, AllLevels[ptrVarIdx[1]], cut[1], &(r[1]), maxbins, looklog, looklbc, lookH, sc_look, cplx);
+				//cout << rt1[0] << "\t" << rt1[1] << "\t" << r[0] << "\n";
 				MInew=optfun_onerun_kmdl_coarse(sortidx[ptrVarIdx[1]], data[ptrVarIdx[1]],2, factors1, rt1, pxy, sc,
 												sc_levels1, sc_levels2, n, AllLevels[ptrVarIdx[1]], cut[1], &(r[1]),
 												maxbins, looklog, looklbc, lookH, sc_look, cplx); // 2 factors //herve
@@ -804,6 +809,8 @@ int** compute_Ixy_alg1(int** data, int** sortidx, int* ptr_cnt, int* ptrVarIdx, 
 
 		}//for
 		iterative_cuts[stop][0]=-1; // mark where we stopped iterating
+		iterative_cuts[stop][1]=10000*res[1]; // Pass Ik[X;Y]
+		iterative_cuts[stop][2]=10000*res[0]; // Pass I[X;Y]
 		iterative_cuts[stop][maxbins]=-1;
 
 		if(flag){
@@ -1050,16 +1057,16 @@ int** compute_Ixy_cond_u_alg1(int** data, int** sortidx, int* ptr_cnt, int* ptrV
 			}
 			res[1]-=sc_comb/n;
 
-			//#if _MY_DEBUG_MInoU
+			#if _MY_DEBUG_MInoU
 			cout << "\n ## Done U\n";
 			printf("%d: I=%lf Ik=%lf\n",stop,res[0],res[1]);
 			for(ll=0;ll<(nbrUi+2);ll++) printf("r[%d]=%d ",ll,r[ll]);
 			printf("\n");fflush(stdout);
-			//#endif
+			#endif
 
 
 			for(i=stop-1;i>0;i--){
-				if( (fabs(res[0]-MI[i]) < EPS)){ // If no real improvement over last information  AND
+				if( (fabs(res[1]-MIk[i]) < EPS)){ // If no real improvement over last information  AND
 					//(rx == r[0]) && (ry == r[1])) { // If the number of bins hasn't changed on both variables
 					flag=1;
 					Ik_av=MIk[i];
@@ -1124,10 +1131,11 @@ int** compute_Ixy_cond_u_alg1(int** data, int** sortidx, int* ptr_cnt, int* ptrV
 				rt1[1]=ruiyx[0]; //u
 				//rt1[1]=1; //x
 				if (stop == 1){
-					sc_levels_y = r[1];//rt1[0]
+					sc_levels_y = r[1];
 				}
 				//else sc_levels_y = 0.5*(rt1[0]-1);
 				else sc_levels_y = (sc_levels_y*(stop-1) + r[1])/stop; //Harmonic mean of previous levels.
+				sc_levels_y = r[1];
 				sc = 0.5*(sc_levels_y-1);
 
 				#if _MY_DEBUG_MInoU
@@ -1141,12 +1149,11 @@ int** compute_Ixy_cond_u_alg1(int** data, int** sortidx, int* ptr_cnt, int* ptrV
 				sc_levels2 = sc_levels_x; //herve
 				// Run optimization on X.
 				//MInew=optfun_onerun_kmdl_coarse(sortidx[ptrVarIdx[0]], data[ptrVarIdx[0]],1, factors1, rt1, optfun1, sc, sc_levels_y, n, AllLevels[ptrVarIdx[0]], cut[0], &(r[0]), maxbins, looklog, looklbc, lookH, sc_look, cplx);
-
 				MInew=optfun_onerun_kmdl_coarse(sortidx[ptrVarIdx[0]], data[ptrVarIdx[0]],2, factors1, rt1,
 												1, sc, sc_levels1, sc_levels2, n, AllLevels[ptrVarIdx[0]],
 												cut[0], &(r[0]), maxbins, looklog, looklbc, lookH, sc_look, cplx); // 2 factors //herve
 
-				//update_datafactors(sortidx, ptrVarIdx[0], datafactors, 0, n, cut);
+				update_datafactors(sortidx, ptrVarIdx[0], datafactors, 0, n, cut);
 
 				//sc_comb += COEFF_COMB*logdbico(np,r[0]-1,looklbc);
 
@@ -1185,6 +1192,7 @@ int** compute_Ixy_cond_u_alg1(int** data, int** sortidx, int* ptr_cnt, int* ptrV
 				}
 				//else sc_levels_x = 0.5*(rt1[0]-1);
 				else sc_levels_x = (sc_levels_x*(stop-1) + r[0])/stop; //Harmonic mean of previous levels.
+				sc_levels_x = rx;
 				sc = 0.5*(sc_levels_x-1);
 
 				ry = r[1];
@@ -1200,7 +1208,6 @@ int** compute_Ixy_cond_u_alg1(int** data, int** sortidx, int* ptr_cnt, int* ptrV
 
 
 				update_datafactors(sortidx, ptrVarIdx[1], datafactors, 1, n, cut);
-				update_datafactors(sortidx, ptrVarIdx[0], datafactors, 0, n, cut);
 
 				//
 
@@ -1212,7 +1219,7 @@ int** compute_Ixy_cond_u_alg1(int** data, int** sortidx, int* ptr_cnt, int* ptrV
 
 			//jointfactors_u(datafactors,ptr,n, 2, r, xy_factors, &rxy,&Hxy);
 			//compute joint factors u yu xu xyu
-			jointfactors_uiyx(datafactors,-1,  n, nbrUi, r, uiyxfactors, ruiyx); //herve
+			jointfactors_uiyx(datafactors, -1,  n, nbrUi, r, uiyxfactors, ruiyx); //herve
 			//uiyxfactors[0];//u
 			//uiyxfactors[1];//yu
 			//uiyxfactors[2];//xu
@@ -1229,12 +1236,12 @@ int** compute_Ixy_cond_u_alg1(int** data, int** sortidx, int* ptr_cnt, int* ptrV
 			  res = computeMIcond_knml(uiyxfactors, ruiyx, r, n, c2terms, looklog);
 			}
 
-			//#if _MY_DEBUG_MInoU
+			#if _MY_DEBUG_MInoU
 			cout << "\n ## Done XY\n";
 			printf("%d: I=%lf Ik=%lf\n",stop,res[0],res[1]);
 			for(ll=0;ll<(nbrUi+2);ll++) printf("r[%d]=%d ",ll,r[ll]);
 			printf("\n");fflush(stdout);
-			//#endif
+			#endif
 
 
 			for(i=stop-1;i>0;i--){
@@ -1297,6 +1304,8 @@ int** compute_Ixy_cond_u_alg1(int** data, int** sortidx, int* ptr_cnt, int* ptrV
 	}//end stop1
 	for(l=0; l<(nbrUi+2); l++){
 		iterative_cuts[stop1][l*maxbins]=-1; // mark where we stopped iterating
+		iterative_cuts[stop1][l*maxbins+1]=10000*res[1]; // pass Ik[X;Y|U]
+		iterative_cuts[stop1][l*maxbins+2]=10000*res[0]; // pass I[X;Y|U]
 	}
 
 	// free memory
@@ -1350,7 +1359,7 @@ int** compute_mi_cond_alg1(int** data, double** dataDouble, int** sortidx,  int*
 	int **cut;
 	cut=(int **)calloc(nbrUi+2,sizeof(int*));
 	for(l=0;l<(nbrUi+2);l++){
-		cut[l]=(int *)calloc(maxbins+2,sizeof(int));
+		cut[l]=(int *)calloc(maxbins+5,sizeof(int));
 	}
 	int init_nbin=init_bin;
 
@@ -1855,7 +1864,10 @@ extern "C" SEXP mydiscretizeMutual(SEXP RmyDist1, SEXP RmyDist2, SEXP RflatU, SE
 
 
   // Declare the lookup table of the parametric complexity
-  int ncol = max(maxbins, init_bin)+2;
+  int ncol = max(maxbins, init_bin)+1;
+  for(int j=0; j<(nbrU+2); j++){
+	  if(cnt_red[j]==0) ncol = max(ncol, (AllLevels_red[j]+1));
+  }
   double** sc_look = new double*[ncol];
   for(int K = 0; K < (ncol); K++){
     sc_look[K] = new double[n+1];
@@ -1869,12 +1881,12 @@ extern "C" SEXP mydiscretizeMutual(SEXP RmyDist1, SEXP RmyDist2, SEXP RflatU, SE
 	  double d = computeLogC(i, 2, sc_look); // Initialize the c2 terms
   }
 
-  
   int** iterative_cuts = compute_mi_cond_alg1(dataNumeric_red, data, dataNumericIdx_red, AllLevels_red,
   											  cnt_red, posArray_red, nbrUi, n, maxbins, c2terms, init_bin,
 											  looklog, looklbc, lookH, sc_look, cplx, pxy);
 
   int niterations=0;
+  double* res = new double[2];
   int** iterative_cutpoints = new int*[STEPMAX*maxbins];
   for(int i = 0; i < (STEPMAX*maxbins); i++){
 	  iterative_cutpoints[i] = new int[nbrUi+2];
@@ -1882,6 +1894,8 @@ extern "C" SEXP mydiscretizeMutual(SEXP RmyDist1, SEXP RmyDist2, SEXP RflatU, SE
   for(int l=0; l<STEPMAX+1; l++){
 	if(iterative_cuts[l][0]==-1){
 		niterations=l;
+		res[1] = iterative_cuts[l][1]/10000.0;
+		res[0] = iterative_cuts[l][2]/10000.0;
 		break;
 	}
 	for(int k=0; k<(nbrUi+2); k++){
@@ -1904,7 +1918,9 @@ extern "C" SEXP mydiscretizeMutual(SEXP RmyDist1, SEXP RmyDist2, SEXP RflatU, SE
   }
   // structure the output
   List result = List::create(
-    _["cutpointsmatrix"] = cutpoints
+    _["cutpointsmatrix"] = cutpoints,
+	_["info"] = res[0],
+	_["infok"] = res[1]
   );
 
   for(int i=0; i<(STEPMAX+1); i++){
@@ -1912,7 +1928,7 @@ extern "C" SEXP mydiscretizeMutual(SEXP RmyDist1, SEXP RmyDist2, SEXP RflatU, SE
   }
   free(iterative_cuts);
 
-  for(int i=0; i<(maxbins+1); i++){
+  for(int i=0; i<ncol; i++){
 	  delete[] sc_look[i];
   }
   delete[] sc_look;
