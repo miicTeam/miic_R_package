@@ -21,10 +21,10 @@
 
 
 #define STEPMAX 20
-#define EPS 0.01
+#define EPS 1e-5
 #define INIT_EQUAL_WIDTH false
 #define ALPHA_EFF_LVLS 1
-#define MIN_BIN_SIZE 50
+#define MIN_BIN_SIZE fmin(50, n/4)
 
 using namespace Rcpp;
 using namespace std;
@@ -469,7 +469,7 @@ double optfun_onerun_kmdl_coarse(int *sortidx_var, int *data, int nbrV, int **fa
 
 					I_kj=0;
 					for(m=0;m<nbrV;m++)	I_kj += H_kj[m]; //herve
-
+					
 
 					#if _MY_DEBUG_NEW_OPTFUN
 
@@ -809,6 +809,7 @@ int** compute_Ixy_alg1(int** data, int** sortidx, int* ptr_cnt, int* ptrVarIdx, 
 			MI[stop]=res[0];
 
 		}//for
+		if(!flag) stop--; //If stopped because of loop condition and not flag, stop1 must be decremented.
 		iterative_cuts[stop][0]=-1; // mark where we stopped iterating
 		iterative_cuts[stop][1]=10000*res[1]; // Pass Ik[X;Y]
 		iterative_cuts[stop][2]=10000*res[0]; // Pass I[X;Y]
@@ -971,7 +972,7 @@ int** compute_Ixy_cond_u_alg1(int** data, int** sortidx, int* ptr_cnt, int* ptrV
 	int rxyu = init_nbin;
 	flag1=0;
 	for(stop1=1;stop1<STEPMAX1;stop1++)
-	  {
+	{
 	      //////////////////////////////////////////////////////////////////////////////////////
 	      // optimize  pxy * [ I(y;xu) + I(x;yu) ] + (1 - pxy) [ I(y;u) + I(x;u) ]  over u
 
@@ -1154,7 +1155,7 @@ int** compute_Ixy_cond_u_alg1(int** data, int** sortidx, int* ptr_cnt, int* ptrV
 												1, sc, sc_levels1, sc_levels2, n, AllLevels[ptrVarIdx[0]],
 												cut[0], &(r[0]), maxbins, looklog, looklbc, lookH, sc_look, cplx); // 2 factors //herve
 
-				update_datafactors(sortidx, ptrVarIdx[0], datafactors, 0, n, cut);
+				//update_datafactors(sortidx, ptrVarIdx[0], datafactors, 0, n, cut);
 
 				//sc_comb += COEFF_COMB*logdbico(np,r[0]-1,looklbc);
 
@@ -1209,6 +1210,7 @@ int** compute_Ixy_cond_u_alg1(int** data, int** sortidx, int* ptr_cnt, int* ptrV
 
 
 				update_datafactors(sortidx, ptrVarIdx[1], datafactors, 1, n, cut);
+				update_datafactors(sortidx, ptrVarIdx[0], datafactors, 0, n, cut);
 
 				//
 
@@ -1303,6 +1305,7 @@ int** compute_Ixy_cond_u_alg1(int** data, int** sortidx, int* ptr_cnt, int* ptrV
 		rxyu = ruiyx[3];
 
 	}//end stop1
+	if(!flag1) stop1--; //If stopped because of loop condition and not flag, stop1 must be decremented.
 	for(l=0; l<(nbrUi+2); l++){
 		iterative_cuts[stop1][l*maxbins]=-1; // mark where we stopped iterating
 		iterative_cuts[stop1][l*maxbins+1]=10000*res[1]; // pass Ik[X;Y|U]
