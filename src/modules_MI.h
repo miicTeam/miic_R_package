@@ -32,7 +32,7 @@ void jointfactors_u(int **datafactors,int *ptrIdx,int n, int Mui, int *r, int *u
 
 
 double* computeMIcond_knml(int **, int *, int*, int , double*, double* );
-double* computeMI_knml(int* ,int* ,int* ,int* ,int , double*, double* );
+double* computeMI_knml(int* ,int* ,int* ,int* ,int , double*, double*, int flag=0);
 
 
 /////////////////////////////////////////////////////////////////////////////
@@ -40,7 +40,7 @@ double* computeMI_knml(int* ,int* ,int* ,int* ,int , double*, double* );
 
 double* computeMIcond_kmdl(int **uiyxfactors, int *ruiyx, int *r,int n, double* looklog);
 
-double* computeMI_kmdl(int* xfactors,int* ufactors,int* uxfactors,int* rux,int n,double* looklog);
+double* computeMI_kmdl(int* xfactors,int* ufactors,int* uxfactors,int* rux,int n,double* looklog, int flag=0);
 
 //obsolete
 // double* computeMI_kmdl(int **, int *, int*, int , int );

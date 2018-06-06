@@ -1157,7 +1157,7 @@ double* computeMIcond_knml(int **uiyxfactors, int *ruiyx, int *r,int n, double* 
 
 //rux -> 0:x,1;u,2:ux
 
-double* computeMI_knml(int* xfactors,int* ufactors,int* uxfactors,int* rux,int n, double* c2terms,double* looklog){
+double* computeMI_knml(int* xfactors,int* ufactors,int* uxfactors,int* rux,int n, double* c2terms,double* looklog, int flag){
 
 	double *I=(double*)calloc(2,sizeof(double));
 
@@ -1177,18 +1177,19 @@ double* computeMI_knml(int* xfactors,int* ufactors,int* uxfactors,int* rux,int n
 
 	for(x=0;x<rux[0];x++){
 		if(nx[x]>0) Hx-=nx[x]*looklog[nx[x]];
-		SC+=computeLogC(nx[x],rux[1],c2terms);
+		if(flag==0 || flag==1) SC+=computeLogC(nx[x],rux[1],c2terms);
 	}
 	for(u=0;u<rux[1];u++){
 		if(nu[u]>0) Hu-=nu[u]*looklog[nu[u]];
-		SC+=computeLogC(nu[u],rux[0],c2terms);
+		if(flag==0 || flag==2) SC+=computeLogC(nu[u],rux[0],c2terms);
 	}
 
 	for(ux=0;ux<rux[2];ux++){
 		if(nux[ux]>0) Hux-=nux[ux]*looklog[nux[ux]];
 	}
 	
-	SC-=computeLogC(n,rux[0],c2terms)+computeLogC(n,rux[1],c2terms);
+	if(flag==0 || flag==1) SC-=computeLogC(n,rux[0],c2terms);
+	if(flag==0 || flag==2) SC-=computeLogC(n,rux[1],c2terms);
 
 	I[0]=looklog[n]+(Hu+Hx-Hux)/n;
 
@@ -1261,7 +1262,7 @@ double* computeMIcond_kmdl(int **uiyxfactors, int *ruiyx, int *r,int n, double* 
 
 //rux -> 0:x,1;u,2:ux
 
-double* computeMI_kmdl(int* xfactors,int* ufactors,int* uxfactors,int* rux,int n,double* looklog){
+double* computeMI_kmdl(int* xfactors,int* ufactors,int* uxfactors,int* rux,int n,double* looklog, int flag){
 
 	double *I=(double*)calloc(2,sizeof(double));
 
@@ -1290,8 +1291,9 @@ double* computeMI_kmdl(int* xfactors,int* ufactors,int* uxfactors,int* rux,int n
 		if(nux[ux]>0) Hux-=nux[ux]*looklog[nux[ux]];
 	}
 	
-	SC=0.5*(rux[0]-1)*(rux[1]-1)*looklog[n];
-
+	SC=0.5*looklog[n];
+	if(flag==0 || flag==1) SC*=(rux[0]-1);
+	if(flag==0 || flag==1) SC*=(rux[1]-1);
 
 	I[0]=looklog[n]+(Hu+Hx-Hux)/n;
 
