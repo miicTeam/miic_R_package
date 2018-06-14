@@ -357,9 +357,11 @@ double computeLogC( int N, int r, double* c2terms)
 
 double computeLogC( int N, int r, double** cterms)
 {
-    if(cterms[r][N] != -1){
-      return(cterms[r][N]);
-    }
+	if(r<1000){
+		if(cterms[r][N] != -1){
+		return(cterms[r][N]);
+		}
+	}
 
     double* c2terms = cterms[2];
 	double C2, logC, D;
@@ -398,6 +400,8 @@ double computeLogC( int N, int r, double** cterms)
 		}
   	}
 
-    cterms[r][N]=logC;
+	if(r<1000){
+		cterms[r][N]=logC;
+	}
 	return logC;
 }

@@ -1193,7 +1193,8 @@ double* computeMI_knml(int* xfactors,int* ufactors,int* uxfactors,int* rux,int n
 
 	I[0]=looklog[n]+(Hu+Hx-Hux)/n;
 
-	I[1]=I[0]-0.5*SC/n;
+	if(flag==0) I[1]=I[0]-0.5*SC/n;
+	else I[1]=I[0]-SC/n;
 
 	free(nx);
 	free(nu);
