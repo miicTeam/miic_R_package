@@ -1177,11 +1177,11 @@ double* computeMI_knml(int* xfactors,int* ufactors,int* uxfactors,int* rux,int n
 
 	for(x=0;x<rux[0];x++){
 		if(nx[x]>0) Hx-=nx[x]*looklog[nx[x]];
-		if(flag==0 || flag==1) SC+=computeLogC(nx[x],rux[1],c2terms);
+		if(flag==0 || flag==2) SC+=computeLogC(nx[x],rux[1],c2terms);
 	}
 	for(u=0;u<rux[1];u++){
 		if(nu[u]>0) Hu-=nu[u]*looklog[nu[u]];
-		if(flag==0 || flag==2) SC+=computeLogC(nu[u],rux[0],c2terms);
+		if(flag==0 || flag==1) SC+=computeLogC(nu[u],rux[0],c2terms);
 	}
 
 	for(ux=0;ux<rux[2];ux++){

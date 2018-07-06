@@ -30,7 +30,8 @@ discretizeMutual <- function(myDist1 = NULL, myDist2 = NULL, matrixU=NULL, maxbi
   result <- list()
   #### Check the input arguments
   if ( !is.vector(myDist1) || !is.vector(myDist2) ) {
-    stop("Please provide the two samples myDist1 and myDist2 as vectors.")
+    if( (is_discrete[1] && !is.factor(myDist1)) || (is_discrete[2] && !is.factor(myDist2)) )
+      stop("Please provide the two samples myDist1 and myDist2 as vectors for continuous variables and factors for discrete variables.")
   }
 
   if ( length(myDist1) != length(myDist2) ){
@@ -43,30 +44,63 @@ discretizeMutual <- function(myDist1 = NULL, myDist2 = NULL, matrixU=NULL, maxbi
 
   if (is.null(matrixU)){
     nbrU <- 0
-    flatU <- c(0)
   } else{
     nbrU <- ncol(matrixU)
-    flatU <- as.vector(as.matrix(matrixU))
   }
 
   if ( !is.null(is_discrete) && ( length(is_discrete) != (2+nbrU)) ){
     stop("The vector passed as is_discrete argument must have the same length as the number of variables, which is ncol(matrixU)+2.")
   }
 
-  if((maxbins > length(myDist1)) || is.null(maxbins))
-    maxbins <- length(myDist1)
-
   if((initbins > length(myDist1)) || is.null(initbins))
     initbins <- round(length(myDist1)**(1/3) )
+
+  if((maxbins > length(myDist1)) || is.null(maxbins) || (maxbins < initbins)){
+    maxbins <- 2*initbins
+  }
+
+  ##Get crude MI estimation for bin initialization tuning
+  ef_MI = infotheo::mutinformation(infotheo::discretize(myDist1,nbins = initbins), infotheo::discretize(myDist2,nbins = initbins))
+  strength <- ef_MI / log(initbins) # 1 is maximum strength, 0 is independence
+  if(strength<0.05){
+    initbins = 3
+    maxbins = initbins*2
+  }
 
   myDist1[is.na(myDist1)] <- -1
   myDist2[is.na(myDist2)] <- -1
 
-
-
   if (is.null(is_discrete)){
     cnt_vec <- rep(1, nbrU+2)
-  } else cnt_vec <- as.numeric(!is_discrete)
+  } else {
+    if(is_discrete[1]){
+      myDist1 = as.factor(myDist1)
+      levels(myDist1) = 1:nlevels(myDist1)
+      myDist1 = as.numeric(myDist1)
+    }
+    if(is_discrete[2]){
+      myDist2 = as.factor(myDist2)
+      levels(myDist2) = 1:nlevels(myDist2)
+      myDist2 = as.numeric(myDist2)
+    }
+    if(nbrU>0){
+      for(l in 0:(nbrU-1)){
+        if(is_discrete[l+3]){
+          matrixU[,(l+1)] = as.factor(matrixU[,(l+1)])
+          levels(matrixU[,(l+1)]) = 1:nlevels(matrixU[,(l+1)])
+          matrixU[,(l+1)] = as.numeric(matrixU[,(l+1)])
+        }
+      }
+    }
+    cnt_vec <- as.numeric(!is_discrete)
+  }
+
+  if (is.null(matrixU)){
+    flatU <- c(0)
+  } else{
+    flatU <- as.vector(as.matrix(matrixU))
+  }
+
 
   if (cplx=="mdl"){
     intcplx <- 0
@@ -169,6 +203,7 @@ jointplot_hist <- function(myDist1, myDist2, result, title="Joint histogram"){
     geom_vline(xintercept=cut_points1, linetype="dashed", color="grey") +
     geom_hline(yintercept=cut_points2, linetype="dashed", color="grey") +
     geom_point(data = data.frame(myDist1, myDist2), aes(x=myDist1, y=myDist2), shape=21, alpha=.7, fill="#ffef77", size=2) +
+    xlab("X") + ylab("Y") +
     theme_classic()
 
   g = ggplot_build(hist2d)
@@ -181,7 +216,8 @@ jointplot_hist <- function(myDist1, myDist2, result, title="Joint histogram"){
                    colour="black", fill="white") +
     geom_density(adjust=0.5, alpha=.5, fill="#c1c6ee") +  # Overlay with transparent density plot
     theme_side_hist() %+replace% theme(plot.margin = margin(5.5,5.5,-25,5.5,"pt")) +
-    scale_y_continuous(labels=labels, breaks=seq(0,1,length.out = length(labels)), expand=c(0,0)) #Pass hist2d's labels to align both X axes
+    scale_y_continuous(labels=labels, breaks=seq(0,1,length.out = length(labels)), expand=c(0,0)) + #Pass hist2d's labels to align both X axes
+    ylab("X")
 
   side_hist_bot = ggplot(data.frame(myDist2), aes(x=myDist2)) +
     geom_histogram(aes(y=..density..),      # Histogram with density instead of count on y-axis
@@ -190,6 +226,7 @@ jointplot_hist <- function(myDist1, myDist2, result, title="Joint histogram"){
     geom_density(adjust=0.5, alpha=.5, fill="#c1c6ee") +  # Overlay with transparent density plot
     theme_side_hist() %+replace% theme(plot.margin = margin(5.5,5.5,5.5,-30,"pt")) +
     scale_y_continuous(expand=c(0,0)) +
+    ylab("Y") +
     coord_flip()
 
   I2 = result$info

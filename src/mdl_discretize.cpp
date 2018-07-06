@@ -182,9 +182,20 @@ extern "C" SEXP mydiscretizeMDL(SEXP RmyDist, SEXP RmaxBins){
 
   vector<double> values(cut_points, cut_points + best_K+2);
 
+  NumericMatrix Rdyntable(n_candidate_cut_points, maxBins);
+  NumericMatrix Rdyntable_trace(n_candidate_cut_points, maxBins);
+  for(int i=0; i<n_candidate_cut_points; i++){
+    for(int j=0; j<maxBins; j++){
+      Rdyntable[i+j*n_candidate_cut_points] = dyntable[i][j];
+      Rdyntable_trace[i+j*n_candidate_cut_points] = dyntable_trace[i][j];
+    }
+  }
+
   // structure the output
   List result = List::create(
-    _["cutpoints"] = values
+    _["cutpoints"] = values,
+    _["dyntable"]  = Rdyntable,
+    _["dyntable_trace"]  = Rdyntable_trace
   ) ;
 
   return result;
