@@ -56,16 +56,16 @@ discretizeMutual <- function(myDist1 = NULL, myDist2 = NULL, matrixU=NULL, maxbi
     initbins <- round(length(myDist1)**(1/3) )
 
   if((maxbins > length(myDist1)) || is.null(maxbins) || (maxbins < initbins)){
-    maxbins <- 2*initbins
+    maxbins <- 5*initbins
   }
 
   ##Get crude MI estimation for bin initialization tuning
-  ef_MI = infotheo::mutinformation(infotheo::discretize(myDist1,nbins = initbins), infotheo::discretize(myDist2,nbins = initbins))
-  strength <- ef_MI / log(initbins) # 1 is maximum strength, 0 is independence
-  if(strength<0.05){
-    initbins = 3
-    maxbins = initbins*2
-  }
+  #ef_MI = infotheo::mutinformation(infotheo::discretize(myDist1,nbins = initbins), infotheo::discretize(myDist2,nbins = initbins))
+  #strength <- ef_MI / log(initbins) # 1 is maximum strength, 0 is independence
+  #if(strength<0.05){
+  #  initbins = 3
+  #  maxbins = initbins*2
+  #}
 
   myDist1[is.na(myDist1)] <- -1
   myDist2[is.na(myDist2)] <- -1
