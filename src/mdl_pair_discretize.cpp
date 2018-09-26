@@ -1272,7 +1272,7 @@ inline __attribute__((always_inline))
 double* optfun_onerun_kmdl_coarse(int *sortidx_var, int *data, int nbrV, int **factors, int *r, double pxy,
                                   double sc, int sc_levels1, int sc_levels2, int n, int nnr,int *cut,
                                   int *r_opt, int maxbins, double* looklog, double** looklbc, double* lookH,
-                                  double** cterms, double** belief_factor, int cplx, int flag_allow_unique_bin=1) {
+                                  double** cterms, int cplx, int flag_allow_unique_bin=1) {
 
     int i,j,k,m;
 
@@ -1339,13 +1339,6 @@ double* optfun_onerun_kmdl_coarse(int *sortidx_var, int *data, int nbrV, int **f
         check_repet[i] = (data[sortidx_var[i+1]]!=data[sortidx_var[i]]);
     }
 
-    int *trace_j = (int*)calloc(r[1], sizeof(int));
-    int *trace_k = (int*)calloc(r[1], sizeof(int));
-    for(int xyu=0; xyu<r[1]; xyu++){
-        trace_j[xyu] = 0;
-        trace_k[xyu] = 0;
-    }
-
     ///////////////////////////////////////////////
     #if _MY_DEBUG_NEW_OPTFUN
         printf("\n-----------\n");
@@ -1399,16 +1392,8 @@ double* optfun_onerun_kmdl_coarse(int *sortidx_var, int *data, int nbrV, int **f
             if(m == 1){ //herve
                 if(cplx==0 && nxyu[m][xyu]==1) Hk_0k[m][0]  -= sc * looklog[n];  //MDL
                 else if(cplx==1){
-					//for(int other_xyu=0; other_xyu<r[1]; other_xyu++){
-					//	if( (other_xyu != xyu) && (nxyu[m][other_xyu] != 0) ){
-					//		Hk_0k[m][0] -= pxy * ( 0.5*computeLogC(nxyu[m][other_xyu], sc_levels1, cterms) * belief_factor[sc_levels2][njforward+1] -
-					//							   0.5*computeLogC(nxyu[m][other_xyu], sc_levels1, cterms) * belief_factor[sc_levels2][njforward]);//NML
-					//	}
-					//}
-					Hk_0k[m][0] -= pxy * ( computeLogC(nxyu[m][xyu]  , sc_levels1, cterms) * compute_belief_factor(sc_levels2, njforward+1, n, belief_factor)-
-                                           computeLogC(nxyu[m][xyu]-1, sc_levels1, cterms) * compute_belief_factor(sc_levels2, trace_j[xyu], n, belief_factor));//NML
-                    //Hk_0k[m][0] -= pxy * (computeLogC(nxyu[m][xyu]  , sc_levels1, cterms) - computeLogC(nxyu[m][xyu]-1, sc_levels1, cterms));//NML
-                    trace_j[xyu] = njforward+1;
+					Hk_0k[m][0] -= pxy * ( computeLogC(nxyu[m][xyu]  , sc_levels1, cterms) -
+                                           computeLogC(nxyu[m][xyu]-1, sc_levels1, cterms) );//NML
                 }
             }
         }
@@ -1434,12 +1419,6 @@ double* optfun_onerun_kmdl_coarse(int *sortidx_var, int *data, int nbrV, int **f
     #endif
 
     nj=njforward;
-
-    for(int xyu=0; xyu<r[1]; xyu++){
-        Hk_0k[1][0] -= pxy * ( computeLogC(nxyu[1][xyu], sc_levels1, cterms) * compute_belief_factor(sc_levels2, nj, n, belief_factor) -
-                               computeLogC(nxyu[1][xyu], sc_levels1, cterms) * compute_belief_factor(sc_levels2, trace_j[xyu], n, belief_factor));//NML
-        trace_j[xyu] = nj;
-    }
 
     for(m=0;m<nbrV;m++) Ik_0k[0] += Hk_0k[m][0];//herve
 
@@ -1486,15 +1465,8 @@ double* optfun_onerun_kmdl_coarse(int *sortidx_var, int *data, int nbrV, int **f
                 if(m == 1){ //herve
                     if(cplx==0 && nxyu[m][xyu]==1) Hk_0k[m][j]  -= sc * looklog[n];  //MDL
                     else if(cplx==1){
-						//for(int other_xyu=0; other_xyu<r[1]; other_xyu++){
-						//	if( (other_xyu != xyu) && (nxyu[m][other_xyu] != 0) ){
-						//		Hk_0k[m][j] -= pxy * ( 0.5*computeLogC(nxyu[m][other_xyu], sc_levels1, cterms) * belief_factor[sc_levels2][njforward+1] -
-						//							   0.5*computeLogC(nxyu[m][other_xyu], sc_levels1, cterms) * belief_factor[sc_levels2][njforward]);//NML
-						//	}
-						//}
-						Hk_0k[m][j] -= pxy * ( computeLogC(nxyu[m][xyu]  , sc_levels1, cterms) * compute_belief_factor(sc_levels2, njforward+1, n, belief_factor) -
-                                               computeLogC(nxyu[m][xyu]-1, sc_levels1, cterms) * compute_belief_factor(sc_levels2, trace_j[xyu], n, belief_factor));//NML
-                        trace_j[xyu] = njforward+1;
+						Hk_0k[m][j] -= pxy * ( computeLogC(nxyu[m][xyu]  , sc_levels1, cterms) -
+                                               computeLogC(nxyu[m][xyu]-1, sc_levels1, cterms) );//NML
                     }
                 }
 
@@ -1510,14 +1482,6 @@ double* optfun_onerun_kmdl_coarse(int *sortidx_var, int *data, int nbrV, int **f
 
         //njforward: number of points between 0 and j
         nj=njforward;
-
-		for(int xyu=0; xyu<r[1]; xyu++){
-            Hk_0k[1][j] -= pxy * ( computeLogC(nxyu[1][xyu], sc_levels1, cterms) * compute_belief_factor(sc_levels2, nj, n, belief_factor) -
-                                   computeLogC(nxyu[1][xyu], sc_levels1, cterms) * compute_belief_factor(sc_levels2, trace_j[xyu], n, belief_factor));//NML
-            trace_j[xyu] = nj;
-            trace_k[xyu] = nj;
-        }
-
 
         #if _MY_DEBUG_NEW_OPTFUN
             printf("(njforward=%d   ir=%d )\n",njforward,ir);fflush(stdout);
@@ -1571,15 +1535,8 @@ double* optfun_onerun_kmdl_coarse(int *sortidx_var, int *data, int nbrV, int **f
                     if(m == 1){ //herve
                         if(cplx==0 && nxyu_k[m][xyu]==0) Hk_kj[m]  += sc * looklog[n];  //MDL
                         else if(cplx==1){
-                            //for(int other_xyu=0; other_xyu<r[1]; other_xyu++){
-                            //    if( (other_xyu != xyu) && (nxyu_k[m][other_xyu] != 0) ){
-                            //        Hk_kj[m] -= pxy * ( 0.5*computeLogC(nxyu_k[m][other_xyu], sc_levels1, cterms) * belief_factor[sc_levels2][n_without_u] -
-                            //                            0.5*computeLogC(nxyu_k[m][other_xyu], sc_levels1, cterms) * belief_factor[sc_levels2][n_without_u+1]);//NML
-                            //    }
-                            //}
-							Hk_kj[m] -= pxy * ( computeLogC(nxyu_k[m][xyu]  , sc_levels1, cterms) * compute_belief_factor(sc_levels2, n_without_u, n, belief_factor) -
-                                                computeLogC(nxyu_k[m][xyu]+1, sc_levels1, cterms) * compute_belief_factor(sc_levels2, trace_k[xyu], n, belief_factor));//NML
-                            trace_k[xyu] = n_without_u;
+							Hk_kj[m] -= pxy * ( computeLogC(nxyu_k[m][xyu]  , sc_levels1, cterms) -
+                                                computeLogC(nxyu_k[m][xyu]+1, sc_levels1, cterms) );//NML
                         }
                     }
                 }
@@ -1589,12 +1546,6 @@ double* optfun_onerun_kmdl_coarse(int *sortidx_var, int *data, int nbrV, int **f
             }
 
             nkj=njforward-nkforward;
-
-			for(int xyu=0; xyu<r[1]; xyu++){
-                Hk_kj[1] -= pxy * ( computeLogC(nxyu_k[1][xyu], sc_levels1, cterms) * compute_belief_factor(sc_levels2, nkj, n, belief_factor) -
-                                    computeLogC(nxyu_k[1][xyu], sc_levels1, cterms) * compute_belief_factor(sc_levels2, trace_k[xyu], n, belief_factor));//NML
-                trace_k[xyu] = nkj;
-            }
 
             Ik_kj=0;
             for(m=0;m<nbrV;m++) Ik_kj += Hk_kj[m];
@@ -1630,8 +1581,6 @@ double* optfun_onerun_kmdl_coarse(int *sortidx_var, int *data, int nbrV, int **f
     free(Hk_kj);
     free(weights);
     free(check_repet);
-	free(trace_j);
-	free(trace_k);
 
     for(m=0;m<nbrV;m++) free(Hk_0k[m]);
     free(Hk_0k);
@@ -1664,7 +1613,7 @@ double* optfun_onerun_kmdl_coarse(int *sortidx_var, int *data, int nbrV, int **f
 
 int** compute_Ixy_alg1(int** data, int** sortidx, int* ptr_cnt, int* ptrVarIdx,  int* AllLevels,
                          int n, int maxbins, int **cut, int *r, double* c2terms, int init_bin,
-                         double* looklog, double** looklbc, double* lookH, double** cterms, double** belief_factor, int cplx)
+                         double* looklog, double** looklbc, double* lookH, double** cterms, int cplx)
 {
 
     int j,l,ll;
@@ -1776,7 +1725,7 @@ int** compute_Ixy_alg1(int** data, int** sortidx, int* ptr_cnt, int* ptrVarIdx, 
             // Optimization run on X.
             MInew=optfun_onerun_kmdl_coarse(sortidx[ptrVarIdx[0]], data[ptrVarIdx[0]], 2, factors1, rt1, 1, sc,
                                             sc_levels1, sc_levels2, n, AllLevels[ptrVarIdx[0]], cut[0], &(r[0]),
-                                            maxbins, looklog, looklbc, lookH, cterms, belief_factor, cplx);
+                                            maxbins, looklog, looklbc, lookH, cterms, cplx);
         }
 
         ////////////////////////////////////////////////
@@ -1802,7 +1751,7 @@ int** compute_Ixy_alg1(int** data, int** sortidx, int* ptr_cnt, int* ptrVarIdx, 
             // Optimization run on Y.
             MInew=optfun_onerun_kmdl_coarse(sortidx[ptrVarIdx[1]], data[ptrVarIdx[1]],2, factors1, rt1, 1, sc,
                                             sc_levels1, sc_levels2, n, AllLevels[ptrVarIdx[1]], cut[1], &(r[1]),
-                                            maxbins, looklog, looklbc, lookH, cterms, belief_factor, cplx);
+                                            maxbins, looklog, looklbc, lookH, cterms, cplx);
         }
 
         //////////////////////////////////////////
@@ -1835,6 +1784,7 @@ int** compute_Ixy_alg1(int** data, int** sortidx, int* ptr_cnt, int* ptrVarIdx, 
             res[1] -= 0.5*(rx-1)*(log((1.0*np-1) / (rx-1) - 1) + 1)/n;
         }
         if(ptr_cnt[ptrVarIdx[1]] == 1 && ry>1){
+            np = min(maxbins, AllLevels[ptrVarIdx[1]]);
             res[1] -= 0.5*(ry-1)*(log((1.0*np-1) / (ry-1) - 1) + 1)/n;
         }
 
@@ -1912,7 +1862,7 @@ int** compute_Ixy_alg1(int** data, int** sortidx, int* ptr_cnt, int* ptrVarIdx, 
 
 int** compute_Ixy_cond_u_new_alg1(int** data, int** sortidx, int* ptr_cnt, int* ptrVarIdx,  int* AllLevels, int nbrUi,
                                   int n, int maxbins, int **cut, int *r, double* c2terms, int init_bin, int lbin,
-                                  double* looklog, double** looklbc, double* lookH, double** sc_look, double** belief_factor, int cplx, double pxy)
+                                  double* looklog, double** looklbc, double* lookH, double** sc_look, int cplx, double pxy)
 {
 
     int j,l,ll;
@@ -2037,7 +1987,7 @@ int** compute_Ixy_cond_u_new_alg1(int** data, int** sortidx, int* ptr_cnt, int* 
                     // Run optimization on U.
                     MInew=optfun_onerun_kmdl_coarse(sortidx[ptrVarIdx[l+2]], data[ptrVarIdx[l+2]], 2, factors1, rt1, 1,
                                                     sc, sc_levels1, sc_levels2, n, AllLevels[ptrVarIdx[l+2]], cut[l+2],
-                                                    &(r[l+2]), maxbins, looklog, looklbc, lookH, sc_look, belief_factor,
+                                                    &(r[l+2]), maxbins, looklog, looklbc, lookH, sc_look,
                                                     cplx, flag_allow_unique_bin); // 2 factors
 
                     //update_datafactors(sortidx, ptrVarIdx[l+2], datafactors, l+2, n, cut); //move to outside U loop
@@ -2099,7 +2049,7 @@ int** compute_Ixy_cond_u_new_alg1(int** data, int** sortidx, int* ptr_cnt, int* 
             // Run optimization on X.
             res=optfun_onerun_kmdl_coarse(sortidx[ptrVarIdx[0]], data[ptrVarIdx[0]], 2, factors1, rt1, 1, sc,
                                           sc_levels1, sc_levels2, n, AllLevels[ptrVarIdx[0]], cut[0], &(r[0]),
-                                          maxbins, looklog, looklbc, lookH, sc_look, belief_factor, cplx,
+                                          maxbins, looklog, looklbc, lookH, sc_look, cplx,
                                           flag_allow_unique_bin); // 2 factors
 
             //update_datafactors(sortidx, ptrVarIdx[0], datafactors, 0, n, cut); //moved to after Y opt
@@ -2139,7 +2089,7 @@ int** compute_Ixy_cond_u_new_alg1(int** data, int** sortidx, int* ptr_cnt, int* 
                     // Run optimization on U.
                     MInew=optfun_onerun_kmdl_coarse(sortidx[ptrVarIdx[l+2]], data[ptrVarIdx[l+2]], 2, factors1, rt1, 1, sc,
                                                     sc_levels1, sc_levels2, n, AllLevels[ptrVarIdx[l+2]], cut[l+2], &(r[l+2]),
-                                                    maxbins, looklog, looklbc, lookH, sc_look, belief_factor, cplx,
+                                                    maxbins, looklog, looklbc, lookH, sc_look, cplx,
                                                     flag_allow_unique_bin); // 2 factors
 
                     //update_datafactors(sortidx, ptrVarIdx[l+2], datafactors, l+2, n, cut);
@@ -2200,7 +2150,7 @@ int** compute_Ixy_cond_u_new_alg1(int** data, int** sortidx, int* ptr_cnt, int* 
             // Run optimization on Y.
             res=optfun_onerun_kmdl_coarse(sortidx[ptrVarIdx[1]], data[ptrVarIdx[1]], 2, factors1, rt1, 1, sc,
                                           sc_levels1, sc_levels2, n, AllLevels[ptrVarIdx[1]], cut[1], &(r[1]),
-                                          maxbins, looklog, looklbc, lookH, sc_look, belief_factor, cplx,
+                                          maxbins, looklog, looklbc, lookH, sc_look, cplx,
                                           flag_allow_unique_bin); // 2 factors
 
             //update_datafactors(sortidx, ptrVarIdx[1], datafactors, 1, n, cut); //moved to end of loop1
@@ -2238,7 +2188,7 @@ int** compute_Ixy_cond_u_new_alg1(int** data, int** sortidx, int* ptr_cnt, int* 
                     //optimization run on ptrVarIdx[l+2]
                     res=optfun_onerun_kmdl_coarse(sortidx[ptrVarIdx[l+2]], data[ptrVarIdx[l+2]], 2, factors1, rt1, 1,
                                                   sc, sc_levels1, sc_levels2, n, AllLevels[ptrVarIdx[l+2]], cut[l+2],
-                                                  &(r[l+2]), maxbins, looklog, looklbc, lookH, sc_look, belief_factor,
+                                                  &(r[l+2]), maxbins, looklog, looklbc, lookH, sc_look,
                                                   cplx, flag_allow_unique_bin);
 
                     //update_datafactors(sortidx, ptrVarIdx[l+2], datafactors, l+2, n, cut);
@@ -2302,7 +2252,7 @@ int** compute_Ixy_cond_u_new_alg1(int** data, int** sortidx, int* ptr_cnt, int* 
                     //optimization run on ptrVarIdx[l+2]
                     res=optfun_onerun_kmdl_coarse(sortidx[ptrVarIdx[l+2]], data[ptrVarIdx[l+2]], 2, factors1, rt1, 1, sc,
                                                   sc_levels1, sc_levels2, n, AllLevels[ptrVarIdx[l+2]], cut[l+2], &(r[l+2]),
-                                                  maxbins, looklog, looklbc, lookH, sc_look, belief_factor, cplx,
+                                                  maxbins, looklog, looklbc, lookH, sc_look, cplx,
                                                   flag_allow_unique_bin);
 
                     //update_datafactors(sortidx, ptrVarIdx[l+2], datafactors, l+2, n, cut);
@@ -2445,7 +2395,7 @@ int** compute_Ixy_cond_u_new_alg1(int** data, int** sortidx, int* ptr_cnt, int* 
 
 int** compute_mi_cond_alg1(int** data, double** dataDouble, int** sortidx,  int* AllLevels, int* ptr_cnt, int* ptrVarIdx,
                            int nbrUi, int n, int maxbins, double* c2terms, int init_bin, double* looklog, double** looklbc,
-                           double* lookH, double** sc_look, double** belief_factor, int cplx, double pxy)
+                           double* lookH, double** sc_look, int cplx, double pxy)
 {
 
     //int** iterative_cuts = (int **)calloc(STEPMAX, sizeof(int*));
@@ -2528,7 +2478,7 @@ int** compute_mi_cond_alg1(int** data, double** dataDouble, int** sortidx,  int*
                 fflush(stdout);
         #endif
         int **iterative_cuts = compute_Ixy_alg1(data, sortidx, ptr_cnt, ptrVarIdx, AllLevels, n, maxbins, cut, r,
-                                                c2terms, init_bin, looklog, looklbc, lookH, sc_look, belief_factor, cplx);
+                                                c2terms, init_bin, looklog, looklbc, lookH, sc_look, cplx);
 
 
         // free memory
@@ -2591,7 +2541,7 @@ int** compute_mi_cond_alg1(int** data, double** dataDouble, int** sortidx,  int*
         //int **iterative_cuts = compute_Ixy_cond_u_alg1(data, sortidx, ptr_cnt, ptrVarIdx, AllLevels, nbrUi, n,
         //                                               maxbins, cut, r, c2terms, init_bin, looklog, looklbc, lookH, sc_look, cplx, pxy);
         int **iterative_cuts = compute_Ixy_cond_u_new_alg1(data, sortidx, ptr_cnt, ptrVarIdx, AllLevels, nbrUi, n, maxbins, cut, r, c2terms,
-                                                           init_bin, lbin,looklog, looklbc, lookH, sc_look, belief_factor, cplx, pxy);
+                                                           init_bin, lbin,looklog, looklbc, lookH, sc_look, cplx, pxy);
         //int **iterative_cuts = compute_Ixy_cond_u_new_2_alg1(data, sortidx, ptr_cnt, ptrVarIdx, AllLevels, nbrUi, n,
         //                                                     maxbins, cut, r, c2terms, init_bin, lbin,looklog, looklbc, lookH, sc_look, cplx, pxy);
         //int **iterative_cuts = compute_Ixy_cond_u_new_new_alg1(data, sortidx, ptr_cnt, ptrVarIdx, AllLevels, nbrUi, n,
@@ -2990,19 +2940,10 @@ extern "C" SEXP mydiscretizeMutual(SEXP RmyDist1, SEXP RmyDist2, SEXP RflatU, SE
       double d = computeLogC(i, 2, sc_look); // Initialize the c2 terms
   }
 
-  double** belief_factor = new double*[N_COL_NML];
-  for(int K = 0; K<(init_bin*100); K++){
-
-    belief_factor[K] = new double[n+2];
-    for(int nx=0; nx<(n+2); nx++){
-      belief_factor[K][nx] = 0.0;
-    }
-  }
-
 
   int** iterative_cuts = compute_mi_cond_alg1(dataNumeric_red, data, dataNumericIdx_red, AllLevels_red,
                                               cnt_red, posArray_red, nbrUi, n, maxbins, c2terms, init_bin,
-                                              looklog, looklbc, lookH, sc_look, belief_factor, cplx, pxy);
+                                              looklog, looklbc, lookH, sc_look, cplx, pxy);
 
   int niterations=0;
   double* res = new double[2];
@@ -3046,11 +2987,6 @@ extern "C" SEXP mydiscretizeMutual(SEXP RmyDist1, SEXP RmyDist2, SEXP RflatU, SE
       free(iterative_cuts[i]);
   }
   free(iterative_cuts);
-
-  for(int k=0; k<(100*init_bin); k++){
-      delete[] belief_factor[k];
-  }
-  delete[] belief_factor;
 
   for(int i=0; i<ncol; i++){
       delete[] sc_look[i];

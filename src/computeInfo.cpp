@@ -8,7 +8,6 @@
 #include "computeInfo.h"
 
 # define M_PI		3.14159265358979323846	/* pi */
-# define N_COL_NML 1000
 using namespace std;
 
 unsigned long binomialCoeff(int n, int k)
@@ -405,25 +404,4 @@ double computeLogC( int N, int r, double** cterms)
 		cterms[r][N]=logC;
 	}
 	return logC;
-}
-
-double compute_belief_factor(int k, int nx, int n_samples, double** belief_factor){
-
-	double factor;
-	if(k >= N_COL_NML){
-		if(k==0 && nx!=0) factor = 1.0;
-		else if(nx==0) factor = 0.0;
-		else factor = (0.5 + 0.8 * pow((0.5*(1.0/k) * (1.0*n_samples/nx)), 2.0/3) );
-		//else factor = (0.5 + 0.8 * (0.5*(1.0/k) * (1.0*n_samples/nx)));
-	}
-	else{
-		factor = belief_factor[k][nx];
-		if( (factor == 0.0) && (nx != 0) ){
-			if(k==0) factor = 1.0;
-			else factor = (0.5 + 0.8 * pow((0.5*(1.0/k) * (1.0*n_samples/nx)), 2.0/3) );
-			//else factor = (0.5 + 0.8 * (0.5*(1.0/k) * (1.0*n_samples/nx)));
-			belief_factor[k][nx] = factor;
-		}
-	}
-	return factor;
 }
