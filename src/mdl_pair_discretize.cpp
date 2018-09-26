@@ -24,7 +24,6 @@
 #define EPS 1e-5
 #define INIT_EQUAL_WIDTH false
 #define ALPHA_EFF_LVLS 1
-#define MIN_BIN_SIZE fmin(25, n/3)
 #define COEFF_COMB 0
 
 using namespace Rcpp;
@@ -1391,7 +1390,8 @@ double* optfun_onerun_kmdl_coarse(int *sortidx_var, int *data, int nbrV, int **f
             if(m == 1){ //herve
                 if(cplx==0 && nxyu[m][xyu]==1) Hk_0k[m][0]  -= sc * looklog[n];  //MDL
                 else if(cplx==1){
-                    Hk_0k[m][0] -= pxy * (computeLogC(nxyu[m][xyu]  , sc_levels1, cterms) - computeLogC(nxyu[m][xyu]-1, sc_levels1, cterms));//NML
+					Hk_0k[m][0] -= pxy * ( computeLogC(nxyu[m][xyu]  , sc_levels1, cterms) -
+                                           computeLogC(nxyu[m][xyu]-1, sc_levels1, cterms) );//NML
                 }
             }
         }
@@ -1463,7 +1463,8 @@ double* optfun_onerun_kmdl_coarse(int *sortidx_var, int *data, int nbrV, int **f
                 if(m == 1){ //herve
                     if(cplx==0 && nxyu[m][xyu]==1) Hk_0k[m][j]  -= sc * looklog[n];  //MDL
                     else if(cplx==1){
-                        Hk_0k[m][j] -= pxy * (computeLogC(nxyu[m][xyu]  , sc_levels1, cterms) - computeLogC(nxyu[m][xyu]-1, sc_levels1, cterms));//NML
+						Hk_0k[m][j] -= pxy * ( computeLogC(nxyu[m][xyu]  , sc_levels1, cterms) -
+                                               computeLogC(nxyu[m][xyu]-1, sc_levels1, cterms) );//NML
                     }
                 }
 
@@ -1535,7 +1536,8 @@ double* optfun_onerun_kmdl_coarse(int *sortidx_var, int *data, int nbrV, int **f
                     if(m == 1){ //herve
                         if(cplx==0 && nxyu_k[m][xyu]==0) Hk_kj[m]  += sc * looklog[n];  //MDL
                         else if(cplx==1){
-                            Hk_kj[m] -= pxy * (computeLogC(nxyu_k[m][xyu], sc_levels1, cterms) - computeLogC(nxyu_k[m][xyu]+1, sc_levels1, cterms));//NML
+							Hk_kj[m] -= pxy * ( computeLogC(nxyu_k[m][xyu]  , sc_levels1, cterms) -
+                                                computeLogC(nxyu_k[m][xyu]+1, sc_levels1, cterms) );//NML
                         }
                     }
                 }
@@ -1548,10 +1550,13 @@ double* optfun_onerun_kmdl_coarse(int *sortidx_var, int *data, int nbrV, int **f
 
             Ik_kj=0;
             for(m=0;m<nbrV;m++) Ik_kj += Hk_kj[m];
+			if(cplx==1){
+                Ik_kj -= log((1.0*np-1)/(sc_levels2-1) - 1) + 1;
+            }
 
             nk=nkforward-1;//position of the actual possible cut
 
-            if( ((Ik[k] + Ik_kj) > Ik[j]) && (nkj > MIN_BIN_SIZE) ){ //herve
+            if( ((Ik[k] + Ik_kj) > Ik[j]) {
                 t=Ik[k] + Ik_kj; //[0.. cuts.. k-1][k j] //herve
                 if (Imax<t){
                     Imax=t;
@@ -1608,8 +1613,8 @@ double* optfun_onerun_kmdl_coarse(int *sortidx_var, int *data, int nbrV, int **f
 
 
 int** compute_Ixy_alg1(int** data, int** sortidx, int* ptr_cnt, int* ptrVarIdx,  int* AllLevels,
-                         int n, int maxbins, int **cut, int *r, double* c2terms, int init_bin,
-                         double* looklog, double** looklbc, double* lookH, double** cterms, int cplx)
+                       int n, int maxbins, int **cut, int *r, double* c2terms, int init_bin,
+                       double* looklog, double** looklbc, double* lookH, double** cterms, int cplx)
 {
 
     int j,l,ll;
@@ -1662,8 +1667,6 @@ int** compute_Ixy_alg1(int** data, int** sortidx, int* ptr_cnt, int* ptrVarIdx, 
         }
     }
 
-    int np;
-    // int np=ceil(1.0*n/coarse);//max possible cuts
 
     double sc;
     double sc_comb=0;//term complexity due to optimization on many models
@@ -1695,7 +1698,7 @@ int** compute_Ixy_alg1(int** data, int** sortidx, int* ptr_cnt, int* ptrVarIdx, 
     int rx = r[0];
     int ry = r[1];
     int* r_t = (int*) calloc(2, sizeof(int));
-    int flag_allow_unique_bin = 1;
+    int np;
     for(stop=1;stop<STEPMAX;stop++)
     {
 
@@ -1723,7 +1726,7 @@ int** compute_Ixy_alg1(int** data, int** sortidx, int* ptr_cnt, int* ptrVarIdx, 
             // Optimization run on X.
             MInew=optfun_onerun_kmdl_coarse(sortidx[ptrVarIdx[0]], data[ptrVarIdx[0]], 2, factors1, rt1, 1, sc,
                                             sc_levels1, sc_levels2, n, AllLevels[ptrVarIdx[0]], cut[0], &(r[0]),
-                                            maxbins, looklog, looklbc, lookH, cterms, cplx, flag_allow_unique_bin); // 2 factors
+                                            maxbins, looklog, looklbc, lookH, cterms, cplx);
         }
 
         ////////////////////////////////////////////////
@@ -1749,7 +1752,7 @@ int** compute_Ixy_alg1(int** data, int** sortidx, int* ptr_cnt, int* ptrVarIdx, 
             // Optimization run on Y.
             MInew=optfun_onerun_kmdl_coarse(sortidx[ptrVarIdx[1]], data[ptrVarIdx[1]],2, factors1, rt1, 1, sc,
                                             sc_levels1, sc_levels2, n, AllLevels[ptrVarIdx[1]], cut[1], &(r[1]),
-                                            maxbins, looklog, looklbc, lookH, cterms, cplx, flag_allow_unique_bin); // 2 factors
+                                            maxbins, looklog, looklbc, lookH, cterms, cplx);
         }
 
         //////////////////////////////////////////
@@ -1776,6 +1779,15 @@ int** compute_Ixy_alg1(int** data, int** sortidx, int* ptr_cnt, int* ptrVarIdx, 
             res=computeMI_knml(datafactors[0],datafactors[1],xy_factors,r_temp,n,c2terms,looklog, 0);
         else
             res=computeMI_kmdl(datafactors[0],datafactors[1],xy_factors,r_temp,n,looklog, 0);
+		//Adding combinatorial term
+        if(ptr_cnt[ptrVarIdx[0]] == 1 && rx>1){
+            np = min(maxbins, AllLevels[ptrVarIdx[0]]);
+            res[1] -= 0.5*(rx-1)*(log((1.0*np-1) / (rx-1) - 1) + 1)/n;
+        }
+        if(ptr_cnt[ptrVarIdx[1]] == 1 && ry>1){
+            np = min(maxbins, AllLevels[ptrVarIdx[1]]);
+            res[1] -= 0.5*(ry-1)*(log((1.0*np-1) / (ry-1) - 1) + 1)/n;
+        }
 
 
         for(i=stop-1;i>0;i--){
@@ -1976,7 +1988,8 @@ int** compute_Ixy_cond_u_new_alg1(int** data, int** sortidx, int* ptr_cnt, int* 
                     // Run optimization on U.
                     MInew=optfun_onerun_kmdl_coarse(sortidx[ptrVarIdx[l+2]], data[ptrVarIdx[l+2]], 2, factors1, rt1, 1,
                                                     sc, sc_levels1, sc_levels2, n, AllLevels[ptrVarIdx[l+2]], cut[l+2],
-                                                    &(r[l+2]), maxbins, looklog, looklbc, lookH, sc_look, cplx, flag_allow_unique_bin); // 2 factors
+                                                    &(r[l+2]), maxbins, looklog, looklbc, lookH, sc_look,
+                                                    cplx, flag_allow_unique_bin); // 2 factors
 
                     //update_datafactors(sortidx, ptrVarIdx[l+2], datafactors, l+2, n, cut); //move to outside U loop
                 }
@@ -2000,15 +2013,15 @@ int** compute_Ixy_cond_u_new_alg1(int** data, int** sortidx, int* ptr_cnt, int* 
         I_y_xu = res[0]; // Before optimization on X.
         Ik_y_xu = res[1];
         // Adding combinatorial term
-        //for(ll=0;(ll<nbrUi); ll++){
-        //    np = min(AllLevels[ptrVarIdx[ll+2]], maxbins);
-        //    if((ptr_cnt[ptrVarIdx[ll+2]]==1) && (r_old[ll+2]>1))
-        //        Ik_y_xu -= (r_old[ll+2]-1)*(log((1.0*np-1) / (r_old[ll+2]-1) - 1) + 1)/n;
-        //}
-        //if((ptr_cnt[ptrVarIdx[0]]==1) && (r_old[0]>1)){
-        //    np = min(AllLevels[ptrVarIdx[0]], maxbins);
-        //    Ik_y_xu -= (r_old[0]-1)*(log((1.0*np-1) / (r_old[0]-1) - 1) + 1)/n;
-        //}
+        for(ll=0;(ll<nbrUi); ll++){
+            np = min(AllLevels[ptrVarIdx[ll+2]], maxbins);
+            if((ptr_cnt[ptrVarIdx[ll+2]]==1) && (r_old[ll+2]>1))
+                Ik_y_xu -= (r_old[ll+2]-1)*(log((1.0*np-1) / (r_old[ll+2]-1) - 1) + 1)/n;
+        }
+        if((ptr_cnt[ptrVarIdx[0]]==1) && (r_old[0]>1)){
+            np = min(AllLevels[ptrVarIdx[0]], maxbins);
+            Ik_y_xu -= (r_old[0]-1)*(log((1.0*np-1) / (r_old[0]-1) - 1) + 1)/n;
+        }
 
         if(ptr_cnt[ptrVarIdx[0]]==1){
             //opt x
@@ -2037,7 +2050,8 @@ int** compute_Ixy_cond_u_new_alg1(int** data, int** sortidx, int* ptr_cnt, int* 
             // Run optimization on X.
             res=optfun_onerun_kmdl_coarse(sortidx[ptrVarIdx[0]], data[ptrVarIdx[0]], 2, factors1, rt1, 1, sc,
                                           sc_levels1, sc_levels2, n, AllLevels[ptrVarIdx[0]], cut[0], &(r[0]),
-                                          maxbins, looklog, looklbc, lookH, sc_look, cplx, flag_allow_unique_bin); // 2 factors
+                                          maxbins, looklog, looklbc, lookH, sc_look, cplx,
+                                          flag_allow_unique_bin); // 2 factors
 
             //update_datafactors(sortidx, ptrVarIdx[0], datafactors, 0, n, cut); //moved to after Y opt
         }
@@ -2076,7 +2090,8 @@ int** compute_Ixy_cond_u_new_alg1(int** data, int** sortidx, int* ptr_cnt, int* 
                     // Run optimization on U.
                     MInew=optfun_onerun_kmdl_coarse(sortidx[ptrVarIdx[l+2]], data[ptrVarIdx[l+2]], 2, factors1, rt1, 1, sc,
                                                     sc_levels1, sc_levels2, n, AllLevels[ptrVarIdx[l+2]], cut[l+2], &(r[l+2]),
-                                                    maxbins, looklog, looklbc, lookH, sc_look, cplx, flag_allow_unique_bin); // 2 factors
+                                                    maxbins, looklog, looklbc, lookH, sc_look, cplx,
+                                                    flag_allow_unique_bin); // 2 factors
 
                     //update_datafactors(sortidx, ptrVarIdx[l+2], datafactors, l+2, n, cut);
                 }
@@ -2112,15 +2127,15 @@ int** compute_Ixy_cond_u_new_alg1(int** data, int** sortidx, int* ptr_cnt, int* 
         I_x_yu = res[0]; //Before updating X and Y.
         Ik_x_yu = res[1];
         // Adding combinatorial term
-        //for(ll=0;(ll<nbrUi); ll++){
-        //    np = min(AllLevels[ptrVarIdx[ll+2]], maxbins);
-        //    if((ptr_cnt[ptrVarIdx[ll+2]]==1) && (r_old[ll+2]>1))
-        //        Ik_x_yu -= (r_old[ll+2]-1)*(log((1.0*np-1) / (r_old[ll+2]-1) - 1) + 1)/n;
-        //}
-        //if((ptr_cnt[ptrVarIdx[1]]==1) && (r_old[1]>1)) {
-        //    np = min(AllLevels[ptrVarIdx[0]], maxbins);
-        //    Ik_x_yu -= (r_old[1]-1)*(log((1.0*np-1) / (r_old[1]-1) - 1) + 1)/n;
-        //}
+        for(ll=0;(ll<nbrUi); ll++){
+            np = min(AllLevels[ptrVarIdx[ll+2]], maxbins);
+            if((ptr_cnt[ptrVarIdx[ll+2]]==1) && (r_old[ll+2]>1))
+                Ik_x_yu -= (r_old[ll+2]-1)*(log((1.0*np-1) / (r_old[ll+2]-1) - 1) + 1)/n;
+        }
+        if((ptr_cnt[ptrVarIdx[1]]==1) && (r_old[1]>1)) {
+            np = min(AllLevels[ptrVarIdx[0]], maxbins);
+            Ik_x_yu -= (r_old[1]-1)*(log((1.0*np-1) / (r_old[1]-1) - 1) + 1)/n;
+        }
 
         if(ptr_cnt[ptrVarIdx[1]]==1){
             //optimize on y
@@ -2148,7 +2163,8 @@ int** compute_Ixy_cond_u_new_alg1(int** data, int** sortidx, int* ptr_cnt, int* 
             // Run optimization on Y.
             res=optfun_onerun_kmdl_coarse(sortidx[ptrVarIdx[1]], data[ptrVarIdx[1]], 2, factors1, rt1, 1, sc,
                                           sc_levels1, sc_levels2, n, AllLevels[ptrVarIdx[1]], cut[1], &(r[1]),
-                                          maxbins, looklog, looklbc, lookH, sc_look, cplx, flag_allow_unique_bin); // 2 factors
+                                          maxbins, looklog, looklbc, lookH, sc_look, cplx,
+                                          flag_allow_unique_bin); // 2 factors
 
             //update_datafactors(sortidx, ptrVarIdx[1], datafactors, 1, n, cut); //moved to end of loop1
         }
@@ -2185,7 +2201,8 @@ int** compute_Ixy_cond_u_new_alg1(int** data, int** sortidx, int* ptr_cnt, int* 
                     //optimization run on ptrVarIdx[l+2]
                     res=optfun_onerun_kmdl_coarse(sortidx[ptrVarIdx[l+2]], data[ptrVarIdx[l+2]], 2, factors1, rt1, 1,
                                                   sc, sc_levels1, sc_levels2, n, AllLevels[ptrVarIdx[l+2]], cut[l+2],
-                                                  &(r[l+2]), maxbins, looklog, looklbc, lookH, sc_look, cplx, flag_allow_unique_bin);
+                                                  &(r[l+2]), maxbins, looklog, looklbc, lookH, sc_look,
+                                                  cplx, flag_allow_unique_bin);
 
                     //update_datafactors(sortidx, ptrVarIdx[l+2], datafactors, l+2, n, cut);
                 }
@@ -2214,11 +2231,11 @@ int** compute_Ixy_cond_u_new_alg1(int** data, int** sortidx, int* ptr_cnt, int* 
         I_x_u = res[0]; //After optimization on U.
         Ik_x_u = res[1];
         // Adding combinatorial term
-        //for(ll=0;(ll<nbrUi); ll++){
-        //    np = min(AllLevels[ptrVarIdx[ll+2]], maxbins);
-        //    if((ptr_cnt[ptrVarIdx[ll+2]]==1) && (r_old[ll+2]>1))
-        //        Ik_x_u -= (r_old[ll+2]-1)*(log((1.0*np-1) / (r_old[ll+2]-1) - 1) + 1)/n;
-        //}
+        for(ll=0;(ll<nbrUi); ll++){
+            np = min(AllLevels[ptrVarIdx[ll+2]], maxbins);
+            if((ptr_cnt[ptrVarIdx[ll+2]]==1) && (r_old[ll+2]>1))
+                Ik_x_u -= (r_old[ll+2]-1)*(log((1.0*np-1) / (r_old[ll+2]-1) - 1) + 1)/n;
+        }
 
         // Reset cutpoints on U
         reset_u_cutpoints(cut, nbrUi, ptr_cnt, ptrVarIdx, init_bin, maxbins, lbin, r, AllLevels, n);
@@ -2253,7 +2270,8 @@ int** compute_Ixy_cond_u_new_alg1(int** data, int** sortidx, int* ptr_cnt, int* 
                     //optimization run on ptrVarIdx[l+2]
                     res=optfun_onerun_kmdl_coarse(sortidx[ptrVarIdx[l+2]], data[ptrVarIdx[l+2]], 2, factors1, rt1, 1, sc,
                                                   sc_levels1, sc_levels2, n, AllLevels[ptrVarIdx[l+2]], cut[l+2], &(r[l+2]),
-                                                  maxbins, looklog, looklbc, lookH, sc_look, cplx, flag_allow_unique_bin);
+                                                  maxbins, looklog, looklbc, lookH, sc_look, cplx,
+                                                  flag_allow_unique_bin);
 
                     //update_datafactors(sortidx, ptrVarIdx[l+2], datafactors, l+2, n, cut);
                 }
@@ -2277,11 +2295,11 @@ int** compute_Ixy_cond_u_new_alg1(int** data, int** sortidx, int* ptr_cnt, int* 
         I_y_u = res[0]; //After optimization on U.
         Ik_y_u = res[1];
         // Adding combinatorial term
-        //for(ll=0;(ll<nbrUi); ll++){
-        //    np = min(AllLevels[ptrVarIdx[ll+2]], maxbins);
-        //    if((ptr_cnt[ptrVarIdx[ll+2]]==1) && (r_old[ll+2]>1))
-        //        Ik_y_u -= (r_old[ll+2]-1)*(log((1.0*np-1) / (r_old[ll+2]-1) - 1) + 1)/n;
-        //}
+        for(ll=0;(ll<nbrUi); ll++){
+            np = min(AllLevels[ptrVarIdx[ll+2]], maxbins);
+            if((ptr_cnt[ptrVarIdx[ll+2]]==1) && (r_old[ll+2]>1))
+                Ik_y_u -= (r_old[ll+2]-1)*(log((1.0*np-1) / (r_old[ll+2]-1) - 1) + 1)/n;
+        }
 
         // Reset cutpoints on U
         reset_u_cutpoints(cut, nbrUi, ptr_cnt, ptrVarIdx, init_bin, maxbins, lbin, r, AllLevels, n);
@@ -2344,7 +2362,6 @@ int** compute_Ixy_cond_u_new_alg1(int** data, int** sortidx, int* ptr_cnt, int* 
         res[0] = I_av1;
         res[1] = Ik_av1;
     }
-    cout << "I=" << res[0] << "  IK=" << res[1] << endl;
 
     if(!flag1) stop1--; //If stopped because of loop condition and not flag, stop1 must be decremented.
     for(l=0; l<(nbrUi+2); l++){
