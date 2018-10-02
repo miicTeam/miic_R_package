@@ -1147,8 +1147,8 @@ int** old_compute_mi_cond_alg1(int** data, int** sortidx,  int* AllLevels, int* 
     if(!flag) stop--; //If stopped because of loop condition and not flag, stop1 must be decremented.
     for(l=0; l<(nbrUi+2); l++){
         iterative_cuts[stop][l*maxbins]=-1; // mark where we stopped iterating
-        iterative_cuts[stop][l*maxbins+1]=10000*(res[1]-res[2]); // pass Ik[X;Y|U]
-        iterative_cuts[stop][l*maxbins+2]=10000*res[1]; // pass I[X;Y|U]
+        iterative_cuts[stop][l*maxbins+1]=100000*(res[1]-res[2]); // pass Ik[X;Y|U]
+        iterative_cuts[stop][l*maxbins+2]=100000*res[1]; // pass I[X;Y|U]
     }
 
 
@@ -1298,7 +1298,6 @@ double* optfun_onerun_kmdl_coarse(int *sortidx_var, int *data, int nbrV, int **f
     double* Ik_0k =(double *)calloc(np,sizeof(double)); // The information value for a unique bin fom idx 0 to k.
     double Ik_kj; // The information value for a bin fom idx k to j.
     double t;
-	double cplx_value;
 
     //number of points in the intervals
     int nxj,nx;
@@ -1496,10 +1495,6 @@ double* optfun_onerun_kmdl_coarse(int *sortidx_var, int *data, int nbrV, int **f
         Ik_0k[j]=0;
         for(m=0;m<nbrV;m++) Ik_0k[j] += Hk_0k[m][j]; //herve
         Ik[j] = Ik_0k[j];
-        if(j == np-1 && flag_allow_unique_bin == 0){
-            Ik[j] = -DBL_MAX;
-        }
-
 
         Imax=-DBL_MAX;
 
@@ -1511,8 +1506,7 @@ double* optfun_onerun_kmdl_coarse(int *sortidx_var, int *data, int nbrV, int **f
         #endif
 
         for(m=0;m<nbrV;m++) {
-            for(xyu=0;xyu<r[m];xyu++)
-            nxyu_k[m][xyu]=nxyu[m][xyu];
+            for(xyu=0;xyu<r[m];xyu++) nxyu_k[m][xyu]=nxyu[m][xyu];
         }
 
         //moving k
@@ -1556,7 +1550,7 @@ double* optfun_onerun_kmdl_coarse(int *sortidx_var, int *data, int nbrV, int **f
 
             nk=nkforward-1;//position of the actual possible cut
 
-            if( ((Ik[k] + Ik_kj) > Ik[j]) {
+            if( (Ik[k] + Ik_kj) > Ik[j] ) {
                 t=Ik[k] + Ik_kj; //[0.. cuts.. k-1][k j] //herve
                 if (Imax<t){
                     Imax=t;
@@ -1791,8 +1785,7 @@ int** compute_Ixy_alg1(int** data, int** sortidx, int* ptr_cnt, int* ptrVarIdx, 
 
 
         for(i=stop-1;i>0;i--){
-            if( (r[0]==1 && r[1]==1) || (fabs(res[1]-MIk[i]) < EPS) ){
-                //(rx == r[0]) && (ry == r[1])) { // If the number of bins hasn't changed on both variables
+            if( fabs(res[1]-MIk[i]) < EPS ){
                 flag=1;
                 Ik_av=MIk[i];
                 I_av=MI[i];
@@ -1815,8 +1808,8 @@ int** compute_Ixy_alg1(int** data, int** sortidx, int* ptr_cnt, int* ptrVarIdx, 
     }//for
     if(!flag) stop--; //If stopped because of loop condition and not flag, stop1 must be decremented.
     iterative_cuts[stop][0]=-1; // mark where we stopped iterating
-    iterative_cuts[stop][1]=10000*res[1]; // Pass Ik[X;Y]
-    iterative_cuts[stop][2]=10000*res[0]; // Pass I[X;Y]
+    iterative_cuts[stop][1]=100000*res[1]; // Pass Ik[X;Y]
+    iterative_cuts[stop][2]=100000*res[0]; // Pass I[X;Y]
     iterative_cuts[stop][maxbins]=-1;
 
     if(flag){
@@ -2101,12 +2094,6 @@ int** compute_Ixy_cond_u_new_alg1(int** data, int** sortidx, int* ptr_cnt, int* 
                 r_old[ll+2] = r[ll+2];
             }
 
-            cout << "opt U on I(X;YU) : ";
-            for(int rr=0; rr<nbrUi+2;rr++){
-                cout << "r[" << rr << "] = " << r_old[rr] << "   ";
-            }
-            cout << endl;
-
             U_counter++;
             if(nbrUi==1) U_counter = max_U_counter;
         }//U_counter loop
@@ -2119,11 +2106,6 @@ int** compute_Ixy_cond_u_new_alg1(int** data, int** sortidx, int* ptr_cnt, int* 
             res=computeMI_knml(datafactors[0],uiyxfactors[1], uiyxfactors[3],r_temp,n,c2terms, looklog, 1);
         else
             res=computeMI_kmdl(datafactors[0],uiyxfactors[1], uiyxfactors[3],r_temp,n, looklog, 1);
-        cout << "I(X;YU) : ";
-        for(int rr=0; rr<nbrUi+2;rr++){
-            cout << "r[" << rr << "] = " << r_old[rr] << "   ";
-        }
-        cout << endl;
         I_x_yu = res[0]; //Before updating X and Y.
         Ik_x_yu = res[1];
         // Adding combinatorial term
@@ -2133,7 +2115,7 @@ int** compute_Ixy_cond_u_new_alg1(int** data, int** sortidx, int* ptr_cnt, int* 
                 Ik_x_yu -= (r_old[ll+2]-1)*(log((1.0*np-1) / (r_old[ll+2]-1) - 1) + 1)/n;
         }
         if((ptr_cnt[ptrVarIdx[1]]==1) && (r_old[1]>1)) {
-            np = min(AllLevels[ptrVarIdx[0]], maxbins);
+            np = min(AllLevels[ptrVarIdx[1]], maxbins);
             Ik_x_yu -= (r_old[1]-1)*(log((1.0*np-1) / (r_old[1]-1) - 1) + 1)/n;
         }
 
@@ -2223,11 +2205,6 @@ int** compute_Ixy_cond_u_new_alg1(int** data, int** sortidx, int* ptr_cnt, int* 
             res=computeMI_knml(datafactors[0],uiyxfactors[0], uiyxfactors[2],r_temp,n,c2terms, looklog, 1);
         else
             res=computeMI_kmdl(datafactors[0],uiyxfactors[0], uiyxfactors[2],r_temp,n, looklog, 1);
-        cout << "I(X;U) : ";
-        for(int rr=0; rr<nbrUi+2;rr++){
-            cout << "r[" << rr << "] = " << r_old[rr] << "   ";
-        }
-        cout << endl;
         I_x_u = res[0]; //After optimization on U.
         Ik_x_u = res[1];
         // Adding combinatorial term
@@ -2317,16 +2294,13 @@ int** compute_Ixy_cond_u_new_alg1(int** data, int** sortidx, int* ptr_cnt, int* 
             update_datafactors(sortidx, ptrVarIdx[1], datafactors, 1, n, cut);
             r_old[1] = r[1];
         }
-        if(r[0]==2 && r[1]==2){
-            flag_allow_unique_bin = 1;
-        }
 
         //#################
         // Compute I(X;Y|U)
         res[0] = 0.5* (I_x_yu - I_x_u + I_y_xu - I_y_u);
         res[1] = 0.5* (Ik_x_yu - Ik_x_u + Ik_y_xu - Ik_y_u);
-        printf("I = 0.5*(%.2f - %.2f + %.2f - %.2f) = %.2f\n", I_x_yu, I_x_u, I_y_xu, I_y_u, res[0]);
-        printf("Ik = 0.5*(%.2f - %.2f + %.2f - %.2f) = %.2f\n", Ik_x_yu, Ik_x_u, Ik_y_xu, Ik_y_u, res[1]);
+        //printf("I = 0.5*(%.2f - %.2f + %.2f - %.2f) = %.2f\n", I_x_yu, I_x_u, I_y_xu, I_y_u, res[0]);
+        //printf("Ik = 0.5*(%.2f - %.2f + %.2f - %.2f) = %.2f\n", Ik_x_yu, Ik_x_u, Ik_y_xu, Ik_y_u, res[1]);
 
         // Save cut points
         for(j=0; j<maxbins; j++){
@@ -2337,8 +2311,7 @@ int** compute_Ixy_cond_u_new_alg1(int** data, int** sortidx, int* ptr_cnt, int* 
 
         // Test stop condition on stop1
         for(i=stop1-1;i>0;i--){
-            if( (fabs(res[1]-MIk1[i]) < EPS)) { // If no real improvement over last information  AND
-                //(rxyu == ruiyx[3]) ) { // If the number of bins hasn't changed on both variables
+            if( fabs(res[1]-MIk1[i]) < EPS ) { // If no real improvement over last information
                 flag1=1;
                 Ik_av1=MIk1[i];
                 I_av1=MI1[i];
@@ -2366,8 +2339,8 @@ int** compute_Ixy_cond_u_new_alg1(int** data, int** sortidx, int* ptr_cnt, int* 
     if(!flag1) stop1--; //If stopped because of loop condition and not flag, stop1 must be decremented.
     for(l=0; l<(nbrUi+2); l++){
         iterative_cuts[stop1][l*maxbins]=-1; // mark where we stopped iterating
-        iterative_cuts[stop1][l*maxbins+1]=10000*res[1]; // pass Ik[X;Y|U]
-        iterative_cuts[stop1][l*maxbins+2]=10000*res[0]; // pass I[X;Y|U]
+        iterative_cuts[stop1][l*maxbins+1]=100000*res[1]; // pass Ik[X;Y|U]
+        iterative_cuts[stop1][l*maxbins+2]=100000*res[0]; // pass I[X;Y|U]
     }
 
     // free memory
@@ -2972,8 +2945,8 @@ extern "C" SEXP mydiscretizeMutual(SEXP RmyDist1, SEXP RmyDist2, SEXP RflatU, SE
   for(int l=0; l<STEPMAX+1; l++){
     if(iterative_cuts[l][0]==-1){
         niterations=l;
-        res[1] = iterative_cuts[l][1]/10000.0;
-        res[0] = iterative_cuts[l][2]/10000.0;
+        res[1] = iterative_cuts[l][1]/100000.0;
+        res[0] = iterative_cuts[l][2]/100000.0;
         break;
     }
     for(int k=0; k<(nbrUi+2); k++){
