@@ -25,10 +25,10 @@
 #' @useDynLib miic
 
 discretizeMutual <- function(myDist1 = NULL, myDist2 = NULL, matrixU=NULL, maxbins=NULL, initbins=NULL, 
-                             cplx="mdl", pxy=1, is_discrete=NULL, plot=T)
+                             cplx="nml", pxy=1, is_discrete=NULL, plot=T)
 {
-  result <- list()
-  #### Check the input arguments
+  #####
+  # Check the input arguments
   if ( !is.vector(myDist1) || !is.vector(myDist2) ) {
     if( (is_discrete[1] && !is.factor(myDist1)) || (is_discrete[2] && !is.factor(myDist2)) )
       stop("Please provide the two samples myDist1 and myDist2 as vectors for continuous variables and factors for discrete variables.")
@@ -52,11 +52,35 @@ discretizeMutual <- function(myDist1 = NULL, myDist2 = NULL, matrixU=NULL, maxbi
     stop("The vector passed as is_discrete argument must have the same length as the number of variables, which is ncol(matrixU)+2.")
   }
 
-  if((initbins > length(myDist1)) || is.null(initbins))
+  if((initbins > length(myDist1)) || is.null(initbins)){
     initbins <- round(length(myDist1)**(1/3) )
+  }
 
   if((maxbins > length(myDist1)) || is.null(maxbins) || (maxbins < initbins)){
     maxbins <- 5*initbins
+  }
+  #####
+
+  # Remove rows for which any input vector is NA
+  NArows = logical(length(myDist1))
+  NArows = NArows | is.na(myDist1)
+  NArows = NArows | is.na(myDist2)
+  if(!is.null(matrixU)){
+    for( k in 1:ncol(matrixU)){
+      NArows = NArows | is.na(matrixU[,k])
+    }
+  }
+
+  if(length(which(NArows))>0){
+    warning(paste0("Found ", length(which(NArows)), " NAs in at least one of the inputs. Running on ",
+            length(myDist1) - length(which(NArows)), " samples."))
+    myDist1 = myDist1[!NArows]
+    myDist2 = myDist2[!NArows]
+    if(!is.null(matrixU)){
+      for( k in 1:ncol(matrixU)){
+        matrixU[,k] = matrixU[NArows,k]
+      }
+    }
   }
 
   ##Get crude MI estimation for bin initialization tuning
@@ -67,9 +91,7 @@ discretizeMutual <- function(myDist1 = NULL, myDist2 = NULL, matrixU=NULL, maxbi
   #  maxbins = initbins*2
   #}
 
-  myDist1[is.na(myDist1)] <- -1
-  myDist2[is.na(myDist2)] <- -1
-
+  # Converting factors to discrete numerical variables
   if (is.null(is_discrete)){
     cnt_vec <- rep(1, nbrU+2)
   } else {
@@ -95,22 +117,24 @@ discretizeMutual <- function(myDist1 = NULL, myDist2 = NULL, matrixU=NULL, maxbi
     cnt_vec <- as.numeric(!is_discrete)
   }
 
+  # Converting matrix to flat vector to pass to cpp
   if (is.null(matrixU)){
     flatU <- c(0)
   } else{
     flatU <- as.vector(as.matrix(matrixU))
   }
 
-
+  # Pass complexity parameter as int
   if (cplx=="mdl"){
     intcplx <- 0
   } else if (cplx=="nml"){
     intcplx <- 1
   } else {
-    warning("cplx parameter not understood, please specify either \'mdl\' or \'nml\'. Running with the default option (mdl).")
-    intcplx <- 0
+    warning("cplx parameter not understood, please specify either \'mdl\' or \'nml\'. Running with the default option (nml).")
+    intcplx <- 1
   }
 
+  # Number of unique values for each input
   nlevels=numeric(nbrU+2)
   for(i in 1:(nbrU+2)){
     if(i==1) nlevels[i] = length(unique(myDist1))
@@ -118,13 +142,14 @@ discretizeMutual <- function(myDist1 = NULL, myDist2 = NULL, matrixU=NULL, maxbi
     else nlevels[i] = length(unique(matrixU[,i-2]))
   }
 
-
+  # Call cpp code
   if (base::requireNamespace("Rcpp", quietly = TRUE)) {
     rescpp <- .Call('mydiscretizeMutual', myDist1, myDist2, flatU, nbrU, maxbins, initbins, intcplx, 
                                          pxy, cnt_vec, nlevels, PACKAGE = "miic")
   }
   niterations = nrow(rescpp$cutpointsmatrix)/maxbins
 
+  result <- list()
   result$niterations = niterations
   for(i in 0:(niterations-1)){
       result[[paste0("iteration",i+1)]] = list()
@@ -155,7 +180,8 @@ discretizeMutual <- function(myDist1 = NULL, myDist2 = NULL, matrixU=NULL, maxbi
   result
 }
 
-#####
+
+################################################################################
 # Plot functions
 
 axisprint <- function(x) sprintf("%6s", x)
@@ -180,7 +206,7 @@ jointplot_hist <- function(myDist1, myDist2, result, title="Joint histogram"){
   cut_points2 = result$cutpoints2
 
   # Custom density matrix for colour filling relative to 2D bin area in the 2d histogram
-  bin_count = table(cut(myDist1, cut_points1), cut(myDist2, cut_points2))
+  bin_count = table(cut(myDist1, cut_points1, include.lowest=T), cut(myDist2, cut_points2, include.lowest=T))
   bin_areas =
      (cut_points1[-1] - cut_points1[1:(length(cut_points1)-1)]) %*%
     t(cut_points2[-1] - cut_points2[1:(length(cut_points2)-1)])
