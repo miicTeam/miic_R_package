@@ -1267,12 +1267,13 @@ int** old_compute_mi_cond_alg1(int** data, int** sortidx,  int* AllLevels, int* 
 //
 
 inline __attribute__((always_inline))
-double* optfun_onerun_kmdl_coarse(int *sortidx_var, int *data, int nbrV, int **factors, int *r, double pxy,
+double* optfun_onerun_kmdl_coarse(int *sortidx_var, int *data, int nbrV, int **factors, int *r,
                                   double sc, int sc_levels1, int sc_levels2, int n, int nnr,int *cut,
                                   int *r_opt, int maxbins, double* looklog, double** looklbc, double* lookH,
                                   double** cterms, int cplx, int flag_allow_unique_bin=1) {
 
     int i,j,k,m;
+    double pxy = 1.0;
 
     int coarse=ceil(1.0*nnr/maxbins);//step coarse graining
     //if (coarse<cbrt(n)) coarse=cbrt(n);
@@ -1673,7 +1674,6 @@ int** compute_Ixy_alg1(int** data, int** sortidx, int* ptr_cnt, int* ptrVarIdx, 
 
     int stop,i,flag;
 
-    double pxy; //herve
     int sc_levels1,sc_levels2; //herve
     //
 
@@ -1718,7 +1718,7 @@ int** compute_Ixy_alg1(int** data, int** sortidx, int* ptr_cnt, int* ptrVarIdx, 
 
             rx = r[0];
             // Optimization run on X.
-            MInew=optfun_onerun_kmdl_coarse(sortidx[ptrVarIdx[0]], data[ptrVarIdx[0]], 2, factors1, rt1, 1, sc,
+            MInew=optfun_onerun_kmdl_coarse(sortidx[ptrVarIdx[0]], data[ptrVarIdx[0]], 2, factors1, rt1, sc,
                                             sc_levels1, sc_levels2, n, AllLevels[ptrVarIdx[0]], cut[0], &(r[0]),
                                             maxbins, looklog, looklbc, lookH, cterms, cplx);
         }
@@ -1744,7 +1744,7 @@ int** compute_Ixy_alg1(int** data, int** sortidx, int* ptr_cnt, int* ptrVarIdx, 
 
             ry = r[1];
             // Optimization run on Y.
-            MInew=optfun_onerun_kmdl_coarse(sortidx[ptrVarIdx[1]], data[ptrVarIdx[1]],2, factors1, rt1, 1, sc,
+            MInew=optfun_onerun_kmdl_coarse(sortidx[ptrVarIdx[1]], data[ptrVarIdx[1]],2, factors1, rt1, sc,
                                             sc_levels1, sc_levels2, n, AllLevels[ptrVarIdx[1]], cut[1], &(r[1]),
                                             maxbins, looklog, looklbc, lookH, cterms, cplx);
         }
@@ -1856,7 +1856,7 @@ int** compute_Ixy_alg1(int** data, int** sortidx, int* ptr_cnt, int* ptrVarIdx, 
 
 int** compute_Ixy_cond_u_new_alg1(int** data, int** sortidx, int* ptr_cnt, int* ptrVarIdx,  int* AllLevels, int nbrUi,
                                   int n, int maxbins, int **cut, int *r, double* c2terms, int init_bin, int lbin,
-                                  double* looklog, double** looklbc, double* lookH, double** sc_look, int cplx, double pxy)
+                                  double* looklog, double** looklbc, double* lookH, double** sc_look, int cplx)
 {
 
     int j,l,ll;
@@ -1979,7 +1979,7 @@ int** compute_Ixy_cond_u_new_alg1(int** data, int** sortidx, int* ptr_cnt, int* 
                     //sc_levels2 = init_bin;
 
                     // Run optimization on U.
-                    MInew=optfun_onerun_kmdl_coarse(sortidx[ptrVarIdx[l+2]], data[ptrVarIdx[l+2]], 2, factors1, rt1, 1,
+                    MInew=optfun_onerun_kmdl_coarse(sortidx[ptrVarIdx[l+2]], data[ptrVarIdx[l+2]], 2, factors1, rt1,
                                                     sc, sc_levels1, sc_levels2, n, AllLevels[ptrVarIdx[l+2]], cut[l+2],
                                                     &(r[l+2]), maxbins, looklog, looklbc, lookH, sc_look,
                                                     cplx, flag_allow_unique_bin); // 2 factors
@@ -2041,7 +2041,7 @@ int** compute_Ixy_cond_u_new_alg1(int** data, int** sortidx, int* ptr_cnt, int* 
             sc_levels2 = sc_levels_x; //herve
             //sc_levels2 = init_bin;
             // Run optimization on X.
-            res=optfun_onerun_kmdl_coarse(sortidx[ptrVarIdx[0]], data[ptrVarIdx[0]], 2, factors1, rt1, 1, sc,
+            res=optfun_onerun_kmdl_coarse(sortidx[ptrVarIdx[0]], data[ptrVarIdx[0]], 2, factors1, rt1, sc,
                                           sc_levels1, sc_levels2, n, AllLevels[ptrVarIdx[0]], cut[0], &(r[0]),
                                           maxbins, looklog, looklbc, lookH, sc_look, cplx,
                                           flag_allow_unique_bin); // 2 factors
@@ -2081,7 +2081,7 @@ int** compute_Ixy_cond_u_new_alg1(int** data, int** sortidx, int* ptr_cnt, int* 
                     //sc_levels2 = init_bin;
                     sc = 0.5*(sc_levels_x-1)*ruiyx[1];
                     // Run optimization on U.
-                    MInew=optfun_onerun_kmdl_coarse(sortidx[ptrVarIdx[l+2]], data[ptrVarIdx[l+2]], 2, factors1, rt1, 1, sc,
+                    MInew=optfun_onerun_kmdl_coarse(sortidx[ptrVarIdx[l+2]], data[ptrVarIdx[l+2]], 2, factors1, rt1, sc,
                                                     sc_levels1, sc_levels2, n, AllLevels[ptrVarIdx[l+2]], cut[l+2], &(r[l+2]),
                                                     maxbins, looklog, looklbc, lookH, sc_look, cplx,
                                                     flag_allow_unique_bin); // 2 factors
@@ -2143,7 +2143,7 @@ int** compute_Ixy_cond_u_new_alg1(int** data, int** sortidx, int* ptr_cnt, int* 
             sc_levels2 = sc_levels_y; //herve
             //sc_levels2 = init_bin;
             // Run optimization on Y.
-            res=optfun_onerun_kmdl_coarse(sortidx[ptrVarIdx[1]], data[ptrVarIdx[1]], 2, factors1, rt1, 1, sc,
+            res=optfun_onerun_kmdl_coarse(sortidx[ptrVarIdx[1]], data[ptrVarIdx[1]], 2, factors1, rt1, sc,
                                           sc_levels1, sc_levels2, n, AllLevels[ptrVarIdx[1]], cut[1], &(r[1]),
                                           maxbins, looklog, looklbc, lookH, sc_look, cplx,
                                           flag_allow_unique_bin); // 2 factors
@@ -2181,7 +2181,7 @@ int** compute_Ixy_cond_u_new_alg1(int** data, int** sortidx, int* ptr_cnt, int* 
                     sc = 0.5*(sc_levels1-1);
 
                     //optimization run on ptrVarIdx[l+2]
-                    res=optfun_onerun_kmdl_coarse(sortidx[ptrVarIdx[l+2]], data[ptrVarIdx[l+2]], 2, factors1, rt1, 1,
+                    res=optfun_onerun_kmdl_coarse(sortidx[ptrVarIdx[l+2]], data[ptrVarIdx[l+2]], 2, factors1, rt1,
                                                   sc, sc_levels1, sc_levels2, n, AllLevels[ptrVarIdx[l+2]], cut[l+2],
                                                   &(r[l+2]), maxbins, looklog, looklbc, lookH, sc_look,
                                                   cplx, flag_allow_unique_bin);
@@ -2245,7 +2245,7 @@ int** compute_Ixy_cond_u_new_alg1(int** data, int** sortidx, int* ptr_cnt, int* 
                     sc = 0.5*(sc_levels1-1);
 
                     //optimization run on ptrVarIdx[l+2]
-                    res=optfun_onerun_kmdl_coarse(sortidx[ptrVarIdx[l+2]], data[ptrVarIdx[l+2]], 2, factors1, rt1, 1, sc,
+                    res=optfun_onerun_kmdl_coarse(sortidx[ptrVarIdx[l+2]], data[ptrVarIdx[l+2]], 2, factors1, rt1, sc,
                                                   sc_levels1, sc_levels2, n, AllLevels[ptrVarIdx[l+2]], cut[l+2], &(r[l+2]),
                                                   maxbins, looklog, looklbc, lookH, sc_look, cplx,
                                                   flag_allow_unique_bin);
@@ -2386,7 +2386,7 @@ int** compute_Ixy_cond_u_new_alg1(int** data, int** sortidx, int* ptr_cnt, int* 
 
 int** compute_mi_cond_alg1(int** data, double** dataDouble, int** sortidx,  int* AllLevels, int* ptr_cnt, int* ptrVarIdx,
                            int nbrUi, int n, int maxbins, double* c2terms, int init_bin, double* looklog, double** looklbc,
-                           double* lookH, double** sc_look, int cplx, double pxy)
+                           double* lookH, double** sc_look, int cplx)
 {
 
     //int** iterative_cuts = (int **)calloc(STEPMAX, sizeof(int*));
@@ -2529,14 +2529,8 @@ int** compute_mi_cond_alg1(int** data, double** dataDouble, int** sortidx,  int*
         }
 
 
-        //int **iterative_cuts = compute_Ixy_cond_u_alg1(data, sortidx, ptr_cnt, ptrVarIdx, AllLevels, nbrUi, n,
-        //                                               maxbins, cut, r, c2terms, init_bin, looklog, looklbc, lookH, sc_look, cplx, pxy);
         int **iterative_cuts = compute_Ixy_cond_u_new_alg1(data, sortidx, ptr_cnt, ptrVarIdx, AllLevels, nbrUi, n, maxbins, cut, r, c2terms,
-                                                           init_bin, lbin,looklog, looklbc, lookH, sc_look, cplx, pxy);
-        //int **iterative_cuts = compute_Ixy_cond_u_new_2_alg1(data, sortidx, ptr_cnt, ptrVarIdx, AllLevels, nbrUi, n,
-        //                                                     maxbins, cut, r, c2terms, init_bin, lbin,looklog, looklbc, lookH, sc_look, cplx, pxy);
-        //int **iterative_cuts = compute_Ixy_cond_u_new_new_alg1(data, sortidx, ptr_cnt, ptrVarIdx, AllLevels, nbrUi, n,
-        //                                                       maxbins, cut, r, c2terms, init_bin, lbin,looklog, looklbc, lookH, sc_look, cplx, pxy);
+                                                           init_bin, lbin,looklog, looklbc, lookH, sc_look, cplx);
         //int **iterative_cuts = old_compute_mi_cond_alg1(data, sortidx, AllLevels, ptr_cnt, ptrVarIdx, nbrUi, n,
         //                                                maxbins, c2terms, init_bin, looklog, looklbc, lookH, cplx);
 
@@ -2661,7 +2655,7 @@ bool transformToFactorsContinuousIdx(int** dataNumeric, int** dataNumericIdx, in
 }
 
 extern "C" SEXP mydiscretizeMutual(SEXP RmyDist1, SEXP RmyDist2, SEXP RflatU, SEXP RnbrU, SEXP RmaxBins,
-                                   SEXP Rinitbin, SEXP Rcplx, SEXP Rpxy, SEXP Rcnt_vec, SEXP Rnlevels){
+                                   SEXP Rinitbin, SEXP Rcplx, SEXP Rcnt_vec, SEXP Rnlevels){
 
     std::vector<double> myDist1Vec = Rcpp::as< vector <double> >(RmyDist1);
     std::vector<double> myDist2Vec = Rcpp::as< vector <double> >(RmyDist2);
@@ -2671,7 +2665,6 @@ extern "C" SEXP mydiscretizeMutual(SEXP RmyDist1, SEXP RmyDist2, SEXP RflatU, SE
     int init_bin = Rcpp::as<int> (Rinitbin);
     int cplx = Rcpp::as<int> (Rcplx);
     int nbrU = Rcpp::as<int> (RnbrU);
-    double pxy = Rcpp::as<double> (Rpxy);
     int n = myDist1Vec.size();
 
     double* myDist1 = &myDist1Vec[0];
@@ -2787,7 +2780,7 @@ extern "C" SEXP mydiscretizeMutual(SEXP RmyDist1, SEXP RmyDist2, SEXP RflatU, SE
 
     int nbrRetValues = 3;
 
-    int** dataNumeric_red ;//prograssive data rank with repetition for same values
+    int** dataNumeric_red ;//progressive data rank with repetition for same values
     int** dataNumericIdx_red ;//index of sorted data
     int* AllLevels_red ;//number of levels
     int* cnt_red ;//bool continuous or not
@@ -2934,7 +2927,7 @@ extern "C" SEXP mydiscretizeMutual(SEXP RmyDist1, SEXP RmyDist2, SEXP RflatU, SE
 
   int** iterative_cuts = compute_mi_cond_alg1(dataNumeric_red, data, dataNumericIdx_red, AllLevels_red,
                                               cnt_red, posArray_red, nbrUi, n, maxbins, c2terms, init_bin,
-                                              looklog, looklbc, lookH, sc_look, cplx, pxy);
+                                              looklog, looklbc, lookH, sc_look, cplx);
 
   int niterations=0;
   double* res = new double[2];
