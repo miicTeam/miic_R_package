@@ -8,13 +8,33 @@ discretizeMDL(myDist = NULL, maxbins = 20)
 }
 \arguments{
 \item{myDist}{[a vector]
-A vector that contains the observational data.}
+A vector that contains the distribution to be discretized.}
 
-\item{maxbins}{[an int] The maximum number of bins to test for.}
+\item{maxbins}{[an int] 
+The maximum number of bins allowed by the algorithm.}
 }
 \value{
-A vector containing the cutpoints of the best discretization according to the MDL principle.
+A list containing the cutpoints of the best discretization and the dynamic programmic table
+containing the maximised score at each step.
 }
 \description{
-This function discretizes a distribution with MDL.
+This function performs minimum description length (MDL)-optimal histogram density estimation 
+as described in Kontkanen and Myllymäki (2007) and returns the cutpoints found to give the best model
+according to the MDL principle.
+}
+\examples{
+library(miic)
+
+# Bimodal normal distribution
+N=300
+modes = sample(1:2, size=N, replace=T)
+myDist = as.numeric(modes==1) * rnorm(N,mean=0,sd=1) + as.numeric(modes==2) * rnorm(N,mean=5,sd=2)
+MDL_disc = discretizeMDL(myDist)
+hist(myDist, breaks=MDL_disc$cutpoints)
+
+N=2000
+modes = sample(1:2, size=N, replace=T)
+myDist = as.numeric(modes==1) * rnorm(N,mean=0,sd=1) + as.numeric(modes==2) * rnorm(N,mean=5,sd=2)
+MDL_disc = discretizeMDL(myDist)
+hist(myDist, breaks=MDL_disc$cutpoints)
 }

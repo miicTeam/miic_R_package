@@ -9,14 +9,14 @@
 
 /* .Call calls */
 extern SEXP mydiscretizeMDL(SEXP, SEXP);
-extern SEXP mydiscretizeMutual(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
+extern SEXP mydiscretizeMutual(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 extern SEXP evaluateEffn(SEXP, SEXP, SEXP);
 extern SEXP orientationProbability(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 extern SEXP skeleton(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 
 static const R_CallMethodDef CallEntries[] = {
     {"mydiscretizeMDL",        (DL_FUNC) &mydiscretizeMDL,         2},
-    {"mydiscretizeMutual",     (DL_FUNC) &mydiscretizeMutual,      10},
+    {"mydiscretizeMutual",     (DL_FUNC) &mydiscretizeMutual,      9},
     {"evaluateEffn",           (DL_FUNC) &evaluateEffn,            3},
     {"orientationProbability", (DL_FUNC) &orientationProbability, 13},
     {"skeleton",               (DL_FUNC) &skeleton,               16},

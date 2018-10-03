@@ -10,6 +10,7 @@ Authors@R: c(person("Nadir", "Sella", role = c("aut","cre"), email = "nadir.sell
            person("Hervé", "Isambert", role = c("aut"), email = "Herve.Isambert@curie.fr"))
 Maintainer: Nadir Sella <nadir.sella@curie.fr>
 Imports: MASS, igraph, bnlearn, ppcor, stats, Rcpp
+Suggests: ggplot2, gridExrta
 License: GPL (>= 2)
 SystemRequirements: C++11
 NeedsCompilation: yes
