@@ -1,16 +1,16 @@
 #' Discretize two distributions with or without conditioning variables
 #' @description This function chooses cutpoints in the input distributions by maximizing the mutual
-#' information minus a complexity cost (computed as BIC or with normalized maximum likelihood). The 
-#' (conditional) mutual information computed on the discretized distributions effectively approaches 
+#' information minus a complexity cost (computed as BIC or with normalized maximum likelihood). The
+#' (conditional) mutual information computed on the discretized distributions effectively approaches
 #' the mutual information computed on the original continuous variables.
 #'
 #' @details For a pair of variables \eqn{X} and \eqn{Y}, the algorithm will in turn choose cutpoints on \eqn{X}
-#' then on \eqn{Y}, maximizing \eqn{I(X_{d};Y_{d}) - cplx(X_{d};Y_{d})} #' where \eqn{cplx(X_{d};Y_{d})} is the 
+#' then on \eqn{Y}, maximizing \eqn{I(X_{d};Y_{d}) - cplx(X_{d};Y_{d})} #' where \eqn{cplx(X_{d};Y_{d})} is the
 #' complexity cost of the considered discretizations of \eqn{X} and \eqn{Y}.
-#' When the value \eqn{I(X_{d};Y_{d})} is stable between two iterations the discretization scheme of 
+#' When the value \eqn{I(X_{d};Y_{d})} is stable between two iterations the discretization scheme of
 #' \eqn{X_{d}} and \eqn{Y_{d}} is returned as well as \eqn{I(X_{d};Y_{d})} and \eqn{I(X_{d};Y_{d})-cplx(X_{d};Y_{d})}.
-#' 
-#' With a conditioning variable \eqn{U}, the discretization scheme maximizes each term of the sum 
+#'
+#' With a conditioning variable \eqn{U}, the discretization scheme maximizes each term of the sum
 #' \eqn{I(X;Y|U) \sim 0.5*(I(X_{d};Y_{d},U_{d}) - I(X_{d};U_{d}) + I(Y_{d};X_{d},U_{d}) - I(Y_{d};U_{d}))}.
 #'
 #' Discrete variables can be passed as factors will be used "as is" to maximize each term.
@@ -21,25 +21,25 @@
 #' A vector that contains the observational data of the second variable.
 #' @param matrixU [a numeric matrix]
 #' The matrix containing the values of the conditioning variables with as many columns as variables.
-#' @param maxbins [an int] 
+#' @param maxbins [an int]
 #' The maximum number of bins desired in the discretization.
 #' @param initbins [an int]
 #' The number of bins for the initial discretization.
 #' @param cplx [a string]
-#' The complexity used in the dynamic programming. Either "mdl" for Minimum description Length or 
-#' "nml" for Normalized Maximum Likelihood, which is less costly in the finite sample case and 
+#' The complexity used in the dynamic programming. Either "mdl" for Minimum description Length or
+#' "nml" for Normalized Maximum Likelihood, which is less costly in the finite sample case and
 #' will allow more bins than mdl.
 #' @param is_discrete [a vector of booleans]
-#' Specify if each distribution is to be treated as discrete (TRUE) or continuous (FALSE) in a 
-#' logical vector of length ncol(matrixU)+2, in the order [myDist1, myDist2, U1, U2...]. By 
+#' Specify if each distribution is to be treated as discrete (TRUE) or continuous (FALSE) in a
+#' logical vector of length ncol(matrixU)+2, in the order [myDist1, myDist2, U1, U2...]. By
 #' default all variables are treated as continuous.
-#' @param is_discrete [a boolean]
-#' Specify if the XY joint space with discretization scheme is to be plotted or not (requires 
+#' @param plot [a boolean]
+#' Specify if the XY joint space with discretization scheme is to be plotted or not (requires
 #' the packages ggplot2 and gridExtra).
 #'
 #' @return A list that contains :
 #' \itemize{
-#' \item{two vectors containing the cutpoints for each variable : \emph{cutpoints1} 
+#' \item{two vectors containing the cutpoints for each variable : \emph{cutpoints1}
 #' corresponds to /emph{myDist1}, /emph{cutpoints2} corresponds to /emph{myDist2}.}
 #' \item{\emph{niterations} is the number of iterations performed before convergence of the (C)MI estimation.}
 #' \item{\emph{iterationN}, lists contatining the cutpoint vectors for each iteration.}
@@ -47,11 +47,12 @@
 #' \item{if $emph{plot}==T, a plot object (requires ggplot2 and gridExtra).}
 #' @export
 #' @useDynLib miic
-#' 
+#'
 #' @examples
 #' library(miic)
 #'
-#' N <- 1000 
+#'\dontrun{
+#' N <- 1000
 #' # Dependence, conditional independence
 #' Z <- runif(N)
 #' X <- Z*2+rnorm(N,sd=0.2)
@@ -60,7 +61,7 @@
 #' cat("I(X;Y) =",res$info)
 #' res <- discretizeMutual(X, Y, matrixU=matrix(Z, ncol=1), cplx="nml", plot=T)
 #' cat("I(X;Y|Z) =",res$info)
-#' 
+#'
 #' # Conditional independence with categorical conditioning variable
 #' Z <- sample(1:3, N, replace=T)
 #' X <- -as.numeric(Z==1) + as.numeric(Z==2) + 0.2*rnorm(N)
@@ -79,9 +80,10 @@
 #' cat("I(X;Y) =",res$info)
 #' res <- discretizeMutual(X, Y, matrixU = matrix(Z, ncol=1), cplx="nml", plot=T)
 #' cat("I(X;Y|Z) =",res$info)
+#'}
 
 
-discretizeMutual <- function(myDist1 = NULL, myDist2 = NULL, matrixU=NULL, maxbins=NULL, initbins=NULL, 
+discretizeMutual <- function(myDist1 = NULL, myDist2 = NULL, matrixU=NULL, maxbins=NULL, initbins=NULL,
                              cplx="nml", is_discrete=NULL, plot=T)
 {
     #####
@@ -141,7 +143,7 @@ discretizeMutual <- function(myDist1 = NULL, myDist2 = NULL, matrixU=NULL, maxbi
     }
 
     ##Get crude MI estimation for bin initialization tuning
-    #ef_MI = infotheo::mutinformation(infotheo::discretize(myDist1,nbins = initbins), 
+    #ef_MI = infotheo::mutinformation(infotheo::discretize(myDist1,nbins = initbins),
     #                                 infotheo::discretize(myDist2,nbins = initbins))
     #strength <- ef_MI / log(initbins) # 1 is maximum strength, 0 is independence
     #if(strength<0.05){
@@ -202,7 +204,7 @@ discretizeMutual <- function(myDist1 = NULL, myDist2 = NULL, matrixU=NULL, maxbi
 
     # Call cpp code
     if (base::requireNamespace("Rcpp", quietly = TRUE)) {
-        rescpp <- .Call('mydiscretizeMutual', myDist1, myDist2, flatU, nbrU, maxbins, initbins, intcplx, 
+        rescpp <- .Call('mydiscretizeMutual', myDist1, myDist2, flatU, nbrU, maxbins, initbins, intcplx,
                         cnt_vec, nlevels, PACKAGE = "miic")
     }
     niterations = nrow(rescpp$cutpointsmatrix)/maxbins
@@ -283,8 +285,8 @@ jointplot_hist <- function(myDist1, myDist2, result, title="Joint histogram"){
     }
     fill_density_flat[fill_density_flat$density==0, "density"] = NA
 
-    hist2d = ggplot(fill_density_flat) + 
-        geom_rect(aes(xmin=xstart, xmax=xend, ymin=ystart, ymax=yend, fill=density), na.rm = T, show.legend = F) + 
+    hist2d = ggplot(fill_density_flat) +
+        geom_rect(aes(xmin=xstart, xmax=xend, ymin=ystart, ymax=yend, fill=density), na.rm = T, show.legend = F) +
         scale_fill_gradient(low = "#e1e3f2", high = "#0013a3", position = "left", na.value = "white", limits=c(0,max(fill_density_flat$density))) +
         geom_vline(xintercept=cut_points1, linetype="dashed", color="grey") +
         geom_hline(yintercept=cut_points2, linetype="dashed", color="grey") +

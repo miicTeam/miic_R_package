@@ -2566,7 +2566,7 @@ int** compute_mi_cond_alg1(int** data, double** dataDouble, int** sortidx,  int*
 //####################################################################################################
 //# Dealing with input variables
 
-bool transformToFactorsContinuous(double** data, int** dataNumeric, int i, int n){
+void transformToFactorsContinuous(double** data, int** dataNumeric, int i, int n){
 
     std::multimap<double,int> myMap;
 
@@ -2610,7 +2610,7 @@ bool transformToFactorsContinuous(double** data, int** dataNumeric, int i, int n
 /*
  * Transforms the string into factors
  */
-bool transformToFactors(double** data, int** dataNumeric, int n, int i){
+void transformToFactors(double** data, int** dataNumeric, int n, int i){
      // create a dictionary to store the factors of the strings
      map<double,int> myMap;
 
@@ -2633,7 +2633,7 @@ bool transformToFactors(double** data, int** dataNumeric, int n, int i){
 
 }
 
-bool transformToFactorsContinuousIdx(int** dataNumeric, int** dataNumericIdx, int n, int i){
+void transformToFactorsContinuousIdx(int** dataNumeric, int** dataNumericIdx, int n, int i){
 
     map<int,int> myMap;
 
