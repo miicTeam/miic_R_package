@@ -587,7 +587,7 @@ void jointfactors_uyx(int **datafactors, int* ptrVar, int n, int Mui, int *r, in
 //OUTPUT
 //return joint datafactors ui , with number of levels rui
 //entropy term Hui
-void jointfactors_u(int **datafactors,int *ptrIdx,int n, int Mui, int *r, int *ufactors,int *ru,double *Hu)
+void jointfactors_u(int **datafactors,int *ptrIdx,int n, int Mui, int *r, int *ufactors,int *ru)
 {
 
 		//from cuts to joint datafactors 
@@ -600,7 +600,6 @@ void jointfactors_u(int **datafactors,int *ptrIdx,int n, int Mui, int *r, int *u
 				ufactors[jj]=datafactors[ptrIdx[0]][jj];
 			}
 			*ru=r[ptrIdx[0]];
-			*Hu=0; //obsolete
 			return;
 		}
 		/////////////////
@@ -717,7 +716,6 @@ void jointfactors_u(int **datafactors,int *ptrIdx,int n, int Mui, int *r, int *u
 		//joint datafactors without gaps
 		//compute term constant H(y,Ui) and H(Ui)
 	
-		*Hu=0;//useless
 		
 		#if DEBUG
 			printf("Hu=%lf\n",*Hu);

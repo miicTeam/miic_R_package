@@ -29,6 +29,9 @@
 #' The complexity used in the dynamic programming. Either "mdl" for Minimum description Length or
 #' "nml" for Normalized Maximum Likelihood, which is less costly in the finite sample case and
 #' will allow more bins than mdl.
+#' @param Neff [an int]
+#' The number of effective samples. When there is significant autocorrelation in the samples you may
+#' want to specify a number of effective samples that is lower than the number of points in the distribution.
 #' @param is_discrete [a vector of booleans]
 #' Specify if each distribution is to be treated as discrete (TRUE) or continuous (FALSE) in a
 #' logical vector of length ncol(matrixU)+2, in the order [myDist1, myDist2, U1, U2...]. By
@@ -84,8 +87,10 @@
 
 
 discretizeMutual <- function(myDist1 = NULL, myDist2 = NULL, matrixU=NULL, maxbins=NULL, initbins=NULL,
-                             cplx="nml", is_discrete=NULL, plot=T)
+                             cplx="nml", effN = NULL, is_discrete=NULL, plot=T)
 {
+    nameDist1 = deparse(substitute(myDist1))
+    nameDist2 = deparse(substitute(myDist2))
     #####
     # Check the input arguments
     if ( !is.vector(myDist1) || !is.vector(myDist2) ) {
@@ -128,17 +133,19 @@ discretizeMutual <- function(myDist1 = NULL, myDist2 = NULL, matrixU=NULL, maxbi
         for( k in 1:ncol(matrixU)){
             NArows = NArows | is.na(matrixU[,k])
         }
+        matrixU_NA = matrix(nrow=length(which(!NArows)), ncol=ncol(matrixU))
     }
 
     if(length(which(NArows))>0){
         warning(paste0("Found ", length(which(NArows)), " NAs in at least one of the inputs. Running on ",
-                       length(myDist1) - length(which(NArows)), " samples."))
+                       length(which(!NArows)), " samples."))
         myDist1 = myDist1[!NArows]
         myDist2 = myDist2[!NArows]
-        if(!is.null(matrixU)){
-            for( k in 1:ncol(matrixU)){
-                matrixU[,k] = matrixU[NArows,k]
-            }
+    }
+
+    if(!is.null(matrixU)){
+        for(k in 1:ncol(matrixU)){
+            matrixU_NA[,k] = matrixU[!NArows,k]
         }
     }
 
@@ -168,9 +175,9 @@ discretizeMutual <- function(myDist1 = NULL, myDist2 = NULL, matrixU=NULL, maxbi
         if(nbrU>0){
             for(l in 0:(nbrU-1)){
                 if(is_discrete[l+3]){
-                    matrixU[,(l+1)] = as.factor(matrixU[,(l+1)])
-                    levels(matrixU[,(l+1)]) = 1:nlevels(matrixU[,(l+1)])
-                    matrixU[,(l+1)] = as.numeric(matrixU[,(l+1)])
+                    matrixU_NA[,(l+1)] = as.factor(matrixU_NA[,(l+1)])
+                    levels(matrixU_NA[,(l+1)]) = 1:nlevels(matrixU_NA[,(l+1)])
+                    matrixU_NA[,(l+1)] = as.numeric(matrixU_NA[,(l+1)])
                 }
             }
         }
@@ -181,7 +188,8 @@ discretizeMutual <- function(myDist1 = NULL, myDist2 = NULL, matrixU=NULL, maxbi
     if (is.null(matrixU)){
         flatU <- c(0)
     } else{
-        flatU <- as.vector(as.matrix(matrixU))
+        class(matrixU_NA) = "numeric"
+        flatU <- as.vector(matrixU_NA)
     }
 
     # Pass complexity parameter as int
@@ -194,18 +202,22 @@ discretizeMutual <- function(myDist1 = NULL, myDist2 = NULL, matrixU=NULL, maxbi
         intcplx <- 1
     }
 
+    if(is.null(effN)){
+        effN = length(myDist1)
+    }
+
     # Number of unique values for each input
     nlevels=numeric(nbrU+2)
     for(i in 1:(nbrU+2)){
         if(i==1) nlevels[i] = length(unique(myDist1))
         else if(i==2) nlevels[i] = length(unique(myDist2))
-        else nlevels[i] = length(unique(matrixU[,i-2]))
+        else nlevels[i] = length(unique(matrixU_NA[,i-2]))
     }
 
     # Call cpp code
     if (base::requireNamespace("Rcpp", quietly = TRUE)) {
         rescpp <- .Call('mydiscretizeMutual', myDist1, myDist2, flatU, nbrU, maxbins, initbins, intcplx,
-                        cnt_vec, nlevels, PACKAGE = "miic")
+                        cnt_vec, nlevels, effN, PACKAGE = "miic")
     }
     niterations = nrow(rescpp$cutpointsmatrix)/maxbins
 
@@ -231,9 +243,9 @@ discretizeMutual <- function(myDist1 = NULL, myDist2 = NULL, matrixU=NULL, maxbi
 
     if(plot) {
         if(require(ggplot2) & require(gridExtra)){
-            jointplot = jointplot_hist(myDist1, myDist2, result)
+            jointplot = jointplot_hist(myDist1, myDist2, result, nameDist1, nameDist2)
             result$plot = jointplot
-            plot(jointplot)
+            #plot(jointplot)
         }
         else{
             warning("Plotting requires ggplot2 and gridExtra.")
@@ -262,7 +274,7 @@ theme_side_hist <- function () {
 }
 
 
-jointplot_hist <- function(myDist1, myDist2, result, title="Joint histogram"){
+jointplot_hist <- function(myDist1, myDist2, result, nameDist1, nameDist2, title="Joint histogram"){
 
     cut_points1 = result$cutpoints1
     cut_points2 = result$cutpoints2
@@ -275,7 +287,7 @@ jointplot_hist <- function(myDist1, myDist2, result, title="Joint histogram"){
     fill_density = bin_count / bin_areas
     fill_density = fill_density / sum(fill_density)
     fill_density_flat = data.frame(xstart=numeric(), xend=numeric(),
-                                                                 ystart=numeric(), yend=numeric(), density=numeric())
+                                   ystart=numeric(), yend=numeric(), density=numeric())
     for(j in 1:(ncol(fill_density))) {
         for(i in 1:(nrow(fill_density))) {
             fill_density_flat[(j-1)*nrow(fill_density)+i,] = c(cut_points1[i], cut_points1[i+1],
@@ -291,7 +303,7 @@ jointplot_hist <- function(myDist1, myDist2, result, title="Joint histogram"){
         geom_vline(xintercept=cut_points1, linetype="dashed", color="grey") +
         geom_hline(yintercept=cut_points2, linetype="dashed", color="grey") +
         geom_point(data = data.frame(myDist1, myDist2), aes(x=myDist1, y=myDist2), shape=21, alpha=.7, fill="#ffef77", size=2) +
-        xlab("X") + ylab("Y") +
+        xlab(nameDist1) + ylab(nameDist2) +
         theme_classic()
 
     g = ggplot_build(hist2d)
@@ -330,5 +342,5 @@ jointplot_hist <- function(myDist1, myDist2, result, title="Joint histogram"){
 
 
     return(gridExtra::grid.arrange(side_hist_top, empty, hist2d, side_hist_bot, ncol=2, nrow=2,
-                 widths=c(4.2, 1), heights=c(1, 4.2), bottom=title))
+                 widths=c(4.2, 1), heights=c(1, 4.2)))#, bottom=title))
 }

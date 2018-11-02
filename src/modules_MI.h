@@ -25,7 +25,7 @@ void jointfactors_uiyx(int **datafactors,int dui, int n, int Mui, int *r,int **,
 
 void jointfactors_uyx(int **datafactors,int* ptrVar, int n, int Mui, int *r, int **uyxfactors,int *ruyx);
 
-void jointfactors_u(int **datafactors,int *ptrIdx,int n, int Mui, int *r, int *ufactors,int *ru,double *Hu);
+void jointfactors_u(int **datafactors,int *ptrIdx,int n, int Mui, int *r, int *ufactors,int *ru);
 
 
 ////////////////////////////////////////////////////////////////////////////////
