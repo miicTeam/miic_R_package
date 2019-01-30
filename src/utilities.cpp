@@ -1883,7 +1883,6 @@ void setEnvironment(Environment& environment){
 	environment.atLeastTwoGaussian = 0;
 	environment.atLeastTwoDiscrete = 0;
 	environment.atLeastOneContinuous = 0;
-	environment.testDistribution = true;
 
 	// environment.globalListOfStruct.clear();
 	// environment.vstructWithContradiction.clear();
@@ -2353,11 +2352,6 @@ int printProgress (double percentage, double startTime, string outdir, int prg_n
 		sremaining_time << int(remaining_time)%60 << "s";
 	    printf ("\r\t %3d%% [%.*s%*s] est. remaining time : %10s", val, lpad, pbstr, rpad, "", sremaining_time.str().c_str());
 	    fflush (stdout);
-		string slash = getSlash();
-		ofstream progressFile;
-		progressFile.open(outdir + slash + "progress_percent.txt");
-		progressFile << val << flush;
-		progressFile.close();
 	}
 
 	return val;

@@ -469,7 +469,9 @@ vector< vector <string> > confidenceCut(Environment& environment){
 	delete[] lookup2;
 
 	if(environment.sampleWeightsVec[0]==-1){
-		delete[] safe_weights;
+		if(environment.effN != environment.numSamples){
+			delete[] safe_weights;
+		}
 	}
 	delete[] nodes_toShf;
 
