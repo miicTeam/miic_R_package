@@ -1883,6 +1883,7 @@ void setEnvironment(Environment& environment){
 	environment.atLeastTwoGaussian = 0;
 	environment.atLeastTwoDiscrete = 0;
 	environment.atLeastOneContinuous = 0;
+	environment.testDistribution = true;
 
 	// environment.globalListOfStruct.clear();
 	// environment.vstructWithContradiction.clear();

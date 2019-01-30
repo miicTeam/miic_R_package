@@ -23,8 +23,8 @@ using namespace Rcpp;
 
 
 extern "C" SEXP skeleton(SEXP inputDataR, SEXP typeOfDataR, SEXP cntVarR, SEXP numNodesR, SEXP nThreadsR, SEXP blackBoxR, SEXP effNR, SEXP cplxR,
-						 SEXP etaR, SEXP isLatentR, SEXP isTplReuseR, SEXP isK23R, SEXP isDegeneracyR, SEXP isNoInitEtaR,
-						 SEXP confidenceShuffleR, SEXP confidenceThresholdR, SEXP sampleWeightsR, SEXP verboseR)
+						 SEXP etaR, SEXP isLatentR, SEXP isTplReuseR, SEXP isK23R, SEXP isDegeneracyR, SEXP isNoInitEtaR, SEXP confidenceShuffleR,
+						 SEXP confidenceThresholdR, SEXP sampleWeightsR, SEXP consistentR, SEXP testDistR, SEXP verboseR)
 {
 
 	vector< vector <double> > outScore;
@@ -40,6 +40,8 @@ extern "C" SEXP skeleton(SEXP inputDataR, SEXP typeOfDataR, SEXP cntVarR, SEXP n
 
 	environment.numNodes = Rcpp::as<int> (numNodesR);
 	environment.nThreads = Rcpp::as<int> (nThreadsR);
+	environment.consistentPhase = Rcpp::as<bool> (consistentR);
+	environment.testDistribution = Rcpp::as<bool> (testDistR);
 
 	environment.vectorData = Rcpp::as< vector <string> > (inputDataR);
 
@@ -144,8 +146,11 @@ extern "C" SEXP skeleton(SEXP inputDataR, SEXP typeOfDataR, SEXP cntVarR, SEXP n
 	}
 
 
-	if( environment.numNoMore > 0)
+	if( environment.numNoMore > 0){
+		cout << "Saving results for orientation..." ;
 		edgesMatrix = saveEdgesListAsTable1(environment);
+		cout << " done." << endl;
+	}
 
 
 	vector< vector <string> >  adjMatrix;

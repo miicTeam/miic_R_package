@@ -9,7 +9,7 @@ miic(inputData, categoryOrder = NULL, trueEdges = NULL,
   orientation = TRUE, propagation = TRUE, latent = FALSE,
   neff = -1, edges = NULL, confidenceShuffle = 0,
   confidenceThreshold = 0, confList = NULL, sampleWeights = NULL,
-  verbose = FALSE)
+  testMAR = TRUE, consistent = FALSE, verbose = FALSE)
 }
 \arguments{
 \item{inputData}{[a data frame]
@@ -97,6 +97,16 @@ be performed again, and the values in this data frame are used instead.}
 
 \item{sampleWeights}{[a numeric vector]
 An optional vector containing the weight of each observation.}
+
+\item{testMAR}{[a boolean value]
+If set to TRUE, distributions with missing values will be tested with Kullback-Leibler 
+divergence : conditioning variables for the given link \eqn{X\arrow Y}\eqn{Z} will be 
+considered only if the non-missing data distribution \eqn{KL(P(X,Y) | P(X,Y)_{!NA})} with
+\eqn{P(X,Y)_{!NA}} is the joint distribution of \eqn{X} and \eqn{Y} on samples which are not
+missing on Z. This is a way to ensure that data are missing at random for the considered
+interaction and to avoid selection bias. Set to TRUE by default}
+
+\item{consistent}{[a boolean value] If TRUE, runs the consistent version.}
 
 \item{verbose}{[a boolean value] If TRUE, debugging output is printed.}
 }

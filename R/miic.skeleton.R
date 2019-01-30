@@ -1,7 +1,8 @@
 
 miic.skeleton <- function(inputData = NULL, cntVar = NULL, blackBox = NULL, stateOrder = NULL, nThreads= nThreads, 
                           effN = -1, cplx = c("nml", "mdl"), eta = 1, latent = FALSE, confidenceShuffle = 0,
-                          confidenceThreshold = 0, verbose = FALSE, typeOfData = NULL, sampleWeights = NULL)
+                          confidenceThreshold = 0, verbose = FALSE, typeOfData = NULL, sampleWeights = NULL,
+                          testMAR = TRUE, consistent = FALSE)
 {
 
   isTplReuse = TRUE
@@ -39,7 +40,8 @@ miic.skeleton <- function(inputData = NULL, cntVar = NULL, blackBox = NULL, stat
   cntVar = as.numeric(cntVar)
   if (base::requireNamespace("Rcpp", quietly = TRUE)) {
       res <- .Call('skeleton', inData, typeOfData, cntVar, numNodes, nThreads, bB, effN, cplx, eta, latent, isTplReuse,
-               isK23, isDegeneracy, isNoInitEta, confidenceShuffle, confidenceThreshold, sampleWeights, verbose, PACKAGE = "miic")
+               isK23, isDegeneracy, isNoInitEta, confidenceShuffle, confidenceThreshold, sampleWeights, consistent, 
+               testMAR, verbose, PACKAGE = "miic")
   }
 
   # if(shuffle == 0) {

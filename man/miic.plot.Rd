@@ -16,7 +16,7 @@ The column used to plot the strength of the edges. Default: pcor.}
 
 \item{igraphLayout}{[an igraph layout object]
 When set it is used to plot the network. See the igraph manual for more information.
- Default: \emph{layout_with_kk} or \emph{layout.circle} if the network has more than 40 nodes.}
+ Default: \emph{layout_with_kk}}
 
 \item{userLayout}{[a data frame]
 An optional data frame reporting the position of nodes. Each line corresponds to the \emph{(x,y)}

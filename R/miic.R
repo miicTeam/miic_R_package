@@ -98,6 +98,16 @@
 #' @param sampleWeights [a numeric vector]
 #' An optional vector containing the weight of each observation.
 #'
+#' @param testMAR [a boolean value]
+#' If set to TRUE, distributions with missing values will be tested with Kullback-Leibler 
+#' divergence : conditioning variables for the given link \eqn{X\arrow Y}\eqn{Z} will be 
+#' considered only if the non-missing data distribution \eqn{KL(P(X,Y) | P(X,Y)_{!NA})} with
+#' \eqn{P(X,Y)_{!NA}} is the joint distribution of \eqn{X} and \eqn{Y} on samples which are not
+#' missing on Z. This is a way to ensure that data are missing at random for the considered
+#' interaction and to avoid selection bias. Set to TRUE by default
+#'
+#' @param consistent [a boolean value] If TRUE, runs the consistent version.
+#'
 #' @param verbose [a boolean value] If TRUE, debugging output is printed.
 #'
 #' @param nThreads [a positive integer]
@@ -227,11 +237,12 @@
 #' miic.write.network.cytoscape(g = miic.res, file = file.path(tempdir(),"temp"))
 #'}
 
-miic <- function(inputData, categoryOrder= NULL, trueEdges = NULL, blackBox = NULL, 
-                 nThreads=1, cplx = c("nml", "mdl"), orientation = TRUE, propagation = TRUE,
-                 latent = FALSE, neff = -1, edges=NULL, confidenceShuffle = 0, 
-                 confidenceThreshold = 0, confList = NULL, sampleWeights = NULL, verbose = FALSE
-){
+miic <- function(inputData, categoryOrder= NULL, trueEdges = NULL, blackBox = NULL, nThreads=1, 
+                 cplx = c("nml", "mdl"), orientation = TRUE, propagation = TRUE, latent = FALSE,
+                 neff = -1, edges=NULL, confidenceShuffle = 0, confidenceThreshold = 0, 
+                 confList = NULL, sampleWeights = NULL, testMAR = TRUE, consistent = FALSE, 
+                 verbose = FALSE)
+{
   res = NULL
   skeleton = TRUE
 
@@ -316,10 +327,10 @@ miic <- function(inputData, categoryOrder= NULL, trueEdges = NULL, blackBox = NU
     if(skeleton){
       if(verbose)
        cat("\t# -> START skeleton...\n")
-      res <- miic.skeleton(inputData = inputData, stateOrder= categoryOrder, nThreads= nThreads, cplx = cplx,
-                          latent = latent, effN = neff, blackBox = blackBox, confidenceShuffle = confidenceShuffle, 
-                          confidenceThreshold= confidenceThreshold, verbose= verbose, cntVar = cntVar,
-                          typeOfData = typeOfData, sampleWeights = sampleWeights)
+      res <- miic.skeleton(inputData = inputData, stateOrder= categoryOrder, nThreads= nThreads, cplx = cplx, latent = latent, 
+                           effN = neff, blackBox = blackBox, confidenceShuffle = confidenceShuffle,
+                           confidenceThreshold= confidenceThreshold, verbose= verbose, cntVar = cntVar, typeOfData = typeOfData,
+                           sampleWeights = sampleWeights, testMAR = testMAR, consistent = consistent)
       # print(res)
       edges = res$edges
       confData = res$confData
