@@ -6,10 +6,20 @@ double* computeDifference(double*, double*, int);
 double* computeDifferenceByStep(double*, double*, int, int);
 double* computeDifference(double*, double*, int);
 double* computeSum(double*, double*, int);
-//double* computeEnsInformation(Environment, int*, int, int*, int, int, const int, const int, int);
-double* computeEnsInformationNew(Environment&, int*, int, int*, int, int, const int, const int, int);
-double* computeEnsInformationNewThread(Environment&, int*, int, int*, int, int, const int, const int, int, MemorySpace);
-bool SearchForNewContributingNodeAndItsRank(Environment&, const int, const int);
+double* computeEnsInformation(Environment, int*, int, int*, int, int, const int, const int, int);
+double* computeEnsInformationNew(Environment, int*, int, int*, int, int, const int, const int, int,MemorySpace);
+//double* computeEnsInformationNewThread(Environment, int*, int, int*, int, int, const int, const int, int, MemorySpace);
+void SearchForNewContributingNodeAndItsRank(Environment&, const int, const int);
 void* SearchForNewContributingNodeAndItsRankThread(void*);
+
+//Continuous data
+double* computeEnsInformationContinuous(Environment, int*, int, int*, int, int, const int, const int, int, MemorySpace);
+double* computeEnsInformationContinuous_Orientation(Environment environment, int* myCond, int myNbrUi,  int* myZi, 
+													const int myVarIdxX, const int myVarIdxY, const int cplx, MemorySpace);
+
+//Gaussian case
+double* corrMutInfo(Environment&, double** dataset, int*,int,int*,int, int, int, int);
+void SearchForNewContributingNodeAndItsRankGaussian(Environment& environment, const int posX, const int posY);
+double computeEnsInformationContinuous_Gaussian(Environment&environment, const int posX, const int posY,const int posZ);
 
 #endif

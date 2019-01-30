@@ -46,8 +46,8 @@ int reconstruction_cut_coarse(int *memory_cuts, int *memory_cuts2, int np, int n
 
 		if(memory_cuts[np-1]==0){
 
-			//fprintf(stderr,"\n one bin!");// bin [0 n]
-			//exit(1);
+			cut[0] = n-1;
+			return 1;
 		}
 
 		l=memory_cuts[np-1];
@@ -122,7 +122,7 @@ void update_datafactors(int **sortidx, int varidx, int **datafactors,int d, int 
 //return joint datafactors ui and uiy uix uixy, with number of levels ruiyx[0,1,2,3]
 //ruiyx -> 0:u,1:uy,2:ux,3:uyx
 
-void jointfactors_uiyx(int **datafactors,int dui, int n, int Mui, int *r, int **uiyxfactors,int *ruiyx)
+void jointfactors_uiyx(int **datafactors, int dui, int n, int Mui, int *r, int **uiyxfactors, int *ruiyx)
 {
 
 		int df,Pbin_ui;
@@ -158,10 +158,10 @@ void jointfactors_uiyx(int **datafactors,int dui, int n, int Mui, int *r, int **
 		int * orderSample_uyx;
 		//declaration
 		if(!tooManyLevels){
-			vecZeroOnesui=(int*)calloc(nbrLevelsJoint,sizeof(int));
-			vecZeroOnesuiy=(int*)calloc(nbrLevelsJoint,sizeof(int));
-			vecZeroOnesuix=(int*)calloc(nbrLevelsJoint,sizeof(int));
-			vecZeroOnesuiyx=(int*)calloc(nbrLevelsJoint,sizeof(int));
+			vecZeroOnesui=(int*)calloc(nbrLevelsJoint+1,sizeof(int));
+			vecZeroOnesuiy=(int*)calloc(nbrLevelsJoint+1,sizeof(int));
+			vecZeroOnesuix=(int*)calloc(nbrLevelsJoint+1,sizeof(int));
+			vecZeroOnesuiyx=(int*)calloc(nbrLevelsJoint+1,sizeof(int));
 		}
 		else{
 			orderSample_ux = new int[n];
@@ -621,7 +621,7 @@ void jointfactors_u(int **datafactors,int *ptrIdx,int n, int Mui, int *r, int *u
 		int *vecZeroOnesui;
 		int * orderSample_u;
 		if(!tooManyLevels){
-			vecZeroOnesui=(int*)calloc(nbrLevelsJoint,sizeof(int));
+			vecZeroOnesui=(int*)calloc(nbrLevelsJoint+1,sizeof(int));
 		}
 		else{
 			orderSample_u= new int[n]; 
@@ -716,7 +716,6 @@ void jointfactors_u(int **datafactors,int *ptrIdx,int n, int Mui, int *r, int *u
 		//joint datafactors without gaps
 		//compute term constant H(y,Ui) and H(Ui)
 	
-		
 		#if DEBUG
 			printf("Hu=%lf\n",*Hu);
 		#endif
@@ -739,356 +738,6 @@ void jointfactors_u(int **datafactors,int *ptrIdx,int n, int Mui, int *r, int *u
 
 		return;
 }
-
-
-//////////////////////////////////////////////////
-// !! included in Info_cnt.cpp !!
-
-
-// ///////////////////////////////////////////////
-// //complicated (to handle) but flexible function 
-// //optimize linear function depending on different variables
-
-// //////////////////////////////////////////////
-// //INPUT
-
-// //optimizing on <sortidx_var>
-
-// //<nbrV> number of factors variable   
-
-// //<factors> : ( <nbrV> x n )  matrix :
-// //example <nbrV>=6
-// //x factors : factors[0] 
-// //y factors : factors[1]
-// //u factors : factors[2]
-// //xu factors : factors[3]
-// //yu factors : factors[4]
-// //xyu factors : factors[5]
-
-// //<r> : <nbrV> component vectors: levels in the <nbrV> components of factors
-
-// //<optfun> : <nbrV> + 1  component vectors:
-// //optimized function f=sum_k optfun[k]*H[k] 
-// //f= optfun[nbrV+1]*H_optvar +optfun[0]*Hx + optfun[1]*Hy + optfun[2]*Hu + optfun[3]*Hxu + optfun[4]*Hyu + optfun[5]*Hxyu
-// //optfun[nbrV+1]=reserved for optimized variable only
-
-// //USE EXAMPLE
-
-// //I(x;yu)=Hx+Hyu-Hxyu :
-// //			optimize f on x : Hx-Hxyu : 
-// //				factors[0]=0 //factors x= 0
-// //				factors[3]=factors[2] //factors xu= factors u
-// //				factors[5]=factors[4]	//factors xyu= factors yu
-// //				opfun=[1,0,0,0,0,-1]
-// //			optimize f on x : Hx-Hxyu : 
-// //				factors[0]=0 //factors x= 0
-// //				factors[3]=factors[2] //factors xu= factors u
-// //				factors[5]=factors[4]	//factors xyu= factors yu
-// //				opfun=[1,0,0,0,0,-1]
-
-// //I(xu;y)=Hy+Hxu-Hxyu : opfun=[0,1,0,1,0,-1]
-
-
-// //I(x;u)=Hx+Hu-Hxu : opfun=[1,0,1,-1,0,0]
-
-
-
-
-// double optfun_onerun_kmdl_coarse(int *sortidx_var,int nbrV, int **factors, int *r, int *optfun, double sc,int n, int *memory_cut, int coarse, double* looklog, map<string,double> &looklbc)
-// {
-
-
-// 		int i,j,k,m;
-
-// 		int np=ceil(1.0*n/coarse);
-
-// 		double k_sc=0;
-// 		double sc2,scr,sctemp;
-
-	
-// 		//dynamic programming optimize function and memorize of cuts
-// 		int c,ct;
-// 		double fmax;//I-kmdl
-// 		int nc[np],nctemp;//Hx-Hxy-LogCx
-
-// 		// double *H_kj=calloc(nbrV+1,sizeof(double));// x y u xu yu xyu
-// 		double H_kj[nbrV+1];//x y u xu yu xyu
-
-// 		// double *I=calloc(np,sizeof(double));
-// 		// double *I_0k=calloc(np,sizeof(double));
-// 		double I[np];
-// 		I[0]=0;
-// 		double I_0k[np];
-// 		double I_kj,t;
-		
-// 		int nxj,nx;
-
-// 		int xyu;
-
-
-
-// 		//dynamic programming steps terms
-
-// 		//H_0k needs initialization at zero (problem: double H_0k[nbrV+1][np];)
-// 		double **H_0k=calloc(nbrV+1,sizeof(double*));// x y u xu yu xyu
-// 		for(m=0;m<nbrV+1;m++) H_0k[m]=calloc(np,sizeof(double));
-
-// 		int **nxyu=calloc(nbrV,sizeof(int*));// x y u xu yu xyu
-// 		for(m=0;m<nbrV;m++) nxyu[m]=calloc(r[m],sizeof(int));
-
-// 		int **nxyu_k=calloc(nbrV,sizeof(int*));// x y u xu yu xyu
-// 		for(m=0;m<nbrV;m++) nxyu_k[m]=calloc(r[m],sizeof(int));	
-		
-
-// 		///////////////////////////////////////////////
-// 		#if _MY_DEBUG_NEW_OPTFUN
-// 			for(m=0;m<nbrV;m++){
-// 				printf("r[%d]=%d :\n",m,r[m]);
-
-// 				for(i=0;i<n;i++){
-// 					printf("%d ",factors[m][i]);
-// 				}
-// 				printf("\n");
-
-// 			}
-// 		#endif
-
-
-// 		/////////////////////////////////////////////////
-// 		//j=0;
-// 		#if _MY_DEBUG_NEW_OPTFUN
-// 			printf("j=%d\n",0);fflush(stdout);
-// 		#endif
-
-
-// 		for(i=0;i<coarse;i++){
-
-// 			for(m=0;m<nbrV;m++){
-
-// 				if(optfun[m] != 0){ //compute only necessary terms
-
-// 					xyu=factors[m][sortidx_var[i]];
-
-// 					nxyu[m][xyu]++;
-
-// 					if(nxyu[m][xyu] != 1) H_0k[m][0]-=nxyu[m][xyu]*looklog[nxyu[m][xyu]]-(nxyu[m][xyu]-1)*looklog[nxyu[m][xyu]-1];
-
-// 				}
-
-// 			}
-// 		}
-
-// 		if(optfun[nbrV] != 0) H_0k[nbrV][0]=-coarse*looklog[coarse];
-
-// 		for(m=0;m<nbrV+1;m++) if(optfun[m] != 0)	I[0]+=optfun[m]*H_0k[m][0];
-		
-// 		memory_cut[0]=0;	
-// 		I_0k[0]=I[0];
-// 		nc[0]=1;
-
-// 		#if _MY_DEBUG_NEW_OPTFUN
-// 				printf("  ");
-// 				for(m=0;m<nbrV+1;m++) printf("H_0k[%d]=%lf ",m,H_0k[m][0]);fflush(stdout);
-// 				printf("\n  [0 -0] = %lf\n",I_0k[0]);fflush(stdout);
-// 		#endif
-
-		
-
-// 		for(j=1;j<=np-1;j++){ //j=1...n-1
-			
-// 			#if _MY_DEBUG_NEW_OPTFUN
-// 					printf("j=%d\n",j);fflush(stdout);
-// 			#endif 
-
-// 			for(m=0;m<nbrV+1;m++) if(optfun[m] != 0) H_0k[m][j]=H_0k[m][j-1];	
-		
-// 			ct=0;	
-// 			for(i=(j*coarse);(i<(j+1)*coarse)&&(i<n);i++){
-			
-
-// 				for(m=0;m<nbrV;m++){
-
-// 					if(optfun[m] != 0){ //compute only necessary terms
-
-// 						xyu=factors[m][sortidx_var[i]];
-
-// 						nxyu[m][xyu]++;
-
-// 						if(nxyu[m][xyu] != 1) H_0k[m][j]-=nxyu[m][xyu]*looklog[nxyu[m][xyu]]-(nxyu[m][xyu]-1)*looklog[nxyu[m][xyu]-1];
-
-// 					}
-
-// 				}
-	
-// 				ct++;
-// 			}
-// 			#if _MY_DEBUG_NEW_OPTFUN
-// 				printf("  ");
-// 				for(m=0;m<nbrV;m++) {
-// 					for(xyu=0;xyu<r[m];xyu++) printf("nxyu[%d][%d]=%d ",m,xyu,nxyu[m][xyu]);fflush(stdout);
-// 				}
-// 				printf("\n");
-// 			#endif
-
-
-// 			nxj=j*coarse+ct;
-// 			if(optfun[nbrV] != 0) H_0k[nbrV][j]=-nxj*looklog[nxj];
-
-// 			I_0k[j]=0;
-// 			for(m=0;m<nbrV+1;m++) if(optfun[m] != 0)	I_0k[j]+=optfun[m]*H_0k[m][j];
-
-// 			//complexity terms (local version)
-
-// 			k_sc=sc*looklog[(nxj+1)];
-
-// 			// 2 bins combinatorial term
-
-// 			string=strcat(to_string(nxj),"-",to_string(1));
-// 			map<string,double>::iterator it=looklbc.find(string);
-// 			if( it != looklbc.end()){
-// 				sc2=2*k_sc+ it->second;
-// 			}
-// 			else{
-// 				double v=log(dbico(nxj,1));
-// 				looklbc[string]=v;
-// 				sc2=2*k_sc+ v;
-// 			}
-
-// 			// if(looklbc[nxj][1]==-1) looklbc[nxj][1]=log(dbico(nxj,1));
-// 			// sc2=2*k_sc+looklbc[nxj][1];
-
-// 			// sc2=2*k_sc+log(dbico(nxj,1));
-			
-// 			//init
-
-// 			fmax=-DBL_MAX;
-
-// 			for(m=0;m<nbrV+1;m++) if(optfun[m] != 0) H_kj[m]=H_0k[m][j];	
-
-// 			#if _MY_DEBUG_NEW_OPTFUN
-// 				printf("  ");
-// 				//for(m=0;m<nbrV+1;m++) printf("H_kj[%d]=%lf ",m,H_kj[m]);fflush(stdout);
-// 				printf("\n  [0 -%d] = %lf\n",j,I_0k[j]);fflush(stdout);
-// 			#endif
-					
-// 			for(m=0;m<nbrV;m++) if(optfun[m] != 0) {
-// 				for(xyu=0;xyu<r[m];xyu++) nxyu_k[m][xyu]=nxyu[m][xyu];
-// 			}
-		
-// 			for(k=0;k<=j-1;k++){//k=1...n-2 possible cuts
-
-
-// 					#if _MY_DEBUG_NEW_OPTFUN
-// 						printf("k=%d  ",k);fflush(stdout);
-// 					#endif
-
-// 						for(i=0;i<coarse;i++){
-
-// 								for(m=0;m<nbrV;m++){
-
-// 									if(optfun[m] != 0){ //compute only necessary terms
-
-// 										xyu=factors[m][sortidx_var[(k*coarse)+i]];
-// 										nxyu_k[m][xyu]--;
-
-// 										if(nxyu_k[m][xyu] != 0) H_kj[m]-=nxyu_k[m][xyu]*looklog[nxyu_k[m][xyu]]-(nxyu_k[m][xyu]+1)*looklog[(nxyu_k[m][xyu]+1)];
-// 									}
-
-// 								}
-
-// 						}
-						
-// 						#if _MY_DEBUG_NEW_OPTFUN
-// 							printf("\n  ");
-// 							for(m=0;m<nbrV;m++) {
-// 							for(xyu=0;xyu<r[m];xyu++) printf("nxyu_k[%d][%d]=%d ",m,xyu,nxyu_k[m][xyu]);fflush(stdout);
-// 							}
-// 							printf("\n");
-// 						#endif
-
-// 						nx=nxj-(k+1)*coarse;
-// 						if(optfun[nbrV] != 0) H_kj[nbrV]=-nx*looklog[nx];
-
-// 						I_kj=0;
-// 						for(m=0;m<nbrV+1;m++) if(optfun[m] != 0)	I_kj+=optfun[m]*H_kj[m];
-
-// 						//recursive number of bins combinatorial term
-// 						string=strcat(to_string(nxj),"-",to_string(nc[k]));
-// 						map<string,double>::iterator it=looklbc.find(string);
-// 						if( it != looklbc.end()){
-// 							scr=(nc[k]+1)*k_sc+ it->second;
-// 						}
-// 						else{
-// 							double v=log(dbico(nxj,nc[k]));
-// 							looklbc[string]=v;
-// 							scr=(nc[k]+1)*k_sc+ v;
-// 						}
-
-// 						// if(looklbc[nxj][nc[k]]==-1) looklbc[nxj][nc[k]]=log(dbico(nxj,nc[k]));
-// 						// scr=(nc[k]+1)*k_sc+looklbc[nxj][nc[k]];
-						
-// 						// scr=(nc[k]+1)*k_sc+log(dbico(nxj,(nc[k])));
-
-
-// 						#if _MY_DEBUG_NEW_OPTFUN
-
-
-// 							printf("  ");
-// 							for(m=0;m<nbrV+1;m++) printf("H_kj[%d]=%lf ",m,H_kj[m]);fflush(stdout);
-// 							printf("\n   [%d -%d][%d - %d] = %lf (%lf+%lf-%lf)\n",0,k,k+1,j,I_0k[k]+I_kj-sc2,I_0k[k],I_kj,sc2);
-// 							printf("   [0 -?-%d][%d - %d] = %lf (%lf+%lf-%lf)\n",k,k+1,j,I[k]+I_kj-scr,I[k],I_kj,scr);
-					
-// 						#endif
-
-// 						if( I_0k[k] - sc2 > I[k] - scr ){ //one cut in k ore more?
-// 								t=I_0k[k] + I_kj-sc2;
-// 								if (fmax<t){
-// 									c=-k-1;// convention to refers to the two bins [0 k] [k+1 j]
-// 									fmax=t;
-// 									sctemp=sc2;
-// 									nctemp=2;
-// 								}
-// 						}else{//more cuts
-// 							t=I[k] + I_kj-scr;//[0.. cuts.. k-1][k j]
-// 							if (fmax<t){
-// 								c=k+1;
-// 								fmax=t;
-// 								sctemp=scr;
-// 								nctemp=nc[k]+1;
-// 							}
-// 						}
-
-// 						#if _MY_DEBUG_NEW
-// 							printf("   f=%lf\n",fmax);fflush(stdout);
-// 						#endif
-// 			}
-
-// 			I[j]=fmax+sctemp; 
-// 			nc[j]=nctemp;
-// 			memory_cut[j]=c;
-// 			#if _MY_DEBUG_NEW_OPTFUN
-// 				printf("\n>>>j=%d: fmax=%lf cut[%d]=%d ncut=%d\n",j,fmax,j,memory_cut[j],nc[j]);fflush(stdout);
-// 			#endif
-// 		}
-
-// 	// free memory
-
-// 	for(m=0;m<nbrV+1;m++) free(H_0k[m]);
-// 	free(H_0k);
-
-// 	for(m=0;m<nbrV;m++) free(nxyu[m]);
-// 	free(nxyu);
-
-// 	for(m=0;m<nbrV;m++) free(nxyu_k[m]);
-// 	free(nxyu_k);	
-
-// 	// 
-
-// 	return I[np-1]/n;
-
-// }
-
-
 
 
 ///////////////////////////////////////////////
@@ -1186,12 +835,13 @@ double* computeMI_knml(int* xfactors,int* ufactors,int* uxfactors,int* rux,int n
 		if(nux[ux]>0) Hux-=nux[ux]*looklog[nux[ux]];
 	}
 	
-	if(flag==0 || flag==1) SC-=computeLogC(n,rux[0],c2terms);
-	if(flag==0 || flag==2) SC-=computeLogC(n,rux[1],c2terms);
+	if(flag==0) SC-=computeLogC(n,rux[0],c2terms);
+	if(flag==0) SC-=computeLogC(n,rux[1],c2terms);
+
 
 	I[0]=looklog[n]+(Hu+Hx-Hux)/n;
 
-	if(flag==0) I[1]=I[0]-0.5*SC/n;
+	if(flag == 0) I[1]=I[0]-0.5*SC/n;
 	else I[1]=I[0]-SC/n;
 
 	free(nx);
@@ -1204,7 +854,6 @@ double* computeMI_knml(int* xfactors,int* ufactors,int* uxfactors,int* rux,int n
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////
-
 
 double* computeMIcond_kmdl(int **uiyxfactors, int *ruiyx, int *r,int n, double* looklog)
 {
@@ -1242,7 +891,7 @@ double* computeMIcond_kmdl(int **uiyxfactors, int *ruiyx, int *r,int n, double* 
 	}
 
 	SC=0.5*(r[0]-1)*(r[1]-1)*looklog[n];
-	// SC*=ruiyx[0];
+	SC*=ruiyx[0];
 
 	I[0]=(Hux+Huy-Hu-Huyx)/n;
 
@@ -1292,7 +941,7 @@ double* computeMI_kmdl(int* xfactors,int* ufactors,int* uxfactors,int* rux,int n
 	
 	SC=0.5*looklog[n];
 	if(flag==0 || flag==1) SC*=(rux[0]-1);
-	if(flag==0 || flag==1) SC*=(rux[1]-1);
+	if(flag==0 || flag==2) SC*=(rux[1]-1);
 
 	I[0]=looklog[n]+(Hu+Hx-Hux)/n;
 

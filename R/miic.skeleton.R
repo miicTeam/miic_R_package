@@ -1,8 +1,8 @@
 
-miic.skeleton <- function(inputData = NULL, blackBox = NULL, stateOrder = NULL, nThreads= nThreads, effN = -1,
-                               cplx = c("nml", "mdl"), eta = 1, latent = FALSE, continuous = 0,
-                               confidenceShuffle = 0, confidenceThreshold = 0, verbose = FALSE
-){
+miic.skeleton <- function(inputData = NULL, cntVar = NULL, blackBox = NULL, stateOrder = NULL, nThreads= nThreads, 
+                          effN = -1, cplx = c("nml", "mdl"), eta = 1, latent = FALSE, confidenceShuffle = 0,
+                          confidenceThreshold = 0, verbose = FALSE, typeOfData = NULL, sampleWeights = NULL)
+{
 
   isTplReuse = TRUE
   isK23 = TRUE
@@ -33,9 +33,13 @@ miic.skeleton <- function(inputData = NULL, blackBox = NULL, stateOrder = NULL, 
     stateOrder = c("")
   }
 
+  if(is.null(sampleWeights)){
+    sampleWeights = c(-1,rep(0, nrow(inputData)-1))
+  }
+  cntVar = as.numeric(cntVar)
   if (base::requireNamespace("Rcpp", quietly = TRUE)) {
-      res <- .Call('skeleton', inData, numNodes, nThreads, bB, effN, cplx, eta, latent, isTplReuse,
-               isK23, isDegeneracy, isNoInitEta, continuous, confidenceShuffle, confidenceThreshold, verbose, PACKAGE = "miic")
+      res <- .Call('skeleton', inData, typeOfData, cntVar, numNodes, nThreads, bB, effN, cplx, eta, latent, isTplReuse,
+               isK23, isDegeneracy, isNoInitEta, confidenceShuffle, confidenceThreshold, sampleWeights, verbose, PACKAGE = "miic")
   }
 
   # if(shuffle == 0) {

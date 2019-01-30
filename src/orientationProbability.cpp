@@ -8,40 +8,33 @@
 #include <unistd.h>
 #include <string.h>
 #include <cmath>
+#include <Rcpp.h>
 
 #include "structure.h"
 #include "utilities.h"
 #include "computeEnsInformation.h"
 
+
 #include "probaOrientation_interface.h"
 
-#include <Rcpp.h>
 
-
-using namespace std;
 using namespace Rcpp;
+using namespace std;
 
-int sign(double val){
-	if(val < 0) 
-		return -1;
-	else if(val > 0) 
-		return 1;
-	else 
-		return 0;
-}
-
-
-/*
-* Get the value of the 3 point information and create the structures for the probabilistic orientation
-*/
-void getSStructure(::Environment& environment, const int posX, const int posY, const int posZ, bool isVerbose, vector< vector<int> >& allTpl, vector<double>& allI3){
+void getSStructure(::Environment& environment, const int posX, const int posY, const int posZ, bool isVerbose,
+				   vector< vector<int> >& allTpl, vector<double>& allI3)
+{
+	bool structFound = false;	
 	//// To check if xk belongs to the {ui} of the base
+	bool isXkInUi = false;
+
 	vector<int> u(environment.edges[posX][posZ].edgeStructure->ui_vect_idx);
 	if(environment.edges[posX][posZ].edgeStructure->ui_vect_idx.size() > 0){
 		//// Remove xk from the {ui} if needed
 		for(int i = 0; i < environment.edges[posX][posZ].edgeStructure->ui_vect_idx.size(); i++){
 			if(u[i] == posY){
 				u.erase(u.begin() + i);
+				isXkInUi = true;
 				break;
 			}
 		}
@@ -61,23 +54,76 @@ void getSStructure(::Environment& environment, const int posX, const int posY, c
 
 	zi = &z[0];
 
+	//// Compute the conditional mutual interaction of the tpl
+	//// ----
+	//// Compute I(xi xj|ui)[xi,xj,xk,ui]
+	// double* Ixixj_ui_xk_list = computeEnsInformation(environment, ui, u.size(), zi, z.size(), -1, posX, posZ, environment.cplx);
 
-	double* res = computeEnsInformationNew(environment, ui, u.size(), zi, z.size(), -1, posX, posZ, environment.cplx);
+	// //// Compute I(xi xj|ui,xk)[xi,xj,xk,ui]
+	// double* Ixixj_uixk_list = computeEnsInformation(environment, ui, u.size(), zi, z.size(), u.size()+2, posX, posZ, environment.cplx);
 
-	double Is = res[7];
-	double Cs = res[8];
+	// //// Is = N.I(xi; xj; xk) = N.I(xi; xj|{ui})[xk] - N.I(xi; xj|{xk, ui})
+	// int nbrRetValues = 3 * environment.edges[posX][posZ].edgeStructure->zi_vect_idx.size();
 
-	free(res);
+	////  Compute I(xyz|ui)[xyuiz] = I(xy|ui)[xyuiz] - I(xz|ui,z)[xyuiz]
+	//double Is=  Ixixj_ui_xk_list[0] - Ixixj_uixk_list[0];
+	double* res = NULL;
+	double Is = -1;
+	double Cs = -1;
+	if(environment.columnAsContinuous[posX] == 0 && environment.columnAsContinuous[posZ] == 0 && environment.columnAsContinuous[posY] == 0){
+		res = computeEnsInformationNew(environment, ui, u.size(), zi, z.size(), -1, posX, posZ, environment.cplx, environment.m);
 
-	if(environment.isK23){
+		Is = res[7];
+		Cs = res[8];
 
-		if(environment.isDegeneracy){
-				Cs += std::log(static_cast<double>(3));//log(3);
-		}
+		if(environment.isK23){
 
-		Is = Is + Cs;
+			if(environment.isDegeneracy){
+					Cs += log(3);
+			}
+
+			Is = Is + Cs;
+		} 
+	} else if(environment.typeOfData == 2 || (environment.typeOfData == 1 && environment.isAllGaussian == 0)){
+		res = computeEnsInformationContinuous_Orientation(environment, ui, u.size(), zi, posX, posZ, 
+														  environment.cplx, environment.m);
+
+		Is = res[1];
+		Cs = res[2];
+
+		if(environment.isK23){
+
+			if(environment.isDegeneracy){
+						Cs += log(3);
+			}
+
+			Is = Is - Cs;
+		} 
+		//if(environment.nodes[posX].name.compare("Ppp2r1b")==0 && environment.nodes[posZ].name.compare("Pfkfb2")==0){
+		//	cout << "HELLO	"  << environment.nodes[posY].name.c_str() << "  " << environment.nodes[u[0]].name.c_str() << "  " << Is << endl;
+		//}
+
+	} else {
+		// THIS PART IS TO DO ?
+		Is = computeEnsInformationContinuous_Gaussian(environment, posX, posY, posZ);
+
+
+		Cs = 0.5 * (environment.edges[posX][posY].edgeStructure->ui_vect_idx.size() + 2) * log(environment.numSamples);
+
+
+		if(environment.isK23){
+
+			if(environment.isDegeneracy){
+						Cs += log(3);
+			}
+
+			Is = Is - Cs;
+		} 
 	}
 
+	delete(res);
+	
+	
 	vector<int> v;
 	v.push_back(posX+1);
 	v.push_back(posY+1);
@@ -87,8 +133,11 @@ void getSStructure(::Environment& environment, const int posX, const int posY, c
 }
 
 
-extern "C" SEXP orientationProbability(SEXP inputDataR, SEXP numNodesR, SEXP edgefileR, SEXP effNR, SEXP cplxR, SEXP etaR, SEXP hvsR, SEXP isLatentR,
-	SEXP isK23R, SEXP isDegeneracyR, SEXP propagationR, SEXP continuousR, SEXP verboseR){
+extern "C" SEXP orientationProbability(SEXP inputDataR, SEXP typeOfDataR, SEXP cntVarR, SEXP numNodesR, SEXP edgefileR, 
+									   SEXP effNR, SEXP cplxR, SEXP etaR, SEXP hvsR, SEXP isLatentR, SEXP isK23R,
+									   SEXP isDegeneracyR, SEXP propagationR, SEXP sampleWeightsR, SEXP verboseR)
+{
+
 
 	// define the environment
 	::Environment environment;
@@ -100,7 +149,7 @@ extern "C" SEXP orientationProbability(SEXP inputDataR, SEXP numNodesR, SEXP edg
 
 	environment.numNodes = Rcpp::as<int> (numNodesR);
 	environment.vectorData = Rcpp::as< vector <string> > (inputDataR);
-	environment.typeOfData = Rcpp::as<int> (continuousR);
+	environment.typeOfData = Rcpp::as<int> (typeOfDataR);
 	vector<string> edgesVectorOneLine;
 	edgesVectorOneLine = Rcpp::as< vector <string> > (edgefileR);
 	
@@ -108,7 +157,7 @@ extern "C" SEXP orientationProbability(SEXP inputDataR, SEXP numNodesR, SEXP edg
 
 	environment.effN = Rcpp::as<int> (effNR);
 	cplx = Rcpp::as<string> (cplxR);
-	environment.eta = Rcpp::as<int> (etaR);
+	//environment.eta = Rcpp::as<int> (etaR);
 	environment.halfVStructures = Rcpp::as<int> (hvsR);
 	environment.isLatent = Rcpp::as<bool> (isLatentR);
 	environment.isK23 = Rcpp::as<bool> (isK23R);
@@ -116,6 +165,9 @@ extern "C" SEXP orientationProbability(SEXP inputDataR, SEXP numNodesR, SEXP edg
 	environment.isPropagation = Rcpp::as<bool> (propagationR);
 	bool isVerbose = Rcpp::as<bool> (verboseR);
 	environment.isVerbose = isVerbose;
+
+	environment.sampleWeightsVec = Rcpp::as< vector <double> > (sampleWeightsR);
+	environment.cntVarVec = Rcpp::as< vector <int> > (cntVarR);
 
 
 	if(cplx.compare("nml") == 0)
@@ -131,8 +183,6 @@ extern "C" SEXP orientationProbability(SEXP inputDataR, SEXP numNodesR, SEXP edg
 	double* ptrRetProbValues;
 
 	////// GET ALL TPL that could be V/NON-V-STRUCTURES #######
-
-	clock_t startTime_algo = std::clock();
 
 	for(int pos = 0; pos < environment.noMoreAddress.size(); pos++){
 		int posX = environment.noMoreAddress[pos]->i;
@@ -161,8 +211,6 @@ extern "C" SEXP orientationProbability(SEXP inputDataR, SEXP numNodesR, SEXP edg
 			else if(posX1 == posY && !environment.edges[posX][posY1].isConnected)
 				neighboursY.push_back(posY1);
 		}
-
-
 
 
 		int sizeX = neighboursX.size();
@@ -209,6 +257,75 @@ extern "C" SEXP orientationProbability(SEXP inputDataR, SEXP numNodesR, SEXP edg
 			latent = 1;
 
 		ptrRetProbValues = getOrientTplLVDegPropag(myNbrTpl, oneLineMatrixallTpl, &allI3[0], latent, degeneracy, propag, environment.halfVStructures);
+
+		//update ptrRetProbValues for possible inconsistencies
+		std::map<string, double> probabsMap;
+		string s;
+		for (int i=0; i < allTpl.size(); i++){
+			// 0 -> 1
+			s = environment.nodes[allTpl[i][0]].name + environment.nodes[allTpl[i][1]].name;
+			double proba = ptrRetProbValues[i + (1 * allTpl.size())];
+			if ( probabsMap.find(s) == probabsMap.end() ) {
+				// not found
+				probabsMap[s]=proba;
+			} else {
+				// found
+				if(abs(probabsMap.find(s)->second - 0.5) < abs(proba - 0.5)) {
+					probabsMap[s]=proba;
+				}
+			}
+			// 1 -> 0
+			s = environment.nodes[allTpl[i][1]].name + environment.nodes[allTpl[i][0]].name;
+			proba = ptrRetProbValues[i + (0 * allTpl.size())];
+			if ( probabsMap.find(s) == probabsMap.end() ) {
+				// not found
+				probabsMap[s]=proba;
+			} else {
+				// found
+				if(abs(probabsMap.find(s)->second - 0.5) < abs(proba - 0.5)) {
+					probabsMap[s]=proba;
+				}
+			}
+
+			// 1 -> 2
+			s = environment.nodes[allTpl[i][1]].name + environment.nodes[allTpl[i][2]].name;
+			proba = ptrRetProbValues[i + (3 * allTpl.size())];
+			if ( probabsMap.find(s) == probabsMap.end() ) {
+				// not found
+				probabsMap[s]=proba;
+			} else {
+				// found
+				if(abs(probabsMap.find(s)->second - 0.5) < abs(proba - 0.5)) {
+					probabsMap[s]=proba;
+				}
+			}
+			// 2 -> 1
+			s = environment.nodes[allTpl[i][2]].name + environment.nodes[allTpl[i][1]].name;
+			proba = ptrRetProbValues[i + (2 * allTpl.size())];
+			if ( probabsMap.find(s) == probabsMap.end() ) {
+				// not found
+				probabsMap[s]=proba;
+			} else {
+				// found
+				if(abs(probabsMap.find(s)->second - 0.5) < abs(proba - 0.5)) {
+					probabsMap[s]=proba;
+				}
+			}
+		}
+
+		for (int i=0; i < allTpl.size(); i++){
+			s = environment.nodes[allTpl[i][0]].name + environment.nodes[allTpl[i][1]].name;
+			ptrRetProbValues[i + (1 * allTpl.size())] = probabsMap.find(s)->second;
+
+			s = environment.nodes[allTpl[i][1]].name + environment.nodes[allTpl[i][0]].name;
+			ptrRetProbValues[i + (0 * allTpl.size())] = probabsMap.find(s)->second;
+
+			s = environment.nodes[allTpl[i][1]].name + environment.nodes[allTpl[i][2]].name;
+			ptrRetProbValues[i + (3 * allTpl.size())] = probabsMap.find(s)->second;
+
+			s = environment.nodes[allTpl[i][2]].name + environment.nodes[allTpl[i][1]].name;
+			ptrRetProbValues[i + (2 * allTpl.size())] = probabsMap.find(s)->second;
+		}
 
 		// set results to file
 		vector <string> vec;

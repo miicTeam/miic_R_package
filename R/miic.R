@@ -20,7 +20,8 @@
 #' A data frame that contains the observational data. Each
 #' column corresponds to one variable and each row is a sample that gives the
 #' values for all the observed variables. The column names correspond to the
-#' names of the observed variables. Data must be discrete like.
+#' names of the observed variables. Categorical variables must be passed as 
+#' factors and continuous ones must be numerical.
 #'
 #' @param blackBox [a data frame]
 #' An optional data frame containing the
@@ -93,6 +94,9 @@
 #' confidence threshold and the same confidenceShuffle value. In
 #' this way the computations based on the randomized dataset do not need to
 #' be performed again, and the values in this data frame are used instead.
+#'
+#' @param sampleWeights [a numeric vector]
+#' An optional vector containing the weight of each observation.
 #'
 #' @param verbose [a boolean value] If TRUE, debugging output is printed.
 #'
@@ -192,7 +196,7 @@
 #' # write graph to graphml format. Note that to correctly visualize
 #' # the network we created the miic style for Cytoscape (http://www.cytoscape.org/).
 #'
-#' miic.write.network.cytoscape(g = miic.res, file.path(tempdir(),"/temp"))
+#' miic.write.network.cytoscape(g = miic.res, file = file.path(tempdir(),"temp"))
 #'
 #' # EXAMPLE CANCER
 #' data(cosmicCancer)
@@ -206,7 +210,7 @@
 #'
 #' # write graph to graphml format. Note that to correctly visualize
 #' # the network we created the miic style for Cytoscape (http://www.cytoscape.org/).
-#' miic.write.network.cytoscape(g = miic.res, file = file.path(tempdir(),"/temp"))
+#' miic.write.network.cytoscape(g = miic.res, file = file.path(tempdir(),"temp"))
 #'
 #' # EXAMPLE OHNOLOGS
 #' data(ohno)
@@ -220,22 +224,16 @@
 #'
 #' # write graph to graphml format. Note that to correctly visualize
 #' # the network we created the miic style for Cytoscape (http://www.cytoscape.org/).
-#' miic.write.network.cytoscape(g = miic.res, file = file.path(tempdir(),"/temp"))
+#' miic.write.network.cytoscape(g = miic.res, file = file.path(tempdir(),"temp"))
 #'}
 
-miic <- function(inputData = NULL, categoryOrder= NULL, trueEdges = NULL, blackBox = NULL, nThreads=1,
-                      cplx = c("nml", "mdl"),
-                      orientation = TRUE, propagation = TRUE,
-                      latent = FALSE, neff = -1, edges=NULL,
-                      confidenceShuffle = 0, confidenceThreshold = 0, confList = NULL,
-                      verbose = FALSE
+miic <- function(inputData, categoryOrder= NULL, trueEdges = NULL, blackBox = NULL, 
+                 nThreads=1, cplx = c("nml", "mdl"), orientation = TRUE, propagation = TRUE,
+                 latent = FALSE, neff = -1, edges=NULL, confidenceShuffle = 0, 
+                 confidenceThreshold = 0, confList = NULL, sampleWeights = NULL, verbose = FALSE
 ){
   res = NULL
   skeleton = TRUE
-  if(orientation)
-    orientationMethod = "probabilistic"
-  else
-    orientationMethod = NULL
 
   #### Check the input arguments
   if( is.null( inputData ) )
@@ -250,8 +248,7 @@ miic <- function(inputData = NULL, categoryOrder= NULL, trueEdges = NULL, blackB
         print(paste("Warning! Your samples in the datasets seem to be correlated! We suggest to re run the method specifying",
           effnAnalysis$neff, " in the neff parameter. See the autocorrelation plot for more details."))
       } else {
-        print("Warning! Your samples in the datasets seem to be correlated but the correlation decay is not exponential.
-          Are your samples correlated in some way? See the autocorrelation plot for more details.")
+        print("Warning! Your samples in the datasets seem to be correlated but the correlation decay is not exponential. Are your samples correlated in some way? See the autocorrelation plot for more details.")
       }
   }
 
@@ -293,6 +290,24 @@ miic <- function(inputData = NULL, categoryOrder= NULL, trueEdges = NULL, blackB
   if(verbose)
     cat("START miic...\n")
 
+  # continuous or discrete?
+  cntVar = !sapply(inputData, is.factor)
+  for(col in colnames(inputData)){
+    if(cntVar[[col]] && (length(unique(inputData[[col]])) <= 40) && (nrow(inputData) > 40 )){
+      warning(paste0("Variable ", col, " is treated as continuous but only has ", length(unique(inputData[[col]])), " unique values."))
+    }
+    if((!cntVar[[col]]) && (length(unique(inputData[[col]])) >= 40) && (nrow(inputData) > 40 )){
+      warning(paste0("Variable ", col, " is treated as discrete but has many levels (", length(unique(inputData[[col]])), ")."))
+    }
+  }
+  typeofData = 0 # Assume all discrete
+  if(any(cntVar)){ 
+    typeOfData = 2 # Mixed if any are continuous
+    if(all(cntVar)){
+      typeOfData = 1 # All continuous
+    }
+  }
+
   err_code = checkInput(inputData, "miic")
   if(err_code != "0"){
     print(errorCodeToString(err_code))
@@ -302,8 +317,9 @@ miic <- function(inputData = NULL, categoryOrder= NULL, trueEdges = NULL, blackB
       if(verbose)
        cat("\t# -> START skeleton...\n")
       res <- miic.skeleton(inputData = inputData, stateOrder= categoryOrder, nThreads= nThreads, cplx = cplx,
-                          latent = latent, effN = neff, blackBox = blackBox,
-                          confidenceShuffle = confidenceShuffle, confidenceThreshold= confidenceThreshold, verbose= verbose)
+                          latent = latent, effN = neff, blackBox = blackBox, confidenceShuffle = confidenceShuffle, 
+                          confidenceThreshold= confidenceThreshold, verbose= verbose, cntVar = cntVar,
+                          typeOfData = typeOfData, sampleWeights = sampleWeights)
       # print(res)
       edges = res$edges
       confData = res$confData
@@ -324,9 +340,9 @@ miic <- function(inputData = NULL, categoryOrder= NULL, trueEdges = NULL, blackB
       if(verbose)
         cat("\tSTART orientation...")
       ptm <- proc.time()
-      res = miic.orient(inputData= inputData, method = orientationMethod, stateOrder = categoryOrder,
-                          edges = edges, effN = neff,  cplx = cplx,  latent = latent, propagation = propagation,
-                          verbose = FALSE)
+      res = miic.orient(inputData= inputData, stateOrder = categoryOrder, edges = edges, effN = neff,
+                        cplx = cplx,  latent = latent, propagation = propagation, cntVar = cntVar, 
+                        typeOfData = typeOfData, verbose = FALSE)
 
       timeOrt=(proc.time() - ptm)["elapsed"]
       timeInitIterOrt = time["initIter"]+timeOrt

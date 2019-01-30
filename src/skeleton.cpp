@@ -7,22 +7,25 @@
 #include <ctime>
 #include <unistd.h>
 #include <string.h>
-#include "confidenceCut.h"
+#include <Rcpp.h>
 
 #include "structure.h"
 #include "utilities.h"
+#include "log.h"
 #include "skeletonInitialization.h"
 #include "skeletonIteration.h"
+#include "confidenceCut.h"
 
-#include <Rcpp.h>
+
 
 using namespace std;
-
 using namespace Rcpp;
 
-extern "C" SEXP skeleton(SEXP inputDataR, SEXP numNodesR, SEXP nThreadsR, SEXP blackBoxR, SEXP effNR, SEXP cplxR, SEXP etaR,
-	SEXP isLatentR, SEXP isTplReuseR, SEXP isK23R, SEXP isDegeneracyR, SEXP isNoInitEtaR, SEXP continuousR,
-	SEXP confidenceShuffleR, SEXP confidenceThresholdR, SEXP verboseR){
+
+extern "C" SEXP skeleton(SEXP inputDataR, SEXP typeOfDataR, SEXP cntVarR, SEXP numNodesR, SEXP nThreadsR, SEXP blackBoxR, SEXP effNR, SEXP cplxR,
+						 SEXP etaR, SEXP isLatentR, SEXP isTplReuseR, SEXP isK23R, SEXP isDegeneracyR, SEXP isNoInitEtaR,
+						 SEXP confidenceShuffleR, SEXP confidenceThresholdR, SEXP sampleWeightsR, SEXP verboseR)
+{
 
 	vector< vector <double> > outScore;
 	vector< vector <string> > edgesMatrix;
@@ -47,10 +50,10 @@ extern "C" SEXP skeleton(SEXP inputDataR, SEXP numNodesR, SEXP nThreadsR, SEXP b
 	string cplx;
 
 	environment.effN = Rcpp::as<int> (effNR);
-	environment.typeOfData = Rcpp::as<int> (continuousR);
+	environment.typeOfData = Rcpp::as<int> (typeOfDataR);
 	cplx = Rcpp::as<string> (cplxR);
-	environment.eta = Rcpp::as<int> (etaR);
-	environment.shuffle = 0;
+	//environment.eta = Rcpp::as<int> (etaR);
+	//environment.shuffle = 0;
 	environment.isLatent = Rcpp::as<bool> (isLatentR);
 	environment.isTplReuse = Rcpp::as<bool> (isTplReuseR);
 	environment.isK23 = Rcpp::as<bool> (isK23R);
@@ -60,6 +63,9 @@ extern "C" SEXP skeleton(SEXP inputDataR, SEXP numNodesR, SEXP nThreadsR, SEXP b
 	environment.confidenceThreshold = Rcpp::as<double> (confidenceThresholdR);
 	environment.numberShuffles = Rcpp::as<int> (confidenceShuffleR);
 
+	environment.sampleWeightsVec = Rcpp::as< vector <double> > (sampleWeightsR);
+	environment.cntVarVec = Rcpp::as< vector <int> > (cntVarR);
+
 	environment.isVerbose = Rcpp::as<bool> (verboseR);
 
 	if(cplx.compare("nml") == 0)
@@ -67,7 +73,7 @@ extern "C" SEXP skeleton(SEXP inputDataR, SEXP numNodesR, SEXP nThreadsR, SEXP b
 	else if(cplx.compare("mdl") == 0)
 		environment.cplx = 0;
 
-	clock_t startTime;
+	double startTime;
 
 
 	vector< vector <string> > retShuffle;
@@ -77,16 +83,16 @@ extern "C" SEXP skeleton(SEXP inputDataR, SEXP numNodesR, SEXP nThreadsR, SEXP b
 	string filePath;
 
 	// set iterator to the bound, i.e only 1 iteration
-	environment.etaIterator = environment.eta;
-	environment.shuffleIterator = environment.shuffle;
+	//environment.etaIterator = environment.eta;
+	//environment.shuffleIterator = environment.shuffle;
+	environment.isAllGaussian = false;
 
 	// set the environment
 	setEnvironment(environment);
-
-	if(v.size() > 1)
+		if(v.size() > 1)
 		readBlackbox1(v, environment);
 
-	startTime = std::clock();
+	startTime = get_wall_time();
 
 	// ----
 
@@ -99,46 +105,44 @@ extern "C" SEXP skeleton(SEXP inputDataR, SEXP numNodesR, SEXP nThreadsR, SEXP b
 	    ) ;
 	    return result;
 	}
-			// ----
-	long double spentTime = (std::clock() - startTime) / (double)(CLOCKS_PER_SEC / 1000) /1000;
+	
+	// ----
+	long double spentTime = (get_wall_time() - startTime);
 	environment.execTime.init = spentTime;
+	if( environment.isVerbose == true ){ cout << "\n# ----> First contributing node elapsed time:" << spentTime << "sec\n\n"; }
+	
 
-
-	if( environment.numNoMore == 0 && environment.numSearchMore == 0 ) {
-		// if( environment.isVerbose == true ){ cout << "# ------| Only phantom edges found.\n"; }
+	firstStepIteration(environment);
+	if( environment.numNoMore == 0 && environment.numSearchMore == 0 ) { 
+		if( environment.isVerbose == true ){ cout << "# ------| Only phantom edges found.\n"; }
 	} else if( environment.numSearchMore > 0 ) {
-
+	
 		//// Search for other Contributing node(s) (possible only for the edges still in 'searchMore', ie. 2)
-
-		startTime = std::clock();
-
-
-		if(!skeletonIteration(environment))
-		{
-			// structure the output
-		    List result = List::create(
-			 	_["error"] = "error during skeleton iteration"
-
-		    ) ;
-		    return result;
-		}
-
-		long double spentTime = (std::clock() - startTime) / (double)(CLOCKS_PER_SEC / 1000) /1000;
+		if( environment.isVerbose == true ){ cout << "\n# ---- Other Contributing node(s) ----\n\n"; }
+		startTime = get_wall_time();
+			
+		skeletonIteration(environment);
+		long double spentTime = (get_wall_time() - startTime);
 		environment.execTime.iter = spentTime;
 		environment.execTime.initIter = environment.execTime.init + environment.execTime.iter;
 	}
+	cout << endl;
 
-	startTime = std::clock();
+
+
+	startTime = get_wall_time();
 	vector< vector <string> >confVect;
 	if(environment.numberShuffles > 0){
+		cout << "Computing confidence cut with permutations...";
 		confVect = confidenceCut(environment);
-		spentTime = (std::clock() - startTime) / (double)(CLOCKS_PER_SEC / 1000) /1000;
+		long double spentTime = (get_wall_time() - startTime);
 		environment.execTime.cut = spentTime;
-	} else {
+		cout << " done." << endl;
+	}
+	else{
 		environment.execTime.cut = 0;
 	}
 
-	
 
 	if( environment.numNoMore > 0)
 		edgesMatrix = saveEdgesListAsTable1(environment);
@@ -154,15 +158,6 @@ extern "C" SEXP skeleton(SEXP inputDataR, SEXP numNodesR, SEXP nThreadsR, SEXP b
 	time.push_back(environment.execTime.initIter+environment.execTime.cut);
 
 
-	if(environment.nThreads > 1){
-		// delete meory space for thread execution
-		for(int i = 0; i < environment.nThreads; i++){
-			deleteMemorySpaceThreads(environment, environment.memoryThreads[i]);
-		}
-		delete [] environment.memoryThreads ;
-	}
-	
-	
 	List result;
 	if(environment.numberShuffles > 0){
 		// structure the output
@@ -182,7 +177,6 @@ extern "C" SEXP skeleton(SEXP inputDataR, SEXP numNodesR, SEXP nThreadsR, SEXP b
 	
 	deleteMemorySpace(environment, environment.m);
 	deleteStruct(environment);
-
 
     return result;
 }

@@ -12,8 +12,64 @@ using namespace Rcpp;
 using namespace std;
 
 
+double compute_parametric_complexity(int n, int K, double** sc_look){
+
+  if(sc_look[n-1][K-1] != 0){
+    return(sc_look[n-1][K-1]);
+  }
+
+  double res;
+  if(K==1){
+    res = 1;
+  } else if(K==2){
+    if(n<1000){
+      res = 0;
+      for(int i=0 ; i <= n; i++){
+        int h1 = i;
+        int h2 = n - h1;
+        res = res + exp(ramanujan(n) - ramanujan(h1) - ramanujan(h2)) * pow((1.0*h1/n),h1) * pow((1.0*h2/n),h2);
+      }
+    } else{
+      res = sqrt((n*M_PI)/2) * exp(sqrt(8./(9.*n*M_PI)) + (3*M_PI-16)/(36.*n*M_PI));
+    }
+  } else {
+    res = compute_parametric_complexity(n, K-1, sc_look) + 1.0*n/(K-2) * compute_parametric_complexity(n, K-2, sc_look);
+  }
+
+  sc_look[n-1][K-1] = res;
+  return(res);
+}
+
 /*================================================================================================*
- *                                     Copyright (C) 2011 Paul Mineiro                                                                                            *
+ * 
+ * Copyright (c) 2011, Paul Mineiro
+ *    All rights reserved.
+ *
+ *    Redistribution and use in source and binary forms, with or without
+ *    modification, are permitted provided that the following conditions
+ *    are met:
+ *
+ *    * Redistributions of source code must retain the above copyright notice,
+ *        this list of conditions and the following disclaimer.
+ *    * Redistributions in binary form must reproduce the above copyright notice,
+ *        this list of conditions and the following disclaimer in the documentation
+ *        and/or other materials provided with the distribution.
+ *    * Neither the name of Paul Mineiro nor the names of its contributors
+ *        may be used to endorse or promote products derived from this software
+ *        without specific prior written permission.
+ *
+ *    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ *    AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ *    IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ *    ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+ *    LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ *    CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ *    SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ *    INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ *    CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ *    ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
+ *    THE POSSIBILITY OF SUCH DAMAGE.
+ *
  * https://github.com/etheory/fastapprox/blob/master/fastapprox                                                                     */
 static inline float fastlog2 (float x)
 {

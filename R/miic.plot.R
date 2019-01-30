@@ -13,7 +13,7 @@
 #' name of the vertex as indicated in the colnames of the input data frame, the two others reporting the x and y positions.
 #' @param igraphLayout [an igraph layout object]
 #' When set it is used to plot the network. See the igraph manual for more information.
-#'  Default: \emph{layout_with_kk} or \emph{layout.circle} if the network has more than 40 nodes.
+#'  Default: \emph{layout_with_kk}
 #' @param verbose [a boolean value] If TRUE, debugging output is printed.
 #' @export
 #' @useDynLib miic
@@ -62,9 +62,9 @@ miic.plot <-function(g, method = "log_confidence", igraphLayout = NULL, userLayo
   } else {
     if(is.null(igraphLayout)){
       myLayout = igraph::layout_with_kk
-      if (length(myVariables) >=40){
-        myLayout = igraph::layout.circle
-      }
+      #if (length(myVariables) >=40){
+      #  myLayout = igraph::layout.circle
+      #}
     }
     else
       myLayout = igraphLayout
