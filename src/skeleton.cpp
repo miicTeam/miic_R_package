@@ -214,7 +214,7 @@ extern "C" SEXP skeleton(SEXP inputDataR, SEXP typeOfDataR, SEXP cntVarR, SEXP n
 			environment.execTime.initIter = environment.execTime.init + environment.execTime.iter;
 			maxConsistentIter --;
 		} while(skeletonChanged(environment) && maxConsistentIter>0);
-		cout << "Returning consistent graph with " << environment.numNoMore << "edges (" << NEdgesBeforeIter << " before consistency checks)." << endl;
+		cout << "Returning consistent graph with " << environment.numNoMore << " edges (" << NEdgesBeforeIter << " before consistency checks)." << endl;
 	}
 
 
