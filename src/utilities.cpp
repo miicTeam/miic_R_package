@@ -666,20 +666,20 @@ bool isOnlyDouble(const char* str) {
 bool comparatorPairs ( const pair<double,int>& l, const pair<double,int>& r) {
 	return l.first < r.first; }
 
-bool SortFunctionNoMore1(const XJAddress* a, const XJAddress* b, const Environment environment) {
+bool SortFunctionNoMore1(const XJAddress* a, const XJAddress* b, const Environment& environment) {
 	return environment.edges[a->i][a->j].edgeStructure->Ixy_ui > environment.edges[b->i][b->j].edgeStructure->Ixy_ui;
 }
 
 class sorterNoMore {
 	  Environment environment;
 		public:
-	  sorterNoMore(Environment env) : environment(env) {}
+	  sorterNoMore(Environment& env) : environment(env) {}
 	  bool operator()(XJAddress const* o1, XJAddress const* o2) const {
 			return SortFunctionNoMore1(o1, o2, environment );
 	  }
 };
 
-bool SortFunction(const XJAddress* a, const XJAddress* b, const Environment environment) {
+bool SortFunction(const XJAddress* a, const XJAddress* b, const Environment& environment) {
 
 	if(environment.edges[a->i][a->j].edgeStructure->status > environment.edges[b->i][b->j].edgeStructure->status)
 		return true;
@@ -710,7 +710,7 @@ bool SortFunction(const XJAddress* a, const XJAddress* b, const Environment envi
 class sorter {
 	  Environment environment;
 		public:
-	  sorter(Environment env) : environment(env) {}
+	  sorter(Environment& env) : environment(env) {}
 	  bool operator()(XJAddress const* o1, XJAddress const* o2) const {
 			return SortFunction(o1, o2, environment );
 	  }
@@ -911,81 +911,6 @@ bool readBlackbox1(vector<string> v, Environment& environment){
 	return true;
 }
 
-/*
- * Save the edges list with their properties (Info, ui, zi..)
- */
-void saveEdgesListAsTable(const Environment environment, const string filename){
-	
-	bool sortedPrint = true;
-
-	if(environment.isVerbose)
-		cout << "Saving edges file\n";
-	ofstream output;
-	output.open(filename.c_str());
-
-	if(sortedPrint){
-		vector<XJAddress*> allEdges;
-
-		for(int i = 0; i < environment.numNodes -1; i++){
-		 	for(int j = i + 1; j < environment.numNodes; j++){
-		 		XJAddress* s = new XJAddress();
-				s->i=i;
-				s->j=j;
-				allEdges.push_back(s);
-		 	}
-		}
-
-		std::sort(allEdges.begin(), allEdges.end(), sorter(environment));
-
-
-		output << "x" << "\t" << "y" << "\t" << "z.name" << "\t" << "ui.vect" << "\t" << "zi.vect" << "\t" << 
-				"Ixy" << "\t" << "Ixy_ui" << "\t" << "cplx" << "\t" << "Rxyz_ui" << "\t" << "category" << "\t" << "Nxy_ui\n";
-
-		for(int i = 0; i < allEdges.size();i++){
-
-			for(int j = 0; j < environment.numNodes;j++){
-				if(j == allEdges[i]->i || j == allEdges[i]->j)
-					output << "1";
-				else
-					output << "0";
-			}
-			output << "\t";
-
-			output << environment.nodes[allEdges[i]->i].name << "\t" << environment.nodes[allEdges[i]->j].name << "\t" << 
-		 		zNameToString(environment, environment.edges[allEdges[i]->i][allEdges[i]->j].edgeStructure->zi_vect_idx, environment.edges[allEdges[i]->i][allEdges[i]->j].edgeStructure->z_name_idx) << "\t"
-	 			 << vectorToStringNodeName(environment, environment.edges[allEdges[i]->i][allEdges[i]->j].edgeStructure->ui_vect_idx) << "\t"
-	 			 << vectorToStringNodeName(environment, environment.edges[allEdges[i]->i][allEdges[i]->j].edgeStructure->zi_vect_idx) << "\t"
-	 			 << environment.edges[allEdges[i]->i][allEdges[i]->j].mutInfo << "\t"
-	 			 << environment.edges[allEdges[i]->i][allEdges[i]->j].edgeStructure->Ixy_ui << "\t" << environment.edges[allEdges[i]->i][allEdges[i]->j].edgeStructure->cplx << "\t"
-	 			 << environment.edges[allEdges[i]->i][allEdges[i]->j].edgeStructure->Rxyz_ui << "\t" << environment.edges[allEdges[i]->i][allEdges[i]->j].edgeStructure->status << "\t"
-	 			 << environment.edges[allEdges[i]->i][allEdges[i]->j].edgeStructure->Nxy_ui;
-		 	output << "\n";	
-		 	// if(environment.edges[allEdges[i]->i][allEdges[i]->j].edgeStructure->status == 3){
- 			// 		cout << environment.nodes[allEdges[i]->i].name << "\t" << environment.nodes[allEdges[i]->j].name << "\t" << endl;
- 			// 	}	
-		}
-	} else{
-		output << "x" << "\t" << "y" << "\t" << "z.name" << "\t" << "ui.vect" << "\t" << "zi.vect" << "\t" 
-				<< "Ixy_ui" << "\t" << "cplx" << "\t" << "Rxyz_ui" << "\t" << "category" << "\t" << "Nxy_ui\n";
-
-		for(int i = 0; i < environment.numNodes -1; i++){
-			for(int j = i + 1; j < environment.numNodes; j++){
-				output << environment.nodes[i].name << "\t" << environment.nodes[j].name << "\t" << 
-				zNameToString(environment, environment.edges[i][j].edgeStructure->zi_vect_idx, environment.edges[i][j].edgeStructure->z_name_idx) << "\t"
-					 << vectorToStringNodeName(environment, environment.edges[i][j].edgeStructure->ui_vect_idx) << "\t"
-					 << vectorToStringNodeName(environment, environment.edges[i][j].edgeStructure->zi_vect_idx) << "\t"
-					 << environment.edges[i][j].edgeStructure->Ixy_ui << "\t" << environment.edges[i][j].edgeStructure->cplx << "\t"
-					 << environment.edges[i][j].edgeStructure->Rxyz_ui << "\t" << environment.edges[i][j].edgeStructure->status << "\t"
-					 << environment.edges[i][j].edgeStructure->Nxy_ui;
- 				output << "\n";
-
-			}
-		}
-	}
-	output.close();
-}
-
-
 vector< vector <string> > saveEdgesListAsTable1(Environment& environment){
 
 	vector< vector <string> > data;
@@ -994,10 +919,12 @@ vector< vector <string> > saveEdgesListAsTable1(Environment& environment){
 
 	for(int i = 0; i < environment.numNodes -1; i++){
 	 	for(int j = i + 1; j < environment.numNodes; j++){
-	 		XJAddress* s = new XJAddress();
-			s->i=i;
-			s->j=j;
-			allEdges.push_back(s);
+			if( (environment.edges[i][j].isConnected) || (environment.edges[i][j].edgeStructure->ui_vect_idx.size() > 0)){
+				XJAddress* s = new XJAddress();
+				s->i=i;
+				s->j=j;
+				allEdges.push_back(s);
+			}
 	 	}
 	}
 

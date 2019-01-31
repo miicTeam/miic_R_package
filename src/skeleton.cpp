@@ -135,7 +135,7 @@ extern "C" SEXP skeleton(SEXP inputDataR, SEXP typeOfDataR, SEXP cntVarR, SEXP n
 	startTime = get_wall_time();
 	vector< vector <string> >confVect;
 	if(environment.numberShuffles > 0){
-		cout << "Computing confidence cut with permutations...";
+		cout << "Computing confidence cut with permutations..." << flush;
 		confVect = confidenceCut(environment);
 		long double spentTime = (get_wall_time() - startTime);
 		environment.execTime.cut = spentTime;
@@ -147,7 +147,7 @@ extern "C" SEXP skeleton(SEXP inputDataR, SEXP typeOfDataR, SEXP cntVarR, SEXP n
 
 
 	if( environment.numNoMore > 0){
-		cout << "Saving results for orientation..." ;
+		cout << "Saving results for orientation..." << flush;
 		edgesMatrix = saveEdgesListAsTable1(environment);
 		cout << " done." << endl;
 	}
