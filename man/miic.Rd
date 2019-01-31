@@ -101,9 +101,10 @@ An optional vector containing the weight of each observation.}
 \item{testMAR}{[a boolean value]
 If set to TRUE, distributions with missing values will be tested with Kullback-Leibler 
 divergence : conditioning variables for the given link \eqn{X\arrow Y}\eqn{Z} will be 
-considered only if the non-missing data distribution \eqn{KL(P(X,Y) | P(X,Y)_{!NA})} with
-\eqn{P(X,Y)_{!NA}} is the joint distribution of \eqn{X} and \eqn{Y} on samples which are not
-missing on Z. This is a way to ensure that data are missing at random for the considered
+considered only if the divergence between the full distribution and the non-missing 
+distribution \eqn{KL(P(X,Y) | P(X,Y)_{!NA})} is low enough (with \eqn{P(X,Y)_{!NA}} as 
+the joint distribution of \eqn{X} and \eqn{Y} on samples which are not missing on Z. 
+This is a way to ensure that data are missing at random for the considered
 interaction and to avoid selection bias. Set to TRUE by default}
 
 \item{consistent}{[a boolean value] If TRUE, runs the consistent version.}

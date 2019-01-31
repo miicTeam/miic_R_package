@@ -21,6 +21,16 @@
 using namespace std;
 using namespace Rcpp;
 
+bool skeletonChanged(::Environment& environment){
+	for(int i = 0; i < environment.numNodes; i++){
+		for(int j = 0; j < environment.numNodes; j++){
+			if(environment.edges[i][j].isConnected != environment.edges[i][j].areNeighboursAfterIteration){
+				return true;
+			}
+		}
+	}
+	return false;
+}
 
 extern "C" SEXP skeleton(SEXP inputDataR, SEXP typeOfDataR, SEXP cntVarR, SEXP numNodesR, SEXP nThreadsR, SEXP blackBoxR, SEXP effNR, SEXP cplxR,
 						 SEXP etaR, SEXP isLatentR, SEXP isTplReuseR, SEXP isK23R, SEXP isDegeneracyR, SEXP isNoInitEtaR, SEXP confidenceShuffleR,
@@ -130,6 +140,82 @@ extern "C" SEXP skeleton(SEXP inputDataR, SEXP typeOfDataR, SEXP cntVarR, SEXP n
 	}
 	cout << endl;
 
+	int NEdgesBeforeIter = environment.numNoMore << endl;
+	int maxConsistentIter = 10;
+	
+	//run of the skeleton iteration phase for the consistent part
+	if(environment.consistentPhase){
+
+		cout << "\n======	Consistent phase iterations	=====" << endl;
+		do{
+			cout << "Consistent phase " << maxConsistentIter-10 << " (maximum 10)" << endl;
+			int count = 0;
+			//save the neighbours in the areNeighboursAfterIteration structure
+			for(int i = 0; i < environment.numNodes; i++){
+				for(int j = 0; j < environment.numNodes; j++){
+					environment.edges[i][j].areNeighboursAfterIteration = environment.edges[i][j].isConnected;
+					if(environment.edges[i][j].areNeighboursAfterIteration)
+						count++;
+				}
+			}
+
+            bool graph_is_consistent = true;
+			for(int i = 0; i < environment.numNodes - 1; i++){
+				for(int j = i + 1; j < environment.numNodes; j++){
+                    if (!environment.edges[i][j].isConnectedAfterInitialization || environment.edges[i][j].edgeStructure->status != 1)
+                        continue;
+                    if (!is_consistent(environment, i, j, environment.edges[i][j].edgeStructure->ui_vect_idx))
+                        graph_is_consistent = false;
+                }
+            }
+            if (graph_is_consistent && maxConsistentIter == 10)
+                break;
+
+			//return back with structures at the moment of initialization
+			environment.countSearchMore = 0;
+			for(int i = 0; i < environment.numNodes; i++){
+				for(int j = 0; j < environment.numNodes; j++){
+					environment.edges[i][j].isConnected = environment.edges[i][j].isConnectedAfterInitialization; 
+					if(environment.edges[i][j].isConnected && i>j)
+						environment.countSearchMore++;
+				}
+			}
+
+			for(int i = 0; i < environment.numNodes - 1; i++){
+				for(int j = i + 1; j < environment.numNodes; j++){
+					environment.edges[i][j].edgeStructure->zi_vect_idx.clear();
+					environment.edges[i][j].edgeStructure->ui_vect_idx.clear();
+					environment.edges[i][j].edgeStructure->z_name_idx = -1;
+					environment.edges[i][j].edgeStructure->Rxyz_ui = 0;
+				}
+			}
+
+			for(int i = 0; i < environment.searchMoreAddress.size(); i++){
+				delete  environment.searchMoreAddress[i];
+			}
+
+			for(int i = 0; i < environment.noMoreAddress.size(); i++){
+				delete  environment.noMoreAddress[i];
+			}
+
+			environment.noMoreAddress.clear();
+			environment.searchMoreAddress.clear();
+
+			firstStepIteration(environment);
+
+			//// Search for other Contributing node(s) (possible only for the edges still in 'searchMore', ie. 2)
+			if( environment.isVerbose == true ){ cout << "\n# ---- Other Contributing node(s) ----\n\n"; }
+			startTime = get_wall_time();
+
+			skeletonIteration(environment);
+
+			long double spentTime = (get_wall_time() - startTime);
+			environment.execTime.iter = spentTime;
+			environment.execTime.initIter = environment.execTime.init + environment.execTime.iter;
+			maxConsistentIter --;
+		} while(skeletonChanged(environment) && maxConsistentIter>0);
+		cout << "Returning consistent graph with " << environment.numNoMore << "edges (" << NEdgesBeforeIter << " before consistency checks)." << endl;
+	}
 
 
 	startTime = get_wall_time();

@@ -1,6 +1,7 @@
 gmSummary <- function(inputData=NULL, edges = NULL, trueEdges = NULL,
-                      stateOrder = NULL, adjMatrix = NULL, verbose = FALSE
-){
+                      stateOrder = NULL, adjMatrix = NULL, verbose = FALSE)
+{
+  
   if( is.null( inputData ) )
   { stop("The input data file is required") }
 
@@ -339,10 +340,9 @@ gmSummary <- function(inputData=NULL, edges = NULL, trueEdges = NULL,
 
 
   outputSummary.df <- outputSummary.df[,!colnames(outputSummary.df) %in% c("essential")]
+  rownames(outputSummary.df) <- NULL
   res$all.edges.summary <- outputSummary.df
 
-  rownames(outputSummary.df) <- NULL
-  #outputSummary.df <- outputSummary.df[, -c(13)]
 
   outputSummary.df <-outputSummary.df[which(outputSummary.df$type %in% c("P","TP","FP")),]
 

@@ -919,12 +919,12 @@ vector< vector <string> > saveEdgesListAsTable1(Environment& environment){
 
 	for(int i = 0; i < environment.numNodes -1; i++){
 	 	for(int j = i + 1; j < environment.numNodes; j++){
-			if( (environment.edges[i][j].isConnected) || (environment.edges[i][j].edgeStructure->ui_vect_idx.size() > 0)){
+			//if( (environment.edges[i][j].isConnected) || (environment.edges[i][j].edgeStructure->ui_vect_idx.size() > 0)){
 				XJAddress* s = new XJAddress();
 				s->i=i;
 				s->j=j;
 				allEdges.push_back(s);
-			}
+			//}
 	 	}
 	}
 

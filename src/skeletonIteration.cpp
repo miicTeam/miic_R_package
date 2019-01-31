@@ -76,13 +76,12 @@ void searchAndSetZi(Environment& environment, const int posX, const int posY){
     for(int c = 0; c < environment.numNodes; c++){
         if (c == posX || c == posY)
             continue;
+        if (!isLatent && !environment.edges[posX][c].areNeighboursAfterIteration && !environment.edges[posY][c].areNeighboursAfterIteration)
+            continue;
         if (consistentPhase && !is_consistent(environment, posX, posY, c))
             continue;
-        //TODO: need verification of the condition
-        if (isLatent || (environment.edges[posX][c].isConnected && environment.edges[posX][c].areNeighboursAfterIteration) || (environment.edges[posY][c].isConnected && environment.edges[posY][c].areNeighboursAfterIteration && !environment.edges[posX][c].isConnected)) {
-            environment.edges[posX][posY].edgeStructure->zi_vect_idx.push_back(c);
-            numZiPos++;
-        }
+        environment.edges[posX][posY].edgeStructure->zi_vect_idx.push_back(c);
+        numZiPos++;
     }
 
 	if(environment.isVerbose)
@@ -501,21 +500,15 @@ void skeletonIteration(Environment& environment){
 
 			} else {
 				if(environment.isVerbose) { cout << "# Do update myAllEdges$noMore\n" ; }
-
-                if (environment.consistentPhase && !is_consistent(environment, posX, posY,
-                            environment.edges[posX][posY].edgeStructure->ui_vect_idx)) {
-                    // if consistency is required but not present, keep edge
-                } else {
-                    //// Move this edge from the list searchMore to noMore
-                    environment.noMoreAddress.push_back(environment.searchMoreAddress[max]);
-                    environment.numNoMore++;
-                    environment.searchMoreAddress.erase(environment.searchMoreAddress.begin() + max);
-                    environment.numSearchMore--;
-                    // environment.edges[posX][posY].isConnected = 1;
-                    // environment.edges[posY][posX].isConnected = 1;
-                    //// Update the status of the edge
-                    topEdgeElt->status = 3;
-                }
+					//// Move this edge from the list searchMore to noMore
+					environment.noMoreAddress.push_back(environment.searchMoreAddress[max]);
+					environment.numNoMore++;
+					environment.searchMoreAddress.erase(environment.searchMoreAddress.begin() + max);
+					environment.numSearchMore--;
+					// environment.edges[posX][posY].isConnected = 1;
+					// environment.edges[posY][posX].isConnected = 1;
+					//// Update the status of the edge
+					topEdgeElt->status = 3;
 			}
 		}
 
@@ -532,6 +525,7 @@ void skeletonIteration(Environment& environment){
 		prg_numSearchMore = printProgress(1.0*(start_numSearchMore - environment.numSearchMore)/(start_numSearchMore),
 					  					  environment.execTime.startTimeIter, environment.outDir, prg_numSearchMore);
 	}
+	cout << "\n";
 	std::sort(environment.noMoreAddress.begin(), environment.noMoreAddress.end(), sorterNoMore(environment));
 
 	// delete memory
@@ -568,7 +562,7 @@ vector<int> bfs(const Environment& environment, int start, int end, const vector
         auto& p = bfs_queue.front();
         visited[p.first] = 1;
         for (int i=0; i<numNodes; i++) {
-            if (!visited[i] && environment.edges[p.first][i].isConnected) {
+            if (!visited[i] && environment.edges[p.first][i].areNeighboursAfterIteration) {
                 vector<int> new_path(p.second);
                 new_path.push_back(i);
                 if (i == end)
@@ -595,12 +589,14 @@ bool is_consistent(const Environment& environment, int x, int y, int z) {
         return false;
 
     vector<int> x2z = bfs(environment, x, z);
-    x2z.pop_back();  // remove z from path (not to be excluded in the following step)
+    if (x2z.size() > 0)
+        x2z.pop_back();  // remove z from path (not to be excluded in the following step)
     if (!x2z.empty() && !bfs(environment, y, z, x2z).empty())  // exclude nodes in path x2z
         return true;
 
     vector<int> y2z = bfs(environment, y, z);
-    y2z.pop_back();
+    if (y2z.size() > 0)
+        y2z.pop_back();
     if (!y2z.empty() && !bfs(environment, x, z, y2z).empty())
         return true;
 
