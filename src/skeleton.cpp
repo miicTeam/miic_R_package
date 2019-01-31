@@ -140,7 +140,7 @@ extern "C" SEXP skeleton(SEXP inputDataR, SEXP typeOfDataR, SEXP cntVarR, SEXP n
 	}
 	cout << endl;
 
-	int NEdgesBeforeIter = environment.numNoMore << endl;
+	int NEdgesBeforeIter = environment.numNoMore;
 	int maxConsistentIter = 10;
 	
 	//run of the skeleton iteration phase for the consistent part
