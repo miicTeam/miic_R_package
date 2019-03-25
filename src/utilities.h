@@ -3,23 +3,23 @@
 void createMemorySpace(Environment&, MemorySpace&);
 // bool createMemorySpaceThreads(Environment&, ContainerMemory&);
 void deleteMemorySpace(Environment&, MemorySpace&);
-std::string printNodesName(Environment);
-void printMatrix(Environment, std::string);
+std::string printNodesName(Environment&);
+void printMatrix(Environment&, std::string);
 void readData(Environment&);
 bool parseCommandLine(Environment&, int, char**);
-void printEnvironment(Environment, Log*);
+void printEnvironment(Environment&, Log*);
 void setEnvironment(Environment&);
 int** copyMatrix(int**, int, int);
 void setNumberLevels(Environment&);
 bool existsTest(const std::string&);
 bool checkNA(int**, int, int);
-void saveAdjMatrix(const Environment, const std::string);
-void saveAdjMatrixState(const Environment, const std::string);
-void saveEdgesListAsTable(const Environment, const std::string);
+void saveAdjMatrix(const Environment&, const std::string);
+void saveAdjMatrixState(const Environment&, const std::string);
+void saveEdgesListAsTable(const Environment&, const std::string);
 std::vector< std::vector <std::string> > saveEdgesListAsTable1(Environment&);
-void saveExecTime(const Environment, const std::string);
-double findAvg(const Environment, double**, int);
-std::string arrayToString(Environment, const int* , const int );
+void saveExecTime(const Environment&, const std::string);
+double findAvg(const Environment&, double**, int);
+std::string arrayToString(Environment&, const int* , const int );
 std::string arrayToString1(const double*, const int);
 std::string vectorToString(const std::vector<int> vec);
 void readTime(Environment&, std::string);
@@ -46,7 +46,6 @@ void deleteStruct(Environment& environment);
 double get_wall_time();
 double get_cpu_time();
 double ramanujan(int n);
-double logchoose(int n, int k, double* looklog);
 int printProgress (double percentage, double startTime, string outdir, int prg_numSearchMore);
 //KL divergence functions
 //double compute_kl_divergence_continuous(double** space1, double** space2, int n1, int n2, int ndims, int k, 
@@ -55,7 +54,7 @@ int printProgress (double percentage, double startTime, string outdir, int prg_n
 //										bool flag_break_ties, int* map_samples);
 //double compute_k_nearest_distance(double* point, double** space, int ndims, int n, int k);
 //double compute_k_nearest_distance(double point, double* dist, int n, int k);
-double compute_kl_divergence(int* posArray, Environment environment, int samplesNotNA, int** dataNumeric_red, 
+double compute_kl_divergence(int* posArray, Environment& environment, int samplesNotNA, int** dataNumeric_red, 
 							 int* AllLevels_red, int* samplesToEvaluate);
 
 // static double igf(double S, double Z);
@@ -69,8 +68,10 @@ double kl(double* freqs1, double* freqs2, int nlevels);
 double kl(int* freqs1, int* freqs2, int n1, int n2, int nlevels);
 //void updateJointCounts(Environment& environment, int i , int j);
 
-void getJointMixed(Environment environment, int i, int j, int* mixedDiscrete, double* mixedContinuous,
+void getJointMixed(Environment& environment, int i, int j, int* mixedDiscrete, double* mixedContinuous,
 				   int* curr_samplesToEvaluate);
-double** getJointFreqs(Environment environment, int i, int j, int numSamples_nonNA);
-void getJointSpace(Environment environment, int i, int j, double** jointSpace, int* curr_samplesToEvaluate);
-int getNumSamples_nonNA(Environment environment, int i, int j);
+double** getJointFreqs(Environment& environment, int i, int j, int numSamples_nonNA);
+void getJointSpace(Environment& environment, int i, int j, double** jointSpace, int* curr_samplesToEvaluate);
+int getNumSamples_nonNA(Environment& environment, int i, int j);
+
+bool checkInterrupt(bool check=true);

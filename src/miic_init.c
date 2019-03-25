@@ -22,7 +22,7 @@ extern SEXP skeleton(SEXP, SEXP, SEXP, SEXP, SEXP,
 
 static const R_CallMethodDef CallEntries[] = {
     {"mydiscretizeMDL",        (DL_FUNC) &mydiscretizeMDL,          2},
-    {"mydiscretizeMutual",     (DL_FUNC) &mydiscretizeMutual,       10},
+    {"mydiscretizeMutual",     (DL_FUNC) &mydiscretizeMutual,      10},
     {"evaluateEffn",           (DL_FUNC) &evaluateEffn,             3},
     {"orientationProbability", (DL_FUNC) &orientationProbability,  15},
     {"skeleton",               (DL_FUNC) &skeleton,                20},

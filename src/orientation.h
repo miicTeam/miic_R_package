@@ -1,3 +1,3 @@
 #include "structure.h"
 
-void orientation(Environment, string, bool);
+void orientation(Environment&, string, bool);

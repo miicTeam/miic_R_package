@@ -54,7 +54,7 @@ bool SortFunctionNoMore2(const XJAddress* a, const XJAddress* b, const Environme
 class sorterNoMore2 {
 	  Environment environment;
 		public:
-	  sorterNoMore2(Environment env) : environment(env) {}
+	  sorterNoMore2(Environment& env) : environment(env) {}
 	  bool operator()(XJAddress const* o1, XJAddress const* o2) const {
 			return SortFunctionNoMore2(o1, o2, environment );
 	  }

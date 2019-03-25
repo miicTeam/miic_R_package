@@ -132,6 +132,7 @@ struct Environment {
 		
 	int numNodes;
 	int numSamples;
+	bool firstIterationDone;
 
 	std::vector<XJAddress*> searchMoreAddress;
 	std::vector<XJAddress*> noMoreAddress;

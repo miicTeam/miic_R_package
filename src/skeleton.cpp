@@ -8,6 +8,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <Rcpp.h>
+#include <omp.h>
 
 #include "structure.h"
 #include "utilities.h"
@@ -32,6 +33,14 @@ bool skeletonChanged(::Environment& environment){
 	return false;
 }
 
+List empty_results(){
+	List result;
+	result = List::create(
+		_["interrupted"] = true
+	) ;
+	return(result);
+}
+
 extern "C" SEXP skeleton(SEXP inputDataR, SEXP typeOfDataR, SEXP cntVarR, SEXP numNodesR, SEXP nThreadsR, SEXP blackBoxR, SEXP effNR, SEXP cplxR,
 						 SEXP etaR, SEXP isLatentR, SEXP isTplReuseR, SEXP isK23R, SEXP isDegeneracyR, SEXP isNoInitEtaR, SEXP confidenceShuffleR,
 						 SEXP confidenceThresholdR, SEXP sampleWeightsR, SEXP consistentR, SEXP testDistR, SEXP verboseR)
@@ -50,6 +59,12 @@ extern "C" SEXP skeleton(SEXP inputDataR, SEXP typeOfDataR, SEXP cntVarR, SEXP n
 
 	environment.numNodes = Rcpp::as<int> (numNodesR);
 	environment.nThreads = Rcpp::as<int> (nThreadsR);
+	#ifdef _OPENMP
+		int threads = environment.nThreads;
+		if (threads < 0)
+			threads = omp_get_num_procs();
+		omp_set_num_threads(threads);
+	#endif
 	environment.consistentPhase = Rcpp::as<bool> (consistentR);
 	environment.testDistribution = Rcpp::as<bool> (testDistR);
 
@@ -107,13 +122,18 @@ extern "C" SEXP skeleton(SEXP inputDataR, SEXP typeOfDataR, SEXP cntVarR, SEXP n
 	startTime = get_wall_time();
 
 	// ----
+	environment.memoryThreads = new MemorySpace[environment.nThreads];
+	for(int i = 0; i < environment.nThreads; i++){
+		createMemorySpace(environment, environment.memoryThreads[i]);
+	}
+	
 
 	if(!skeletonInitialization(environment))
 	{
 		// structure the output
 	    List result = List::create(
-		 	_["error"] = "error during skeleton initialization"
-
+		 	_["error"] = "error during skeleton initialization",
+		 	_["interrupted"] = true
 	    ) ;
 	    return result;
 	}
@@ -124,7 +144,7 @@ extern "C" SEXP skeleton(SEXP inputDataR, SEXP typeOfDataR, SEXP cntVarR, SEXP n
 	if( environment.isVerbose == true ){ cout << "\n# ----> First contributing node elapsed time:" << spentTime << "sec\n\n"; }
 	
 
-	firstStepIteration(environment);
+	if(!firstStepIteration(environment)) return(empty_results());
 	if( environment.numNoMore == 0 && environment.numSearchMore == 0 ) { 
 		if( environment.isVerbose == true ){ cout << "# ------| Only phantom edges found.\n"; }
 	} else if( environment.numSearchMore > 0 ) {
@@ -133,11 +153,16 @@ extern "C" SEXP skeleton(SEXP inputDataR, SEXP typeOfDataR, SEXP cntVarR, SEXP n
 		if( environment.isVerbose == true ){ cout << "\n# ---- Other Contributing node(s) ----\n\n"; }
 		startTime = get_wall_time();
 			
-		skeletonIteration(environment);
+		if(!skeletonIteration(environment)) return(empty_results());
 		long double spentTime = (get_wall_time() - startTime);
 		environment.execTime.iter = spentTime;
 		environment.execTime.initIter = environment.execTime.init + environment.execTime.iter;
 	}
+	// delete memory
+	for(int i = 0; i < environment.nThreads; i++){
+		deleteMemorySpace(environment, environment.memoryThreads[i]);
+	}
+	delete [] environment.memoryThreads;
 	cout << endl;
 
 	int NEdgesBeforeIter = environment.numNoMore;
@@ -256,13 +281,15 @@ extern "C" SEXP skeleton(SEXP inputDataR, SEXP typeOfDataR, SEXP cntVarR, SEXP n
 	    	_["confData"] = confVect,
 		 	_["adjMatrix"] = adjMatrix,
 	        _["edges"] = edgesMatrix,
-	        _["time"] = time
+	        _["time"] = time,
+			_["interrupted"] = false
 	    ) ;
 	} else {
 		result = List::create(
 		 	_["adjMatrix"] = adjMatrix,
 	        _["edges"] = edgesMatrix,
-	        _["time"] = time
+	        _["time"] = time,
+			_["interrupted"] = false
 	    ) ;
 	}
 	

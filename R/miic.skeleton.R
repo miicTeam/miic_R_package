@@ -42,6 +42,7 @@ miic.skeleton <- function(inputData = NULL, cntVar = NULL, blackBox = NULL, stat
       res <- .Call('skeleton', inData, typeOfData, cntVar, numNodes, nThreads, bB, effN, cplx, eta, latent, isTplReuse,
                isK23, isDegeneracy, isNoInitEta, confidenceShuffle, confidenceThreshold, sampleWeights, consistent, 
                testMAR, verbose, PACKAGE = "miic")
+      if(res$interrupted) return(list(interrupted=TRUE))
   }
 
   # if(shuffle == 0) {
@@ -108,7 +109,7 @@ miic.skeleton <- function(inputData = NULL, cntVar = NULL, blackBox = NULL, stat
   time[which(time == 0)]=NA
 
   res$time <- stats::setNames(as.numeric(time),c("init", "iter", "initIter", "cut"))
-
+  res$interrupted <- FALSE
 
 
   res

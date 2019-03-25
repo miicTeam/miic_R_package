@@ -312,7 +312,7 @@ miic <- function(inputData, categoryOrder= NULL, trueEdges = NULL, blackBox = NU
       warning(paste0("Variable ", col, " is treated as discrete but has many levels (", length(unique(inputData[[col]])), ")."))
     }
   }
-  typeofData = 0 # Assume all discrete
+  typeOfData = 0 # Assume all discrete
   if(any(cntVar)){ 
     typeOfData = 2 # Mixed if any are continuous
     if(all(cntVar)){
@@ -332,6 +332,10 @@ miic <- function(inputData, categoryOrder= NULL, trueEdges = NULL, blackBox = NU
                            effN = neff, blackBox = blackBox, confidenceShuffle = confidenceShuffle,
                            confidenceThreshold= confidenceThreshold, verbose= verbose, cntVar = cntVar, typeOfData = typeOfData,
                            sampleWeights = sampleWeights, testMAR = testMAR, consistent = consistent)
+      if(res$interrupted){
+        warning("Interupted by user")
+        return(NULL)
+      }
       # print(res)
       edges = res$edges
       confData = res$confData

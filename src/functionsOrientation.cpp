@@ -19,7 +19,7 @@
 using namespace std;
 
 
-void saveTableOfOrientations(Environment environment, string filename){
+void saveTableOfOrientations(Environment& environment, string filename){
 	ofstream output;
 	output.open(filename.c_str());
 

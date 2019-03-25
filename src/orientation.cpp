@@ -19,7 +19,7 @@ bool sortFunctionListStruct(const Struct* a, const Struct* b) {
      return a->rv > b->rv;
 }
 
-void orientation(Environment environment, string slash, bool isVerbose){
+void orientation(Environment& environment, string slash, bool isVerbose){
 	cout << "# -> START miic orientation...\n";
 	std::stringstream ss;
 	ss.str("");

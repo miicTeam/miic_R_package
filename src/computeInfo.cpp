@@ -12,7 +12,7 @@
 
 unsigned long binomialCoeff(int n, int k)
 {
-    int res = 1;
+    unsigned long res = 1;
  
     // Since C(n, k) = C(n, n-k)
     if ( k > n - k )
@@ -40,191 +40,6 @@ int getDVect( int* myPtrAllLevels, int* myPtrVarIdx, int myNbrAllVar, int* ioPtr
 	}
 
 	return errCode;	
-}
-
-// myCplx = 0 --> MDL, myCplx = 1 --> NML
-int computeInfoAndCplx( int *myNxyui, int *myDVect, int *myLevels, int *myVarIdx, int mySSize, int mySSizeEff, int myNbrVar, double* infoAndCplx, int myCplxType, double* c2terms )
-{
-	int errCode = 0;
-
-	int i, j;
-	int Lui;		            // Partial index to read the count (ie, only with ui)
-	int Lxui;		            // Partial index to read the count (ie, only with x and ui)
-	int Lyui;		            // Partial index to read the count (ie, only with y and ui)
-	int LLxyui;		            // Full index to read the count (ie, X, Y and {ui})
-
-	int Nui;		            // Sum over X and Y for a {ui}
-	int Nxui;		            // Sum over Y of Nxyui
-	int Nyui;		            // Sum over X of Nxyui
-	int NN = 0;		            // Sum over {ui} of Nui
-	
-	int tmpRescaleN;            // temp variable for rescaling the 'n' considering the effective sample size
-
-	// Compute the first part
-	double NI = 0.0;			// NI = NIxy - NIx - NIy	
-	double NML = 0.0, logCNML = 0.0, MDL = 0.0;
-
-	int stopUiStatesLoop = 0;
-
-
-	//  Define a vector to set the combinaison of the {ui}
-	// (var := X, Y, U1, U2, etc...)
-	int *uiVal = NULL;
-	if( myNbrVar > 2 )
-	{
-		uiVal = (int*)malloc((myNbrVar-2)*sizeof(int));
-		memset( uiVal, 0, (myNbrVar-2)*sizeof(int) );
-
-
-	} 
-	// Loop over {ui} combinations
-	do
-	{
-		// --------------- Partial index with ui ---------------
-		// Compute a partial index that takes into account only the combination of {ui}
-		Lui=0;
-		if( uiVal != NULL )
-		{
-    		for( i = (myNbrVar-1); i >=2; i-- ) 
-			{ Lui = Lui + myDVect[i]*uiVal[i-2]; }
-		}
-		// ---------------  Nui ---------------
-		// Compute Nui (ie, sum over X and Y cases of Nxyui)
-		Nui=0;
-		for( i = 0; i < myLevels[myVarIdx[0]]; i++ )
-		{
-
-			for( j = 0; j < myLevels[myVarIdx[1]]; j++ )
-			{ 
-
-				LLxyui = Lui + i*myDVect[0] + j*myDVect[1];
-				Nui = Nui + myNxyui[LLxyui];
-      		}
-    	}
-
-		// --------------- NN ---------------
-		// Add the current Nui to the sum over X, Y and {ui} of Nxyui
-		NN = NN + Nui;
-
-
-		// --------------- NI ---------------
-		// Update the logCNML coefficient if needed (1/C(Nui, ry))
-		//if( myCplx == 1 ) { logCNML = - computeLogC( Nui, myLevels[myVarIdx[1]] ); }
-		if( myCplxType == 1 )
-		{
-		    tmpRescaleN = (int)floor( 0.5 + ((double)Nui*mySSizeEff)/mySSize ); 
-		    logCNML = - computeLogC( tmpRescaleN, myLevels[myVarIdx[1]], c2terms);
-		}
-		// Update the NI (sum over ui and over x of Nxui)
-		for( i = 0; i < myLevels[myVarIdx[0]]; i++ )
-		{
-			Nxui = 0;
-			for( j = 0; j < myLevels[myVarIdx[1]]; j++ )
-			{
-				Lxui = Lui + i*myDVect[0] + j*myDVect[1];
-				Nxui = Nxui + myNxyui[Lxui]; 
-				//printf("# --!!--> Nxui = %d\n", Nxui);
-			}
-			// Add to the NI
-			if( Nxui > 0 )
-			{ 
-				NI = NI - Nxui*log(Nxui/(1.0*Nui)); 
-				//if( myCplx == 1 ) { logCNML = logCNML + computeLogC( Nxui, myLevels[myVarIdx[1]] ); }
-				if( myCplxType == 1 )
-				{ 
-				    tmpRescaleN = (int)floor( 0.5 + ((double)Nxui*mySSizeEff)/mySSize ); 
-				    logCNML = logCNML + computeLogC( tmpRescaleN, myLevels[myVarIdx[1]], c2terms);
-				}
-			}
-
-		}
-		if( Nui > 0 && myCplxType == 1 ){ NML = NML + 0.5*logCNML; }
-
-        // Update the logCNML coefficient if needed (1/C(Nui, rx))
-		//if( myCplx == 1 ) { logCNML = - computeLogC( Nui, myLevels[myVarIdx[0]] ); }
-		if( myCplxType == 1 )
-		{ 
-		    tmpRescaleN = (int)floor( 0.5 + ((double)Nui*mySSizeEff)/mySSize );
-		    logCNML = - computeLogC( tmpRescaleN, myLevels[myVarIdx[0]], c2terms);
-		}
-		// Increment the NIy (sum over ui and over y of Nxyui)
-		for( j = 0; j < myLevels[myVarIdx[1]]; j++ )
-		{
-			Nyui = 0;
-			for( i = 0; i < myLevels[myVarIdx[0]]; i++ )
-			{
-				Lyui = Lui + i*myDVect[0] + j*myDVect[1];
-				Nyui = Nyui + myNxyui[Lyui];
-				//printf("# --!!--> Nyui = %d\n", Nyui);
-			}
-			// Add to the NI
-			if( Nyui > 0 )
-			{ 
-				NI = NI - Nyui*log(Nyui/((double)Nui));
-				//if( myCplx == 1 ) { logCNML = logCNML + computeLogC( Nyui, myLevels[myVarIdx[0]] ); }
-				if( myCplxType == 1 )
-				{
-				    tmpRescaleN = (int)floor( 0.5 + ((double)Nyui*mySSizeEff)/mySSize ); 
-				    logCNML = logCNML + computeLogC( tmpRescaleN, myLevels[myVarIdx[0]], c2terms);
-				}
-			}
-
-		}
-		if( Nui > 0 && myCplxType == 1){ NML = NML + 0.5*logCNML; }
-
-		// Update the NI (sum over ui, over x and over y of Nxyui)
-		for( i = 0; i < myLevels[myVarIdx[0]]; i++ )
-		{
-			for( j = 0; j < myLevels[myVarIdx[1]]; j++ )
-			{
-				LLxyui = Lui + i*myDVect[0] + j*myDVect[1];
-				if( myNxyui[LLxyui] > 0 ){ NI = NI + myNxyui[LLxyui]*log(myNxyui[LLxyui]/((double)Nui)); }
-			}
-		}	
-
-		stopUiStatesLoop = 1;
-		if( uiVal != NULL )
-		{
-			// Compute the next ui combinaison
-			for( i = 2; i < myNbrVar; i++ )
-			{
-				if( uiVal[i-2] < (myLevels[myVarIdx[i]]-1) )
-				{
-					uiVal[i-2]++;
-					stopUiStatesLoop = 0;
-					i = myNbrVar;
-
-				} else{
-					uiVal[i-2] = 0;				
-				}
-			}
-		} 		
-	} while( stopUiStatesLoop == 0 );
-
-    // Rescale the NI Value and the NN
-	NI = ((double)NI*mySSizeEff)/mySSize;
-	NN = (int)floor( 0.5 + (((double)NN*mySSizeEff)/mySSize));
-
-	if( myCplxType == 0 ) 
-	{ 
-		// Compute the MDL
-		MDL = 0.5*( myLevels[myVarIdx[0]] - 1 )*( myLevels[myVarIdx[1]] - 1 )*log( NN );
-		for( i = 2; i < myNbrVar; i++ )
-		{
-			MDL = MDL*myLevels[myVarIdx[i]];
-		}
-	}
-
-	// Set the io array
-	infoAndCplx[0] = NI;
-	infoAndCplx[1] = -1;
-	if( myCplxType == 0) { infoAndCplx[1] = MDL; } else if( myCplxType == 1 ) { infoAndCplx[1] = NML; }
-
-	// --- FREE FREE FREE ---
-	free(uiVal);
-	uiVal = NULL;
-
-	return errCode;
 }
 
 
@@ -313,18 +128,40 @@ double compute_LogC_C2( int N, int r, double* c2terms)
 	return logC;
 }
 
-double computeLogC( int N, int r, double* c2terms)
+double lnfactorial(int n, double* looklog) {
+	int y;
+	double z;
+	if (n == 0){
+		z=1;
+	}
+	else {
+		z = 0;
+		for (y=2; y<=n; y++) z += looklog[y];
+	}
+	return z;
+}
+
+double logchoose(int n, int k, double* looklog){
+	if(n==k || k==0){
+		return 0;
+	}
+	double res = lnfactorial(n, looklog) - lnfactorial(k, looklog) - lnfactorial(n-k, looklog);
+	return(res);
+}
+
+double computeLogC(int N, int r, double* looklog, double* c2terms)
 {
 	double C2, logC, D;
 	int rr,h;
 
-	if(N<=10)
+	if(N<=1000)
 	{
 		if(c2terms[N] == -1){
 			C2=0;
 			for( h = 0; h <= N; h++ )
 			{
-				C2 = C2 + binomialCoeff( N, h )*pow( ( h/( (double)N ) ), h )*pow( ( ( N-h )/( (double)N ) ), ( N-h ) );
+				//C2 = C2 + binomialCoeff( N, h )*pow( ( h/( (double)N ) ), h )*pow( ( ( N-h )/( (double)N ) ), ( N-h ) );
+				C2 = C2 + exp( logchoose(N, h, looklog) + log(pow( ( h/( (double)N ) ), h )) + log(pow( ( ( N-h )/( (double)N ) ), ( N-h ) )) );
 	   		}
 	   		c2terms[N] = C2;
 	   	} else {
@@ -354,7 +191,7 @@ double computeLogC( int N, int r, double* c2terms)
 	return logC;
 }
 
-double computeLogC( int N, int r, double** cterms)
+double computeLogC( int N, int r, double* looklog, double** cterms)
 {
 	if(r<N_COL_NML){
 		double val = cterms[r][N];
@@ -367,13 +204,14 @@ double computeLogC( int N, int r, double** cterms)
 	double C2, logC, D;
 	int rr,h;
 
-	if(N<=10)
+	if(N<=20)
 	{
 		if(sc_look[N] == -1){
 			C2=0;
 			for( h = 0; h <= N; h++ )
 			{
-				C2 = C2 + binomialCoeff( N, h )*pow( ( h/( (double)N ) ), h )*pow( ( ( N-h )/( (double)N ) ), ( N-h ) );
+				//C2 = C2 + binomialCoeff( N, h )*pow( ( h/( (double)N ) ), h )*pow( ( ( N-h )/( (double)N ) ), ( N-h ) );
+				C2 = C2 + exp( logchoose(N, h, looklog) + log(pow( ( h/( (double)N ) ), h )) + log(pow( ( ( N-h )/( (double)N ) ), ( N-h ) )) );
 	   		}
             C2 = log(C2);
 	   	} else {
@@ -404,4 +242,31 @@ double computeLogC( int N, int r, double** cterms)
 		cterms[r][N]=logC;
 	}
 	return logC;
+}
+
+double computeLogRC(int N, int reff, double* looklog, double** cterms){
+
+	double RC = 0;
+	for(int k=0; k<reff; k++){
+		RC += pow(-1, k) * binomialCoeff(reff, k) * exp(computeLogC(N,  reff-k, looklog,  cterms));
+	}
+	return(log(RC));
+}
+
+double computeLogRCr(int N, int reff, double* looklog, double** cterms){
+
+	double RC = 0;
+	for(int k=0; k<reff; k++){
+		RC += pow(-1, k) * exp(computeLogC(N, reff-k, looklog, cterms) - computeLogC(N, reff, looklog, cterms) + logchoose(reff,  k, looklog));
+	}
+	return(log(RC));
+}
+
+double computeLogHDC(int N, int r, int reff, double* looklog, double** cterms){
+
+	//return(logchoose(r, reff, looklog) + computeLogRC(N, reff, looklog, cterms));
+	if(N==0) return(0);
+	if(N==1) return(log(r));
+	//return(logchoose(r, reff, looklog) + computeLogRCr(N, reff, looklog, cterms) + computeLogC(N, reff, looklog, cterms));
+	return(logchoose(r, reff, looklog) + computeLogC(N, reff, looklog, cterms));
 }

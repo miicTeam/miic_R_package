@@ -17,6 +17,7 @@
 #include <unordered_set>
 #include <nanoflann.hpp>
 #include "KDTreeVectorOfVectorsAdaptor.h"
+#include <Rcpp.h>
 
 #include "utilities.h"
 #include "computeInfo.h"
@@ -232,25 +233,6 @@ double ramanujan(int n){
     return(N);
 }
  
-double lnfactorial(int n, double* looklog) {
-	int y;
-	double z;
-	if (n == 0){
-		z=1;
-	}
-	else {
-		z = 0;
-		for (y=2; y<=n; y++) z += looklog[y];
-	}
-	return z;
-}
-
-double logchoose(int n, int k, double* looklog){
-	double res = lnfactorial(n, looklog) - lnfactorial(k, looklog) - lnfactorial(n-k, looklog);
-	//double res = ramanujan(n) - ramanujan(k) - ramanujan(n-k);
-	return(res);
-}
-
 double get_wall_time(){
     struct timeval time;
     if (gettimeofday(&time,NULL)){
@@ -755,7 +737,7 @@ void readTime(Environment& environment, string name){
 /*
  * Save the adjacency matrix
  */
-void saveAdjMatrix(const Environment environment, const string filename){
+void saveAdjMatrix(const Environment& environment, const string filename){
 	if(environment.isVerbose)
 		cout << "Saving adjacency matrix\n";
 	ofstream output;
@@ -781,7 +763,7 @@ void saveAdjMatrix(const Environment environment, const string filename){
 	output.close();
 }
 
-void saveAdjMatrixState(const Environment environment, const string filename){
+void saveAdjMatrixState(const Environment& environment, const string filename){
 	if(environment.isVerbose)
 		cout << "Saving adjacency matrix\n";
 	ofstream output;
@@ -826,7 +808,7 @@ void saveAdjMatrixState(const Environment environment, const string filename){
 /*
  * Transform a vector to a string
  */
-string vectorToStringNodeName(Environment environment, const vector<int> vec){
+string vectorToStringNodeName(Environment& environment, const vector<int> vec){
 	stringstream ss;
 	int length = vec.size();
 	if(length > 0){
@@ -868,7 +850,7 @@ string arrayToString1(const double* int_array, const int length){
   	return ss.str();
 }
 
-string zNameToString(Environment environment, vector<int> vec, int pos){
+string zNameToString(Environment& environment, vector<int> vec, int pos){
 	stringstream ss;
 	if(pos != -1)
 		ss << environment.nodes[vec[pos]].name;
@@ -997,7 +979,7 @@ vector< vector <string> > saveEdgesListAsTable1(Environment& environment){
 /*
  * Save the runtime file
  */
-void saveExecTime(const Environment environment, const string filename){
+void saveExecTime(const Environment& environment, const string filename){
 	if(environment.isVerbose)
 		cout << "Saving execution time\n";
 	ofstream output;
@@ -1042,7 +1024,7 @@ bool checkNA(int** data, int numRows, int numColumns){
 	return false;
 }
 
-string printNodesName(Environment environment){
+string printNodesName(Environment& environment){
 	string s = "";
 	for(int i = 0; i < environment.numNodes; i++){
 		cout << environment.nodes[i].name;
@@ -1056,7 +1038,7 @@ string printNodesName(Environment environment){
 /*
  * Print input data, as strings or factors
  */
-void printMatrix(Environment environment, string type){
+void printMatrix(Environment& environment, string type){
 	if(type.compare("string") == 0){
 		cout << "Data matrix of strings\n";
 		printNodesName(environment);
@@ -1363,7 +1345,7 @@ void setProportions(Environment& environment){
 }
 
 
-int getNumSamples_nonNA(Environment environment, int i, int j){
+int getNumSamples_nonNA(Environment& environment, int i, int j){
 	bool sampleOk;
 	int numSamples_nonNA = 0;
 	for(int k = 0; k < environment.numSamples; k++){
@@ -1383,7 +1365,7 @@ int getNumSamples_nonNA(Environment environment, int i, int j){
 }
 
 
-void getJointSpace(Environment environment, int i, int j, vector<vector<double>> &jointSpace, int* curr_samplesToEvaluate)
+void getJointSpace(Environment& environment, int i, int j, vector<vector<double>> &jointSpace, int* curr_samplesToEvaluate)
 {
 	int numSamples_nonNA = 0;
 	bool sampleOk;
@@ -1407,7 +1389,7 @@ void getJointSpace(Environment environment, int i, int j, vector<vector<double>>
 }
 
 
-double** getJointFreqs(Environment environment, int i, int j, int numSamples_nonNA)
+double** getJointFreqs(Environment& environment, int i, int j, int numSamples_nonNA)
 {
 	double** jointFreqs = new double*[environment.allLevels[i]];
 	for(int k = 0; k < environment.allLevels[i]; k++){
@@ -1438,7 +1420,7 @@ double** getJointFreqs(Environment environment, int i, int j, int numSamples_non
 }
 
 
-void getJointMixed(Environment environment, int i, int j, int* mixedDiscrete, double* mixedContinuous,
+void getJointMixed(Environment& environment, int i, int j, int* mixedDiscrete, double* mixedContinuous,
 				   int* curr_samplesToEvaluate)
 {
 	int discrete_pos = environment.columnAsContinuous[i] == 0 ? i : j;
@@ -1725,7 +1707,7 @@ bool parseCommandLine(Environment& environment, int argc, char** argv) {
 /* 
  * Print the most important variables of the environment
  */ 
-void printEnvironment(Environment environment, Log* pLog){
+void printEnvironment(Environment& environment, Log* pLog){
 	//// Recall the main parameters
 	stringstream s;
 	s << "# --------\n# Inputs:\n# ----\n"
@@ -1830,15 +1812,7 @@ void setEnvironment(Environment& environment){
 			environment.columnAsContinuous[i] = 0;
 			environment.columnAsGaussian[i] = 0;
 		}
-	} else if(environment.typeOfData == 1){
-		for(int i = 0; i < environment.numNodes; i++){
-			environment.columnAsContinuous[i] = 1;
-			if(environment.isAllGaussian)
-				environment.columnAsGaussian[i] = 1;
-			else 
-				environment.columnAsGaussian[i] = 0;
-		}
-	} else if(environment.typeOfData == 2){
+	} else {
 		readFileType(environment);
 	}
 
@@ -1924,6 +1898,27 @@ void setEnvironment(Environment& environment){
 
 	environment.initbins = min(30, int(0.5+cbrt(environment.numSamples)));
 
+
+	// for mixed
+	//if(environment.atLeastOneContinuous){
+	// create the log(j) lookup table with j=0..numSamples;
+	environment.looklog = new double[environment.numSamples+2];
+	environment.looklog[0] = 0.0;
+	for(int i = 1; i < environment.numSamples+2; i++){
+		environment.looklog[i] = log(1.0*i);
+	}
+
+	environment.lookH = new double[environment.numSamples+2];
+	environment.lookH[0] = 0.0;
+	for(int i = 1; i < environment.numSamples+2; i++){
+		//environment.lookH[i] = i*environment.looklog[i]-(i+1)*environment.looklog[(i+1)];
+		environment.lookH[i] = i*environment.looklog[i];
+	}
+
+	environment.logEta = 0;
+	environment.isNoInitEta=0;
+	environment.firstIterationDone = false;
+
 	int ncol = N_COL_NML; //Number of levels r for which we want to store the stochastic NML complexity LogC(n,r) for n in [1,N].
 						  //For r>N_COL_NML LogC() is computed with the normal recurrence and the result is not stored.
 	environment.cterms = new double*[ncol];
@@ -1936,28 +1931,7 @@ void setEnvironment(Environment& environment){
 		}
 	}
 	for(int i=0; i<(environment.numSamples+1); i++){
-		double d = computeLogC(i, 2, environment.cterms); // Initialize the c2 terms
-	}
-
-	// for mixed
-	if(environment.atLeastOneContinuous){
-		// create the log(j) lookup table with j=0..numSamples;
-		environment.looklog = new double[environment.numSamples+2];
-		environment.looklog[0] = 0.0;
-		for(int i = 1; i < environment.numSamples+2; i++){
-			environment.looklog[i] = log(1.0*i);
-		}
-
-		environment.lookH = new double[environment.numSamples+2];
-		environment.lookH[0] = 0.0;
-		for(int i = 1; i < environment.numSamples+2; i++){
-			//environment.lookH[i] = i*environment.looklog[i]-(i+1)*environment.looklog[(i+1)];
-			environment.lookH[i] = i*environment.looklog[i];
-		}
-
-		environment.logEta = 0;
-		environment.isNoInitEta=0;
-
+		double d = computeLogC(i,  2, environment.looklog, environment.cterms); // Initialize the c2 terms
 	}
 
 	//// Set the number of digits for the precision while using round( ..., digits = ... )
@@ -2001,7 +1975,6 @@ void setEnvironment(Environment& environment){
 		environment.noiseVec[i] = std::rand()/((RAND_MAX + 1u)/MAGNITUDE_TIES) - MAGNITUDE_TIES/2;
 	}
 
-	// cout << environment.edges[7][0].isConnected << endl;exit(0);
 
 	////////////////////////////////////////////////////////////////////////////
 	// for continuous gaussian
@@ -2257,10 +2230,19 @@ string getSlash(){
 }
 
 
+static void chkIntFn(void *dummy) {
+	R_CheckUserInterrupt();
+}
+
+bool checkInterrupt(bool check) {
+	if(check) return (R_ToplevelExec(chkIntFn, NULL) == FALSE);
+	else return false;
+}
+
 int printProgress (double percentage, double startTime, string outdir, int prg_numSearchMore)
 {
-	int pbwidth(60);
-	char pbstr[] = "||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||";
+	int pbwidth(40);
+	string pbstr = string(pbwidth, '|');
 	if(std::isnan(percentage) || std::isinf(percentage)) return 0;
     int val = (int) (percentage * 100);
     if(val != prg_numSearchMore){
@@ -2277,7 +2259,7 @@ int printProgress (double percentage, double startTime, string outdir, int prg_n
 			sremaining_time << minutes%60 << "m";
 		}
 		sremaining_time << int(remaining_time)%60 << "s";
-	    printf ("\r\t %3d%% [%.*s%*s] est. remaining time : %10s", val, lpad, pbstr, rpad, "", sremaining_time.str().c_str());
+	    printf ("\r\t %3d%% [%.*s%*s] est. remaining time : %10s", val, lpad, pbstr.c_str(), rpad, "", sremaining_time.str().c_str());
 	    fflush (stdout);
 	}
 
@@ -2359,7 +2341,7 @@ double compute_kl_divergence_continuous(vector<vector<double>> space1, vector<ve
 }
 
 
-double compute_kl_divergence(int* posArray, Environment environment, int samplesNotNA, int** dataNumeric_red, 
+double compute_kl_divergence(int* posArray, Environment& environment, int samplesNotNA, int** dataNumeric_red, 
 							 int* AllLevels_red, int* samplesToEvaluate)
 /*
  *

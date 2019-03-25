@@ -294,6 +294,7 @@ jointplot_hist <- function(X, Y, result, nameDist1, nameDist2, title="Joint hist
          (cut_points1[-1] - cut_points1[1:(length(cut_points1)-1)]) %*%
         t(cut_points2[-1] - cut_points2[1:(length(cut_points2)-1)])
     fill_density = bin_count / bin_areas
+    min_density = 1 / max(bin_areas[bin_count>0]) / sum(fill_density)
     fill_density = fill_density / sum(fill_density)
     fill_density_flat = data.frame(xstart=numeric(), xend=numeric(),
                                    ystart=numeric(), yend=numeric(), density=numeric())
@@ -308,8 +309,8 @@ jointplot_hist <- function(X, Y, result, nameDist1, nameDist2, title="Joint hist
 
     hist2d = ggplot(fill_density_flat) +
         geom_rect(aes(xmin=xstart, xmax=xend, ymin=ystart, ymax=yend, fill=log(density)), na.rm = T, show.legend = F) +
-        scale_fill_gradient(low = "#f4f5fc", high = "#0013a3", position = "left", 
-                            na.value = "white", limits=log(range(fill_density_flat$density, na.rm=T))) +
+        scale_fill_gradient(low = "#f4f5fc", high = "#0013a3", position = "left",
+                            na.value = "white", limits=log(c(min_density, max(fill_density_flat$density, na.rm=T)))) +
         geom_vline(xintercept=cut_points1, linetype="dashed", color="grey") +
         geom_hline(yintercept=cut_points2, linetype="dashed", color="grey") +
         geom_point(data = data.frame(X, Y), aes(x=X, y=Y), shape=21, alpha=.7, fill="#ffef77", size=2) +
