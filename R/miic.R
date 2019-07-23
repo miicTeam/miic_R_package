@@ -309,7 +309,19 @@ miic <- function(inputData, categoryOrder= NULL, trueEdges = NULL, blackBox = NU
   #latent
   if(latent != TRUE && latent != FALSE)
     stop("The latent type is not correct. Allowed types are TRUE or FALSE")
-
+  
+  #Bootstraping
+  if(doConsensus == 0 && nSkeletons != 0)
+    stop(paste0("It's useless to set the nSkeletons parameter to different ",
+                "than zero if you did not set the doConsensus parameter."))
+  if(doConsensus != 0 && nSkeletons == 0)
+    stop(paste0("You must set nSkeletons if you want to build a consensus",
+                " skeleton."))
+  if(doConsensus > 100 || doConsensus < 0)
+    stop("doConsensus can not be smaller than 0 or greater than 100.")
+  if(nSkeletons < 0)
+    stop("nSkeletons can not be smaller than 0.")
+  
   if(verbose)
     cat("START miic...\n")
 
