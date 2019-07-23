@@ -115,6 +115,17 @@
 #' When set greater than 1, nThreads parallel threads will be used for computation. Make sure 
 #' your compiler is compatible with openmp if you wish to use multithreading. 
 #'
+#' @param doConsensus [a positive integer] If doConsensus is larger than 0 (default
+#' value), it will create bootstraping skeletons for the estimation of a consensus skeleton
+#' made by the associations that were common among the bootstraping skeletons. The positive
+#' integer indicates the % of the bootstraping skeletons that the edge must exist in order to
+#' be in the consensus skeleton. A value of zero indicates that no bootstraping should
+#' be performed.
+#'
+#' @param nSkeletons [a positive integer] The number of bootstraping skeletons that will
+#' be inferred for the estimation of a consensus skeleton. The last skeleton will be used for
+#' the next steps of the MIIC algorithm.
+#' 
 #' @return A \emph{miic-like} object that contains:
 #' \itemize{
 #'  \item{all.edges.summary:}{ a data frame with information about the relationship between
@@ -242,7 +253,7 @@ miic <- function(inputData, categoryOrder= NULL, trueEdges = NULL, blackBox = NU
                  cplx = c("nml", "mdl"), orientation = TRUE, propagation = TRUE, latent = FALSE,
                  neff = -1, edges=NULL, confidenceShuffle = 0, confidenceThreshold = 0, 
                  confList = NULL, sampleWeights = NULL, testMAR = TRUE, consistent = FALSE, 
-                 verbose = FALSE)
+                 verbose = FALSE, doConsensus=0, nSkeletons=0)
 {
   res = NULL
   skeleton = TRUE
