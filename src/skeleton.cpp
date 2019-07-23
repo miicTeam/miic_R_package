@@ -8,7 +8,9 @@
 #include <unistd.h>
 #include <string.h>
 #include <Rcpp.h>
+#ifdef _OPENMP
 #include <omp.h>
+#endif
 
 #include "structure.h"
 #include "utilities.h"
@@ -23,8 +25,8 @@ using namespace std;
 using namespace Rcpp;
 
 bool skeletonChanged(::Environment& environment){
-	for(int i = 0; i < environment.numNodes; i++){
-		for(int j = 0; j < environment.numNodes; j++){
+	for(uint i = 0; i < environment.numNodes; i++){
+		for(uint j = 0; j < environment.numNodes; j++){
 			if(environment.edges[i][j].isConnected != environment.edges[i][j].areNeighboursAfterIteration){
 				return true;
 			}
@@ -123,7 +125,7 @@ extern "C" SEXP skeleton(SEXP inputDataR, SEXP typeOfDataR, SEXP cntVarR, SEXP n
 
 	// ----
 	environment.memoryThreads = new MemorySpace[environment.nThreads];
-	for(int i = 0; i < environment.nThreads; i++){
+	for(uint i = 0; i < environment.nThreads; i++){
 		createMemorySpace(environment, environment.memoryThreads[i]);
 	}
 	
@@ -159,7 +161,7 @@ extern "C" SEXP skeleton(SEXP inputDataR, SEXP typeOfDataR, SEXP cntVarR, SEXP n
 		environment.execTime.initIter = environment.execTime.init + environment.execTime.iter;
 	}
 	// delete memory
-	for(int i = 0; i < environment.nThreads; i++){
+	for(uint i = 0; i < environment.nThreads; i++){
 		deleteMemorySpace(environment, environment.memoryThreads[i]);
 	}
 	delete [] environment.memoryThreads;
@@ -176,8 +178,8 @@ extern "C" SEXP skeleton(SEXP inputDataR, SEXP typeOfDataR, SEXP cntVarR, SEXP n
 			cout << "Consistent phase " << maxConsistentIter-10 << " (maximum 10)" << endl;
 			int count = 0;
 			//save the neighbours in the areNeighboursAfterIteration structure
-			for(int i = 0; i < environment.numNodes; i++){
-				for(int j = 0; j < environment.numNodes; j++){
+			for(uint i = 0; i < environment.numNodes; i++){
+				for(uint j = 0; j < environment.numNodes; j++){
 					environment.edges[i][j].areNeighboursAfterIteration = environment.edges[i][j].isConnected;
 					if(environment.edges[i][j].areNeighboursAfterIteration)
 						count++;
@@ -185,8 +187,8 @@ extern "C" SEXP skeleton(SEXP inputDataR, SEXP typeOfDataR, SEXP cntVarR, SEXP n
 			}
 
             bool graph_is_consistent = true;
-			for(int i = 0; i < environment.numNodes - 1; i++){
-				for(int j = i + 1; j < environment.numNodes; j++){
+			for(uint i = 0; i < environment.numNodes - 1; i++){
+				for(uint j = i + 1; j < environment.numNodes; j++){
                     if (!environment.edges[i][j].isConnectedAfterInitialization || environment.edges[i][j].edgeStructure->status != 1)
                         continue;
                     if (!is_consistent(environment, i, j, environment.edges[i][j].edgeStructure->ui_vect_idx))
@@ -198,16 +200,16 @@ extern "C" SEXP skeleton(SEXP inputDataR, SEXP typeOfDataR, SEXP cntVarR, SEXP n
 
 			//return back with structures at the moment of initialization
 			environment.countSearchMore = 0;
-			for(int i = 0; i < environment.numNodes; i++){
-				for(int j = 0; j < environment.numNodes; j++){
+			for(uint i = 0; i < environment.numNodes; i++){
+				for(uint j = 0; j < environment.numNodes; j++){
 					environment.edges[i][j].isConnected = environment.edges[i][j].isConnectedAfterInitialization; 
 					if(environment.edges[i][j].isConnected && i>j)
 						environment.countSearchMore++;
 				}
 			}
 
-			for(int i = 0; i < environment.numNodes - 1; i++){
-				for(int j = i + 1; j < environment.numNodes; j++){
+			for(uint i = 0; i < environment.numNodes - 1; i++){
+				for(uint j = i + 1; j < environment.numNodes; j++){
 					environment.edges[i][j].edgeStructure->zi_vect_idx.clear();
 					environment.edges[i][j].edgeStructure->ui_vect_idx.clear();
 					environment.edges[i][j].edgeStructure->z_name_idx = -1;
@@ -215,11 +217,11 @@ extern "C" SEXP skeleton(SEXP inputDataR, SEXP typeOfDataR, SEXP cntVarR, SEXP n
 				}
 			}
 
-			for(int i = 0; i < environment.searchMoreAddress.size(); i++){
+			for(uint i = 0; i < environment.searchMoreAddress.size(); i++){
 				delete  environment.searchMoreAddress[i];
 			}
 
-			for(int i = 0; i < environment.noMoreAddress.size(); i++){
+			for(uint i = 0; i < environment.noMoreAddress.size(); i++){
 				delete  environment.noMoreAddress[i];
 			}
 

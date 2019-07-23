@@ -83,7 +83,7 @@ struct Edge{
 	short int isConnectedAfterInitialization;
 	short int areNeighboursAfterIteration;
 	EdgeStructure* edgeStructure;
-	// Keeping track of jointCounts (discrete) and jointSpace(continuous) for KL divergence when 
+	// Keeping track of jointCounts (discrete) and jointSpace(continuous) for KL divergence when
 	//adding Us to the conditioning set.
 	double mutInfo;
 	double cplx_noU;
@@ -102,19 +102,21 @@ struct Environment {
 	double** dataDouble;
 	double ** pMatrix;
 	int ** nSamples;
+	int ** iterative_cuts;
 	double* sampleWeights;
 	std::vector<double> sampleWeightsVec;
 
 
 	bool testDistribution;
 	int seed;
-	int nThreads;
+	uint nThreads;
 	MemorySpace m;
 	std::vector<int> steps;
 	MemorySpace* memoryThreads;
 	double** shuffleListNumEdges; // matrix to keep the number of edges for each eta and shuffle
 	double* c2terms;
 	double** cterms;
+	double** lookchoose;
 	int* columnAsContinuous;
 	int* columnAsGaussian;
 	std::vector<int> cntVarVec;
@@ -129,9 +131,9 @@ struct Environment {
 	std::string edgeFile;
 	std::string dataTypeFile;
 	//std::string sampleWeightsFile;// -w parameter
-		
-	int numNodes;
-	int numSamples;
+
+	uint numNodes;
+	uint numSamples;
 	bool firstIterationDone;
 
 	std::vector<XJAddress*> searchMoreAddress;
@@ -147,7 +149,7 @@ struct Environment {
 
 	// keep a trace of the number of edges for every state
 	int phantomEdgenNum;
-	
+
 	Node* nodes;
 	Edge** edges;
 	std::vector<std::string>  vectorData;
@@ -158,9 +160,9 @@ struct Environment {
 	int* allLevels;
 
 	double** proportions;
-	
+
 	int** cut;
-	
+
 	double logEta;
 	double l;
 
@@ -180,11 +182,11 @@ struct Environment {
 
 	bool isSkeletonConsistent;
 	int countSearchMore;
-	
+
 	int numberShuffles; // -s parameter
 	double confidenceThreshold; // -e parameter
 
-	int effN; // -n parameter
+	uint effN; // -n parameter
 	int minN;
 	//int nDg;
 	int thresPc;
@@ -204,16 +206,16 @@ struct Environment {
 struct Container {
 	Environment* environment;
 	int start;
-	int stop; 
+	int stop;
 	bool printProgress;
-	
+
 	MemorySpace m;
 };
 
 struct ContainerInit {
 	Environment* environment;
 	int i;
-	int j; 
+	int j;
 	int steps;
 
 	MemorySpace m;
@@ -222,7 +224,7 @@ struct ContainerInit {
 struct ContainerIterCont {
 	Environment* environment;
 	int start;
-	int stop; 
+	int stop;
 	bool printProgress;
 	int cplx;
 	int* ziContPosIdx;
@@ -237,7 +239,7 @@ struct ContainerIterCont {
 	int* r;
 
 	double* scoresZ;
-	
+
 	MemorySpace m;
 };
 

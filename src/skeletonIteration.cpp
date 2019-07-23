@@ -1,6 +1,6 @@
 #include <iostream>
 #include <string>
-#include <cmath>
+#include <math.h>
 #include "structure.h"
 #include "computeEnsInformation.h"
 #include "skeletonInitialization.h"
@@ -10,7 +10,9 @@
 #include <vector>
 #include <algorithm>
 #include <Rcpp.h>
+#ifdef _OPENMP
 #include <omp.h>
+#endif
 
 using namespace std;
 
@@ -21,7 +23,7 @@ bool SortFunctionNoMore(const XJAddress* a, const XJAddress* b, const Environmen
 }
 
 class sorterNoMore {
-	  Environment environment;
+	  Environment &environment;
 		public:
 	  sorterNoMore(Environment& env) : environment(env) {}
 	  bool operator()(XJAddress const* o1, XJAddress const* o2) const {
@@ -57,7 +59,7 @@ bool SortFunction1(const XJAddress* a, const XJAddress* b, const Environment& en
 }
 
 class sorter1 {
-	  Environment environment;
+	  Environment &environment;
 		public:
 	  sorter1(Environment& env) : environment(env) {}
 	  bool operator()(XJAddress const* o1, XJAddress const* o2) const {
@@ -109,15 +111,15 @@ bool firstStepIteration(Environment& environment){
 	environment.numNoMore= 0;
 
 	//set the diagonal of the adj matrix to 0 Redundant, already done in setEnvironment
-	for(int i = 0; i < environment.numNodes; i++){
+	for(uint i = 0; i < environment.numNodes; i++){
 		environment.edges[i][i].isConnected = 0;
 	}
 
 	environment.searchMoreAddress.clear();
 
 	// create and fill the searchMoreAddress struct, that keep track of i and j positions of searchMore Edges
-	for(int i = 0; i < environment.numNodes - 1; i++){
-		for(int j = i + 1; j < environment.numNodes; j++){
+	for(uint i = 0; i < environment.numNodes - 1; i++){
+		for(uint j = i + 1; j < environment.numNodes; j++){
 			if(environment.edges[i][j].isConnected){
 				XJAddress* s = new XJAddress();
 				s->i=i;
@@ -234,8 +236,6 @@ bool skeletonIteration(Environment& environment){
 
 	int iIteration_count = 0;
 	int max = 0;
-
-	int nthreadsMax = environment.nThreads;
 
 	if(environment.isVerbose)
 		cout << "Number of numSearchMore: " << environment.numSearchMore << endl;
@@ -422,7 +422,7 @@ vector<int> bfs(const Environment& environment, int start, int end, const vector
      * @param excludes Nodes to be excluded from the path, default to be an empty vector.
      * @return Path as a vector<int> of node indices.
      */
-    int numNodes = environment.numNodes;
+    uint numNodes = environment.numNodes;
     vector<int> visited(numNodes, 0);
     for (auto& node : excludes) {
         if (node == start || node == end)
@@ -431,11 +431,13 @@ vector<int> bfs(const Environment& environment, int start, int end, const vector
     }
 
     queue<pair<int, vector<int> > > bfs_queue;
-    bfs_queue.push(make_pair(start, vector<int>{start}));
+	vector<int> vect;
+    vect.push_back(start); 
+    bfs_queue.push(make_pair(start, vect));
     while (!bfs_queue.empty()) {
         auto& p = bfs_queue.front();
         visited[p.first] = 1;
-        for (int i=0; i<numNodes; i++) {
+        for(uint i=0; i<numNodes; i++) {
             if (!visited[i] && environment.edges[p.first][i].areNeighboursAfterIteration) {
                 vector<int> new_path(p.second);
                 new_path.push_back(i);

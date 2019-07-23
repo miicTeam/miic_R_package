@@ -199,8 +199,8 @@
 //	// ss << environment.outDir << slash << "edges.txt";
 //	// filename = ss.str();
 //	// output.open(filename.c_str());
-//	// for(int i = 0; i < environment.numNodes -1; i++){
-//	// 	for (int j = i+1; j < environment.numNodes; j++)
+//	// for(uint i = 0; i < environment.numNodes -1; i++){
+//	// 	for(uint j = i+1; j < environment.numNodes; j++)
 //	// 	{
 //	// 		if(environment.edges[i][j].isConnected == -2 || environment.edges[i][j].isConnected == 2 || environment.edges[i][j].isConnected == 1)
 //	// 			output << environment.nodes[i].name << "\t" << environment.nodes[j].name << "\n";
@@ -221,13 +221,13 @@
 //	delete [] environment.allLevels;
 //	delete [] environment.oneLineMatrix;
 //
-//	for(int i = 0; i < environment.numSamples -1 ;i++ ){
-//		for (int j = i+1; j < environment.numNodes; j++){
+//	for(uint i = 0; i < environment.numSamples -1 ;i++ ){
+//		for(uint j = i+1; j < environment.numNodes; j++){
 //			delete environment.edges[i][j].edgeStructure;
 //		}
 //	}
 //
-//	for(int i = 0; i < environment.numSamples;i++ ){	
+//	for(uint i = 0; i < environment.numSamples;i++ ){	
 //		delete [] environment.data[i];
 //		delete [] environment.dataNumeric[i];
 //	}

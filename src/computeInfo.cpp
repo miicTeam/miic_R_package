@@ -7,7 +7,7 @@
 
 #include "computeInfo.h"
 
-# define M_PI		3.14159265358979323846	/* pi */
+//# define M_PI		3.14159265358979323846	/* pi */
 # define N_COL_NML 1000
 
 unsigned long binomialCoeff(int n, int k)
@@ -149,6 +149,26 @@ double logchoose(int n, int k, double* looklog){
 	return(res);
 }
 
+double logchoose(int n, int k, double* looklog, double** lookchoose){
+
+	if(k<N_COL_NML){
+		double val = lookchoose[k][n];
+		if(val >= 0){
+			return(val);
+		}
+	}
+
+	if(n==k || k==0){
+		return 0;
+	}
+	double res = lnfactorial(n, looklog) - lnfactorial(k, looklog) - lnfactorial(n-k, looklog);
+
+	if(k<N_COL_NML){
+		lookchoose[k][n]=res;
+	}
+	return(res);
+}
+
 double computeLogC(int N, int r, double* looklog, double* c2terms)
 {
 	double C2, logC, D;
@@ -198,13 +218,13 @@ double computeLogC( int N, int r, double* looklog, double** cterms)
 		if(val >= 0){
 			return(val);
 		}
-    }
+	}
 
-    double* sc_look = cterms[2];
+	double* sc_look = cterms[2];
 	double C2, logC, D;
 	int rr,h;
 
-	if(N<=20)
+	if(N<=1000)
 	{
 		if(sc_look[N] == -1){
 			C2=0;

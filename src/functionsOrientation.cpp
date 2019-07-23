@@ -1,6 +1,6 @@
 #include <iostream>
 #include <vector>
-#include <cmath>
+#include <math.h>
 #include "utilities.h"
 #include "computeEnsInformation.h"
 #include <sys/stat.h>
@@ -27,7 +27,7 @@ void saveTableOfOrientations(Environment& environment, string filename){
 				<< "RV" << "\t" << "SV" << "\t" << "isOut" << "\t" << "orgOut" << "\t" << 
 				"orgD1" << "\t" << "orgD2" << "\t" << "Ibase" << "\t" << "Istruct\n";
 
-	for(int i = 0; i < environment.globalListOfStruct.size(); i++){
+	for(uint  i = 0; i < environment.globalListOfStruct.size(); i++){
 		output << i + 1 << "\t" << 
 		environment.nodes[environment.globalListOfStruct[i]->xi].name << "\t" <<
 		environment.globalListOfStruct[i]->d1 << "\t" << 
@@ -66,7 +66,7 @@ bool getSingleStructure(Environment& environment, const int posX, const int posY
 	vector<int> u(environment.edges[posX][posZ].edgeStructure->ui_vect_idx);
 	if(environment.edges[posX][posZ].edgeStructure->ui_vect_idx.size() > 0){
 		//// Remove xk from the {ui} if needed
-		for(int i = 0; i < environment.edges[posX][posZ].edgeStructure->ui_vect_idx.size(); i++){
+		for(uint  i = 0; i < environment.edges[posX][posZ].edgeStructure->ui_vect_idx.size(); i++){
 			if(u[i] == posY){
 				u.erase(u.begin() + i);
 				isXkInUi = true;
@@ -130,7 +130,7 @@ bool getSingleStructure(Environment& environment, const int posX, const int posY
 
 		// Get the sign and the absolute scoreCompute the score
 		int mySV_tmp = sign(myRV_tmp);
-		myRV_tmp = abs( myRV_tmp );
+		myRV_tmp = fabs( myRV_tmp );
 
 
 
@@ -203,7 +203,7 @@ void getAllStructures(Environment& environment, bool isVerbose){
 		//// ----
 		//// Get the neighbours of x and y
 
-		for(int i = pos + 1; i < environment.noMoreAddress.size(); i++){
+		for(uint  i = pos + 1; i < environment.noMoreAddress.size(); i++){
 			int posX1 = environment.noMoreAddress[i]->i;
 			int posY1 = environment.noMoreAddress[i]->j;
 
@@ -213,7 +213,7 @@ void getAllStructures(Environment& environment, bool isVerbose){
 				neighboursY.push_back(posX1);
 		}
 
-		for(int i = pos + 1; i < environment.noMoreAddress.size(); i++){
+		for(uint  i = pos + 1; i < environment.noMoreAddress.size(); i++){
 			int posX1 = environment.noMoreAddress[i]->i;
 			int posY1 = environment.noMoreAddress[i]->j;
 			
@@ -291,13 +291,13 @@ bool simpleContradictionORrestartAll(Environment& environment, StructWithOrtToPr
 
 		//// Remove all the orientations
 		//// Set the vStruct as contradicted in the reinitialized table
-		for(int i = 0; i < environment.globalListOfStruct.size(); i++){
+		for(uint  i = 0; i < environment.globalListOfStruct.size(); i++){
 			environment.globalListOfStruct[i]->d1 = 1;
 			environment.globalListOfStruct[i]->d2 = 1;
 			environment.globalListOfStruct[i]->isOut = 0;
 		}
 
-		for(int i = 0; i < environment.vstructWithContradiction.size(); i++){
+		for(uint  i = 0; i < environment.vstructWithContradiction.size(); i++){
 			environment.globalListOfStruct[environment.vstructWithContradiction[i]]->isOut = 3;
 		}
 
@@ -412,7 +412,7 @@ void learnNewOrtLocally(Environment& environment, int myInvTpl, StructWithOrtToP
 			// cout << "SIZE: " << structWithOrtToPropagate.size() << endl;
 			int idx = -1;
 
-			for(int i = 0; i < structWithOrtToPropagate.size();i++){
+			for(uint  i = 0; i < structWithOrtToPropagate.size();i++){
 				if(structWithOrtToPropagate[i]->name == myInvTpl){
 					idx = i;
 					break;
@@ -446,7 +446,7 @@ void learnNewOrtLocally(Environment& environment, int myInvTpl, StructWithOrtToP
 
 
 bool hasLowerIndex(vector<StructWithOrtToPropagate*> vec, int index){
-	for(int i = 0; i < vec.size(); i++){
+	for(uint  i = 0; i < vec.size(); i++){
 		if(vec[i]->name <= index)
 			return true;
 	}

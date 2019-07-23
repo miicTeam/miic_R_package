@@ -46,7 +46,7 @@ void orientation(Environment& environment, string slash, bool isVerbose){
     std::sort(environment.globalListOfStruct.begin(), environment.globalListOfStruct.end(), sortFunctionListStruct);
 
     int* orig = new int[environment.globalListOfStruct.size()];
-    for(int i = 0; i < environment.globalListOfStruct.size(); i++){
+    for(uint i = 0; i < environment.globalListOfStruct.size(); i++){
     	// cout << i << " " << environment.globalListOfStruct[i]->originalPositionStruct << "\n";
     	orig[environment.globalListOfStruct[i]->originalPositionStruct] = i;
     }
@@ -115,7 +115,7 @@ void orientation(Environment& environment, string slash, bool isVerbose){
 		
 			//// Order the index by increasing order and take the first struct
 			int min = 0;
-			for(int i = 0; i < structWithOrtToPropagate.size(); i++)
+			for(uint i = 0; i < structWithOrtToPropagate.size(); i++)
 				if(structWithOrtToPropagate[i]->name < structWithOrtToPropagate[min]->name)
 					min = i;
 
@@ -174,14 +174,14 @@ void orientation(Environment& environment, string slash, bool isVerbose){
 
 			// sort
 			vector<int> invTpl;
-			for(int i = 0; i < orgInvTpl.size(); i++){
+			for(uint i = 0; i < orgInvTpl.size(); i++){
 				invTpl.push_back(orig[orgInvTpl[i]]);
 			}	
 
 			//// Finally, sort the index of the structures concerned by this new orientation
 			sort(invTpl.begin(), invTpl.end());
 
-			for(int pos = 0; pos < invTpl.size(); pos++) {
+			for(uint pos = 0; pos < invTpl.size(); pos++) {
 				// cout << "POS: " << pos << endl;
         		int iInvTpl = invTpl[pos];
     			if(isVerbose) {
@@ -339,7 +339,7 @@ void orientation(Environment& environment, string slash, bool isVerbose){
 	if(isVerbose){ cout << "\n# ---- Update Adjacency Matrix----\n"; }
 	startTime = get_wall_time();
 
-	for(int i = 0; i < environment.globalListOfStruct.size();i++ ){
+	for(uint i = 0; i < environment.globalListOfStruct.size();i++ ){
 		if(environment.globalListOfStruct[i]->isOut == 3)
 			continue;
 		int myOrt;

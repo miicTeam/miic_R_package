@@ -1,17 +1,17 @@
 #include <iostream>
 #include <string>
-#include <cmath>
+#include <math.h>
 #include <vector>
 #include "structure.h"
 #include <iostream>
-#include "utilities.h"
 #include <stdlib.h>
 #include <float.h>
 #include "Info_cnt.h"
 #include <set>
 #include "computeInfo_interface.h"
+#ifdef _OPENMP
 #include <omp.h>
-
+#endif
 
 //for memory space on continuous data
 #define MAX_NBRUI 10
@@ -102,7 +102,7 @@ double getCorrelationCoefficient(Environment& environment, const int r, const in
 
 /*
 if whatToDo == 0 -> I(x;y)    or I(x;y|ui)
-if whatToDo == 0 -> I(x;y)    
+if whatToDo == 0 -> I(x;y)
 
 */
 double* corrMutInfo(Environment& environment, double** dataset, int* uis, int numUis, int* zis, int numZis, int i, int j, int whatToDo)
@@ -176,7 +176,7 @@ double* corrMutInfo(Environment& environment, double** dataset, int* uis, int nu
 double* computeRankAndFindMin(double* xz, double* zy, double* xyz, int length){
 	double * res = new double[length];
 
-	// score increasing		
+	// score increasing
 	double first;
 	double second;
 	for (int i = 0; i < length; ++i){
@@ -268,8 +268,6 @@ double* computeEnsInformationContinuous_Orientation(Environment& environment, in
  * Computes the two point information X;Y|Ui and the three point information X;Y;Z|Ui
  */
 {
-	bool test = false;
-
 	int* posArray = new int[2 + environment.edges[myVarIdxX][myVarIdxY].edgeStructure->ui_vect_idx.size()];
 	posArray[0] = myVarIdxX;
 	posArray[1] = myVarIdxY;
@@ -294,16 +292,15 @@ double* computeEnsInformationContinuous_Orientation(Environment& environment, in
 	// drop out NA & count samplesNotNA
 
 	int samplesNotNA = 0;
-	int i=0;
 	bool cnt = true;
 
-	for(int i = 0; i < environment.numSamples; i++){
+	for(uint i = 0; i < environment.numSamples; i++){
 		m.samplesToEvaluate[i] = 1;
-		if(i!=0) 
+		if(i!=0)
 			m.samplesToEvaluateTemplate[i] = m.samplesToEvaluateTemplate[i-1];
 		else
 			m.samplesToEvaluateTemplate[i] = 0;
-	
+
 		cnt = true;
 		for(int j = 0; (j < myNbrUi +2) && (cnt); j++){
 			if(environment.dataNumeric[i][posArray[j]]== -1){
@@ -335,7 +332,7 @@ double* computeEnsInformationContinuous_Orientation(Environment& environment, in
 	//	float r;
 	//	int k=0;
 
-	//	for(int i = 0; i < environment.numSamples; i++){
+	//	for(uint i = 0; i < environment.numSamples; i++){
 	//			if(m.samplesToEvaluate[i] == 1){
 	//				r=(1.0*rand())/RAND_MAX;
 
@@ -405,14 +402,14 @@ double* computeEnsInformationContinuous_Orientation(Environment& environment, in
 			posArray_red[j]=j;
 			AllLevels_red[j]=environment.allLevels[posArray[j]];
 			cnt_red[j]=environment.columnAsContinuous[posArray[j]];
-			
+
 			k1=0;
 			k2=0;
 
 			nnr=0;
 			prev_val= -1;
 
-			for(int i = 0; i < environment.numSamples; i++){
+			for(uint i = 0; i < environment.numSamples; i++){
 				if(	m.samplesToEvaluate[i] == 1){
 					dataNumeric_red[j][k1]=environment.dataNumeric[i][posArray[j]];
 					k1++;
@@ -434,10 +431,10 @@ double* computeEnsInformationContinuous_Orientation(Environment& environment, in
 
 			if(cnt_red[j] == 1){
 				if(isContinuousDiscrete(dataNumeric_red, samplesNotNA, j)){
-					cnt_red[j] = 0;
+					//cnt_red[j] = 0;
 				}
 			}
-			
+
 			if(cnt_red[j] == 1)
 				AllLevels_red[j]=nnr;
 
@@ -456,7 +453,7 @@ double* computeEnsInformationContinuous_Orientation(Environment& environment, in
 		nnr=0;
 		prev_val= - 1;
 
-		for(int i = 0; i < environment.numSamples; i++){
+		for(uint i = 0; i < environment.numSamples; i++){
 			if(	m.samplesToEvaluate[i] == 1){
 				dataNumeric_red[l][k1]=environment.dataNumeric[i][z];
 				k1++;
@@ -478,7 +475,7 @@ double* computeEnsInformationContinuous_Orientation(Environment& environment, in
 
 		if(cnt_red[l] == 1){
 			if(isContinuousDiscrete(dataNumeric_red, samplesNotNA, l)){
-				cnt_red[l] = 0;
+				//cnt_red[l] = 0;
 			}
 		}
 
@@ -492,10 +489,9 @@ double* computeEnsInformationContinuous_Orientation(Environment& environment, in
 
 		double* res;
 
-		res= compute_Rscore_Ixyz_new_alg5(dataNumeric_red, dataNumericIdx_red, AllLevels_red, cnt_red, posArray_red, myNbrUi,
-										  myNbrUi +2, samplesNotNA, environment.maxbins, environment.initbins, 
-										  environment.c2terms, environment.cterms, environment.looklog, environment.lookH, 
-										  environment.cplx, environment.sampleWeights, environment.effN != environment.numSamples);
+
+		res= compute_Rscore_Ixyz_new_alg5(dataNumeric_red, dataNumericIdx_red, AllLevels_red, cnt_red, posArray_red,
+										  myNbrUi, myNbrUi +2, samplesNotNA, environment);
 
 
 		res_new[0]=(double) samplesNotNA;
@@ -529,7 +525,7 @@ double* computeEnsInformationContinuous_Orientation(Environment& environment, in
 			res_new[i] = 0.0;
 		}
 	}
-	
+
 	#if _MY_DEBUG_NEW
 		printf("\n# =====> after getAllInfoNEW \n");
 		if(myNbrZi==0){
@@ -544,18 +540,23 @@ double* computeEnsInformationContinuous_Orientation(Environment& environment, in
 		}
 		printf("\n");
 	#endif // _MY_DEBUG_NEW
-	
+
 	return res_new;
 
 
 }
 
 
-void* computeContributingScores(Environment& environment, int* ziContPosIdx, int iz, int* myZi, int myNbrUi,
-								int** dataNumeric_red, int** dataNumericIdx_red, int* AllLevels_red, int numSamples_nonNA,
-								int* cnt_red, int* posArray_red, int* posArray, double* res, double* scoresZ, MemorySpace m){
+void computeContributingScores(Environment& environment, int* ziContPosIdx, int iz, int* myZi, int myNbrUi, int numSamples_nonNA,
+							   int* posArray, double* res, double* scoresZ, MemorySpace m){
 
-	bool runDiscreteCode = false;
+	int** dataNumeric_red ;//progressive data rank with repetition for same values
+	int** dataNumericIdx_red ;//index of sorted data
+	int* AllLevels_red ;//number of levels
+	int* cnt_red ;//bool continuous or not
+	int* posArray_red ;//node references
+
+
 	int cplx = environment.cplx;
 	int z;
 	if(ziContPosIdx == NULL)
@@ -564,22 +565,19 @@ void* computeContributingScores(Environment& environment, int* ziContPosIdx, int
 		z=myZi[ziContPosIdx[iz]];
 
 	int samplesNotNA = 0;
-	runDiscreteCode = false;
-
 
 		////////////////////////////////////////////////////////
 		// drop out NA & count samplesNotNA
 
-		int i=0;
 		bool cnt = true;
 
-		for(int i = 0; i < environment.numSamples; i++){
+		for(uint i = 0; i < environment.numSamples; i++){
 			m.samplesToEvaluate[i] = 1;
-			if(i!=0) 
+			if(i!=0)
 				m.samplesToEvaluateTemplate[i] = m.samplesToEvaluateTemplate[i-1];
 			else
 				m.samplesToEvaluateTemplate[i] = 0;
-		
+
 			cnt = true;
 			for(int j = 0; (j < myNbrUi +2) && (cnt); j++){
 				if(environment.dataNumeric[i][posArray[j]]== -1){
@@ -599,10 +597,10 @@ void* computeContributingScores(Environment& environment, int* ziContPosIdx, int
 		}
 
 		int* samplesNotNAvec = new int[environment.numSamples];
-		for(int i = 0; i < environment.numSamples; i++){
+		for(uint i = 0; i < environment.numSamples; i++){
 			samplesNotNAvec[i] = 1;
 			for(int j = 0; (j < myNbrUi +2); j++){
-				if(environment.dataNumeric[i][posArray[j]]== -1) 
+				if(environment.dataNumeric[i][posArray[j]]== -1)
 					samplesNotNAvec[i] = 0;
 			}
 			if(environment.dataNumeric[i][z] == -1)
@@ -621,7 +619,7 @@ void* computeContributingScores(Environment& environment, int* ziContPosIdx, int
 		//	float r;
 		//	int k=0;
 
-		//	for(int i = 0; i < environment.numSamples; i++){
+		//	for(uint i = 0; i < environment.numSamples; i++){
 		//			if(m.samplesToEvaluate[i] == 1){
 		//				r=(1.0*rand())/RAND_MAX;
 
@@ -657,7 +655,7 @@ void* computeContributingScores(Environment& environment, int* ziContPosIdx, int
 				posArray_red = m.posArray_red;
 			}
 			else{
-			
+
 				dataNumericIdx_red = new int*[(myNbrUi +3)];
 				dataNumeric_red = new int*[(myNbrUi +3)];
 
@@ -684,14 +682,14 @@ void* computeContributingScores(Environment& environment, int* ziContPosIdx, int
 				posArray_red[j]=j;
 				AllLevels_red[j]=environment.allLevels[posArray[j]];
 				cnt_red[j]=environment.columnAsContinuous[posArray[j]];
-				
+
 				k1=0;
 				k2=0;
 
 				nnr=0;
 				prev_val= -1;
 
-				for(int i = 0; i < environment.numSamples; i++){
+				for(uint i = 0; i < environment.numSamples; i++){
 					if(	m.samplesToEvaluate[i] == 1){
 						dataNumeric_red[j][k1]=environment.dataNumeric[i][posArray[j]];
 						k1++;
@@ -713,27 +711,26 @@ void* computeContributingScores(Environment& environment, int* ziContPosIdx, int
 
 				if(cnt_red[j] == 1){
 					if(isContinuousDiscrete(dataNumeric_red, samplesNotNA, j)){
-						cnt_red[j] = 0;
+						//cnt_red[j] = 0;
 					}
 				}
-				
+
 				if(cnt_red[j] == 1)
 					AllLevels_red[j]=nnr;
 
 			}
 
 			if(allVariablesDiscrete(environment.columnAsContinuous, posArray, (myNbrUi +2)) && environment.columnAsContinuous[z] == 0){
-			
+
 				//call discrete code
 				//cout << "herve code after removing NA\n";
 				int* zz = new int[1];
 				zz[0]=z;
-				runDiscreteCode = true;
 
 				double** jointFreqs = getJointFreqs(environment, posArray[0], posArray[1], numSamples_nonNA);
 
-				res = getAllInfoNEW(environment.oneLineMatrix, environment.allLevels, posArray, 
-				myNbrUi, zz, 1, -1, environment.numSamples, environment.effN, cplx, environment.isK23, environment.c2terms, &m, 
+				res = getAllInfoNEW(environment.oneLineMatrix, environment.allLevels, posArray,
+				myNbrUi, zz, 1, -1, environment.numSamples, environment.effN, cplx, environment.isK23, environment.c2terms, &m,
 				environment.sampleWeights, jointFreqs, environment.testDistribution);
 
 				res[0]=res[6];
@@ -750,14 +747,14 @@ void* computeContributingScores(Environment& environment, int* ziContPosIdx, int
 				posArray_red[l]=l;
 				AllLevels_red[l]=environment.allLevels[z];
 				cnt_red[l]=environment.columnAsContinuous[z];
-				
+
 				k1=0;
 				k2=0;
 
 				nnr=0;
 				prev_val= - 1;
 
-				for(int i = 0; i < environment.numSamples; i++){
+				for(uint i = 0; i < environment.numSamples; i++){
 					if(	m.samplesToEvaluate[i] == 1){
 						dataNumeric_red[l][k1]=environment.dataNumeric[i][z];
 						k1++;
@@ -779,15 +776,15 @@ void* computeContributingScores(Environment& environment, int* ziContPosIdx, int
 
 				if(cnt_red[l] == 1){
 					if(isContinuousDiscrete(dataNumeric_red, samplesNotNA, l)){
-						cnt_red[l] = 0;
+						//cnt_red[l] = 0;
 					}
 				}
-				
+
 				if(cnt_red[l] == 1)
 					AllLevels_red[l]=nnr;
 
 				////////////////////////////////////////////////////////
-				
+
 				// res[0]=Rscore
 				// res[1]=N*Ixyz
 				// res[2]=N*kxyz
@@ -800,7 +797,7 @@ void* computeContributingScores(Environment& environment, int* ziContPosIdx, int
 						s.clear();
 						for(int j = 0; j < samplesNotNA; j++){
 							s.insert(dataNumeric_red[i][j]);
-						}							
+						}
 
 						if(s.size() == 1){
 							ok = false;
@@ -820,7 +817,7 @@ void* computeContributingScores(Environment& environment, int* ziContPosIdx, int
 						//if(environment.columnAsContinuous[posArray[0]] == 1 && environment.columnAsContinuous[posArray[1]] == 1)
 						//	tdcase = 2;
 						//printf("\n%s -- %s	| %s		case %i	currNAs=%i	NAs=%i	%.2f - %.2f = %.2f\n", environment.nodes[posArray[0]].name.c_str(), environment.nodes[posArray[1]].name.c_str(), environment.nodes[z].name.c_str(),
-						//															   		   tdcase, environment.numSamples - numSamples_nonNA, 
+						//															   		   tdcase, environment.numSamples - numSamples_nonNA,
 						//																	   environment.numSamples - samplesNotNA, kldiv, cplxMdl, kldiv-cplxMdl);
 
 						if((kldiv-cplxMdl) > 0){
@@ -832,14 +829,12 @@ void* computeContributingScores(Environment& environment, int* ziContPosIdx, int
 
 				if(ok){
 					res= compute_Rscore_Ixyz_new_alg5(dataNumeric_red, dataNumericIdx_red, AllLevels_red, cnt_red,
-						posArray_red, myNbrUi, myNbrUi +2, samplesNotNA, environment.maxbins, environment.initbins,
-						environment.c2terms, environment.cterms, environment.looklog, environment.lookH, 
-						environment.cplx, environment.sampleWeights, environment.effN != environment.numSamples);
+						posArray_red, myNbrUi, myNbrUi +2, samplesNotNA, environment);
 				} else{
 					res = new double[3]();//results res[0]->I,res[1]->I-k
 				}
 			}
-		
+
 
 		if(myNbrUi>MAX_NBRUI){
 
@@ -863,9 +858,8 @@ void* computeContributingScores(Environment& environment, int* ziContPosIdx, int
 }
 
 
-double* computeEnsInformationContinuous(Environment& environment, int* myCond, int myNbrUi, int* myZi, int myNbrZi, int myZiPos, 
+double* computeEnsInformationContinuous(Environment& environment, int* myCond, int myNbrUi, int* myZi, int myNbrZi, int myZiPos,
 										const int myVarIdxX, const int myVarIdxY, const int cplx, MemorySpace& m){
-	bool test = false;
 
 	int* posArray = new int[2 + environment.edges[myVarIdxX][myVarIdxY].edgeStructure->ui_vect_idx.size()];
 	posArray[0] = myVarIdxX;
@@ -888,7 +882,7 @@ double* computeEnsInformationContinuous(Environment& environment, int* myCond, i
 	int* cnt_red ;//bool continuous or not
 	int* posArray_red ;//node references
 
-	
+
 	int numSamples_nonNA = getNumSamples_nonNA(environment, posArray[0], posArray[1]);
 	double* res_new;
 
@@ -900,15 +894,14 @@ double* computeEnsInformationContinuous(Environment& environment, int* myCond, i
 		// drop out NA & count samplesNotNA
 
 		int samplesNotNA = 0;
-		int i=0;
 		bool cnt = true;
-		for(int i = 0; i < environment.numSamples; i++){
+		for(uint i = 0; i < environment.numSamples; i++){
 			m.samplesToEvaluate[i] = 1;
-			if(i!=0) 
+			if(i!=0)
 				m.samplesToEvaluateTemplate[i] = m.samplesToEvaluateTemplate[i-1];
 			else
 				m.samplesToEvaluateTemplate[i] = 0;
-		
+
 			cnt = true;
 			for(int j = 0; (j < myNbrUi +2) && (cnt); j++){
 				if(environment.dataNumeric[i][posArray[j]] == -1){
@@ -965,7 +958,7 @@ double* computeEnsInformationContinuous(Environment& environment, int* myCond, i
 
 			int nnr;// effective number of not repeated values
 			int prev_val;
-						
+
 			// cout << "lev bef:" << cnt_red[0] << " " << cnt_red[1] << endl;
 
 
@@ -973,13 +966,13 @@ double* computeEnsInformationContinuous(Environment& environment, int* myCond, i
 				posArray_red[j]=j;
 				AllLevels_red[j]=environment.allLevels[posArray[j]];
 				cnt_red[j]=environment.columnAsContinuous[posArray[j]];
-				
+
 				k1=0;
 				k2=0;
 
 				nnr=0;
 				prev_val= -1;
-				for(int i = 0; i < environment.numSamples; i++){
+				for(uint i = 0; i < environment.numSamples; i++){
 					if(	m.samplesToEvaluate[i] == 1){
 						dataNumeric_red[j][k1]=environment.dataNumeric[i][posArray[j]];
 						k1++;
@@ -987,7 +980,7 @@ double* computeEnsInformationContinuous(Environment& environment, int* myCond, i
 					if(cnt_red[j] == 1){
 						si=environment.dataNumericIdx[posArray[j]][i];
 						if(	m.samplesToEvaluate[si] == 1){
-							
+
 							dataNumericIdx_red[j][k2]=si - m.samplesToEvaluateTemplate[si];
 							k2++;
 
@@ -1003,12 +996,12 @@ double* computeEnsInformationContinuous(Environment& environment, int* myCond, i
 
 				if(cnt_red[j] == 1){
 					if(isContinuousDiscrete(dataNumeric_red, samplesNotNA, j)){
-						cnt_red[j] = 0;
+						//cnt_red[j] = 0;
 					}
 				}
 
-				
-				// update with the effective number of levels 
+
+				// update with the effective number of levels
 				if(cnt_red[j] == 1)
 					AllLevels_red[j]=nnr;
 			}
@@ -1017,20 +1010,17 @@ double* computeEnsInformationContinuous(Environment& environment, int* myCond, i
 			if(samplesNotNA != environment.numSamples){
 				//updateNumberofLevelsAndContinuousVariables(dataNumeric_red, AllLevels_red, cnt_red, myNbrUi, samplesNotNA);
 			}
-		
+
 			// cout << "lev:" << cnt_red[0] << " " << cnt_red[1] << endl;
 
-
 			res_new = compute_mi_cond_alg1(dataNumeric_red, dataNumericIdx_red, AllLevels_red, cnt_red, posArray_red,
-										     myNbrUi, samplesNotNA, environment.maxbins, environment.initbins, environment.c2terms,
-										     environment.cterms, environment.looklog, environment.lookH, environment.cplx, 
-										     environment.sampleWeights, environment.effN != environment.numSamples);
+										   myNbrUi, samplesNotNA, environment);
 
 			res_new[1]=res_new[1]*res_new[0];//Ixy|u
-			res_new[2]=res_new[2]*res_new[0];//cplx 
+			res_new[2]=res_new[2]*res_new[0];//cplx
 
 			if(myNbrUi>MAX_NBRUI){
-				
+
 
 				delete [] AllLevels_red;
 				delete [] cnt_red;
@@ -1045,9 +1035,9 @@ double* computeEnsInformationContinuous(Environment& environment, int* myCond, i
 				delete [] dataNumeric_red;
 
 			}
-	
+
 		}// jump condition no sufficient statistics
-	
+
 	}
 	// if nbrZi>0 : iteration part /////////////////////////////////////
 	else {
@@ -1059,13 +1049,11 @@ double* computeEnsInformationContinuous(Environment& environment, int* myCond, i
 		double* res;
 		//res = new double[3];
 
-		double Rscore;
-
 		int z;
 		int* ziContPosIdx = NULL;
 
 
-		// If x, y and uis are discrete we can put togheter all zi that are discrete in a vector and evaluate 
+		// If x, y and uis are discrete we can put togheter all zi that are discrete in a vector and evaluate
 		//them in one shot as discrete.
 		if(allVariablesDiscrete(environment.columnAsContinuous, posArray, (myNbrUi +2))) {
 		// search for z that are discrete
@@ -1093,7 +1081,7 @@ double* computeEnsInformationContinuous(Environment& environment, int* myCond, i
 
 				double** jointFreqs = getJointFreqs(environment, posArray[0], posArray[1], numSamples_nonNA);
 
-				res = getAllInfoNEW(environment.oneLineMatrix, environment.allLevels, posArray, 
+				res = getAllInfoNEW(environment.oneLineMatrix, environment.allLevels, posArray,
 									myNbrUi, zz, countZDiscrete, -1, environment.numSamples, environment.effN, cplx,
 									environment.isK23, environment.c2terms, &m, environment.sampleWeights,
 									jointFreqs, environment.testDistribution);
@@ -1103,9 +1091,9 @@ double* computeEnsInformationContinuous(Environment& environment, int* myCond, i
 				delete[] jointFreqs;
 				delete [] zz;
 
-				// keep in ziContPos only the position of the continuous variables 
-				
-				ziContPosIdx = new int [myNbrZi - countZDiscrete]; 
+				// keep in ziContPos only the position of the continuous variables
+
+				ziContPosIdx = new int [myNbrZi - countZDiscrete];
 				pos = 0;
 				for(int iz=0;iz<myNbrZi;iz++){
 					z=myZi[iz];
@@ -1129,26 +1117,23 @@ double* computeEnsInformationContinuous(Environment& environment, int* myCond, i
 		double* scoresZ = new double[myNbrZi];
 		bool parallelizable = environment.firstIterationDone && myNbrZi > environment.nThreads;
 		#ifdef _OPENMP
-		#pragma omp parallel for firstprivate(m) if(parallelizable)
+		//#pragma omp parallel for firstprivate(m) if(parallelizable)
+		#pragma omp parallel for if(parallelizable)
 		#endif
 		for(int iz=0; iz<myNbrZi; iz++){
 
-			#ifdef _OPENMP
-				if(parallelizable) m = environment.memoryThreads[omp_get_thread_num()];
-			#endif
-			int** dataNumeric_red ;//progressive data rank with repetition for same values
-			int** dataNumericIdx_red ;//index of sorted data
-			int* AllLevels_red ;//number of levels
-			int* cnt_red ;//bool continuous or not
-			int* posArray_red ;//node references
+			MemorySpace privateM = m;
 
-	
+			#ifdef _OPENMP
+				if(parallelizable) privateM = environment.memoryThreads[omp_get_thread_num()];
+			#endif
+
 			int numSamples_nonNA = getNumSamples_nonNA(environment, posArray[0], posArray[1]);
 			double* res;
 
-			computeContributingScores(environment, ziContPosIdx, iz, myZi, myNbrUi, dataNumeric_red, dataNumericIdx_red,
-									  AllLevels_red, numSamples_nonNA, cnt_red, posArray_red, posArray, res, scoresZ,
-									  m);
+			computeContributingScores(environment, ziContPosIdx, iz, myZi, myNbrUi, numSamples_nonNA,
+									  posArray, res, scoresZ, privateM);
+
 		}//parallel for on z
 
 		for(int iz=0;iz<myNbrZi;iz++){//find optimal z
@@ -1167,7 +1152,7 @@ double* computeEnsInformationContinuous(Environment& environment, int* myCond, i
 
 		if(ziContPosIdx != NULL)
 			delete [] ziContPosIdx;
-		
+
 	}
 
 	delete [] posArray;
@@ -1177,7 +1162,7 @@ double* computeEnsInformationContinuous(Environment& environment, int* myCond, i
 			res_new[i] = 0.0;
 		}
 	}
-	
+
 	#if _MY_DEBUG_NEW
 		printf("\n# =====> after getAllInfoNEW \n");
 		if(myNbrZi==0){
@@ -1200,11 +1185,11 @@ double* computeEnsInformationContinuous(Environment& environment, int* myCond, i
 
 
 
-double* computeEnsInformationNew(Environment& environment, int* myCond, int myNbrUi, int* myZi, int myNbrZi, int myZiPos, 
+double* computeEnsInformationNew(Environment& environment, int* myCond, int myNbrUi, int* myZi, int myNbrZi, int myZiPos,
 								 const int myVarIdxX, const int myVarIdxY, const int cplx, MemorySpace& m){
 	bool test = false;
 
-	
+
 	int* posArray = new int[2 + environment.edges[myVarIdxX][myVarIdxY].edgeStructure->ui_vect_idx.size()];
 	posArray[0] = myVarIdxX;
 	posArray[1] = myVarIdxY;
@@ -1247,7 +1232,7 @@ double* computeEnsInformationNew(Environment& environment, int* myCond, int myNb
 
 		cout << "Levels\n";
 
-		for(int i = 0; i < environment.numNodes;i++){
+		for(uint i = 0; i < environment.numNodes;i++){
 			cout << environment.allLevels[i] << " ";
 		}cout << endl;
 
@@ -1265,7 +1250,7 @@ double* computeEnsInformationNew(Environment& environment, int* myCond, int myNb
 
 	double *res_new = getAllInfoNEW(environment.oneLineMatrix, environment.allLevels, posArray, myNbrUi, myZi,
 																	myNbrZi, myZiPos, environment.numSamples, environment.effN, cplx, environment.isK23,
-																	environment.c2terms, 
+																	environment.c2terms,
 																	&m, environment.sampleWeights, jointFreqs, environment.testDistribution);
 
 	for(int level0 = 0; level0 < environment.allLevels[posArray[0]]; level0++)
@@ -1274,7 +1259,7 @@ double* computeEnsInformationNew(Environment& environment, int* myCond, int myNb
 
 	int nbrRetValues = 3;
 
-	// If nbrZi > 0, return {nSample[z1]*I(..|{ui})[z1], NML(..|{ui})[z1], nSample[z1],nSample[z2]*I(..|{ui})[z2], NML(..|{ui})[z2], nSample[z2], ... } 
+	// If nbrZi > 0, return {nSample[z1]*I(..|{ui})[z1], NML(..|{ui})[z1], nSample[z1],nSample[z2]*I(..|{ui})[z2], NML(..|{ui})[z2], nSample[z2], ... }
 	if( myNbrZi > 0 )
 		 nbrRetValues = 9;
 
@@ -1337,9 +1322,6 @@ void removeifBothPhantomAndNA(Environment& environment, vector<int>& vec, const 
 
 void SearchForNewContributingNodeAndItsRank(Environment& environment, const int posX, const int posY, MemorySpace& m) {
 
-	bool test=false;
-	//// --------
-
 	if(environment.edges[posX][posY].edgeStructure->zi_vect_idx.size() == 0)
 	 	return;
 
@@ -1377,13 +1359,13 @@ void SearchForNewContributingNodeAndItsRank(Environment& environment, const int 
 
 
 	if(environment.typeOfData == 0){
-		vect = computeEnsInformationNew(environment, ui, environment.edges[posX][posY].edgeStructure->ui_vect_idx.size(), zi, 
+		vect = computeEnsInformationNew(environment, ui, environment.edges[posX][posY].edgeStructure->ui_vect_idx.size(), zi,
 										environment.edges[posX][posY].edgeStructure->zi_vect_idx.size(),
 										environment.edges[posX][posY].edgeStructure->ui_vect_idx.size()+2,    posX, posY, argEnsInfo, m);
 		if(vect[6] - environment.edges[posX][posY].edgeStructure->Rxyz_ui > 0 ){
 			if(environment.isVerbose){
 				cout << "\n" << posX << "    " << posY << "# -----> possible zi: " <<
-				environment.nodes[environment.edges[posX][posY].edgeStructure->zi_vect_idx[vect[3]]].name << "(" << 
+				environment.nodes[environment.edges[posX][posY].edgeStructure->zi_vect_idx[vect[3]]].name << "(" <<
 					vect[6] << " > " << environment.edges[posX][posY].edgeStructure->Rxyz_ui << ")\n";
 			}
 
@@ -1400,13 +1382,13 @@ void SearchForNewContributingNodeAndItsRank(Environment& environment, const int 
 		}
 
 	} else if(environment.typeOfData == 2 || (environment.typeOfData == 1 && environment.isAllGaussian == 0)){
-		vect = computeEnsInformationContinuous(environment, ui, environment.edges[posX][posY].edgeStructure->ui_vect_idx.size(), zi, 
-											   environment.edges[posX][posY].edgeStructure->zi_vect_idx.size(), 
+		vect = computeEnsInformationContinuous(environment, ui, environment.edges[posX][posY].edgeStructure->ui_vect_idx.size(), zi,
+											   environment.edges[posX][posY].edgeStructure->zi_vect_idx.size(),
 											   environment.edges[posX][posY].edgeStructure->ui_vect_idx.size()+2, posX, posY, argEnsInfo, m);
 		if(vect[2] - environment.edges[posX][posY].edgeStructure->Rxyz_ui > 0 ){
 			if(environment.isVerbose){
 				cout << "\n" << posX << " " << posY << " # -----> possible zi: " <<
-				environment.nodes[environment.edges[posX][posY].edgeStructure->zi_vect_idx[vect[1]]].name << "(" << 
+				environment.nodes[environment.edges[posX][posY].edgeStructure->zi_vect_idx[vect[1]]].name << "(" <<
 					vect[2] << " > " << environment.edges[posX][posY].edgeStructure->Rxyz_ui << ")\n";
 			}
 
@@ -1461,25 +1443,21 @@ void SearchForNewContributingNodeAndItsRankGaussian(Environment& environment, co
 	else
 		zi = &environment.edges[posX][posY].edgeStructure->zi_vect_idx[0];
 
-	int argEnsInfo = -1;
-	if(environment.isK23 == true)
-		argEnsInfo = environment.cplx;
-
 	double* Ixy_ui_z = corrMutInfo(environment, environment.dataDouble, ui,environment.edges[posX][posY].edgeStructure->ui_vect_idx.size(),
 								   zi, environment.edges[posX][posY].edgeStructure->zi_vect_idx.size(), posX, posY, -1);
-	
+
 	// Get all I(xy|ui)[xyuiz]
-	//double* Ixy_ui_z = computeEnsInformation(environment, ui,environment.edges[posX][posY].edgeStructure->ui_vect_idx.size(), zi, environment.edges[posX][posY].edgeStructure->zi_vect_idx.size(), -1, posX, posY, argEnsInfo);	
+	//double* Ixy_ui_z = computeEnsInformation(environment, ui,environment.edges[posX][posY].edgeStructure->ui_vect_idx.size(), zi, environment.edges[posX][posY].edgeStructure->zi_vect_idx.size(), -1, posX, posY, argEnsInfo);
 
 #if _MY_DEBUG_
 	if(test){
 		cout << "Ixy_ui_z: ";
 		for (int i = 0; i < 3*nbrZi; i+=3){
 			cout << Ixy_ui_z[i] << ",";
-		}	
+		}
 		cout << endl;
 	}
-#endif // _MY_DEBUG_	
+#endif // _MY_DEBUG_
 	//// Get all I(zy|ui)[xyuiz]
 	double* Izy_ui = corrMutInfo(environment, environment.dataDouble, ui,environment.edges[posX][posY].edgeStructure->ui_vect_idx.size(),
 								 zi, environment.edges[posX][posY].edgeStructure->zi_vect_idx.size(), posX, posY, 0);
@@ -1488,7 +1466,7 @@ void SearchForNewContributingNodeAndItsRankGaussian(Environment& environment, co
 		cout << "Izy_ui: ";
 		for (int i = 0; i < 3*nbrZi; i+=3){
 			cout << Izy_ui[i] << ",";
-		}	
+		}
 		cout << endl;
 	}
 #endif // _MY_DEBUG_
@@ -1496,12 +1474,12 @@ void SearchForNewContributingNodeAndItsRankGaussian(Environment& environment, co
 	// #### Get all I(xz|ui)[xyuiz]
 	double* Ixz_ui = corrMutInfo(environment, environment.dataDouble, ui,environment.edges[posX][posY].edgeStructure->ui_vect_idx.size(),
 								 zi, environment.edges[posX][posY].edgeStructure->zi_vect_idx.size(), posX, posY, 1);
-#if _MY_DEBUG_	
+#if _MY_DEBUG_
 if(test){
 		cout << "Ixz_ui: ";
 		for (int i = 0; i < 3*nbrZi; i+=3){
 			cout << Ixz_ui[i] << ",";
-		}	
+		}
 		cout << endl;
 	}
 #endif // _MY_DEBUG_
@@ -1513,22 +1491,20 @@ if(test){
 		cout << "Ixy_uiz: ";
 		for (int i = 0; i < 3*nbrZi; i+=3){
 			cout << Ixy_uiz[i] << ",";
-		}	
+		}
 		cout << endl;
 	}
 #endif // _MY_DEBUG_
 
-	//create a vector for storing the values
-	int nbrRetValues = 3 * environment.edges[posX][posY].edgeStructure->zi_vect_idx.size();
-
 	////    Compute I(xyz|ui)[xyuiz] = I(xy|ui)[xyuiz] - I(xy|ui,z)[xyuiz]
 	double* Ixyz_ui_vect =    computeDifference(Ixy_ui_z, Ixy_uiz, nbrZi);
+
 #if _MY_DEBUG_
 	if(test){
 		cout << "Ixyz_ui_vect: ";
 		for (int i = 0; i < nbrZi; i++){
 			cout << Ixyz_ui_vect[i] << ",";
-		}	
+		}
 		cout << endl;
 	}
 #endif // _MY_DEBUG_
@@ -1539,7 +1515,7 @@ if(test){
 		cout << "Ixz_ui_vect: ";
 		for (int i = 0; i < nbrZi; i++){
 			cout << Ixz_ui_vect[i] << ",";
-		}	
+		}
 		cout << endl;
 	}
 #endif // _MY_DEBUG_
@@ -1549,7 +1525,7 @@ if(test){
 		cout << "Izy_ui_vect: ";
 		for (int i = 0; i < nbrZi; i++){
 			cout << Izy_ui_vect[i] << ",";
-		}	
+		}
 		cout << endl;
 	}
 #endif // _MY_DEBUG_
@@ -1560,7 +1536,7 @@ if(test){
 		cout << "Ixy_ui_vect: ";
 		for (int i = 0; i < nbrZi; i++){
 			cout << Ixy_ui_vect[i] << ",";
-		}	
+		}
 		cout << endl;
 	}
 #endif // _MY_DEBUG_
@@ -1572,7 +1548,7 @@ if(test){
 			cout << "xz: ";
 			for (int i = 0; i < nbrZi; i++){
 				cout << xz[i] << ",";
-			}	
+			}
 			cout << endl;
 		}
 #endif // _MY_DEBUG_
@@ -1582,7 +1558,7 @@ if(test){
 			cout << "zy: ";
 			for (int i = 0; i < nbrZi; i++){
 				cout << zy[i] << ",";
-			}	
+			}
 			cout << endl;
 		}
 #endif // _MY_DEBUG_
@@ -1592,7 +1568,7 @@ if(test){
 			cout << "xyz: ";
 			for (int i = 0; i < nbrZi; i++){
 				cout << xyz[i] << ",";
-			}	
+			}
 			cout << endl;
 		}
 #endif // _MY_DEBUG_
@@ -1600,7 +1576,7 @@ if(test){
 	double* score_vect = computeRankAndFindMin(xz,zy,xyz,nbrZi);
 
 	//// Display all the scores, the score max and the mutual information corresponding to the two non-base edges
-	if(environment.isVerbose){ 
+	if(environment.isVerbose){
 		cout << "# ------> scores: ";
 		for (int i = 0; i < nbrZi; ++i){
 			cout << environment.nodes[environment.edges[posX][posY].edgeStructure->zi_vect_idx[i]].name << ": " << score_vect[i];
@@ -1622,7 +1598,7 @@ if(test){
 	if(score_vect[myZiBest_idx] > 0 ){
 		if(environment.isVerbose){
 			cout << "\n# -----> possible zi: " <<
-			environment.nodes[environment.edges[posX][posY].edgeStructure->zi_vect_idx[myZiBest_idx]].name << "(" << 
+			environment.nodes[environment.edges[posX][posY].edgeStructure->zi_vect_idx[myZiBest_idx]].name << "(" <<
 				score_vect[myZiBest_idx] << " > " << environment.edges[posX][posY].edgeStructure->Rxyz_ui << ")\n";
 		}
 
@@ -1633,7 +1609,7 @@ if(test){
 
 		environment.edges[posX][posY].edgeStructure->Rxyz_ui = score_vect[myZiBest_idx];
 		environment.edges[posX][posY].edgeStructure->Nxyz_ui = Ixy_uiz[myZiBest_idx];
-								    
+
 	} else if(environment.isVerbose) {
 		cout << "# --!!--> Rxyz_ui.tmp = " << score_vect[myZiBest_idx] << " < Rxyz_ui = " << environment.edges[posX][posY].edgeStructure->Rxyz_ui << "\n";
 	}
@@ -1656,10 +1632,6 @@ if(test){
 
 
 double computeEnsInformationContinuous_Gaussian(Environment& environment, const int posX, const int posY, const int posZ) {
-
-
-	bool test=true;
-	//// --------
 
 	if(environment.edges[posX][posY].edgeStructure->zi_vect_idx.size() == 0)
 	 	return true;
@@ -1684,7 +1656,7 @@ double computeEnsInformationContinuous_Gaussian(Environment& environment, const 
 	int nbrZi = 1;
 
 	double* Ixy_ui = corrMutInfo(environment, environment.dataDouble, ui,environment.edges[posX][posY].edgeStructure->ui_vect_idx.size(), zi, 1, posX, posY, -1);
-	
+
 	//// Get all I(zy|ui)[xyuiz]
 	double* Izy_ui = corrMutInfo(environment, environment.dataDouble, ui,environment.edges[posX][posY].edgeStructure->ui_vect_idx.size(), zi, 1, posX, posY, 0);
 
@@ -1699,7 +1671,7 @@ double computeEnsInformationContinuous_Gaussian(Environment& environment, const 
 	////    Compute I(xyz|ui)[xyuiz] = I(xy|ui)[xyuiz] - I(xy|ui,z)[xyuiz]
 	double* Ixyz_ui_vect =    computeDifference(Ixy_ui, Ixy_uiz, nbrZi);
 
-	delete [] zi; 
+	delete [] zi;
 	delete [] Ixy_ui;
 	delete [] Izy_ui;
 	delete [] Ixz_ui;

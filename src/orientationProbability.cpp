@@ -7,7 +7,7 @@
 #include <ctime>
 #include <unistd.h>
 #include <string.h>
-#include <cmath>
+#include <math.h>
 #include <Rcpp.h>
 
 #include "structure.h"
@@ -24,17 +24,14 @@ using namespace std;
 void getSStructure(::Environment& environment, const int posX, const int posY, const int posZ, bool isVerbose,
 				   vector< vector<int> >& allTpl, vector<double>& allI3)
 {
-	bool structFound = false;	
 	//// To check if xk belongs to the {ui} of the base
-	bool isXkInUi = false;
 
 	vector<int> u(environment.edges[posX][posZ].edgeStructure->ui_vect_idx);
 	if(environment.edges[posX][posZ].edgeStructure->ui_vect_idx.size() > 0){
 		//// Remove xk from the {ui} if needed
-		for(int i = 0; i < environment.edges[posX][posZ].edgeStructure->ui_vect_idx.size(); i++){
+		for(uint i = 0; i < environment.edges[posX][posZ].edgeStructure->ui_vect_idx.size(); i++){
 			if(u[i] == posY){
 				u.erase(u.begin() + i);
-				isXkInUi = true;
 				break;
 			}
 		}
@@ -184,7 +181,7 @@ extern "C" SEXP orientationProbability(SEXP inputDataR, SEXP typeOfDataR, SEXP c
 
 	////// GET ALL TPL that could be V/NON-V-STRUCTURES #######
 
-	for(int pos = 0; pos < environment.noMoreAddress.size(); pos++){
+	for(uint pos = 0; pos < environment.noMoreAddress.size(); pos++){
 		int posX = environment.noMoreAddress[pos]->i;
 		int posY = environment.noMoreAddress[pos]->j;
 
@@ -192,7 +189,7 @@ extern "C" SEXP orientationProbability(SEXP inputDataR, SEXP typeOfDataR, SEXP c
 		vector<int> neighboursX;
 		vector<int> neighboursY;
 
-		for(int i = pos + 1; i < environment.noMoreAddress.size(); i++){
+		for(uint i = pos + 1; i < environment.noMoreAddress.size(); i++){
 			int posX1 = environment.noMoreAddress[i]->i;
 			int posY1 = environment.noMoreAddress[i]->j;
 
@@ -202,7 +199,7 @@ extern "C" SEXP orientationProbability(SEXP inputDataR, SEXP typeOfDataR, SEXP c
 				neighboursY.push_back(posX1);
 		}
 
-		for(int i = pos + 1; i < environment.noMoreAddress.size(); i++){
+		for(uint i = pos + 1; i < environment.noMoreAddress.size(); i++){
 			int posX1 = environment.noMoreAddress[i]->i;
 			int posY1 = environment.noMoreAddress[i]->j;
 
@@ -235,7 +232,7 @@ extern "C" SEXP orientationProbability(SEXP inputDataR, SEXP typeOfDataR, SEXP c
 
 	//create the one line matrix
 	int* oneLineMatrixallTpl = new int[allTpl.size()*3];
-	for(int i = 0; i < allTpl.size();i++){
+	for(uint i = 0; i < allTpl.size();i++){
 		for(int j = 0; j < 3;j++){
 			// cout << j * environment.numSamples + i << " ";
 			oneLineMatrixallTpl[j * allTpl.size() + i] = allTpl[i][j];
@@ -261,7 +258,7 @@ extern "C" SEXP orientationProbability(SEXP inputDataR, SEXP typeOfDataR, SEXP c
 		//update ptrRetProbValues for possible inconsistencies
 		std::map<string, double> probabsMap;
 		string s;
-		for (int i=0; i < allTpl.size(); i++){
+		for (uint i=0; i < allTpl.size(); i++){
 			// 0 -> 1
 			s = environment.nodes[allTpl[i][0]].name + environment.nodes[allTpl[i][1]].name;
 			double proba = ptrRetProbValues[i + (1 * allTpl.size())];
@@ -313,7 +310,7 @@ extern "C" SEXP orientationProbability(SEXP inputDataR, SEXP typeOfDataR, SEXP c
 			}
 		}
 
-		for (int i=0; i < allTpl.size(); i++){
+		for (uint i=0; i < allTpl.size(); i++){
 			s = environment.nodes[allTpl[i][0]].name + environment.nodes[allTpl[i][1]].name;
 			ptrRetProbValues[i + (1 * allTpl.size())] = probabsMap.find(s)->second;
 
@@ -342,7 +339,7 @@ extern "C" SEXP orientationProbability(SEXP inputDataR, SEXP typeOfDataR, SEXP c
 
 		orientations.push_back(vec);
 
-		for (int i=0; i < allTpl.size(); i++){
+		for (uint i=0; i < allTpl.size(); i++){
 			vec.clear();
 			int error = 0;
 			int info_sign = allI3[i];
@@ -397,7 +394,7 @@ extern "C" SEXP orientationProbability(SEXP inputDataR, SEXP typeOfDataR, SEXP c
 
 	//// UPDATE ADJ MATRIX 
 	if( myNbrTpl > 0 ){
-		for(int i = 0; i < allTpl.size(); i++){
+		for(uint i = 0; i < allTpl.size(); i++){
 			myProba.clear();;
 			myProba.push_back(ptrRetProbValues[i + (0 * allTpl.size())]);
 			myProba.push_back(ptrRetProbValues[i + (1 * allTpl.size())]);

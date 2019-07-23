@@ -30,7 +30,7 @@
 #' The matrix with the observations of as many columns as conditioning variables.
 #' @param maxbins [an int]
 #' The maximum number of bins desired in the discretization. A lower number makes the computation faster, a higher
-#' number allows finer discretization (50 by default).
+#' number allows finer discretization (by default : 5 * cubic root of N).
 #' @param cplx [a string]
 #' The complexity used in the dynamic programming. Either "mdl" for Minimum description Length or
 #' "nml" for Normalized Maximum Likelihood, which is less costly in the finite sample case and
@@ -40,8 +40,8 @@
 #' want to specify a number of effective samples that is lower than the number of points in the distribution.
 #' @param is_discrete [a vector of booleans]
 #' Specify if each variable is to be treated as discrete (TRUE) or continuous (FALSE) in a
-#' logical vector of length ncol(matrixU)+2, in the order [X, Y, U1, U2...]. By
-#' default all variables are treated as continuous.
+#' logical vector of length ncol(matrixU)+2, in the order [X, Y, U1, U2...]. By default,
+#' factors and character vectors are treated as discrete, and numerical vectors as continuous.
 #' @param plot [a boolean]
 #' Specify if the XY joint space with discretization scheme is to be plotted or not (requires
 #' ggplot2 and gridExtra).
@@ -84,7 +84,7 @@
 #' # Independence, conditional dependence
 #' X <- runif(N)
 #' Y <- runif(N)
-#' Z <- X+Y
+#' Z <- X+Y + runif(N,sd=0.1)
 #' res <- discretizeMutual(X, Y, plot=T)
 #' cat("I(X;Y) =",res$info)
 #' res <- discretizeMutual(X, Y, matrixU = matrix(Z, ncol=1), plot=T)
@@ -93,12 +93,30 @@
 
 
 discretizeMutual <- function(X, Y, matrixU=NULL, maxbins=NULL,
-                             cplx="nml", effN = NULL, is_discrete=NULL, plot=T)
+                             cplx="nml", Neff = NULL, is_discrete=NULL, plot=T)
 {
     nameDist1 = deparse(substitute(X))
     nameDist2 = deparse(substitute(Y))
     #####
     # Check the input arguments
+    if (is.null(matrixU)){
+        nbrU <- 0
+    } else{
+        nbrU <- ncol(matrixU)
+    }
+
+    if(is.null(is_discrete)){
+        is_discrete = c((is.character(X) || is.factor(X)))
+        is_discrete = c(is_discrete, (is.character(Y) || is.factor(Y)))
+        if(nbrU > 0){
+            for(z in 1:nbrU){
+                is_discrete = c(is_discrete, (is.character(matrixU[,z]) || is.factor(matrixU[,z])))
+            }
+        }
+    }
+
+    if(all(is_discrete[1:2])) stop("Either X or Y must be continuous to be discretized.")
+
     if ( !is.vector(X) || !is.vector(Y) ) {
         if( (is_discrete[1] && !is.factor(X)) || (is_discrete[2] && !is.factor(Y)) )
             stop("Please provide the two samples X and Y as vectors for continuous variables and factors for discrete variables.")
@@ -112,11 +130,6 @@ discretizeMutual <- function(X, Y, matrixU=NULL, maxbins=NULL,
         stop("matrixU is not a matrix or its number of rows differs from the number of observations.")
     }
 
-    if (is.null(matrixU)){
-        nbrU <- 0
-    } else{
-        nbrU <- ncol(matrixU)
-    }
 
     if ( !is.null(is_discrete) && ( length(is_discrete) != (2+nbrU)) ){
         stop("The vector passed as is_discrete argument must have the same length as the number of variables, which is ncol(matrixU)+2.")
@@ -156,40 +169,29 @@ discretizeMutual <- function(X, Y, matrixU=NULL, maxbins=NULL,
         }
     }
 
-    ##Get crude MI estimation for bin initialization tuning
-    #ef_MI = infotheo::mutinformation(infotheo::discretize(X,nbins = initbins),
-    #                                 infotheo::discretize(Y,nbins = initbins))
-    #strength <- ef_MI / log(initbins) # 1 is maximum strength, 0 is independence
-    #if(strength<0.05){
-    #    initbins = 3
-    #    maxbins = initbins*2
-    #}
-
     # Converting factors to discrete numerical variables
-    if (is.null(is_discrete)){
-        cnt_vec <- rep(1, nbrU+2)
-    } else {
-        if(is_discrete[1]){
-            X = as.factor(X)
-            levels(X) = 1:nlevels(X)
-            X = as.numeric(X)
-        }
-        if(is_discrete[2]){
-            Y = as.factor(Y)
-            levels(Y) = 1:nlevels(Y)
-            Y = as.numeric(Y)
-        }
-        if(nbrU>0){
-            for(l in 0:(nbrU-1)){
-                if(is_discrete[l+3]){
-                    matrixU_NA[,(l+1)] = as.factor(matrixU_NA[,(l+1)])
-                    levels(matrixU_NA[,(l+1)]) = 1:nlevels(matrixU_NA[,(l+1)])
-                    matrixU_NA[,(l+1)] = as.numeric(matrixU_NA[,(l+1)])
-                }
+    X_orig = X
+    Y_orig = Y
+    if(is_discrete[1]){
+        X = as.factor(X)
+        levels(X) = 1:nlevels(X)
+        X = as.numeric(X)
+    }
+    if(is_discrete[2]){
+        Y = as.factor(Y)
+        levels(Y) = 1:nlevels(Y)
+        Y = as.numeric(Y)
+    }
+    if(nbrU>0){
+        for(l in 0:(nbrU-1)){
+            if(is_discrete[l+3]){
+                matrixU_NA[,(l+1)] = as.factor(matrixU_NA[,(l+1)])
+                levels(matrixU_NA[,(l+1)]) = 1:nlevels(matrixU_NA[,(l+1)])
+                matrixU_NA[,(l+1)] = as.numeric(matrixU_NA[,(l+1)])
             }
         }
-        cnt_vec <- as.numeric(!is_discrete)
     }
+    cnt_vec <- as.numeric(!is_discrete)
 
     # Converting matrix to flat vector to pass to cpp
     if (is.null(matrixU)){
@@ -209,8 +211,8 @@ discretizeMutual <- function(X, Y, matrixU=NULL, maxbins=NULL,
         intcplx <- 1
     }
 
-    if(is.null(effN)){
-        effN = length(X)
+    if(is.null(Neff)){
+        Neff = length(X)
     }
 
     # Number of unique values for each input
@@ -224,7 +226,7 @@ discretizeMutual <- function(X, Y, matrixU=NULL, maxbins=NULL,
     # Call cpp code
     if (base::requireNamespace("Rcpp", quietly = TRUE)) {
         rescpp <- .Call('mydiscretizeMutual', X, Y, flatU, nbrU, maxbins, initbins, intcplx,
-                        cnt_vec, nlevels, effN, PACKAGE = "miic")
+                        cnt_vec, nlevels, Neff, PACKAGE = "miic")
     }
     niterations = nrow(rescpp$cutpointsmatrix)/maxbins
 
@@ -234,12 +236,24 @@ discretizeMutual <- function(X, Y, matrixU=NULL, maxbins=NULL,
     for(i in 0:(niterations-1)){
             result[[paste0("iteration",i+1)]] = list()
         for(l in 1:(nbrU+2)){
-            clean_cutpoints = rescpp$cutpointsmatrix[,l][(maxbins*i)+(1:maxbins)]
-            clean_cutpoints = clean_cutpoints[clean_cutpoints != -1]
-            if(l==1) clean_cutpoints = c(min(X)-epsilon, sort(X)[clean_cutpoints+1], max(X)+epsilon)
-            else if(l==2) clean_cutpoints = c(min(Y)-epsilon, sort(Y)[clean_cutpoints+1], max(Y)+epsilon)
-            else clean_cutpoints = c(min(matrixU[,l-2])-epsilon, sort(matrixU[,l-2])[clean_cutpoints+1], max(matrixU[,l-2])+epsilon)
-            result[[paste0("iteration",i+1)]][[paste0("cutpoints",l)]] = clean_cutpoints
+            if(!is_discrete[l]){
+                clean_cutpoints = rescpp$cutpointsmatrix[,l][(maxbins*i)+(1:maxbins)]
+                clean_cutpoints = clean_cutpoints[clean_cutpoints != -1]
+                data = if(l==1) X else(if(l==2) Y else matrixU[,l-2])
+                uniquedata = sort(unique(data))
+
+                clean_cutpoints = sort(data)[clean_cutpoints+1]
+                if(length(clean_cutpoints)>0){
+                    # Take midpoints between two consecutive unique values instead of the values themselves
+                    clean_cutpoints = sapply(clean_cutpoints, function(x){if(x<uniquedata[length(uniquedata)])
+                                                                            ((min(uniquedata[uniquedata>x])+
+                                                                             max(uniquedata[uniquedata<=x]))/2)
+                                                                          else x})
+                }
+                clean_cutpoints = c(uniquedata[1]-epsilon, clean_cutpoints)
+                if(max(clean_cutpoints) < uniquedata[length(uniquedata)]) clean_cutpoints = c(clean_cutpoints, uniquedata[length(uniquedata)]+epsilon)
+                result[[paste0("iteration",i+1)]][[paste0("cutpoints",l)]] = clean_cutpoints
+            }
         }
     }
     for(l in 1:(nbrU+2)){
@@ -252,9 +266,8 @@ discretizeMutual <- function(X, Y, matrixU=NULL, maxbins=NULL,
 
     if(plot) {
         if(require(ggplot2) & require(gridExtra)){
-            jointplot = jointplot_hist(X, Y, result, nameDist1, nameDist2)
-            result$plot = jointplot
-            #plot(jointplot)
+            if(!any(is_discrete[1:2])) result$plot = jointplot_hist(X, Y, result, nameDist1, nameDist2)
+            else if(!all(is_discrete[1:2])) result$plot = barplot_disc(X_orig, Y_orig, result, is_discrete, nameDist1, nameDist2)
         }
         else{
             warning("Plotting requires ggplot2 and gridExtra.")
@@ -300,7 +313,7 @@ jointplot_hist <- function(X, Y, result, nameDist1, nameDist2, title="Joint hist
                                    ystart=numeric(), yend=numeric(), density=numeric())
     for(j in 1:(ncol(fill_density))) {
         for(i in 1:(nrow(fill_density))) {
-            fill_density_flat[(j-1)*nrow(fill_density)+i,] = c(cut_points1[i], cut_points1[i+1], 
+            fill_density_flat[(j-1)*nrow(fill_density)+i,] = c(cut_points1[i], cut_points1[i+1],
                                                                cut_points2[j], cut_points2[j+1],
                                                                fill_density[i,j])
         }
@@ -354,4 +367,33 @@ jointplot_hist <- function(X, Y, result, nameDist1, nameDist2, title="Joint hist
 
     return(gridExtra::grid.arrange(side_hist_top, empty, hist2d, side_hist_bot, ncol=2, nrow=2,
                  widths=c(4.2, 1), heights=c(1, 4.2)))#, bottom=title))
+}
+
+
+barplot_disc = function(X, Y, result, is_discrete, nameDist1, nameDist2, title="Joint histogram"){
+
+    cut_points = result$cutpoints2
+    Xname = nameDist1
+    Yname = nameDist2
+    if(is_discrete[2]){
+        # Swap X and Y: by convention, X is the discrete variable
+        X_ = X
+        X = Y
+        Y = X_
+        Xname = nameDist2
+        Yname = nameDist1
+        cut_points = result$cutpoints1
+    }
+
+    plot_df = data.frame(X=X, Y=Y, stringAsFactors=TRUE)
+
+    barplot = ggplot(plot_df, aes(x=X, y=Y)) +
+        geom_boxplot(outlier.shape=NA, fill="#c1c6ee") +
+        geom_jitter(width = 0.2, height=0) +
+        geom_hline(yintercept=cut_points, linetype="dashed", color="grey", size=1) +
+        theme_classic() +
+        xlab(Xname) +
+        ylab(Yname)
+
+    return(barplot)
 }

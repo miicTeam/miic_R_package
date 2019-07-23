@@ -10,5 +10,6 @@ double compute_rescaledLogC( int sampleSize, int sampleSizeEff, int N, int r, do
 double compute_LogC_C2( int N, int r, double* c2terms);
 unsigned long binomialCoeff(int n, int k);
 double logchoose(int n, int k, double* looklog);
+double logchoose(int n, int k, double* looklog, double** lookchoose);
 
 #endif /* _COMPUTEINFO_H_ */

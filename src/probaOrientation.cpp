@@ -9,7 +9,7 @@
 
 using namespace std;
 
-#define M_PI		3.14159265358979323846	/* pi */
+//#define M_PI		3.14159265358979323846	/* pi */
 #define eps         0.000000000001
 #define _MY_PRINT_ 0
 
@@ -54,7 +54,7 @@ double logF2(double scoreTpl, double I3){
 int OrientTpl_LV_Deg_Propag(int NbTpl, int *Tpl, double *I3, double *ProbArrowhead, int LV, int deg, int Propag, int HALFVSTRUCT)
 {
 
-	int i,j,n1,n2,n3,TRUE=1,FALSE=0,STOP,*orderTpl,maxTpl,ok,count=0;
+	int i,j,n1,n2,n3,TRUE=1,FALSE=0,*orderTpl,maxTpl,ok,count=0;
 	double maxscoreTpl;
 	double p,pp,p1,p2,p3,p4,*ProbArrowhead2,*scoreTpl, *scoresN;
 

@@ -1,4 +1,4 @@
-#include <cmath>
+#include <math.h>
 #include <iostream>
 #include <algorithm>
 #include <limits>
@@ -6,7 +6,7 @@
 #include <vector>
 #include <Rcpp.h>
 
-#include <utilities.h>
+#include "utilities.h"
 
 using namespace Rcpp;
 using namespace std;
@@ -107,8 +107,8 @@ double* compute_B(int K, int e, double* candidate_cut_points, double* myDist, in
     else {
         double R_ne_K = compute_parametric_complexity(ne, K, sc_look);
         double min = DBL_MAX;
-        int minidx;
-        int nep;
+        int minidx(0);
+        int nep(0);
         // Loop on ep
         for(int ep=K-1; ep<e-1; ep++){
             nep = count_for_e[ep-1];
@@ -143,7 +143,6 @@ extern "C" SEXP mydiscretizeMDL(SEXP RmyDist, SEXP RmaxBins){
 
     double* middle_points = new double[n-1];
     int n_unique_points(0);
-    double middle_point;
     
     for(int i=1; i<n-1; i++){
         if (myDist[i] != myDist[i+1]){
@@ -222,10 +221,11 @@ extern "C" SEXP mydiscretizeMDL(SEXP RmyDist, SEXP RmaxBins){
     cut_points[K] = candidate_cut_points[curr_idx-1];
     int prev_idx = curr_idx;
     K--;
-    for(K; K>0; K--){
+    while(K>0){
         curr_idx = dyntable_trace[prev_idx][K];
         cut_points[K] = candidate_cut_points[curr_idx-1];
         prev_idx = curr_idx;
+        K--;
     }
     cut_points[0] = xmin;
     cut_points[best_K+1] = xmax;

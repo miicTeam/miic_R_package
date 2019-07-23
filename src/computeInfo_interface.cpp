@@ -17,7 +17,7 @@
 #include <iterator>
 #include "utilities.h"
 #include <set>
-#include <cmath>
+#include <math.h>
 
 using namespace std;
 
@@ -97,7 +97,7 @@ double* getAllInfoNEW( int* ptrAllData, int* ptrAllLevels, int* ptrVarIdx, int n
 	int randomrescaling=1;
 	float r,rr;
 
-	int bin_max=100,MDL=0, NML=1, TRUE=1, FALSE=0;
+	int bin_max=100,MDL=0, TRUE=1, FALSE=0;
 	int l,ok;
 	int **sample,**sortedSample,**Opt_sortedSample; //[N+1][7]
 
@@ -129,12 +129,12 @@ double* getAllInfoNEW( int* ptrAllData, int* ptrAllLevels, int* ptrVarIdx, int n
 	// orderSample = ivector(0,sampleSize+1);
 	// sampleKey   = ivector(0,sampleSize+1);
 
-	int bin,PBin,Prui,increment,NN,X,Y,Z;
+	int bin,PBin,Prui,increment,X,Y,Z;
 	int ptrzi,zi,z;
 
 	double NlogN,logN;
 
-	int Lxyuiz,Lxyui,Lyui,Lui;
+	int Lxyui,Lyui,Lui;
 	// int  Nxyui;
 	double Pxyui;
 
@@ -205,8 +205,6 @@ double* getAllInfoNEW( int* ptrAllData, int* ptrAllLevels, int* ptrVarIdx, int n
 	double info_xui_z,info_yui_z,info_ui_z;
 	double logC_xui_z,logC_yui_z,logC_ui_z;
 
-	double test_xy_ui, info3, info2;
-
 
 	double info3xy_ui,info2xy_ui,info3xy_uiz,info2xy_uiz;
 	double info3xz_ui,info2xz_ui,info3yz_ui,info2yz_ui;
@@ -228,7 +226,7 @@ double* getAllInfoNEW( int* ptrAllData, int* ptrAllLevels, int* ptrVarIdx, int n
 	double min_info_logC=LARGE, max_info_logC= - LARGE;
 	//double min_info_logC = 100000.0, max_info_logC = -100000.0;
 
-	int countmin,stop,kz0;
+	int countmin,kz0;
 
 	int z_top,N_xyuiz_top;
 	double R_top;
@@ -237,7 +235,7 @@ double* getAllInfoNEW( int* ptrAllData, int* ptrAllLevels, int* ptrVarIdx, int n
   
   /////////////////////////
 
-	int i, j, k, errCode = 0;	// for loops
+	int i, j, k;	// for loops
 
 	int nbrAllVar;
 	// int nbrSlot, maxNbrCombn, idxCount;
@@ -300,7 +298,6 @@ double* getAllInfoNEW( int* ptrAllData, int* ptrAllLevels, int* ptrVarIdx, int n
 	  Opt_dBin[iii] = (int *)malloc(ncol* sizeof(int));
 	//dBin     = imatrix(0,0,0,nbrAllVar);
 	///Opt_dBin = imatrix(0,0,0,nbrAllVar);
-	int binX,binY;
 
 	#if _MY_DEBUG_NEW
 		printf("\n# ---- Printed from C [getAllInfo]: ----\n");
@@ -797,8 +794,6 @@ double* getAllInfoNEW( int* ptrAllData, int* ptrAllLevels, int* ptrVarIdx, int n
 		#endif // _MY_DEBUG_NEW
 
 	
-
-		int p;
 		// for(p = 0; p < nbrAllVar; p++)
 		//printf("vars: nbrAllVar=%d nbrZi=%d max_info_logC=%g min_info_logC=%g", nbrAllVar, nbrZi , max_info_logC,min_info_logC); 
 		//printf("\n"); 
@@ -1055,6 +1050,15 @@ double* getAllInfoNEW( int* ptrAllData, int* ptrAllLevels, int* ptrVarIdx, int n
 					logC_xui_z = 0.0;
 					logC_yui_z = 0.0;
 					logC_ui_z  = 0.0;
+
+					info_xy_ui  = 0.0;
+					info_xy_uiz = 0.0;
+					info_xz_ui  = 0.0;
+					info_yz_ui  = 0.0;
+					logC_xy_ui  = 0.0;
+					logC_xy_uiz = 0.0;
+					logC_xz_ui  = 0.0;
+					logC_yz_ui  = 0.0;
 
 					Nxyuis=0; // 11 test variables for counts, should all sum to nSample0
 					Nyuis=0;
@@ -1540,8 +1544,6 @@ double* getAllInfoNEW( int* ptrAllData, int* ptrAllLevels, int* ptrVarIdx, int n
 		free(dBin[i]);
 	free(dBin);
 
-	binX=Opt_dBin[0][0];
-	binY=Opt_dBin[0][1];
 	for(i=0; i<1;i++)
 		free(Opt_dBin[i]);
 	free(Opt_dBin);
@@ -1587,7 +1589,6 @@ void* evaluateZ(void* container) {
 	int ptrzi = cont->ptrzi;
 	int sampleSize = cont->sampleSize;
 
-	int** sample = cont->sample;
 	int* ptrVarIdx = cont->ptrVarIdx;
 	bool testDistribution = cont->testDistribution;
 	double** freqs1 = cont->freqs1;
@@ -1603,7 +1604,6 @@ void* evaluateZ(void* container) {
 	int* Ny = memoryThread->Ny;
 	int* Nxui = memoryThread->Nxui;
 	int* Nx = memoryThread->Nx;
-	int* Nxyuiz = memoryThread->Nxyuiz;
 	int* Nyuiz = memoryThread->Nyuiz;
 	int* Nuiz = memoryThread->Nuiz;
 	int* Nz = memoryThread->Nz;
@@ -1629,18 +1629,15 @@ void* evaluateZ(void* container) {
 	double max_info_logC;
 	double min_info_logC;
 
-	int nSampleZ=0;
-
-	double Pxyui;
 	double Pxyuizl;
 
-	int Lxyuiz,Lxyui,Lyui,Lui;
+	int Lxyui,Lyui,Lui;
 	int Nyui,  Nui;
 	int Nxyuis,  Nyuis,  Nuis;
 
-	int NNxyui,NNxyuiz,NNxyuizl,Ntot;  //for rescaling NML change 20160228
+	int NNxyuiz,NNxyuizl,Ntot;  //for rescaling NML change 20160228
 
-	int bin,PBin,Prui,increment,NN,X,Y,Z,i;
+	int Prui,X,Y,Z,i;
 
 	double NlogN,logN;
 
@@ -1657,7 +1654,7 @@ void* evaluateZ(void* container) {
 	int  Nyj,Nys;                     //[Y]
 	int Nzs,Nuizs,Nyuizs,Nxyuizs,Nxuizs;
 
-	int  Nxyuizl, Nyuizl, Nuizl, Nzl; //[Z]
+	int  Nyuizl, Nuizl, Nzl; //[Z]
 	int Nxuizjl;
 	int j;
 
@@ -1667,7 +1664,7 @@ void* evaluateZ(void* container) {
 	double logC3xz_ui,logC2xz_ui,logC3yz_ui,logC2yz_ui;
 
 
-	int N_xy_ui=0,N_xyuiz=0;
+	int N_xyuiz=0;
 
 	double info_xy_ui,info_xy_uiz;
 	double info_xz_ui,info_yz_ui;
@@ -1679,7 +1676,7 @@ void* evaluateZ(void* container) {
 
 	int * sampleWithZ = new int[sampleSize];
 
-	int countmin,stop,kz0;
+	int countmin,kz0;
 
 	z=nbrAllVar;
 	bool ok;
@@ -1864,6 +1861,15 @@ void* evaluateZ(void* container) {
 				logC_xui_z = 0.0;
 				logC_yui_z = 0.0;
 				logC_ui_z  = 0.0;
+
+				info_xy_ui  = 0.0;
+				info_xy_uiz = 0.0;
+				info_xz_ui  = 0.0;
+				info_yz_ui  = 0.0;
+				logC_xy_ui  = 0.0;
+				logC_xy_uiz = 0.0;
+				logC_xz_ui  = 0.0;
+				logC_yz_ui  = 0.0;
 
 				Nxyuis=0; // 11 test variables for counts, should all sum to nSample0
 				Nyuis=0;
@@ -2288,12 +2294,10 @@ double* getAllInfoNEWThreads( int* ptrAllData, int* ptrAllLevels, int* ptrVarIdx
 	int randomrescaling=1;
 	float r,rr;
 
-	int bin_max=100,MDL=0, NML=1, TRUE=1, FALSE=0;
-	int l,ok;
+	int bin_max=100,MDL=0, TRUE=1, FALSE=0;
+	int ok;
 	int **sample,**sortedSample,**Opt_sortedSample; //[N+1][7]
 
-	int iii;
-	int nrow=sampleSize+1;
 	int ncol=7;
 
 	sample = (*memory).sample;
@@ -2302,23 +2306,22 @@ double* getAllInfoNEWThreads( int* ptrAllData, int* ptrAllLevels, int* ptrVarIdx
 
 	Opt_sortedSample = (*memory).Opt_sortedSample;
 
-	int nSample0,*nSample,*orderSample,*sampleKey;//[N+1 elements: 0 to N]
+	int nSample0,*orderSample,*sampleKey;//[N+1 elements: 0 to N]
 
-	nSample = (int *)malloc(nbrZi* sizeof(int));
 	orderSample = (*memory).orderSample;
 	sampleKey = (*memory).sampleKey;
 
-	int bin,PBin,Prui,increment,NN,X,Y,Z;
-	int ptrzi,zi,z;
+	int bin,PBin,Prui,increment,X,Y;
+	int ptrzi,zi;
 
 	double NlogN,logN;
 
-	int Lxyuiz,Lxyui,Lyui,Lui;
+	int Lxyui,Lyui,Lui;
 	double Pxyui;
 	int  Nyui,  Nui;
 	int  Nxyuis,  Nyuis,  Nuis;
 
-	int NNxyui,NNxyuiz,NNxyuizl,Ntot;  //for rescaling NML change 20160228
+	int NNxyui,Ntot;  //for rescaling NML change 20160228
 
 	int *Nxyuiz, *Nyuiz, *Nuiz, *Nz, *bridge;  //[Z]
 
@@ -2327,9 +2330,6 @@ double* getAllInfoNEWThreads( int* ptrAllData, int* ptrAllLevels, int* ptrVarIdx
 	Nuiz = (*memory).Nuiz;
 	Nz = (*memory).Nz;
 	bridge = (*memory).bridge;
-	int Nzs,Nuizs,Nyuizs,Nxyuizs,Nxuizs;
-
-	int  Nxyuizl, Nyuizl, Nuizl, Nzl; //[Z]
 
 	int *Ny;     
 	Ny = (*memory).Ny;
@@ -2344,45 +2344,26 @@ double* getAllInfoNEWThreads( int* ptrAllData, int* ptrAllLevels, int* ptrVarIdx
 
 	int **Nxuiz;                      //[X][Z]
 
-	nrow = bin_max+1;
 	ncol = bin_max+1;
 
 	Nxuiz = (*memory).Nxuiz;
-	int Nxuizjl;                     //[X][Z]
 
 	double info_xui_y,info_yui_x,info_ui_y,info_ui_x;
 	double logC_xui_y,logC_yui_x,logC_ui_y,logC_ui_x;
 
-	double info_xuiz_y,info_yuiz_x,info_uiz_y,info_uiz_x;
-	double logC_xuiz_y,logC_yuiz_x,logC_uiz_y,logC_uiz_x;
-
-	double info_xui_z,info_yui_z,info_ui_z;
-	double logC_xui_z,logC_yui_z,logC_ui_z;
-
-	double test_xy_ui, info3, info2;
+	double info3xy_ui,info2xy_ui;
+	double logC3xy_ui,logC2xy_ui;
 
 
-	double info3xy_ui,info2xy_ui,info3xy_uiz,info2xy_uiz;
-	double info3xz_ui,info2xz_ui,info3yz_ui,info2yz_ui;
-	double logC3xy_ui,logC2xy_ui,logC3xy_uiz,logC2xy_uiz;
-	double logC3xz_ui,logC2xz_ui,logC3yz_ui,logC2yz_ui;
-
-
-	double info_xy_ui,info_xy_uiz;
-	double info_xz_ui,info_yz_ui;
-	double logC_xy_ui,logC_xy_uiz;
-	double logC_xz_ui,logC_yz_ui;
-	double testinfo_xy_ui,testinfo_xy_uiz;
-	double testinfo_xz_ui,testinfo_yz_ui;
-	double yz,xz,xyz,first,second,dpi,Rzi,testz;
+	double testinfo_xy_ui;
 
 	//int N_xy_ui=-1,N_xyuiz=-1;
-	int N_xy_ui=0,N_xyuiz=0;
+	int N_xy_ui=0;
 	//double LARGE DBL_MAX;
 	double min_info_logC=LARGE, max_info_logC= - LARGE;
 	//double min_info_logC = 100000.0, max_info_logC = -100000.0;
 
-	int countmin,stop;
+	int countmin;
 
 	int z_top,N_xyuiz_top;
 	double R_top;
@@ -2423,14 +2404,11 @@ double* getAllInfoNEWThreads( int* ptrAllData, int* ptrAllLevels, int* ptrVarIdx
 
 	int *dBin,*Opt_dBin; //[1][Nb_ui+2]
 
-	nrow = 0 + 1;
 	ncol = nbrAllVar +1;
 	
     dBin = (int *)malloc(ncol* sizeof(int));
 	Opt_dBin = (int *)malloc(ncol* sizeof(int));
 	int* nbrLevCorrect = (int *)malloc(ncol * sizeof(int));
-
-	int binX,binY;
 
 	// find samples without NA in x,y,ui and store their id in sample[k][0]
 	for( i = 0, k = 0; i < sampleSize; i++)
@@ -2750,8 +2728,6 @@ double* getAllInfoNEWThreads( int* ptrAllData, int* ptrAllLevels, int* ptrVarIdx
 			min_info_logC = testinfo_xy_ui;
 		}
 
-		int p;
- 
 	///////////////////////////////////////////////////////////////////////
     if(nbrZi==0){
 
@@ -2789,8 +2765,6 @@ double* getAllInfoNEWThreads( int* ptrAllData, int* ptrAllLevels, int* ptrVarIdx
 		R_top= -LARGE;
 		NIxyz_ui_top = -1;
 		k_xyz_ui_top = -1;
-
-		z=nbrAllVar;
 
 		struct ScoresOfZ** scoresAllZi =new ScoresOfZ*[nbrZi];
 		struct ContainerT cont;
@@ -2960,9 +2934,6 @@ double* getAllInfoNEWThreads( int* ptrAllData, int* ptrAllLevels, int* ptrVarIdx
 
 
 	free(dBin);
-
-	binX=Opt_dBin[0];
-	binY=Opt_dBin[1];
 
 	free(Opt_dBin);
 	free(nbrLevCorrect);

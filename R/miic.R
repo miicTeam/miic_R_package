@@ -20,8 +20,8 @@
 #' A data frame that contains the observational data. Each
 #' column corresponds to one variable and each row is a sample that gives the
 #' values for all the observed variables. The column names correspond to the
-#' names of the observed variables. Categorical variables must be passed as 
-#' factors and continuous ones must be numerical.
+#' names of the observed variables. Numeric columns will be treated as continuous 
+#' values, factors and character as categorical.
 #'
 #' @param blackBox [a data frame]
 #' An optional data frame containing the
@@ -112,8 +112,8 @@
 #' @param verbose [a boolean value] If TRUE, debugging output is printed.
 #'
 #' @param nThreads [a positive integer]
-#' When set greater than 1, the miic algorithm allows to use multithreading
-#' in the skeleton initialization phase.
+#' When set greater than 1, nThreads parallel threads will be used for computation. Make sure 
+#' your compiler is compatible with openmp if you wish to use multithreading. 
 #'
 #' @return A \emph{miic-like} object that contains:
 #' \itemize{
@@ -303,7 +303,7 @@ miic <- function(inputData, categoryOrder= NULL, trueEdges = NULL, blackBox = NU
     cat("START miic...\n")
 
   # continuous or discrete?
-  cntVar = !sapply(inputData, is.factor)
+  cntVar = sapply(inputData, is.numeric)
   for(col in colnames(inputData)){
     if(cntVar[[col]] && (length(unique(inputData[[col]])) <= 40) && (nrow(inputData) > 40 )){
       warning(paste0("Variable ", col, " is treated as continuous but only has ", length(unique(inputData[[col]])), " unique values."))
@@ -404,7 +404,7 @@ miic <- function(inputData, categoryOrder= NULL, trueEdges = NULL, blackBox = NU
     timeVec = c(time, timeOrt, timeInitIterOrt, timeSum, timeTotal)
     timeVec[which(timeVec==0)]=NA
     res$time = stats::setNames(timeVec,
-                c("initailization", "iteration", "confidenceCut", "skeleton", "orientation", "skeleton+Orientation", "summary", "total"))
+                c("initialization", "iteration", "confidenceCut", "skeleton", "orientation", "skeleton+Orientation", "summary", "total"))
 
     res$all.edges.summary <- resGmSummary$all.edges.summary
     res$retained.edges.summary <- resGmSummary$retained.edges.summary

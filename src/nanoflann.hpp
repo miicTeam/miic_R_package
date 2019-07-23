@@ -50,7 +50,7 @@
 #include <algorithm>
 #include <array>
 #include <cassert>
-#include <cmath>   // for abs()
+#include <math.h>   // for abs()
 #include <cstdio>  // for fwrite()
 #include <cstdlib> // for abs()
 #include <functional>
@@ -86,15 +86,11 @@ template <typename T> T pi_const() {
  */
 template <typename T, typename = int> struct has_resize : std::false_type {};
 
-template <typename T>
-struct has_resize<T, decltype((void)std::declval<T>().resize(1), 0)>
-    : std::true_type {};
+template <typename T> struct has_resize<T, decltype(((void)std::declval<T>().resize(1), 0))> : std::true_type {};
 
 template <typename T, typename = int> struct has_assign : std::false_type {};
 
-template <typename T>
-struct has_assign<T, decltype((void)std::declval<T>().assign(1, 0), 0)>
-    : std::true_type {};
+template <typename T> struct has_assign<T, decltype((void)std::declval<T>().assign(1, 0), 0)> : std::true_type {};
 
 /**
  * Free function to resize a resizable object
@@ -469,12 +465,12 @@ struct SO2_Adaptor {
   /** Note: this assumes that input angles are already in the range [-pi,pi] */
   template <typename U, typename V>
   inline DistanceType accum_dist(const U a, const V b, const size_t) const {
-    DistanceType result = DistanceType(), PI = pi_const<DistanceType>();
+    DistanceType result = DistanceType(), dPI = pi_const<DistanceType>();
     result = b - a;
-    if (result > PI)
-      result -= 2 * PI;
-    else if (result < -PI)
-      result += 2 * PI;
+    if (result > dPI)
+      result -= 2 * dPI;
+    else if (result < -dPI)
+      result += 2 * dPI;
     return result;
   }
 };

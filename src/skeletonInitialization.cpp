@@ -4,11 +4,13 @@
 #include <string>
 #include <ctime>
 #include <iostream>
-#include <cmath>
+#include <math.h>
 #include <vector>
 #include <algorithm>
 #include <unistd.h>
+#ifdef _OPENMP
 #include <omp.h>
+#endif
 
 using namespace std;
 
@@ -99,8 +101,8 @@ bool skeletonInitialization(Environment& environment){
 	createMemorySpace(environment, environment.m);
 
 	environment.oneLineMatrix = new int[environment.numSamples*environment.numNodes];
-	for(int i = 0; i < environment.numSamples;i++){
-		for(int j = 0; j < environment.numNodes;j++){
+	for(uint i = 0; i < environment.numSamples;i++){
+		for(uint j = 0; j < environment.numNodes;j++){
 			// cout << j * environment.numSamples + i << " ";
 
 			environment.oneLineMatrix[j * environment.numSamples + i] = environment.dataNumeric[i][j];
@@ -109,9 +111,7 @@ bool skeletonInitialization(Environment& environment){
 
 	environment.countSearchMore = 0;
 
-	int nthreadsMax = environment.nThreads;
 	int threadnum = 0;
-	// cout << "nthreadsMax: " << nthreadsMax << endl;
 
 	cout << "Computing pairwise independencies...";
 	fflush (stdout);
@@ -121,7 +121,7 @@ bool skeletonInitialization(Environment& environment){
 	#ifdef _OPENMP
 	#pragma omp parallel for shared(interrupt) firstprivate(threadnum) schedule(dynamic)
 	#endif
-	for(int i = 0; i < environment.numNodes - 1; i++){
+	for(uint i = 0; i < environment.numNodes - 1; i++){
 
 		if (interrupt) {
 			continue; // will continue until out of for loop
@@ -132,7 +132,7 @@ bool skeletonInitialization(Environment& environment){
 			if(checkInterrupt(threadnum == 0)) {
 				interrupt = true;
 			}
-		for(int j = i + 1; j < environment.numNodes && !interrupt; j++){
+		for(uint j = i + 1; j < environment.numNodes && !interrupt; j++){
 
 			if(environment.isVerbose) { cout << "\n# Edge " << environment.nodes[i].name << "," << environment.nodes[j].name << "\n" ; }
 			
@@ -148,7 +148,10 @@ bool skeletonInitialization(Environment& environment){
 			//reserve space for vectors
 			if(environment.edges[i][j].isConnected){
 				if(initEdgeElt(environment, i, j, environment.memoryThreads[threadnum]) == 1){
-					environment.countSearchMore++;			
+					#ifdef _OPENMP
+					#pragma omp critical
+					#endif
+					environment.countSearchMore++;
 				}
 			}
 		}
@@ -157,8 +160,8 @@ bool skeletonInitialization(Environment& environment){
 	if(interrupt) return false;
 
 	cout << " done." << endl;
-	for(int i = 0; i < environment.numNodes; i++){
-		for(int j = 0; j < environment.numNodes; j++){
+	for(uint i = 0; i < environment.numNodes; i++){
+		for(uint j = 0; j < environment.numNodes; j++){
 			environment.edges[i][j].isConnectedAfterInitialization = environment.edges[i][j].isConnected;
 		}
 	}

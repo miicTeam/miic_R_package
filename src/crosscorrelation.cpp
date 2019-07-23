@@ -38,7 +38,7 @@ void transformToFactors(int numSamples, std::vector< std::vector <std::string> >
 	myMap[""] = -1;
 	int factor = 0;
 
- 	for(int j = 0; j < numSamples; j++){
+ 	for(uint j = 0; j < numSamples; j++){
 		map<string,int>::iterator it = myMap.find(data[j][i]);
 		if ( it != myMap.end() ){
 			dataNumeric[j][i] = it->second;
@@ -58,14 +58,14 @@ bool setArrayValuesInt1(int* array, int length, int value){
 		return true;
 }
 
-int removeRowsAllNA(int numSamples, int numNodes, std::vector< std::vector <std::string> >& data){
+int removeRowsAllNA(int numSamples, uint numNodes, std::vector< std::vector <std::string> >& data){
 
 	int* indexNA = new int[numSamples];
 	setArrayValuesInt1(indexNA, numSamples, -1);
 	int pos = 0;
-	for(int i = 0; i < numSamples; i++){
+	for(uint i = 0; i < numSamples; i++){
 		bool isNA = true;
-		for(int j = 0; j < numNodes && isNA; j++){
+		for(uint j = 0; j < numNodes && isNA; j++){
 			if((data[i][j].compare("NA")  != 0) && (data[i][j].compare("") != 0)){
 				isNA = false;
 			}
@@ -81,9 +81,9 @@ int removeRowsAllNA(int numSamples, int numNodes, std::vector< std::vector <std:
 		//correct variable numSamples
 		// save the values
 		pos = 0;
-		for(int i = 0; i < numSamples; i++){
+		for(uint i = 0; i < numSamples; i++){
 			if(indexNA[i] != -1){
-				for(int j = 0; j < numNodes; j++){
+				for(uint j = 0; j < numNodes; j++){
 					data[pos][j] = data[indexNA[i]][j];
 				}
 				pos++;
@@ -101,7 +101,7 @@ int removeRowsAllNA(int numSamples, int numNodes, std::vector< std::vector <std:
 /**
 *  Read input and fill all structures
 */
-double** reading_input(int& row_num, int col_num, std::vector<std::string> vectorData, vector< vector <string> >&  state)
+double** reading_input(int& row_num,  int col_num, std::vector<std::string> vectorData, vector< vector <string> >&  state)
 {
 
 

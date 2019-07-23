@@ -2,19 +2,20 @@
 
 /////////////////////////////////////////////////////////////////////////////
 //INPUT:
-//memory_cuts: vector length n with recorded recursvely best cuts, 
+//memory_cuts: vector length n with recorded recursvely best cuts,
 //possible values 0...n :
 //0->stops (one bins); -k -> stops (two bin ([0 k-1][k ..];k->continute [.. k-1][k ...])
 
 //OUTPUT:
 //r : number cuts
 //cut: vector with cuts point-> [0 cut[0]][cut[0]+1 cut[1]]...[cut[r-2] cut[r-1]]
-int reconstruction_cut_coarse(int *memory_cuts, int *memory_cuts2,int np, int n, int *cut);
+//int reconstruction_cut_coarse(int *memory_cuts, int *memory_cuts2,int np, int n, int *cut);
+int reconstruction_cut_coarse(vector<int>& memory_cuts, vector<int>& memory_cuts2, int np, int n,int *cut);
 
 // void reconstruction_cut_coarse(int *memory_cuts, int np, int d,int **cut,int *r);
 
 //////////////////////////////////////////////////////////////////////////////////
-//update datafactors 
+//update datafactors
 void update_datafactors(int **sortidx, int varidx, int **datafactors,int d, int n, int **cut);
 // void update_datafactors(int **sortidx, int **repeated, int varidx, int **datafactors,int d, int n, int **cut);
 

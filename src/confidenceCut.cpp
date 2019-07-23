@@ -52,7 +52,7 @@ bool SortFunctionNoMore2(const XJAddress* a, const XJAddress* b, const Environme
 }
 
 class sorterNoMore2 {
-	  Environment environment;
+	  Environment &environment;
 		public:
 	  sorterNoMore2(Environment& env) : environment(env) {}
 	  bool operator()(XJAddress const* o1, XJAddress const* o2) const {
@@ -83,7 +83,7 @@ vector< vector <string> > confidenceCut(Environment& environment){
 
 	int* lookup = new int[environment.numSamples];
 	int* lookup2 = new int[environment.numSamples];
-	for(int i=0; i<environment.numSamples; i++)
+	for(uint i=0; i<environment.numSamples; i++)
 		lookup[i] = i;
 
 	double noMore = environment.numNoMore;
@@ -96,8 +96,9 @@ vector< vector <string> > confidenceCut(Environment& environment){
 
 	int pos = 0;
 
-	for(int i = 0; i < environment.numNodes -1; i++){
-		for(int j = i+1; j < environment.numNodes; j++){
+
+	for(uint i = 0; i < environment.numNodes -1; i++){
+		for(uint j = i+1; j < environment.numNodes; j++){
 			if(environment.edges[i][j].isConnected){
 				inferredEdges_tab[pos][0] = i;
 				inferredEdges_tab[pos][1] = j;
@@ -108,18 +109,18 @@ vector< vector <string> > confidenceCut(Environment& environment){
 
 	if(environment.atLeastTwoGaussian == 1){
 		safe_stateDouble = new double*[environment.numSamples];
-		for(int i = 0; i < environment.numSamples; i++)
+		for(uint i = 0; i < environment.numSamples; i++)
 			safe_stateDouble[i] = new double[environment.numNodes];
 	}
 
 	// Create a back up of the data, for later randomization
 	safe_state = new int*[environment.numSamples];
-	for(int i=0; i<environment.numSamples; i++)
+	for(uint i=0; i<environment.numSamples; i++)
 		safe_state[i] = new int[environment.numNodes];
 
 	if(environment.atLeastOneContinuous == 1){
 		safe_stateIdx = new int*[environment.numNodes];
-		for(int i = 0; i < environment.numNodes; i++)
+		for(uint i = 0; i < environment.numNodes; i++)
 			safe_stateIdx[i] = new int[environment.numSamples];
 	}
 
@@ -133,9 +134,9 @@ vector< vector <string> > confidenceCut(Environment& environment){
 		}
 	}
 
-	for(int i=0; i<environment.numSamples; i++)
+	for(uint i=0; i<environment.numSamples; i++)
 	{
-		for(int j=0; j<environment.numNodes;j++){
+		for(uint j=0; j<environment.numNodes;j++){
 			safe_state[i][j]=environment.dataNumeric[i][j];
 			if(environment.columnAsContinuous[j] == 1)
 				safe_stateIdx[j][i]=environment.dataNumericIdx[j][i];
@@ -152,7 +153,7 @@ vector< vector <string> > confidenceCut(Environment& environment){
 	}
 
 	int* nodes_toShf = new int[environment.numNodes];
-  	for(int i=0; i<environment.numNodes; i++)
+  	for(uint i=0; i<environment.numNodes; i++)
   		nodes_toShf[i]=0;
   	
   	//indexes of nodes to shuffle
@@ -168,28 +169,26 @@ vector< vector <string> > confidenceCut(Environment& environment){
 
 	int* ptrVarIdx = new int[2];
 
-	int prg_progress = -1;
-
 	// loop on the number of shuffling
 	for(int nb=1; nb<=environment.numberShuffles; nb++)
 	{
 		//prg_progress = printProgress(nb/(1.0*environment.numberShuffles), startTime, outdir, prg_progress);
 
 		//Shuffle the dataset only for the variables present in nodes_toShf
-		for(int col=0; col<environment.numNodes; col++)
+		for(uint col=0; col<environment.numNodes; col++)
 		{
 			if( nodes_toShf[col] == 1)
 			{
 				int row2=0;
 				shuffle_lookup(lookup, lookup2, environment.numSamples);
 				if(environment.columnAsContinuous[col] != 0){
-					for(int i = 0; i < environment.numSamples; i++){
+					for(uint i = 0; i < environment.numSamples; i++){
 						lookup2[i] = i;
 					}
 
 					sort2arraysConfidence(environment.numSamples, lookup, lookup2);
 				}
-				for(int row = 0; row < environment.numSamples; row++){
+				for(uint row = 0; row < environment.numSamples; row++){
 					environment.dataNumeric[row][col] = safe_state[lookup[row]][col];
 
 					if(environment.columnAsGaussian[col] == 1 && environment.atLeastTwoGaussian == 1){
@@ -197,7 +196,7 @@ vector< vector <string> > confidenceCut(Environment& environment){
 					}
 				}
 
-				for(int row = 0; row < environment.numSamples; row++){
+				for(uint row = 0; row < environment.numSamples; row++){
 					if(environment.columnAsContinuous[col] != 0){
 
 						// cout << environment.dataNumericIdx[col][row] << endl;
@@ -225,13 +224,13 @@ vector< vector <string> > confidenceCut(Environment& environment){
 			// 	int row2=0;
 			// 	shuffle_lookup(lookup, lookup2, environment.numSamples);
 			// 	if(environment.columnAsContinuous[col] != 0){
-			// 		for(int i = 0; i < environment.numSamples; i++){
+			// 		for(uint i = 0; i < environment.numSamples; i++){
 			// 			lookup2[i] = i;
 			// 		}
 
 			// 		sort2arraysConfidence(environment.numSamples, lookup, lookup2);
 			// 	}
-			// 	for(int row = 0; row < environment.numSamples; row++){
+			// 	for(uint row = 0; row < environment.numSamples; row++){
 			// 		environment.dataNumeric[row][col] = safe_state[lookup[row]][col];
 
 			// 		if(environment.columnAsGaussian[col] == 1){
@@ -260,14 +259,14 @@ vector< vector <string> > confidenceCut(Environment& environment){
 			// }
 		}
 
-		for(int i = 0; i < environment.numSamples;i++){
-			for(int j = 0; j < environment.numNodes;j++){
+		for(uint i = 0; i < environment.numSamples;i++){
+			for(uint j = 0; j < environment.numNodes;j++){
 				environment.oneLineMatrix[j * environment.numSamples + i] = environment.dataNumeric[i][j];
 			}
 		}
 
 		if(environment.atLeastTwoGaussian == 1){
-			for (int i = 0; i < environment.numNodes; i++) {
+			for(uint i = 0; i < environment.numNodes; i++) {
 				environment.means[i] = 0.0;
 				environment.standardDeviations[i] = 0.0;
 			}
@@ -280,7 +279,6 @@ vector< vector <string> > confidenceCut(Environment& environment){
 		}
 
 		int X,Y;
-		int N_xy_ui;
 		double NIxy_ui,k_xy_ui;
 		// evaluate the mutual information for every edge
 		for(int i=0; i<environment.numNoMore; i++)
@@ -295,7 +293,6 @@ vector< vector <string> > confidenceCut(Environment& environment){
 			//discrete case
 			if(environment.columnAsContinuous[X] == 0 && environment.columnAsContinuous[Y] == 0){
 				res = computeEnsInformationNew(environment, NULL, 0, NULL, 0, -1, X, Y, environment.cplx, environment.m);
-				N_xy_ui = res[0]; 
 				NIxy_ui = res[1];
 				k_xy_ui = res[2];
 				free(res);
@@ -304,7 +301,6 @@ vector< vector <string> > confidenceCut(Environment& environment){
 
 			}  else if(environment.columnAsGaussian[X] == 1 && environment.columnAsGaussian[Y] == 1){
 				int N = environment.numSamples;
-				N_xy_ui = N; 
 				double NIxy_ui1 = environment.rho[X][Y];
 				k_xy_ui = log(N);
 
@@ -315,7 +311,6 @@ vector< vector <string> > confidenceCut(Environment& environment){
 			else {
 				// cout << "X: " << X  << " " << environment.columnAsContinuous[X] << "		Y: " << Y << " " << environment.columnAsContinuous[Y]<< endl;
 				res = computeEnsInformationContinuous(environment, NULL, 0, NULL, 0, -1, X, Y, environment.cplx, environment.m);
-				N_xy_ui = res[0]; 
 				NIxy_ui = res[1];
 				k_xy_ui = res[2];
 				free(res);
@@ -385,8 +380,8 @@ vector< vector <string> > confidenceCut(Environment& environment){
 
 
 		
-	for(int X = 0; X < environment.numNodes -1; X++){
-		for(int Y = X+1; Y < environment.numNodes; Y++){
+	for(uint X = 0; X < environment.numNodes -1; X++){
+		for(uint Y = X+1; Y < environment.numNodes; Y++){
 			if(environment.edges[X][Y].isConnected == -2 || environment.edges[X][Y].isConnected == 2 || environment.edges[X][Y].isConnected == 6){
 	 			environment.edges[X][Y].isConnected = 1;
 	 			environment.edges[Y][X].isConnected = 1;
@@ -397,7 +392,7 @@ vector< vector <string> > confidenceCut(Environment& environment){
 
 
 	//////////////////////////////////////////////// copy data back
-	for(int i=0; i<environment.numSamples; i++)
+	for(uint i=0; i<environment.numSamples; i++)
 	{
 		if(environment.sampleWeightsVec[0]==-1){
 			if(environment.effN != environment.numSamples)
@@ -405,15 +400,15 @@ vector< vector <string> > confidenceCut(Environment& environment){
 		}
 
 
-		for(int j=0; j<environment.numNodes;j++){
+		for(uint j=0; j<environment.numNodes;j++){
 			environment.dataNumeric[i][j]=safe_state[i][j];
 			if(environment.atLeastTwoGaussian)
 				environment.dataDouble[i][j]=safe_stateDouble[i][j];
 		}
 	}
 
-	for(int i = 0; i < environment.numSamples;i++){
-		for(int j = 0; j < environment.numNodes;j++){
+	for(uint i = 0; i < environment.numSamples;i++){
+		for(uint j = 0; j < environment.numNodes;j++){
 			environment.oneLineMatrix[j * environment.numSamples + i] = environment.dataNumeric[i][j];
 		}
 	}
@@ -421,13 +416,13 @@ vector< vector <string> > confidenceCut(Environment& environment){
 	if(environment.atLeastOneContinuous){
 		//create the data matrix for factors indexes
 	
-		for(int i = 0; i < environment.numNodes; i++){
-			for(int j = 0; j < environment.numSamples; j++) 
+		for(uint i = 0; i < environment.numNodes; i++){
+			for(uint j = 0; j < environment.numSamples; j++) 
 				environment.dataNumericIdx[i][j]=-1;
 		}
 
 
-		for(int j = 0; j < environment.numNodes; j++){
+		for(uint j = 0; j < environment.numNodes; j++){
 			if(environment.columnAsContinuous[j] != 0){
 				transformToFactorsContinuous(environment, j);
 				transformToFactorsContinuousIdx(environment, j);
@@ -435,7 +430,7 @@ vector< vector <string> > confidenceCut(Environment& environment){
 			}
 		}
 	} else if(environment.atLeastTwoGaussian){
-		for (int i = 0; i < environment.numNodes; i++) {
+		for(uint i = 0; i < environment.numNodes; i++) {
 			environment.means[i] = 0.0;
 			environment.standardDeviations[i] = 0.0;
 		}
@@ -456,12 +451,12 @@ vector< vector <string> > confidenceCut(Environment& environment){
 
 	delete[] ptrVarIdx;
 
-	for(int i=0; i<environment.numSamples; i++)
+	for(uint i=0; i<environment.numSamples; i++)
 		delete safe_state[i];
 	delete[] safe_state;
 
 	if(environment.atLeastTwoGaussian){
-		for(int i=0; i<environment.numSamples; i++)
+		for(uint i=0; i<environment.numSamples; i++)
 			delete safe_stateDouble[i];
 		delete[] safe_stateDouble;
 	}

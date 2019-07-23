@@ -1,8 +1,8 @@
 Type: Package
 Title: Learning Causal or Non-Causal Graphical Models Using Information
         Theory
-Version: 1.2.0
-Date: 2018-12-04
+Version: 1.2.1
+Date: 2019-04-26
 Package: miic
 Description: We report an information-theoretic method which learns a large class of causal or non-causal graphical models from purely observational data, while including the effects of unobserved latent variables, commonly found in many datasets. Starting from a complete graph, the method iteratively removes dispensable edges, by uncovering significant information contributions from indirect paths, and assesses edge-specific confidences from randomization of available data. The remaining edges are then oriented based on the signature of causality in observational data. This approach can be applied on a wide range of datasets and provide new biological insights on regulatory networks from single cell expression data, genomic alterations during tumor development and co-evolving residues in protein structures. For more information you can refer to: Verny et al. Plos Comput Biol. (2017) <doi:10.1371/journal.pcbi.1005662>.
 Authors@R: c(person("Nadir", "Sella", role = c("aut","cre"), email = "nadir.sella@curie.fr"),
@@ -14,10 +14,11 @@ Imports: MASS, igraph, bnlearn, ppcor, stats, Rcpp, ggplot2, gridExtra
 License: GPL (>= 2)
 NeedsCompilation: yes
 Encoding: UTF-8
+SystemRequirements: C++14
 LazyData: true
 RoxygenNote: 6.1.1
 LinkingTo: Rcpp
-Packaged: 2018-12-04 14:26:43 UTC; nadir
+Packaged: 2018-04-26 14:26:43 UTC; nadir
 Author: Nadir Sella [aut, cre],
   Louis Verny [aut],
   Severine Affeldt [aut],
