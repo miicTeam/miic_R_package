@@ -350,11 +350,48 @@ miic <- function(inputData, categoryOrder= NULL, trueEdges = NULL, blackBox = NU
 
     if(skeleton){
       if(verbose)
-       cat("\t# -> START skeleton...\n")
-      res <- miic.skeleton(inputData = inputData, stateOrder= categoryOrder, nThreads= nThreads, cplx = cplx, latent = latent, 
-                           effN = neff, blackBox = blackBox, confidenceShuffle = confidenceShuffle,
-                           confidenceThreshold= confidenceThreshold, verbose= verbose, cntVar = cntVar, typeOfData = typeOfData,
-                           sampleWeights = sampleWeights, testMAR = testMAR, consistent = consistent)
+        cat("\t# -> START skeleton...\n")
+      if (doConsensus == 0) {
+        res <- miic.skeleton(inputData = inputData, stateOrder= categoryOrder, nThreads= nThreads, cplx = cplx, latent = latent,
+                             effN = neff, blackBox = blackBox, confidenceShuffle = confidenceShuffle,
+                             confidenceThreshold= confidenceThreshold, verbose= verbose, cntVar = cntVar, typeOfData = typeOfData,
+                             sampleWeights = sampleWeights, testMAR = testMAR, consistent = consistent)
+      } else {
+        skeletons <- NULL
+        # All inferred skeletons will be used to compute the consensus skeleton. The last
+        # skeleton inferred will also be used for the next steps of the algorithm.
+        for (i in seq(nSkeletons)) {
+          # Bootstrap: sample with replacement
+          input <- inputData[sample(nrow(inputData), replace=TRUE), ]
+          # If it's the last skeleton, do it from the not-bootstrapped sample
+          if (i == nSkeletons) {
+            res <- miic.skeleton(inputData = inputData, stateOrder= categoryOrder, nThreads= nThreads, cplx = cplx, latent = latent,
+                                 effN = neff, blackBox = blackBox, confidenceShuffle = confidenceShuffle,
+                                 confidenceThreshold= confidenceThreshold, verbose= verbose, cntVar = cntVar, typeOfData = typeOfData,
+                                 sampleWeights = sampleWeights, testMAR = testMAR, consistent = consistent)
+          } else {
+            # Infer skeleton from a bootstraping sample
+            # Try to make miic.sckeleton smarter for this case, like not saving anythinf for orientation
+            res <- miic.skeleton(inputData = input, stateOrder= categoryOrder, nThreads= nThreads, cplx = cplx, latent = latent,
+                                 effN = neff, blackBox = blackBox, confidenceShuffle = confidenceShuffle,
+                                 confidenceThreshold= confidenceThreshold, verbose= verbose, cntVar = cntVar, typeOfData = typeOfData,
+                                 sampleWeights = sampleWeights, testMAR = testMAR, consistent = consistent)
+          }
+          x <- res$edges[res$edges$category == 3, 'x']
+          y <- res$edges[res$edges$category == 3, 'y']
+          I <- res$edges[res$edges$category == 3, 'Ixy_ai']
+          ai_vect <- res$edges[res$edges$category == 3, 'ai.vect']
+          ai_vect_n <- sapply(ai_vect, function (x) ifelse(is.na(x),
+                                                           0,
+                                                           length(unlist(strsplit(x, ',')))))
+          
+          skeletons <- rbind(skeletons, cbind(x, y, I, ai_vect_n))
+        }
+        skeletons <<- skeletons
+        res <<- res
+        # Computing consensus
+        
+      }
       if(res$interrupted){
         warning("Interupted by user")
         return(NULL)
