@@ -393,8 +393,13 @@ miic <- function(inputData, categoryOrder= NULL, trueEdges = NULL, blackBox = NU
         }
         skeletons <<- skeletons
         res <<- res
-        # Computing consensus
         
+        # Computing consensus table
+        skeletons <- as.data.frame(skeletons)
+        consensus_table <- as.data.frame(table(skeletons$x, skeletons$y))
+        consensus_table <- consensus_table[consensus_table$Freq*100/10 >= doConsensus, ]
+        consensus_table$Freq <- NULL
+        consensus_table <<- consensus_table
       }
       if(res$interrupted){
         warning("Interupted by user")
