@@ -377,6 +377,9 @@ miic <- function(inputData, categoryOrder= NULL, trueEdges = NULL, blackBox = NU
                                  confidenceThreshold= confidenceThreshold, verbose= verbose, cntVar = cntVar, typeOfData = typeOfData,
                                  sampleWeights = sampleWeights, testMAR = testMAR, consistent = consistent)
           }
+          # These lines and the global variables that change their scope are temporary and
+          # will be removed at the end of the development of this feature
+          # (consensus skeleton).
           x <- res$edges[res$edges$category == 3, 'x']
           y <- res$edges[res$edges$category == 3, 'y']
           I <- res$edges[res$edges$category == 3, 'Ixy_ai']
@@ -386,6 +389,7 @@ miic <- function(inputData, categoryOrder= NULL, trueEdges = NULL, blackBox = NU
                                                            length(unlist(strsplit(x, ',')))))
           
           skeletons <- rbind(skeletons, cbind(x, y, I, ai_vect_n))
+          rownames(skeletons) <- NULL
         }
         skeletons <<- skeletons
         res <<- res
