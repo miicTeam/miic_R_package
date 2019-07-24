@@ -116,15 +116,19 @@
 #' your compiler is compatible with openmp if you wish to use multithreading. 
 #'
 #' @param doConsensus [a positive integer] If doConsensus is larger than 0 (default
-#' value), it will create bootstraping skeletons for the estimation of a consensus skeleton
-#' made by the associations that were common among the bootstraping skeletons. The positive
-#' integer indicates the % of the bootstraping skeletons that the edge must exist in order to
-#' be in the consensus skeleton. A value of zero indicates that no bootstraping should
+#' value), it will create bootstrapping skeletons for the estimation of a consensus skeleton
+#' made by the associations that were common among the bootstrapping skeletons. The positive
+#' integer indicates the % of the bootstrapping skeletons that the edge must exist in order to
+#' be in the consensus skeleton. A value of zero indicates that no bootstrapping should
 #' be performed.
 #'
-#' @param nSkeletons [a positive integer] The number of bootstraping skeletons that will
+#' @param nSkeletons [a positive integer] The number of bootstrapping skeletons that will
 #' be inferred for the estimation of a consensus skeleton. The last skeleton will be used for
 #' the next steps of the MIIC algorithm.
+#' 
+#' @param proportionToUnderSample [a positive integer] This number indicates the
+#' proportion of the original data that should be undersampled. The rest will be left out.
+#' Setting this parameter will resample using the Jackknife method, instead of bootstrapping.
 #' 
 #' @return A \emph{miic-like} object that contains:
 #' \itemize{
@@ -253,7 +257,7 @@ miic <- function(inputData, categoryOrder= NULL, trueEdges = NULL, blackBox = NU
                  cplx = c("nml", "mdl"), orientation = TRUE, propagation = TRUE, latent = FALSE,
                  neff = -1, edges=NULL, confidenceShuffle = 0, confidenceThreshold = 0, 
                  confList = NULL, sampleWeights = NULL, testMAR = TRUE, consistent = FALSE, 
-                 verbose = FALSE, doConsensus=0, nSkeletons=0)
+                 verbose = FALSE, doConsensus=0, nSkeletons=0, proportionToUnderSample=100)
 {
   res = NULL
   skeleton = TRUE
@@ -310,7 +314,7 @@ miic <- function(inputData, categoryOrder= NULL, trueEdges = NULL, blackBox = NU
   if(latent != TRUE && latent != FALSE)
     stop("The latent type is not correct. Allowed types are TRUE or FALSE")
   
-  #Bootstraping
+  #Bootstrpaping
   if(doConsensus == 0 && nSkeletons != 0)
     stop(paste0("It's useless to set the nSkeletons parameter to different ",
                 "than zero if you did not set the doConsensus parameter."))
@@ -370,7 +374,7 @@ miic <- function(inputData, categoryOrder= NULL, trueEdges = NULL, blackBox = NU
                                  confidenceThreshold= confidenceThreshold, verbose= verbose, cntVar = cntVar, typeOfData = typeOfData,
                                  sampleWeights = sampleWeights, testMAR = testMAR, consistent = consistent)
           } else {
-            # Infer skeleton from a bootstraping sample
+            # Infer skeleton from a bootstrapping sample
             # Try to make miic.sckeleton smarter for this case, like not saving anythinf for orientation
             res <- miic.skeleton(inputData = input, stateOrder= categoryOrder, nThreads= nThreads, cplx = cplx, latent = latent,
                                  effN = neff, blackBox = blackBox, confidenceShuffle = confidenceShuffle,
