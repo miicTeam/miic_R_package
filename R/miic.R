@@ -126,7 +126,7 @@
 #' be inferred for the estimation of a consensus skeleton. The last skeleton will be used for
 #' the next steps of the MIIC algorithm.
 #' 
-#' @param proportionToUnderSample [a positive integer] This number indicates the
+#' @param proportionToUndersample [a positive integer] This number indicates the
 #' proportion of the original data that should be undersampled. The rest will be left out.
 #' Setting this parameter will resample using the Jackknife method, instead of bootstrapping.
 #' 
@@ -257,7 +257,7 @@ miic <- function(inputData, categoryOrder= NULL, trueEdges = NULL, blackBox = NU
                  cplx = c("nml", "mdl"), orientation = TRUE, propagation = TRUE, latent = FALSE,
                  neff = -1, edges=NULL, confidenceShuffle = 0, confidenceThreshold = 0, 
                  confList = NULL, sampleWeights = NULL, testMAR = TRUE, consistent = FALSE, 
-                 verbose = FALSE, doConsensus=0, nSkeletons=0, proportionToUnderSample=100)
+                 verbose = FALSE, doConsensus=0, nSkeletons=0, proportionToUndersample=100)
 {
   res = NULL
   skeleton = TRUE
@@ -325,6 +325,11 @@ miic <- function(inputData, categoryOrder= NULL, trueEdges = NULL, blackBox = NU
     stop("doConsensus can not be smaller than 0 or greater than 100.")
   if(nSkeletons < 0)
     stop("nSkeletons can not be smaller than 0.")
+  #Jackknife
+  if (proportionToUndersample > 100)
+    stop("Proportion of original data (undersample) can not be larger than 100%.")
+  if (proportionToUndersample == 0)
+    stop("Proportion of original data (undersample) can not be 0%. That would mean no data being sampled.")
   
   if(verbose)
     cat("START miic...\n")
