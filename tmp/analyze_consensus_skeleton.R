@@ -40,3 +40,14 @@ as_tibble(skeletons) %>%
   select(x,y) %>%
   distinct(x,y) %>%
   View
+
+# Comparing final network to consensus skeleton
+final_network <- as.data.frame(cbind(miic.res$retained.edges.summary$x,
+                                     miic.res$retained.edges.summary$y))
+colnames(final_network) <- colnames(consensus_table) <- c('x', 'y')
+
+# Proportion of final network which is not in the consensus table
+n_edges_not_in_consensus <- nrow(dplyr::setdiff(final_network, consensus_table))
+n_total_final_network <- nrow(final_network)
+prop_edges_not_in_consensus <- n_edges_not_in_consensus*100/n_total_final_network
+prop_edges_in_consensus <- 100-prop_edges_not_in_consensus
