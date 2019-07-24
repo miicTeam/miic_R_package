@@ -370,14 +370,33 @@ miic <- function(inputData, categoryOrder= NULL, trueEdges = NULL, blackBox = NU
         # All inferred skeletons will be used to compute the consensus skeleton. The last
         # skeleton inferred will also be used for the next steps of the algorithm.
         for (i in seq(nSkeletons)) {
-          # Bootstrap: sample with replacement
-          input <- inputData[sample(nrow(inputData), replace=TRUE), ]
-          # If it's the last skeleton, do it from the not-bootstrapped sample
+          # Jackknife: undersample without replacement
+          if (proportionToUndersample != 100)
+            input <- inputData[sample(nrow(inputData), size=proportionToUndersample*nrow(inputData)/100, replace=FALSE), ]
+          else
+            # Bootstrap: sample with replacement
+            input <- inputData[sample(nrow(inputData), replace=TRUE), ]
+          # If it's the last skeleton, what to do depends on the resampling method
           if (i == nSkeletons) {
-            res <- miic.skeleton(inputData = inputData, stateOrder= categoryOrder, nThreads= nThreads, cplx = cplx, latent = latent,
-                                 effN = neff, blackBox = blackBox, confidenceShuffle = confidenceShuffle,
-                                 confidenceThreshold= confidenceThreshold, verbose= verbose, cntVar = cntVar, typeOfData = typeOfData,
-                                 sampleWeights = sampleWeights, testMAR = testMAR, consistent = consistent)
+            # If it's jackknife
+            if (proportionToUndersample != 100) {
+              res <- miic.skeleton(inputData = input, stateOrder= categoryOrder, nThreads= nThreads, cplx = cplx, latent = latent,
+                                   effN = neff, blackBox = blackBox, confidenceShuffle = confidenceShuffle,
+                                   confidenceThreshold= confidenceThreshold, verbose= verbose, cntVar = cntVar, typeOfData = typeOfData,
+                                   sampleWeights = sampleWeights, testMAR = testMAR, consistent = consistent)
+              # Make it looks like it's not jackknife anymore
+              proportionToUndersample == 100
+              # Do one more iteration. We can not use the last skeleton for the rest of the
+              # algorithm, for it is undersampled.
+              nSkeletons = nSkeletons + 1
+            # If it's bootstrapping
+            } else {
+              # Infer skeleton with original data, not bootstrapped data
+              res <- miic.skeleton(inputData = inputData, stateOrder= categoryOrder, nThreads= nThreads, cplx = cplx, latent = latent,
+                                   effN = neff, blackBox = blackBox, confidenceShuffle = confidenceShuffle,
+                                   confidenceThreshold= confidenceThreshold, verbose= verbose, cntVar = cntVar, typeOfData = typeOfData,
+                                   sampleWeights = sampleWeights, testMAR = testMAR, consistent = consistent)
+            }
           } else {
             # Infer skeleton from a bootstrapping sample
             # Try to make miic.sckeleton smarter for this case, like not saving anythinf for orientation
