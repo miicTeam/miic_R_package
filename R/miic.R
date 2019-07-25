@@ -366,40 +366,30 @@ miic <- function(inputData, categoryOrder= NULL, trueEdges = NULL, blackBox = NU
                              confidenceThreshold= confidenceThreshold, verbose= verbose, cntVar = cntVar, typeOfData = typeOfData,
                              sampleWeights = sampleWeights, testMAR = testMAR, consistent = consistent)
       } else {
+        if (proportionToUndersample == 100)
+          cat("\t# -> Computing consensus skeleton by bootstrapping...\n")
+        else
+          cat("\t# -> Computing consensus skeleton by jackknife...\n")
         skeletons <- NULL
-        # All inferred skeletons will be used to compute the consensus skeleton. The last
-        # skeleton inferred will also be used for the next steps of the algorithm.
-        for (i in seq(nSkeletons)) {
+        # nSkeletons skeletons will be inferred from resampled data. After that, another
+        # skeleton will be inferred for the next steps of the MIIC algorithm in order to
+        # infer the final network.
+        for (i in seq(nSkeletons+1)) {
           # Jackknife: undersample without replacement
           if (proportionToUndersample != 100)
             input <- inputData[sample(nrow(inputData), size=proportionToUndersample*nrow(inputData)/100, replace=FALSE), ]
           else
             # Bootstrap: sample with replacement
             input <- inputData[sample(nrow(inputData), replace=TRUE), ]
-          # If it's the last skeleton, what to do depends on the resampling method
-          if (i == nSkeletons) {
-            # If it's jackknife
-            if (proportionToUndersample != 100) {
-              res <- miic.skeleton(inputData = input, stateOrder= categoryOrder, nThreads= nThreads, cplx = cplx, latent = latent,
-                                   effN = neff, blackBox = blackBox, confidenceShuffle = confidenceShuffle,
-                                   confidenceThreshold= confidenceThreshold, verbose= verbose, cntVar = cntVar, typeOfData = typeOfData,
-                                   sampleWeights = sampleWeights, testMAR = testMAR, consistent = consistent)
-              # Make it looks like it's not jackknife anymore
-              proportionToUndersample == 100
-              # Do one more iteration. We can not use the last skeleton for the rest of the
-              # algorithm, for it is undersampled.
-              nSkeletons = nSkeletons + 1
-            # If it's bootstrapping
-            } else {
-              # Infer skeleton with original data, not bootstrapped data
-              res <- miic.skeleton(inputData = inputData, stateOrder= categoryOrder, nThreads= nThreads, cplx = cplx, latent = latent,
-                                   effN = neff, blackBox = blackBox, confidenceShuffle = confidenceShuffle,
-                                   confidenceThreshold= confidenceThreshold, verbose= verbose, cntVar = cntVar, typeOfData = typeOfData,
-                                   sampleWeights = sampleWeights, testMAR = testMAR, consistent = consistent)
-            }
+          # After tha last skeleton from resampled data, another skeleton should be inferred
+          # for the next steps of MIIC, in order to infer the final network.
+          if (i == nSkeletons+1) {
+            res <- miic.skeleton(inputData = inputData, stateOrder= categoryOrder, nThreads= nThreads, cplx = cplx, latent = latent,
+                                 effN = neff, blackBox = blackBox, confidenceShuffle = confidenceShuffle,
+                                 confidenceThreshold= confidenceThreshold, verbose= verbose, cntVar = cntVar, typeOfData = typeOfData,
+                                 sampleWeights = sampleWeights, testMAR = testMAR, consistent = consistent)
           } else {
-            # Infer skeleton from a bootstrapping sample
-            # Try to make miic.sckeleton smarter for this case, like not saving anythinf for orientation
+            # Resample original data and infer a skeletno
             res <- miic.skeleton(inputData = input, stateOrder= categoryOrder, nThreads= nThreads, cplx = cplx, latent = latent,
                                  effN = neff, blackBox = blackBox, confidenceShuffle = confidenceShuffle,
                                  confidenceThreshold= confidenceThreshold, verbose= verbose, cntVar = cntVar, typeOfData = typeOfData,
@@ -408,20 +398,21 @@ miic <- function(inputData, categoryOrder= NULL, trueEdges = NULL, blackBox = NU
           # These lines and the global variables that change their scope are temporary and
           # will be removed at the end of the development of this feature
           # (consensus skeleton).
-          x <- res$edges[res$edges$category == 3, 'x']
-          y <- res$edges[res$edges$category == 3, 'y']
-          I <- res$edges[res$edges$category == 3, 'Ixy_ai']
-          ai_vect <- res$edges[res$edges$category == 3, 'ai.vect']
-          ai_vect_n <- sapply(ai_vect, function (x) ifelse(is.na(x),
-                                                           0,
-                                                           length(unlist(strsplit(x, ',')))))
-          
-          skeletons <- rbind(skeletons, cbind(x, y, I, ai_vect_n))
-          rownames(skeletons) <- NULL
+          if (i != nSkeletons+1) {
+            x <- res$edges[res$edges$category == 3, 'x']
+            y <- res$edges[res$edges$category == 3, 'y']
+            I <- res$edges[res$edges$category == 3, 'Ixy_ai']
+            ai_vect <- res$edges[res$edges$category == 3, 'ai.vect']
+            ai_vect_n <- sapply(ai_vect, function (x) ifelse(is.na(x),
+                                                             0,
+                                                             length(unlist(strsplit(x, ',')))))
+            skeletons <- rbind(skeletons, cbind(x, y, I, ai_vect_n))
+            rownames(skeletons) <- NULL
+          }
         }
         skeletons <<- skeletons
         res <<- res
-        
+
         # Computing consensus table
         skeletons <- as.data.frame(skeletons)
         consensus_table <- as.data.frame(table(skeletons$x, skeletons$y))
