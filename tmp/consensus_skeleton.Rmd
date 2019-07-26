@@ -17,7 +17,7 @@ output:
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-# Robustness to small differences in data
+# Robustness analysis
 The goal of this feature is to evaluate the effect of small variations in the sample used as input to the MIIC algorithm, so that we can measure its robustness to such events.
 
 # Proposed solution
@@ -37,35 +37,45 @@ Bootstraping generally refers to any resampling method that does resamples with 
 Jackknife is a resampling method, without replacement, that does undersampling. One example would be to randomly choose 8 out of 10 samples, meaning a fraction of 80%. 
 
 # Examples
-In our example, let's use the _hematoData_ data package contained in the MIIC R package and build the consensus skeleton through 10 skeletons inferred from resamples.
+In our example, let's use the _hematoData_ data package contained in the MIIC R package and build the consensus skeleton through 10 and 100 skeletons inferred from resamples.
+
+## N=10
 ```{r}
 library(miic)
 data(hematoData)
 nske = 10
 ```
 
-## By bootstrapping
+### By bootstrapping
 The consensus skeleton will be made of edges that are present in $80\%$ of the skeletons.
-```{r}
+```{r eval=FALSE}
+set.seed(2019)
 miic.res = miic(inputData = hematoData, latent = TRUE, confidenceShuffle = 10,
                 confidenceThreshold = 0.001,
                 doConsensus = 80,
                 nSkeletons = nske)
 ```
 
-### Results
+*Results*
 
-```{r echo=FALSE}
+```{r echo=TRUE, message=FALSE, eval=FALSE}
 library(ggplot2)
 library(dplyr)
 as_tibble(skeletons) %>%
   group_by(x, y) %>%
   summarise(count = n(), I = mean(as.numeric(I))) %>%
   ggplot(aes(x=count*100/nske, y=I)) + geom_point() + geom_jitter(height = 5) +
-  geom_smooth()
+  geom_smooth() +
+  labs(title="Edges in skeletons inferred from resamplings",
+       x = "How often this edge was inferred in the skeletons",
+       y = "Average Conditional Mutual Information for this edge")
 ```
 
-```{r echo=FALSE}
+```{r bs_fig1_10, echo=FALSE, out.width = '100%'}
+knitr::include_graphics("figs/bootstrap_1_n10.png")
+```
+
+```{r echo=TRUE, message=FALSE, eval=FALSE}
 library(ggplot2)
 library(dplyr)
 as_tibble(skeletons) %>%
@@ -74,10 +84,18 @@ as_tibble(skeletons) %>%
             ai_vect = mean(as.numeric(ai_vect_n)),
             I = mean(as.numeric(I))) %>%
   ggplot(aes(x=count*100/nske, y=ai_vect, color = log(I))) + geom_jitter(height = 0.01) + geom_point() +
-  geom_smooth()
+  geom_smooth() +
+  labs(title="Edges in skeletons inferred from resamplings",
+       x = "How often this edge was inferred in the skeletons",
+       y = "Number of nodes in the d-separation set",
+       fill = "Log of average conditional mutual information")
 ``` 
 
-```{r}
+```{r bs_fig2_10, echo=FALSE, out.width = '100%'}
+knitr::include_graphics("figs/bootstrap_2_n100.png")
+```
+
+```{r eval=FALSE}
 # Comparing final network to consensus skeleton
 final_network <- as.data.frame(cbind(miic.res$retained.edges.summary$x,
                                      miic.res$retained.edges.summary$y))
@@ -91,10 +109,13 @@ prop_edges_in_consensus <- 100-prop_edges_not_in_consensus
 paste0(prop_edges_in_consensus, '% of similarity')
 ```
 
-## By jackknife
+[1] "65.3333333333333% of similarity"
+
+### By jackknife
 The consensus skeleton will be made of edges that are present in $80\%$ of the skeletons, and the resampling will be done randomly from $90\%$
 of the original sample.
-```{r}
+```{r eval=FALSE}
+set.seed(2019)
 miic.res = miic(inputData = hematoData, latent = TRUE, confidenceShuffle = 10,
                 confidenceThreshold = 0.001,
                 doConsensus = 80,
@@ -102,19 +123,27 @@ miic.res = miic(inputData = hematoData, latent = TRUE, confidenceShuffle = 10,
                 proportionToUndersample = 90)
 ```
 
-### Results
+*Results*
 
-```{r echo=FALSE}
+```{r echo=TRUE, message=FALSE, eval=FALSE}
 library(ggplot2)
 library(dplyr)
 as_tibble(skeletons) %>%
   group_by(x, y) %>%
   summarise(count = n(), I = mean(as.numeric(I))) %>%
   ggplot(aes(x=count*100/nske, y=I)) + geom_point() + geom_jitter(height = 5) +
-  geom_smooth()
+  geom_smooth() +
+  labs(title="Edges in skeletons inferred from resamplings",
+       x = "How often this edge was inferred in the skeletons",
+       y = "Average Conditional Mutual Information for this edge")
 ```
 
-```{r echo=FALSE}
+```{r jk_fig1_10, echo=FALSE, out.width = '100%'}
+knitr::include_graphics("figs/jackknife_1_n100.png")
+
+```
+
+```{r echo=TRUE, message=FALSE, eval=FALSE}
 library(ggplot2)
 library(dplyr)
 as_tibble(skeletons) %>%
@@ -123,10 +152,18 @@ as_tibble(skeletons) %>%
             ai_vect = mean(as.numeric(ai_vect_n)),
             I = mean(as.numeric(I))) %>%
   ggplot(aes(x=count*100/nske, y=ai_vect, color = log(I))) + geom_jitter(height = 0.01) + geom_point() +
-  geom_smooth()
+  geom_smooth() +
+  labs(title="Edges in skeletons inferred from resamplings",
+       x = "How often this edge was inferred in the skeletons",
+       y = "Number of nodes in the d-separation set",
+       fill = "Log of average conditional mutual information")
 ``` 
 
-```{r}
+```{r jk_fig2_10, echo=FALSE, out.width = '100%'}
+knitr::include_graphics("figs/jackknife_2_n100.png")
+```
+
+```{r eval=FALSE}
 # Comparing final network to consensus skeleton
 final_network <- as.data.frame(cbind(miic.res$retained.edges.summary$x,
                                      miic.res$retained.edges.summary$y))
@@ -139,3 +176,144 @@ prop_edges_not_in_consensus <- n_edges_not_in_consensus*100/n_total_final_networ
 prop_edges_in_consensus <- 100-prop_edges_not_in_consensus
 paste0(prop_edges_in_consensus, '% of similarity')
 ```
+
+[1] "86.6666666666667% of similarity"
+
+## N=100
+```{r}
+library(miic)
+data(hematoData)
+nske = 100
+```
+
+### By bootstrapping
+The consensus skeleton will be made of edges that are present in $80\%$ of the skeletons.
+```{r eval=FALSE}
+set.seed(2019)
+miic.res = miic(inputData = hematoData, latent = TRUE, confidenceShuffle = 10,
+                confidenceThreshold = 0.001,
+                doConsensus = 80,
+                nSkeletons = nske)
+```
+
+*Results*
+
+```{r echo=TRUE, message=FALSE, eval=FALSE}
+library(ggplot2)
+library(dplyr)
+as_tibble(skeletons) %>%
+  group_by(x, y) %>%
+  summarise(count = n(), I = mean(as.numeric(I))) %>%
+  ggplot(aes(x=count*100/nske, y=I)) + geom_point() + geom_jitter(height = 5) +
+  geom_smooth() +
+  labs(title="Edges in skeletons inferred from resamplings",
+       x = "How often this edge was inferred in the skeletons",
+       y = "Average Conditional Mutual Information for this edge")
+```
+
+```{r bs_fig1_100, echo=FALSE, out.width = '100%'}
+knitr::include_graphics("figs/bootstrap_1_n100.png")
+```
+
+```{r echo=TRUE, message=FALSE, eval=FALSE}
+library(ggplot2)
+library(dplyr)
+as_tibble(skeletons) %>%
+  group_by(x, y) %>%
+  summarise(count = n(),
+            ai_vect = mean(as.numeric(ai_vect_n)),
+            I = mean(as.numeric(I))) %>%
+  ggplot(aes(x=count*100/nske, y=ai_vect, color = log(I))) + geom_jitter(height = 0.01) + geom_point() +
+  geom_smooth() +
+  labs(title="Edges in skeletons inferred from resamplings",
+       x = "How often this edge was inferred in the skeletons",
+       y = "Number of nodes in the d-separation set",
+       fill = "Log of average conditional mutual information")
+``` 
+
+```{r bs_fig2_100, echo=FALSE, out.width = '100%'}
+knitr::include_graphics("figs/bootstrap_2_n100.png")
+```
+
+```{r eval=FALSE}
+# Comparing final network to consensus skeleton
+final_network <- as.data.frame(cbind(miic.res$retained.edges.summary$x,
+                                     miic.res$retained.edges.summary$y))
+colnames(final_network) <- colnames(consensus_table) <- c('x', 'y')
+
+# Proportion of final network which is not in the consensus table
+n_edges_not_in_consensus <- nrow(dplyr::setdiff(final_network, consensus_table))
+n_total_final_network <- nrow(final_network)
+prop_edges_not_in_consensus <- n_edges_not_in_consensus*100/n_total_final_network
+prop_edges_in_consensus <- 100-prop_edges_not_in_consensus
+paste0(prop_edges_in_consensus, '% of similarity')
+```
+
+[1] "60% of similarity"
+
+### By jackknife
+The consensus skeleton will be made of edges that are present in $80\%$ of the skeletons, and the resampling will be done randomly from $90\%$
+of the original sample.
+```{r eval=FALSE}
+set.seed(2019)
+miic.res = miic(inputData = hematoData, latent = TRUE, confidenceShuffle = 10,
+                confidenceThreshold = 0.001,
+                doConsensus = 80,
+                nSkeletons = nske,
+                proportionToUndersample = 90)
+```
+
+*Results*
+
+```{r echo=TRUE, message=FALSE, eval=FALSE}
+library(ggplot2)
+library(dplyr)
+as_tibble(skeletons) %>%
+  group_by(x, y) %>%
+  summarise(count = n(), I = mean(as.numeric(I))) %>%
+  ggplot(aes(x=count*100/nske, y=I)) + geom_point() + geom_jitter(height = 5) +
+  geom_smooth() +
+  labs(title="Edges in skeletons inferred from resamplings",
+       x = "How often this edge was inferred in the skeletons",
+       y = "Average Conditional Mutual Information for this edge")
+```
+
+```{r jk_fig1_100, echo=FALSE, out.width = '100%'}
+knitr::include_graphics("figs/jackknife_1_n100.png")
+```
+
+```{r echo=TRUE, message=FALSE, eval=FALSE}
+library(ggplot2)
+library(dplyr)
+as_tibble(skeletons) %>%
+  group_by(x, y) %>%
+  summarise(count = n(),
+            ai_vect = mean(as.numeric(ai_vect_n)),
+            I = mean(as.numeric(I))) %>%
+  ggplot(aes(x=count*100/nske, y=ai_vect, color = log(I))) + geom_jitter(height = 0.01) + geom_point() +
+  geom_smooth() +
+  labs(title="Edges in skeletons inferred from resamplings",
+       x = "How often this edge was inferred in the skeletons",
+       y = "Number of nodes in the d-separation set",
+       fill = "Log of average conditional mutual information")
+``` 
+
+```{r jk_fig2_100, echo=FALSE, out.width = '100%'}
+knitr::include_graphics("figs/jackknife_2_n100.png")
+```
+
+```{r eval=FALSE}
+# Comparing final network to consensus skeleton
+final_network <- as.data.frame(cbind(miic.res$retained.edges.summary$x,
+                                     miic.res$retained.edges.summary$y))
+colnames(final_network) <- colnames(consensus_table) <- c('x', 'y')
+
+# Proportion of final network which is not in the consensus table
+n_edges_not_in_consensus <- nrow(dplyr::setdiff(final_network, consensus_table))
+n_total_final_network <- nrow(final_network)
+prop_edges_not_in_consensus <- n_edges_not_in_consensus*100/n_total_final_network
+prop_edges_in_consensus <- 100-prop_edges_not_in_consensus
+paste0(prop_edges_in_consensus, '% of similarity')
+```
+
+[1] "82.6666666666667% of similarity"
