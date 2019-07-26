@@ -413,21 +413,16 @@ miic <- function(inputData, categoryOrder= NULL, trueEdges = NULL, blackBox = NU
             rownames(skeletons) <- NULL
           }
         }
-        skeletons <<- skeletons
-        res <<- res
-
         # Computing consensus table
         skeletons <- as.data.frame(skeletons)
         consensus_table <- as.data.frame(table(skeletons$x, skeletons$y))
         consensus_table <- consensus_table[consensus_table$Freq*100/nSkeletons >= doConsensus, ]
         consensus_table$Freq <- NULL
-        consensus_table <<- consensus_table
       }
       if(res$interrupted){
         warning("Interupted by user")
         return(NULL)
       }
-      # print(res)
       edges = res$edges
       confData = res$confData
       time = res$time
@@ -530,6 +525,9 @@ miic <- function(inputData, categoryOrder= NULL, trueEdges = NULL, blackBox = NU
 
       res$retained.edges.summary= tmp_sum[which(tmp_sum$type %in% c("P","TP","FP")),]
     }
+    # Insert consensus skeleton information on final object
+    res$consensus_table <- consensus_table
+    res$skeletons <- skeletons
     if(verbose)
       cat("END miic")
   }

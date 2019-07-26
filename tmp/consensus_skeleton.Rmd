@@ -61,7 +61,7 @@ miic.res = miic(inputData = hematoData, latent = TRUE, confidenceShuffle = 10,
 ```{r echo=TRUE, message=FALSE, eval=FALSE}
 library(ggplot2)
 library(dplyr)
-as_tibble(skeletons) %>%
+as_tibble(miic.res$skeletons) %>%
   group_by(x, y) %>%
   summarise(count = n(), I = mean(as.numeric(I))) %>%
   ggplot(aes(x=count*100/nske, y=I)) + geom_point() + geom_jitter(height = 5) +
@@ -78,7 +78,7 @@ knitr::include_graphics("figs/bootstrap_1_n10.png")
 ```{r echo=TRUE, message=FALSE, eval=FALSE}
 library(ggplot2)
 library(dplyr)
-as_tibble(skeletons) %>%
+as_tibble(miic.res$skeletons) %>%
   group_by(x, y) %>%
   summarise(count = n(),
             ai_vect = mean(as.numeric(ai_vect_n)),
@@ -99,10 +99,11 @@ knitr::include_graphics("figs/bootstrap_2_n100.png")
 # Comparing final network to consensus skeleton
 final_network <- as.data.frame(cbind(miic.res$retained.edges.summary$x,
                                      miic.res$retained.edges.summary$y))
-colnames(final_network) <- colnames(consensus_table) <- c('x', 'y')
+colnames(final_network) <- colnames(miic.res$consensus_table) <- c('x', 'y')
 
 # Proportion of final network which is not in the consensus table
-n_edges_not_in_consensus <- nrow(dplyr::setdiff(final_network, consensus_table))
+n_edges_not_in_consensus <- nrow(dplyr::setdiff(final_network,
+                                                miic.res$consensus_table))
 n_total_final_network <- nrow(final_network)
 prop_edges_not_in_consensus <- n_edges_not_in_consensus*100/n_total_final_network
 prop_edges_in_consensus <- 100-prop_edges_not_in_consensus
@@ -128,7 +129,7 @@ miic.res = miic(inputData = hematoData, latent = TRUE, confidenceShuffle = 10,
 ```{r echo=TRUE, message=FALSE, eval=FALSE}
 library(ggplot2)
 library(dplyr)
-as_tibble(skeletons) %>%
+as_tibble(miic.res$skeletons) %>%
   group_by(x, y) %>%
   summarise(count = n(), I = mean(as.numeric(I))) %>%
   ggplot(aes(x=count*100/nske, y=I)) + geom_point() + geom_jitter(height = 5) +
@@ -146,7 +147,7 @@ knitr::include_graphics("figs/jackknife_1_n100.png")
 ```{r echo=TRUE, message=FALSE, eval=FALSE}
 library(ggplot2)
 library(dplyr)
-as_tibble(skeletons) %>%
+as_tibble(miic.res$skeletons) %>%
   group_by(x, y) %>%
   summarise(count = n(),
             ai_vect = mean(as.numeric(ai_vect_n)),
@@ -167,10 +168,11 @@ knitr::include_graphics("figs/jackknife_2_n100.png")
 # Comparing final network to consensus skeleton
 final_network <- as.data.frame(cbind(miic.res$retained.edges.summary$x,
                                      miic.res$retained.edges.summary$y))
-colnames(final_network) <- colnames(consensus_table) <- c('x', 'y')
+colnames(final_network) <- colnames(miic.res$consensus_table) <- c('x', 'y')
 
 # Proportion of final network which is not in the consensus table
-n_edges_not_in_consensus <- nrow(dplyr::setdiff(final_network, consensus_table))
+n_edges_not_in_consensus <- nrow(dplyr::setdiff(final_network,
+                                                miic.res$consensus_table))
 n_total_final_network <- nrow(final_network)
 prop_edges_not_in_consensus <- n_edges_not_in_consensus*100/n_total_final_network
 prop_edges_in_consensus <- 100-prop_edges_not_in_consensus
@@ -201,7 +203,7 @@ miic.res = miic(inputData = hematoData, latent = TRUE, confidenceShuffle = 10,
 ```{r echo=TRUE, message=FALSE, eval=FALSE}
 library(ggplot2)
 library(dplyr)
-as_tibble(skeletons) %>%
+as_tibble(miic.res$skeletons) %>%
   group_by(x, y) %>%
   summarise(count = n(), I = mean(as.numeric(I))) %>%
   ggplot(aes(x=count*100/nske, y=I)) + geom_point() + geom_jitter(height = 5) +
@@ -218,7 +220,7 @@ knitr::include_graphics("figs/bootstrap_1_n100.png")
 ```{r echo=TRUE, message=FALSE, eval=FALSE}
 library(ggplot2)
 library(dplyr)
-as_tibble(skeletons) %>%
+as_tibble(miic.res$skeletons) %>%
   group_by(x, y) %>%
   summarise(count = n(),
             ai_vect = mean(as.numeric(ai_vect_n)),
@@ -239,10 +241,11 @@ knitr::include_graphics("figs/bootstrap_2_n100.png")
 # Comparing final network to consensus skeleton
 final_network <- as.data.frame(cbind(miic.res$retained.edges.summary$x,
                                      miic.res$retained.edges.summary$y))
-colnames(final_network) <- colnames(consensus_table) <- c('x', 'y')
+colnames(final_network) <- colnames(miic.res$consensus_table) <- c('x', 'y')
 
 # Proportion of final network which is not in the consensus table
-n_edges_not_in_consensus <- nrow(dplyr::setdiff(final_network, consensus_table))
+n_edges_not_in_consensus <- nrow(dplyr::setdiff(final_network,
+                                                miic.res$consensus_table))
 n_total_final_network <- nrow(final_network)
 prop_edges_not_in_consensus <- n_edges_not_in_consensus*100/n_total_final_network
 prop_edges_in_consensus <- 100-prop_edges_not_in_consensus
@@ -268,7 +271,7 @@ miic.res = miic(inputData = hematoData, latent = TRUE, confidenceShuffle = 10,
 ```{r echo=TRUE, message=FALSE, eval=FALSE}
 library(ggplot2)
 library(dplyr)
-as_tibble(skeletons) %>%
+as_tibble(miic.res$skeletons) %>%
   group_by(x, y) %>%
   summarise(count = n(), I = mean(as.numeric(I))) %>%
   ggplot(aes(x=count*100/nske, y=I)) + geom_point() + geom_jitter(height = 5) +
@@ -285,7 +288,7 @@ knitr::include_graphics("figs/jackknife_1_n100.png")
 ```{r echo=TRUE, message=FALSE, eval=FALSE}
 library(ggplot2)
 library(dplyr)
-as_tibble(skeletons) %>%
+as_tibble(miic.res$skeletons) %>%
   group_by(x, y) %>%
   summarise(count = n(),
             ai_vect = mean(as.numeric(ai_vect_n)),
@@ -306,10 +309,11 @@ knitr::include_graphics("figs/jackknife_2_n100.png")
 # Comparing final network to consensus skeleton
 final_network <- as.data.frame(cbind(miic.res$retained.edges.summary$x,
                                      miic.res$retained.edges.summary$y))
-colnames(final_network) <- colnames(consensus_table) <- c('x', 'y')
+colnames(final_network) <- colnames(miic.res$consensus_table) <- c('x', 'y')
 
 # Proportion of final network which is not in the consensus table
-n_edges_not_in_consensus <- nrow(dplyr::setdiff(final_network, consensus_table))
+n_edges_not_in_consensus <- nrow(dplyr::setdiff(final_network,
+                                                miic.res$consensus_table))
 n_total_final_network <- nrow(final_network)
 prop_edges_not_in_consensus <- n_edges_not_in_consensus*100/n_total_final_network
 prop_edges_in_consensus <- 100-prop_edges_not_in_consensus
