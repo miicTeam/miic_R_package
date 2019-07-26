@@ -367,9 +367,12 @@ miic <- function(inputData, categoryOrder= NULL, trueEdges = NULL, blackBox = NU
                              sampleWeights = sampleWeights, testMAR = testMAR, consistent = consistent)
       } else {
         if (proportionToUndersample == 100)
-          cat("\t# -> Computing consensus skeleton by bootstrapping...\n")
+          if (verbose)
+            cat("\t# -> Computing consensus skeleton by bootstrapping...\n")
         else
-          cat("\t# -> Computing consensus skeleton by jackknife...\n")
+          if (verbose)
+            cat("\t# -> Computing consensus skeleton by jackknife...\n")
+        
         skeletons <- NULL
         # nSkeletons skeletons will be inferred from resampled data. After that, another
         # skeleton will be inferred for the next steps of the MIIC algorithm in order to
