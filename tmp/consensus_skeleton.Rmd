@@ -36,6 +36,9 @@ Bootstraping generally refers to any resampling method that does resamples with 
 ## Jackknife {#jackknife}
 Jackknife is a resampling method, without replacement, that does undersampling. One example would be to randomly choose 8 out of 10 samples, meaning a fraction of 80%. 
 
+# Test dataset
+Our proposed solution will be applied to binarized expression data of 33 transcription factors involved in early differentiation of primitive erythroid and endothelial cells (3934 cells). This dataset comes by default in the miic R package.
+
 # Examples
 In our example, let's use the _hematoData_ data package contained in the MIIC R package and build the consensus skeleton through 10 and 100 skeletons inferred from resamples.
 
@@ -321,3 +324,77 @@ paste0(prop_edges_in_consensus, '% of similarity')
 ```
 
 [1] "82.6666666666667% of similarity"
+
+# Evaluating parameters
+The idea is to evaluate the parameters used for the resampling approach. These parameters are the number of skeletons to build the consensus skeleton, the minimum occurrence of an edge in these skeletons to be included in the consensus skeleton and the proportion of the original data to be randomly undersampled to be given as input for each skeleton.
+
+There is no point in having very small steps, such as consensus from 1 to 100, one by one. The differences, keeping other parameters still, would be very small to realize. Mostly noise. Besides, the amount of time to run these three loops would take a hueg amount of time. This way, I decided to have larger steps.
+
+## Jackknife
+```{r eval=FALSE}
+setwd('tmp/figs/loops')
+
+# 10, 20, 30, 40, 50, 60, 70, 80, 90, 100
+nske_i <- seq(10,100, 10)
+# 50, 60, 70, 80, 90, 100
+consensus_i <- seq(50,100,10)
+# 80, 85, 90, 95
+prop_us_i <- seq(80, 95, 5)
+
+library(miic)
+data("hematoData")
+library(ggplot2)
+library(dplyr)
+
+for (i in consensus_i) {
+  for (j in nske_i) {
+    for (k in prop_us_i) {
+      set.seed(2019)
+      # Running MIIC
+      miic.res = miic(inputData = hematoData, latent = TRUE, confidenceShuffle = 10,
+                      confidenceThreshold = 0.001,
+                      doConsensus = i,
+                      nSkeletons = j,
+                      proportionToUndersample = k)
+      # Plotting average CI by edge
+      as_tibble(miic.res$skeletons) %>%
+        group_by(x, y) %>%
+        summarise(count = n(), I = mean(as.numeric(I))) %>%
+        ggplot(aes(x=count*100/j, y=I)) + geom_point() + geom_jitter(height = 5) +
+        geom_smooth() +
+        labs(title="Edges in skeletons inferred from resamplings",
+             x = "How often this edge was inferred in the skeletons",
+             y = "Average Conditional Mutual Information for this edge")
+      ggsave(paste("CI", i, j, k, ".jpg", sep = ' '))
+      # Plotting number of nodes in d-separation set
+      as_tibble(miic.res$skeletons) %>%
+        group_by(x, y) %>%
+        summarise(count = n(),
+                  ai_vect = mean(as.numeric(ai_vect_n)),
+                  I = mean(as.numeric(I))) %>%
+        ggplot(aes(x=count*100/j, y=ai_vect, color = log(I))) + geom_jitter(height = 0.01) + geom_point() +
+        geom_smooth() +
+        labs(title="Edges in skeletons inferred from resamplings",
+             x = "How often this edge was inferred in the skeletons",
+             y = "Number of nodes in the d-separation set",
+             fill = "Log of average conditional mutual information")
+      ggsave(paste("d-sep", i, j, k, ".jpg", sep = ' '))
+      # Proportion of similarity
+      final_network <- as.data.frame(cbind(miic.res$retained.edges.summary$x,
+                                     miic.res$retained.edges.summary$y))
+      colnames(final_network) <- colnames(miic.res$consensus_table) <- c('x', 'y')
+      # Proportion of final network which is not in the consensus table
+      n_edges_not_in_consensus <- nrow(dplyr::setdiff(final_network,
+                                                      miic.res$consensus_table))
+      n_total_final_network <- nrow(final_network)
+      prop_edges_not_in_consensus <- n_edges_not_in_consensus*100/n_total_final_network
+      prop_edges_in_consensus <- 100-prop_edges_not_in_consensus
+      write(paste0(prop_edges_in_consensus, ',',
+                   i, ',',
+                   j, ',',
+                   k),
+            file="percent_similarity.txt",append=TRUE)
+      }
+  }
+}
+```
