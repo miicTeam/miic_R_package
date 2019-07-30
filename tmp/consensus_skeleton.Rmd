@@ -445,3 +445,44 @@ With both files in the same file directory, the following command line should be
 ```{r eval=FALSE}
 ./call_robustness_evaluation.sh
 ```
+
+## Analysis of results
+
+One way of visualize the result is through a scatter plot, where every dot is a simulation in a 3D-plot where X=nSkeletons, Y=Consensus and Z=Fraction. The edge will also be colored according to the accuracy between the consensus skeleton and the final skeleton.
+
+The code below is only run in RStudio.
+```{r eval=FALSE}
+library(dplyr)
+
+setwd('tmp/figs/loops/')
+df <- as_tibble(read.csv2(file = 'percent_similarity.txt', sep = ',',
+                          header = FALSE, stringsAsFactors = FALSE))
+colnames(df) <- c('accuracy', 'consensus', 'nskeleton', 'fraction')
+df$accuracy <- as.numeric(df$accuracy)
+
+library(plot3D)
+
+scatter3D(df$nskeleton, df$consensus, df$fraction,
+          colvar = df$accuracy, clab = c("Accuracy"), pch = 19,
+          ticktype = "detailed",
+          bty = "b2", phi = 0) # try also without specifying phi
+# 3D interactive plot locally
+plotrgl()
+```
+
+This code produces the 3D interactive plot in this report.
+```{r, message=FALSE}
+library(threejs)
+library(dplyr)
+
+setwd('/home/mribeirodantas/dev/miic_r_package/tmp/figs/loops/')
+df <- as_tibble(read.csv2(file = 'percent_similarity.txt', sep = ',',
+                          header = FALSE, stringsAsFactors = FALSE))
+colnames(df) <- c('accuracy', 'consensus', 'nskeleton', 'fraction')
+df$accuracy <- as.numeric(df$accuracy)
+
+scatterplot3js(x = df$nskeleton, y = df$consensus, z = df$fraction,
+               color = rainbow(length(df$accuracy)), main=paste("Hover mouse",
+               " over dots to check accuraccy"),
+               labels=as.character(df$accuracy))
+```
