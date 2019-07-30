@@ -1649,6 +1649,10 @@ Resampling with different methods. Taken from an <a href="https://stats.stackexc
 <p>Jackknife is a resampling method, without replacement, that does undersampling. One example would be to randomly choose 8 out of 10 samples, meaning a fraction of 80%.</p>
 </div>
 </div>
+<div id="test-dataset" class="section level1">
+<h1>Test dataset</h1>
+<p>Our proposed solution will be applied to binarized expression data of 33 transcription factors involved in early differentiation of primitive erythroid and endothelial cells (3934 cells). This dataset comes by default in the miic R package.</p>
+</div>
 <div id="examples" class="section level1">
 <h1>Examples</h1>
 <p>In our example, let’s use the <em>hematoData</em> data package contained in the MIIC R package and build the consensus skeleton through 10 and 100 skeletons inferred from resamples.</p>
@@ -1801,7 +1805,7 @@ Resampling with different methods. Taken from an <a href="https://stats.stackexc
 <a class="sourceLine" id="cb14-5" data-line-number="5"></a>
 <a class="sourceLine" id="cb14-6" data-line-number="6"><span class="co"># Proportion of final network which is not in the consensus table</span></a>
 <a class="sourceLine" id="cb14-7" data-line-number="7">n_edges_not_in_consensus &lt;-<span class="st"> </span><span class="kw">nrow</span>(dplyr<span class="op">::</span><span class="kw">setdiff</span>(final_network,</a>
-<a class="sourceLine" id="cb14-8" data-line-number="8">                                                miic.res<span class="op">$</span><span class="er">$</span>consensus_table))</a>
+<a class="sourceLine" id="cb14-8" data-line-number="8">                                                miic.res<span class="op">$</span>consensus_table))</a>
 <a class="sourceLine" id="cb14-9" data-line-number="9">n_total_final_network &lt;-<span class="st"> </span><span class="kw">nrow</span>(final_network)</a>
 <a class="sourceLine" id="cb14-10" data-line-number="10">prop_edges_not_in_consensus &lt;-<span class="st"> </span>n_edges_not_in_consensus<span class="op">*</span><span class="dv">100</span><span class="op">/</span>n_total_final_network</a>
 <a class="sourceLine" id="cb14-11" data-line-number="11">prop_edges_in_consensus &lt;-<span class="st"> </span><span class="dv">100</span><span class="op">-</span>prop_edges_not_in_consensus</a>
@@ -1857,6 +1861,117 @@ Resampling with different methods. Taken from an <a href="https://stats.stackexc
 <a class="sourceLine" id="cb18-12" data-line-number="12"><span class="kw">paste0</span>(prop_edges_in_consensus, <span class="st">'% of similarity'</span>)</a></code></pre></div>
 <p>[1] “82.6666666666667% of similarity”</p>
 </div>
+</div>
+</div>
+<div id="evaluating-parameters" class="section level1">
+<h1>Evaluating parameters</h1>
+<p>The idea is to evaluate the parameters used for the resampling approach. These parameters are the number of skeletons to build the consensus skeleton, the minimum occurrence of an edge in these skeletons to be included in the consensus skeleton and the proportion of the original data to be randomly undersampled to be given as input for each skeleton.</p>
+<p>There is no point in having very small steps, such as consensus from 1 to 100, one by one. The differences, keeping other parameters still, would be very small to realize. Mostly noise. Besides, the amount of time to run these three loops would take a hueg amount of time. This way, I decided to have larger steps.</p>
+<div id="jackknife-1" class="section level2">
+<h2>Jackknife</h2>
+<p>I initially tried to do everything in RStudio but at every iteration the amount of RAM was growing absurdly, even not keeping any data from the previous iteration (except counters, that is, i,j and k). A solution for that was to write an R script and a shell script that would call the former iteratively. The R script code is shown below:</p>
+<div class="sourceCode" id="cb19"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb19-1" data-line-number="1"><span class="kw">library</span>(dplyr)</a>
+<a class="sourceLine" id="cb19-2" data-line-number="2"><span class="kw">library</span>(ggplot2)</a>
+<a class="sourceLine" id="cb19-3" data-line-number="3"><span class="kw">library</span>(optparse)</a>
+<a class="sourceLine" id="cb19-4" data-line-number="4"><span class="kw">library</span>(miic)</a>
+<a class="sourceLine" id="cb19-5" data-line-number="5"></a>
+<a class="sourceLine" id="cb19-6" data-line-number="6"><span class="co"># Running robustness evaluation algorithm per se</span></a>
+<a class="sourceLine" id="cb19-7" data-line-number="7">robustness_evaluation &lt;-<span class="st"> </span><span class="cf">function</span>(nSkeletons, consensus, fraction,</a>
+<a class="sourceLine" id="cb19-8" data-line-number="8">                                  <span class="dt">seed=</span><span class="dv">2019</span>) {</a>
+<a class="sourceLine" id="cb19-9" data-line-number="9">  <span class="kw">setwd</span>(<span class="st">'/home/mribeirodantas/dev/miic_r_package/tmp/figs/loops'</span>)</a>
+<a class="sourceLine" id="cb19-10" data-line-number="10">  <span class="kw">set.seed</span>(seed)</a>
+<a class="sourceLine" id="cb19-11" data-line-number="11">  <span class="co"># Running MIIC</span></a>
+<a class="sourceLine" id="cb19-12" data-line-number="12">  miic.res =<span class="st"> </span><span class="kw">miic</span>(<span class="dt">inputData =</span> hematoData, <span class="dt">latent =</span> <span class="ot">TRUE</span>, <span class="dt">confidenceShuffle =</span> <span class="dv">10</span>,</a>
+<a class="sourceLine" id="cb19-13" data-line-number="13">                  <span class="dt">confidenceThreshold =</span> <span class="fl">0.001</span>,</a>
+<a class="sourceLine" id="cb19-14" data-line-number="14">                  <span class="dt">doConsensus =</span> consensus,</a>
+<a class="sourceLine" id="cb19-15" data-line-number="15">                  <span class="dt">nSkeletons =</span> nSkeletons,</a>
+<a class="sourceLine" id="cb19-16" data-line-number="16">                  <span class="dt">proportionToUndersample =</span> fraction)</a>
+<a class="sourceLine" id="cb19-17" data-line-number="17">  <span class="co"># Plotting average CI by edge</span></a>
+<a class="sourceLine" id="cb19-18" data-line-number="18">  <span class="kw">as_tibble</span>(miic.res<span class="op">$</span>skeletons) <span class="op">%&gt;%</span></a>
+<a class="sourceLine" id="cb19-19" data-line-number="19"><span class="st">    </span><span class="kw">group_by</span>(x, y) <span class="op">%&gt;%</span></a>
+<a class="sourceLine" id="cb19-20" data-line-number="20"><span class="st">    </span><span class="kw">summarise</span>(<span class="dt">count =</span> <span class="kw">n</span>(), <span class="dt">I =</span> <span class="kw">mean</span>(<span class="kw">as.numeric</span>(I))) <span class="op">%&gt;%</span></a>
+<a class="sourceLine" id="cb19-21" data-line-number="21"><span class="st">    </span><span class="kw">ggplot</span>(<span class="kw">aes</span>(<span class="dt">x=</span>count<span class="op">*</span><span class="dv">100</span><span class="op">/</span>nSkeletons, <span class="dt">y=</span>I)) <span class="op">+</span><span class="st"> </span><span class="kw">geom_point</span>() <span class="op">+</span><span class="st"> </span><span class="kw">geom_jitter</span>(<span class="dt">height =</span> <span class="dv">5</span>) <span class="op">+</span></a>
+<a class="sourceLine" id="cb19-22" data-line-number="22"><span class="st">    </span><span class="kw">geom_smooth</span>() <span class="op">+</span></a>
+<a class="sourceLine" id="cb19-23" data-line-number="23"><span class="st">    </span><span class="kw">labs</span>(<span class="dt">title=</span><span class="st">&quot;Edges in skeletons inferred from resamplings&quot;</span>,</a>
+<a class="sourceLine" id="cb19-24" data-line-number="24">         <span class="dt">x =</span> <span class="st">&quot;How often this edge was inferred in the skeletons&quot;</span>,</a>
+<a class="sourceLine" id="cb19-25" data-line-number="25">         <span class="dt">y =</span> <span class="st">&quot;Average Conditional Mutual Information for this edge&quot;</span>)</a>
+<a class="sourceLine" id="cb19-26" data-line-number="26">  <span class="kw">ggsave</span>(<span class="kw">paste</span>(<span class="st">&quot;CI&quot;</span>, consensus, nSkeletons, fraction, <span class="st">&quot;.jpg&quot;</span>, <span class="dt">sep =</span> <span class="st">' '</span>))</a>
+<a class="sourceLine" id="cb19-27" data-line-number="27">  <span class="co"># Plotting number of nodes in d-separation set</span></a>
+<a class="sourceLine" id="cb19-28" data-line-number="28">  <span class="kw">as_tibble</span>(miic.res<span class="op">$</span>skeletons) <span class="op">%&gt;%</span></a>
+<a class="sourceLine" id="cb19-29" data-line-number="29"><span class="st">    </span><span class="kw">group_by</span>(x, y) <span class="op">%&gt;%</span></a>
+<a class="sourceLine" id="cb19-30" data-line-number="30"><span class="st">    </span><span class="kw">summarise</span>(<span class="dt">count =</span> <span class="kw">n</span>(),</a>
+<a class="sourceLine" id="cb19-31" data-line-number="31">              <span class="dt">ai_vect =</span> <span class="kw">mean</span>(<span class="kw">as.numeric</span>(ai_vect_n)),</a>
+<a class="sourceLine" id="cb19-32" data-line-number="32">              <span class="dt">I =</span> <span class="kw">mean</span>(<span class="kw">as.numeric</span>(I))) <span class="op">%&gt;%</span></a>
+<a class="sourceLine" id="cb19-33" data-line-number="33"><span class="st">    </span><span class="kw">ggplot</span>(<span class="kw">aes</span>(<span class="dt">x=</span>count<span class="op">*</span><span class="dv">100</span><span class="op">/</span>nSkeletons, <span class="dt">y=</span>ai_vect, <span class="dt">color =</span> <span class="kw">log</span>(I))) <span class="op">+</span><span class="st"> </span><span class="kw">geom_jitter</span>(<span class="dt">height =</span> <span class="fl">0.01</span>) <span class="op">+</span><span class="st"> </span><span class="kw">geom_point</span>() <span class="op">+</span></a>
+<a class="sourceLine" id="cb19-34" data-line-number="34"><span class="st">    </span><span class="kw">geom_smooth</span>() <span class="op">+</span></a>
+<a class="sourceLine" id="cb19-35" data-line-number="35"><span class="st">    </span><span class="kw">labs</span>(<span class="dt">title=</span><span class="st">&quot;Edges in skeletons inferred from resamplings&quot;</span>,</a>
+<a class="sourceLine" id="cb19-36" data-line-number="36">         <span class="dt">x =</span> <span class="st">&quot;How often this edge was inferred in the skeletons&quot;</span>,</a>
+<a class="sourceLine" id="cb19-37" data-line-number="37">         <span class="dt">y =</span> <span class="st">&quot;Number of nodes in the d-separation set&quot;</span>,</a>
+<a class="sourceLine" id="cb19-38" data-line-number="38">         <span class="dt">fill =</span> <span class="st">&quot;Log of average conditional mutual information&quot;</span>)</a>
+<a class="sourceLine" id="cb19-39" data-line-number="39">  <span class="kw">ggsave</span>(<span class="kw">paste</span>(<span class="st">&quot;d-sep&quot;</span>, consensus, nSkeletons, fraction, <span class="st">&quot;.jpg&quot;</span>, <span class="dt">sep =</span> <span class="st">' '</span>))</a>
+<a class="sourceLine" id="cb19-40" data-line-number="40">  <span class="co"># Proportion of similarity</span></a>
+<a class="sourceLine" id="cb19-41" data-line-number="41">  final_network &lt;-<span class="st"> </span><span class="kw">as.data.frame</span>(<span class="kw">cbind</span>(miic.res<span class="op">$</span>retained.edges.summary<span class="op">$</span>x,</a>
+<a class="sourceLine" id="cb19-42" data-line-number="42">                                       miic.res<span class="op">$</span>retained.edges.summary<span class="op">$</span>y))</a>
+<a class="sourceLine" id="cb19-43" data-line-number="43">  <span class="kw">colnames</span>(final_network) &lt;-<span class="st"> </span><span class="kw">colnames</span>(miic.res<span class="op">$</span>consensus_table) &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="st">'x'</span>, <span class="st">'y'</span>)</a>
+<a class="sourceLine" id="cb19-44" data-line-number="44">  <span class="co"># Proportion of final network which is not in the consensus table</span></a>
+<a class="sourceLine" id="cb19-45" data-line-number="45">  n_edges_not_in_consensus &lt;-<span class="st"> </span><span class="kw">nrow</span>(dplyr<span class="op">::</span><span class="kw">setdiff</span>(final_network,</a>
+<a class="sourceLine" id="cb19-46" data-line-number="46">                                                  miic.res<span class="op">$</span>consensus_table))</a>
+<a class="sourceLine" id="cb19-47" data-line-number="47">  n_total_final_network &lt;-<span class="st"> </span><span class="kw">nrow</span>(final_network)</a>
+<a class="sourceLine" id="cb19-48" data-line-number="48">  prop_edges_not_in_consensus &lt;-<span class="st"> </span>n_edges_not_in_consensus<span class="op">*</span><span class="dv">100</span><span class="op">/</span>n_total_final_network</a>
+<a class="sourceLine" id="cb19-49" data-line-number="49">  prop_edges_in_consensus &lt;-<span class="st"> </span><span class="dv">100</span><span class="op">-</span>prop_edges_not_in_consensus</a>
+<a class="sourceLine" id="cb19-50" data-line-number="50">  <span class="kw">write</span>(<span class="kw">paste0</span>(prop_edges_in_consensus, <span class="st">','</span>,</a>
+<a class="sourceLine" id="cb19-51" data-line-number="51">               consensus, <span class="st">','</span>,</a>
+<a class="sourceLine" id="cb19-52" data-line-number="52">               nSkeletons, <span class="st">','</span>,</a>
+<a class="sourceLine" id="cb19-53" data-line-number="53">               fraction),</a>
+<a class="sourceLine" id="cb19-54" data-line-number="54">        <span class="dt">file=</span><span class="st">&quot;percent_similarity.txt&quot;</span>,<span class="dt">append=</span><span class="ot">TRUE</span>)</a>
+<a class="sourceLine" id="cb19-55" data-line-number="55">}</a>
+<a class="sourceLine" id="cb19-56" data-line-number="56"></a>
+<a class="sourceLine" id="cb19-57" data-line-number="57"><span class="co"># Handling arguments</span></a>
+<a class="sourceLine" id="cb19-58" data-line-number="58">option_list =<span class="st"> </span><span class="kw">list</span>(</a>
+<a class="sourceLine" id="cb19-59" data-line-number="59">  <span class="kw">make_option</span>(<span class="kw">c</span>(<span class="st">&quot;-n&quot;</span>, <span class="st">&quot;--nSkeletons&quot;</span>), <span class="dt">type=</span><span class="st">&quot;integer&quot;</span>, <span class="dt">default=</span><span class="dv">10</span>,</a>
+<a class="sourceLine" id="cb19-60" data-line-number="60">              <span class="dt">help=</span><span class="kw">paste</span>(<span class="st">&quot;number of skeletons inferred for consensus skeleton&quot;</span>,</a>
+<a class="sourceLine" id="cb19-61" data-line-number="61">                         <span class="st">&quot;[default= %default].&quot;</span>),</a>
+<a class="sourceLine" id="cb19-62" data-line-number="62">              <span class="dt">metavar=</span><span class="st">&quot;integer&quot;</span>),</a>
+<a class="sourceLine" id="cb19-63" data-line-number="63">  <span class="kw">make_option</span>(<span class="kw">c</span>(<span class="st">&quot;-c&quot;</span>, <span class="st">&quot;--consensus&quot;</span>), <span class="dt">type=</span><span class="st">&quot;integer&quot;</span>, <span class="dt">default=</span><span class="dv">80</span>,</a>
+<a class="sourceLine" id="cb19-64" data-line-number="64">              <span class="dt">help=</span><span class="kw">paste</span>(<span class="st">&quot;frequency of occurrence for adding edge to consensus&quot;</span>,</a>
+<a class="sourceLine" id="cb19-65" data-line-number="65">              <span class="st">&quot;network [default= %default].&quot;</span>),</a>
+<a class="sourceLine" id="cb19-66" data-line-number="66">              <span class="dt">metavar=</span><span class="st">&quot;integer&quot;</span>),</a>
+<a class="sourceLine" id="cb19-67" data-line-number="67">  <span class="kw">make_option</span>(<span class="kw">c</span>(<span class="st">&quot;-f&quot;</span>, <span class="st">&quot;--fraction&quot;</span>), <span class="dt">type=</span><span class="st">&quot;integer&quot;</span>, <span class="dt">default=</span><span class="dv">90</span>,</a>
+<a class="sourceLine" id="cb19-68" data-line-number="68">              <span class="dt">help=</span><span class="kw">paste</span>(<span class="st">&quot;fraction that will be randomly sampled from original&quot;</span>,</a>
+<a class="sourceLine" id="cb19-69" data-line-number="69">              <span class="st">&quot;data [default= %default].&quot;</span>),</a>
+<a class="sourceLine" id="cb19-70" data-line-number="70">              <span class="dt">metavar=</span><span class="st">&quot;integer&quot;</span>),</a>
+<a class="sourceLine" id="cb19-71" data-line-number="71">  <span class="kw">make_option</span>(<span class="kw">c</span>(<span class="st">&quot;-s&quot;</span>, <span class="st">&quot;--seed&quot;</span>), <span class="dt">type=</span><span class="st">&quot;integer&quot;</span>, <span class="dt">default=</span><span class="dv">2019</span>,</a>
+<a class="sourceLine" id="cb19-72" data-line-number="72">              <span class="dt">help=</span><span class="st">&quot;seed for reproduction of results [default= %default].&quot;</span>,</a>
+<a class="sourceLine" id="cb19-73" data-line-number="73">              <span class="dt">metavar=</span><span class="st">&quot;integer&quot;</span>),</a>
+<a class="sourceLine" id="cb19-74" data-line-number="74">  <span class="kw">make_option</span>(<span class="kw">c</span>(<span class="st">&quot;-d&quot;</span>, <span class="st">&quot;--destinationPath&quot;</span>),</a>
+<a class="sourceLine" id="cb19-75" data-line-number="75">              <span class="dt">help=</span><span class="st">&quot;output destination [default= %default].&quot;</span>,</a>
+<a class="sourceLine" id="cb19-76" data-line-number="76">              <span class="dt">metavar=</span><span class="st">&quot;string&quot;</span>)</a>
+<a class="sourceLine" id="cb19-77" data-line-number="77">);</a>
+<a class="sourceLine" id="cb19-78" data-line-number="78"></a>
+<a class="sourceLine" id="cb19-79" data-line-number="79">opt_parser =<span class="st"> </span><span class="kw">OptionParser</span>(<span class="dt">option_list=</span>option_list);</a>
+<a class="sourceLine" id="cb19-80" data-line-number="80">opt =<span class="st"> </span><span class="kw">parse_args</span>(opt_parser);</a>
+<a class="sourceLine" id="cb19-81" data-line-number="81"></a>
+<a class="sourceLine" id="cb19-82" data-line-number="82"><span class="co"># Calling code with handled arguments</span></a>
+<a class="sourceLine" id="cb19-83" data-line-number="83"><span class="kw">robustness_evaluation</span>(<span class="dt">nSkeletons =</span> opt<span class="op">$</span>nSkeletons,</a>
+<a class="sourceLine" id="cb19-84" data-line-number="84">                      <span class="dt">consensus =</span> opt<span class="op">$</span>consensus,</a>
+<a class="sourceLine" id="cb19-85" data-line-number="85">                      <span class="dt">fraction =</span> opt<span class="op">$</span>fraction,</a>
+<a class="sourceLine" id="cb19-86" data-line-number="86">                      <span class="dt">seed =</span> opt<span class="op">$</span>seed)</a></code></pre></div>
+<p>The code above, within an R script file, is called by the shell script below:</p>
+<div class="sourceCode" id="cb20"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb20-1" data-line-number="1"><span class="co">#!/usr/bin/sh</span></a>
+<a class="sourceLine" id="cb20-2" data-line-number="2"></a>
+<a class="sourceLine" id="cb20-3" data-line-number="3"><span class="co">#!/bin/sh</span></a>
+<a class="sourceLine" id="cb20-4" data-line-number="4"><span class="cf">for</span> i <span class="cf">in</span> <span class="st">`</span><span class="dt">seq 50 10 100</span><span class="st">`</span></a>
+<a class="sourceLine" id="cb20-5" data-line-number="5">do</a>
+<a class="sourceLine" id="cb20-6" data-line-number="6">  <span class="cf">for</span> j <span class="cf">in</span> <span class="st">`</span><span class="dt">seq 10 10 100</span><span class="st">`</span></a>
+<a class="sourceLine" id="cb20-7" data-line-number="7">  do</a>
+<a class="sourceLine" id="cb20-8" data-line-number="8">    <span class="cf">for</span> k <span class="cf">in</span> <span class="st">`</span><span class="dt">seq 80 5 95</span><span class="st">`</span></a>
+<a class="sourceLine" id="cb20-9" data-line-number="9">    do</a>
+<a class="sourceLine" id="cb20-10" data-line-number="10">      Rscript robustness_evaluation.R <span class="op">-</span>n <span class="op">$</span>j <span class="op">-</span>c <span class="op">$</span>i <span class="op">-</span>f <span class="op">$</span>k <span class="op">-</span>s <span class="dv">2019</span> <span class="op">-</span>d <span class="st">&quot;/home/mribeirodantas/dev/miic_r_package/tmp/figs/loops&quot;</span></a>
+<a class="sourceLine" id="cb20-11" data-line-number="11">    done</a>
+<a class="sourceLine" id="cb20-12" data-line-number="12">  done</a>
+<a class="sourceLine" id="cb20-13" data-line-number="13">done</a></code></pre></div>
+<p>With both files in the same file directory, the following command line should be run:</p>
+<div class="sourceCode" id="cb21"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb21-1" data-line-number="1">.<span class="op">/</span>call_robustness_evaluation.sh</a></code></pre></div>
 </div>
 </div>
 

@@ -331,70 +331,117 @@ The idea is to evaluate the parameters used for the resampling approach. These p
 There is no point in having very small steps, such as consensus from 1 to 100, one by one. The differences, keeping other parameters still, would be very small to realize. Mostly noise. Besides, the amount of time to run these three loops would take a hueg amount of time. This way, I decided to have larger steps.
 
 ## Jackknife
+I initially tried to do everything in RStudio but at every iteration the amount of RAM was growing absurdly, even not keeping any data from the previous iteration (except counters, that is, i,j and k). A solution for that was to write an R script and a shell script that would call the former iteratively. The R script code is shown below:
+
 ```{r eval=FALSE}
-setwd('tmp/figs/loops')
-
-# 10, 20, 30, 40, 50, 60, 70, 80, 90, 100
-nske_i <- seq(10,100, 10)
-# 50, 60, 70, 80, 90, 100
-consensus_i <- seq(50,100,10)
-# 80, 85, 90, 95
-prop_us_i <- seq(80, 95, 5)
-
-library(miic)
-data("hematoData")
-library(ggplot2)
 library(dplyr)
+library(ggplot2)
+library(optparse)
+library(miic)
 
-for (i in consensus_i) {
-  for (j in nske_i) {
-    for (k in prop_us_i) {
-      set.seed(2019)
-      # Running MIIC
-      miic.res = miic(inputData = hematoData, latent = TRUE, confidenceShuffle = 10,
-                      confidenceThreshold = 0.001,
-                      doConsensus = i,
-                      nSkeletons = j,
-                      proportionToUndersample = k)
-      # Plotting average CI by edge
-      as_tibble(miic.res$skeletons) %>%
-        group_by(x, y) %>%
-        summarise(count = n(), I = mean(as.numeric(I))) %>%
-        ggplot(aes(x=count*100/j, y=I)) + geom_point() + geom_jitter(height = 5) +
-        geom_smooth() +
-        labs(title="Edges in skeletons inferred from resamplings",
-             x = "How often this edge was inferred in the skeletons",
-             y = "Average Conditional Mutual Information for this edge")
-      ggsave(paste("CI", i, j, k, ".jpg", sep = ' '))
-      # Plotting number of nodes in d-separation set
-      as_tibble(miic.res$skeletons) %>%
-        group_by(x, y) %>%
-        summarise(count = n(),
-                  ai_vect = mean(as.numeric(ai_vect_n)),
-                  I = mean(as.numeric(I))) %>%
-        ggplot(aes(x=count*100/j, y=ai_vect, color = log(I))) + geom_jitter(height = 0.01) + geom_point() +
-        geom_smooth() +
-        labs(title="Edges in skeletons inferred from resamplings",
-             x = "How often this edge was inferred in the skeletons",
-             y = "Number of nodes in the d-separation set",
-             fill = "Log of average conditional mutual information")
-      ggsave(paste("d-sep", i, j, k, ".jpg", sep = ' '))
-      # Proportion of similarity
-      final_network <- as.data.frame(cbind(miic.res$retained.edges.summary$x,
-                                     miic.res$retained.edges.summary$y))
-      colnames(final_network) <- colnames(miic.res$consensus_table) <- c('x', 'y')
-      # Proportion of final network which is not in the consensus table
-      n_edges_not_in_consensus <- nrow(dplyr::setdiff(final_network,
-                                                      miic.res$consensus_table))
-      n_total_final_network <- nrow(final_network)
-      prop_edges_not_in_consensus <- n_edges_not_in_consensus*100/n_total_final_network
-      prop_edges_in_consensus <- 100-prop_edges_not_in_consensus
-      write(paste0(prop_edges_in_consensus, ',',
-                   i, ',',
-                   j, ',',
-                   k),
-            file="percent_similarity.txt",append=TRUE)
-      }
-  }
+# Running robustness evaluation algorithm per se
+robustness_evaluation <- function(nSkeletons, consensus, fraction,
+                                  seed=2019) {
+  setwd('/home/mribeirodantas/dev/miic_r_package/tmp/figs/loops')
+  set.seed(seed)
+  # Running MIIC
+  miic.res = miic(inputData = hematoData, latent = TRUE, confidenceShuffle = 10,
+                  confidenceThreshold = 0.001,
+                  doConsensus = consensus,
+                  nSkeletons = nSkeletons,
+                  proportionToUndersample = fraction)
+  # Plotting average CI by edge
+  as_tibble(miic.res$skeletons) %>%
+    group_by(x, y) %>%
+    summarise(count = n(), I = mean(as.numeric(I))) %>%
+    ggplot(aes(x=count*100/nSkeletons, y=I)) + geom_point() + geom_jitter(height = 5) +
+    geom_smooth() +
+    labs(title="Edges in skeletons inferred from resamplings",
+         x = "How often this edge was inferred in the skeletons",
+         y = "Average Conditional Mutual Information for this edge")
+  ggsave(paste("CI", consensus, nSkeletons, fraction, ".jpg", sep = ' '))
+  # Plotting number of nodes in d-separation set
+  as_tibble(miic.res$skeletons) %>%
+    group_by(x, y) %>%
+    summarise(count = n(),
+              ai_vect = mean(as.numeric(ai_vect_n)),
+              I = mean(as.numeric(I))) %>%
+    ggplot(aes(x=count*100/nSkeletons, y=ai_vect, color = log(I))) + geom_jitter(height = 0.01) + geom_point() +
+    geom_smooth() +
+    labs(title="Edges in skeletons inferred from resamplings",
+         x = "How often this edge was inferred in the skeletons",
+         y = "Number of nodes in the d-separation set",
+         fill = "Log of average conditional mutual information")
+  ggsave(paste("d-sep", consensus, nSkeletons, fraction, ".jpg", sep = ' '))
+  # Proportion of similarity
+  final_network <- as.data.frame(cbind(miic.res$retained.edges.summary$x,
+                                       miic.res$retained.edges.summary$y))
+  colnames(final_network) <- colnames(miic.res$consensus_table) <- c('x', 'y')
+  # Proportion of final network which is not in the consensus table
+  n_edges_not_in_consensus <- nrow(dplyr::setdiff(final_network,
+                                                  miic.res$consensus_table))
+  n_total_final_network <- nrow(final_network)
+  prop_edges_not_in_consensus <- n_edges_not_in_consensus*100/n_total_final_network
+  prop_edges_in_consensus <- 100-prop_edges_not_in_consensus
+  write(paste0(prop_edges_in_consensus, ',',
+               consensus, ',',
+               nSkeletons, ',',
+               fraction),
+        file="percent_similarity.txt",append=TRUE)
 }
+
+# Handling arguments
+option_list = list(
+  make_option(c("-n", "--nSkeletons"), type="integer", default=10,
+              help=paste("number of skeletons inferred for consensus skeleton",
+                         "[default= %default]."),
+              metavar="integer"),
+  make_option(c("-c", "--consensus"), type="integer", default=80,
+              help=paste("frequency of occurrence for adding edge to consensus",
+              "network [default= %default]."),
+              metavar="integer"),
+  make_option(c("-f", "--fraction"), type="integer", default=90,
+              help=paste("fraction that will be randomly sampled from original",
+              "data [default= %default]."),
+              metavar="integer"),
+  make_option(c("-s", "--seed"), type="integer", default=2019,
+              help="seed for reproduction of results [default= %default].",
+              metavar="integer"),
+  make_option(c("-d", "--destinationPath"),
+              help="output destination [default= %default].",
+              metavar="string")
+);
+
+opt_parser = OptionParser(option_list=option_list);
+opt = parse_args(opt_parser);
+
+# Calling code with handled arguments
+robustness_evaluation(nSkeletons = opt$nSkeletons,
+                      consensus = opt$consensus,
+                      fraction = opt$fraction,
+                      seed = opt$seed)
+```
+
+The code above, within an R script file, is called by the shell script below:
+
+```{r eval=FALSE}
+#!/usr/bin/sh
+
+#!/bin/sh
+for i in `seq 50 10 100`
+do
+  for j in `seq 10 10 100`
+  do
+    for k in `seq 80 5 95`
+    do
+      Rscript robustness_evaluation.R -n $j -c $i -f $k -s 2019 -d "/home/mribeirodantas/dev/miic_r_package/tmp/figs/loops"
+    done
+  done
+done
+```
+
+With both files in the same file directory, the following command line should be run:
+
+```{r eval=FALSE}
+./call_robustness_evaluation.sh
 ```
