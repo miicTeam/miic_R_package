@@ -453,6 +453,7 @@ One way of visualize the result is through a scatter plot, where every dot is a 
 The code below is only run in RStudio.
 ```{r eval=FALSE}
 library(dplyr)
+library(plot3Drgl)
 
 setwd('tmp/figs/loops/')
 df <- as_tibble(read.csv2(file = 'percent_similarity.txt', sep = ',',
@@ -462,12 +463,19 @@ df$accuracy <- as.numeric(df$accuracy)
 
 library(plot3D)
 
-scatter3D(df$nskeleton, df$consensus, df$fraction,
+scatter3D(x = df$nskeleton, z = df$consensus, y = df$fraction,
           colvar = df$accuracy, clab = c("Accuracy"), pch = 19,
           ticktype = "detailed",
-          bty = "b2", phi = 0) # try also without specifying phi
-# 3D interactive plot locally
+          bty = "b2", phi = 0, cex=2, ylim=c(1,100), zlim=c(1,100),
+          xlim=c(1,100), zlab = c('% Consensus'), ylab = c('% fraction used'),
+          xlab = c('nSkeletons')
+          ) # try also without specifying phi
+# 3d interactive plot locally
 plotrgl()
+```
+
+```{r output_local_3D, echo=FALSE, fig.cap="3D plot of the simulation", out.width = '100%'}
+knitr::include_graphics("figs/3D output default.png")
 ```
 
 This code produces the 3D interactive plot in this report.
@@ -481,8 +489,63 @@ df <- as_tibble(read.csv2(file = 'percent_similarity.txt', sep = ',',
 colnames(df) <- c('accuracy', 'consensus', 'nskeleton', 'fraction')
 df$accuracy <- as.numeric(df$accuracy)
 
-scatterplot3js(x = df$nskeleton, y = df$consensus, z = df$fraction,
+scatterplot3js(x = df$nskeleton, z = df$consensus, y = df$fraction,
                color = rainbow(length(df$accuracy)), main=paste("Hover mouse",
                " over dots to check accuraccy"),
-               labels=as.character(df$accuracy))
+               labels=as.character(df$accuracy),
+               xlim=c(10,100),
+               ylim=c(10,100),
+               zlim=c(10,100))
+```
+
+How much does accuracy vary through these parameters?
+```{r eval=FALSE}
+library(dplyr)
+
+nskeletons_min <- df %>%
+  filter(nskeleton == min(df$nskeleton)) %>%
+  summarise(min = min(accuracy), max = max(accuracy))
+nskeletons_max <- df %>%
+  filter(nskeleton == max(df$nskeleton)) %>%
+  summarise(min = min(accuracy), max = max(accuracy))
+diff <- nskeletons_max - nskeletons_min
+colnames(diff) <- c('diff in min (nskeletons)', 'diff in max (nskeletons)')
+abs(diff)
+
+fraction_min <- df %>%
+  filter(fraction == min(df$fraction)) %>%
+  summarise(min = min(accuracy), max = max(accuracy))
+fraction_max <- df %>%
+  filter(fraction == max(df$fraction)) %>%
+  summarise(min = min(accuracy), max = max(accuracy))
+diff <- fraction_max - fraction_min
+colnames(diff) <- c('diff in min (fraction)', 'diff in max (fraction)')
+abs(diff)
+
+consensus_min <- df %>%
+  filter(consensus == min(df$consensus)) %>%
+  summarise(min = min(accuracy), max = max(accuracy))
+consensus_max <- df %>%
+  filter(consensus == max(df$consensus)) %>%
+  summarise(min = min(accuracy), max = max(accuracy))
+diff <- consensus_max - consensus_min
+colnames(diff) <- c('diff in min (consensus)', 'diff in max (consensus)')
+abs(diff)
+
+```
+
+```{r echo=FALSE, eval=TRUE}
+library(dplyr)
+
+df <- matrix(c(10.666667, 0), ncol = 2, nrow = 1)
+colnames(df) <- c('diff in min (nskeletons)', 'diff in max (nskeletons)')
+as.data.frame(df)
+
+df <- matrix(c(22.66667, 1.333333), ncol = 2, nrow = 1)
+colnames(df) <- c('diff in min (fraction)', 'diff in max (fraction)')
+as.data.frame(df)
+
+df <- matrix(c(45.333333, 21.333333), ncol = 2, nrow = 1)
+colnames(df) <- c('diff in min (consensus)', 'diff in max (consensus)')
+as.data.frame(df)
 ```
