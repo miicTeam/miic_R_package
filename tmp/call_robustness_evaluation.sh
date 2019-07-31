@@ -1,6 +1,5 @@
 #!/usr/bin/sh
 
-#!/bin/sh
 for i in `seq 50 10 100`
 do
   for j in `seq 10 10 100`
