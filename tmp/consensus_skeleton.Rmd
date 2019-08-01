@@ -331,7 +331,10 @@ The idea is to evaluate the parameters used for the resampling approach. These p
 There is no point in having very small steps, such as consensus from 1 to 100, one by one. The differences, keeping other parameters still, would be very small to realize. Mostly noise. Besides, the amount of time to run these three loops would take a hueg amount of time. This way, I decided to have larger steps.
 
 ## Jackknife
-I initially tried to do everything in RStudio but at every iteration the amount of RAM was growing absurdly, even not keeping any data from the previous iteration (except counters, that is, i,j and k). A solution for that was to write an R script and a shell script that would call the former iteratively. The R script code is shown below:
+I initially tried to do everything in RStudio but at every iteration the amount of RAM was growing absurdly, even if not keeping any data from the previous iteration (except counters, that is, i,j and k). A solution for that was to write an R script and a shell script that would call the former iteratively.
+
+### With edge filtering
+The R script code is shown below:
 
 ```{r eval=FALSE}
 library(dplyr)
@@ -446,7 +449,7 @@ With both files in the same file directory, the following command line should be
 ./call_robustness_evaluation.sh
 ```
 
-## Analysis of results
+#### Analysis of results
 
 One way of visualize the result is through a scatter plot, where every dot is a simulation in a 3D-plot where X=nSkeletons, Y=Consensus and Z=Fraction. The edge will also be colored according to the accuracy between the consensus skeleton and the final skeleton.
 
@@ -466,7 +469,7 @@ library(plot3D)
 scatter3D(x = df$nskeleton, z = df$consensus, y = df$fraction,
           colvar = df$accuracy, clab = c("Accuracy"), pch = 19,
           ticktype = "detailed",
-          bty = "b2", phi = 0, cex=2, ylim=c(1,100), zlim=c(1,100),
+          bty = "b2", phi = 0, ylim=c(1,100), zlim=c(1,100),
           xlim=c(1,100), zlab = c('% Consensus'), ylab = c('% fraction used'),
           xlab = c('nSkeletons')
           ) # try also without specifying phi
@@ -474,8 +477,8 @@ scatter3D(x = df$nskeleton, z = df$consensus, y = df$fraction,
 plotrgl()
 ```
 
-```{r output_local_3D, echo=FALSE, fig.cap="3D plot of the simulation", out.width = '100%'}
-knitr::include_graphics("figs/3D output default.png")
+```{r output_local_3D_wo_ef, echo=FALSE, fig.cap="3D plot of the simulation", out.width = '100%'}
+knitr::include_graphics("/home/mribeirodantas/dev/miic_r_package/tmp/figs/3D_output_default_w_ef.png")
 ```
 
 This code produces the 3D interactive plot in this report.
@@ -483,7 +486,7 @@ This code produces the 3D interactive plot in this report.
 library(threejs)
 library(dplyr)
 
-setwd('/home/mribeirodantas/dev/miic_r_package/tmp/figs/loops/')
+setwd('/home/mribeirodantas/dev/miic_r_package/tmp/figs/loops/wo_edge_filtering')
 df <- as_tibble(read.csv2(file = 'percent_similarity.txt', sep = ',',
                           header = FALSE, stringsAsFactors = FALSE))
 colnames(df) <- c('accuracy', 'consensus', 'nskeleton', 'fraction')
@@ -495,7 +498,8 @@ scatterplot3js(x = df$nskeleton, z = df$consensus, y = df$fraction,
                labels=as.character(df$accuracy),
                xlim=c(10,100),
                ylim=c(10,100),
-               zlim=c(10,100))
+               zlim=c(10,100),
+               size=0.5)
 ```
 
 How much does accuracy vary through these parameters?
@@ -546,6 +550,226 @@ colnames(df) <- c('diff in min (fraction)', 'diff in max (fraction)')
 as.data.frame(df)
 
 df <- matrix(c(45.333333, 21.333333), ncol = 2, nrow = 1)
+colnames(df) <- c('diff in min (consensus)', 'diff in max (consensus)')
+as.data.frame(df)
+```
+
+### Without edge filtering
+The R script code is shown below:
+
+```{r eval=FALSE}
+library(dplyr)
+library(ggplot2)
+library(optparse)
+library(miic)
+
+# Running robustness evaluation algorithm per se
+robustness_evaluation <- function(nSkeletons, consensus, fraction,
+                                  seed=2019) {
+  setwd('/home/mribeirodantas/dev/miic_r_package/tmp/figs/loops/wo_edge_filtering')
+  set.seed(seed)
+  # Running MIIC
+  miic.res = miic(inputData = hematoData, latent = TRUE,
+                  doConsensus = consensus,
+                  nSkeletons = nSkeletons,
+                  proportionToUndersample = fraction)
+  # Plotting average CI by edge
+  as_tibble(miic.res$skeletons) %>%
+    group_by(x, y) %>%
+    summarise(count = n(), I = mean(as.numeric(I))) %>%
+    ggplot(aes(x=count*100/nSkeletons, y=I)) + geom_point() + geom_jitter(height = 5) +
+    geom_smooth() +
+    labs(title="Edges in skeletons inferred from resamplings",
+         x = "How often this edge was inferred in the skeletons",
+         y = "Average Conditional Mutual Information for this edge")
+  ggsave(paste("CI", consensus, nSkeletons, fraction, ".jpg", sep = ' '))
+  # Plotting number of nodes in d-separation set
+  as_tibble(miic.res$skeletons) %>%
+    group_by(x, y) %>%
+    summarise(count = n(),
+              ai_vect = mean(as.numeric(ai_vect_n)),
+              I = mean(as.numeric(I))) %>%
+    ggplot(aes(x=count*100/nSkeletons, y=ai_vect, color = log(I))) + geom_jitter(height = 0.01) + geom_point() +
+    geom_smooth() +
+    labs(title="Edges in skeletons inferred from resamplings",
+         x = "How often this edge was inferred in the skeletons",
+         y = "Number of nodes in the d-separation set",
+         fill = "Log of average conditional mutual information")
+  ggsave(paste("d-sep", consensus, nSkeletons, fraction, ".jpg", sep = ' '))
+  # Proportion of similarity
+  final_network <- as.data.frame(cbind(miic.res$retained.edges.summary$x,
+                                       miic.res$retained.edges.summary$y))
+  colnames(final_network) <- colnames(miic.res$consensus_table) <- c('x', 'y')
+  # Proportion of final network which is not in the consensus table
+  n_edges_not_in_consensus <- nrow(dplyr::setdiff(final_network,
+                                                  miic.res$consensus_table))
+  n_total_final_network <- nrow(final_network)
+  prop_edges_not_in_consensus <- n_edges_not_in_consensus*100/n_total_final_network
+  prop_edges_in_consensus <- 100-prop_edges_not_in_consensus
+  write(paste0(prop_edges_in_consensus, ',',
+               consensus, ',',
+               nSkeletons, ',',
+               fraction),
+        file="percent_similarity.txt",append=TRUE)
+}
+
+# Handling arguments
+option_list = list(
+  make_option(c("-n", "--nSkeletons"), type="integer", default=10,
+              help=paste("number of skeletons inferred for consensus skeleton",
+                         "[default= %default]."),
+              metavar="integer"),
+  make_option(c("-c", "--consensus"), type="integer", default=80,
+              help=paste("frequency of occurrence for adding edge to consensus",
+              "network [default= %default]."),
+              metavar="integer"),
+  make_option(c("-f", "--fraction"), type="integer", default=90,
+              help=paste("fraction that will be randomly sampled from original",
+              "data [default= %default]."),
+              metavar="integer"),
+  make_option(c("-s", "--seed"), type="integer", default=2019,
+              help="seed for reproduction of results [default= %default].",
+              metavar="integer"),
+  make_option(c("-d", "--destinationPath"),
+              help="output destination [default= %default].",
+              metavar="string")
+);
+
+opt_parser = OptionParser(option_list=option_list);
+opt = parse_args(opt_parser);
+
+# Calling code with handled arguments
+robustness_evaluation(nSkeletons = opt$nSkeletons,
+                      consensus = opt$consensus,
+                      fraction = opt$fraction,
+                      seed = opt$seed)
+```
+
+The code above, within an R script file, is called by the shell script below:
+
+```{r eval=FALSE}
+#!/usr/bin/sh
+
+#!/bin/sh
+for i in `seq 50 10 100`
+do
+  for j in `seq 10 10 100`
+  do
+    for k in `seq 80 5 95`
+    do
+      Rscript robustness_evaluation.R -n $j -c $i -f $k -s 2019 -d "/home/mribeirodantas/dev/miic_r_package/tmp/figs/loops/wo_edge_filtering"
+    done
+  done
+done
+```
+
+With both files in the same file directory, the following command line should be run:
+
+```{r eval=FALSE}
+./call_robustness_evaluation.sh
+```
+
+#### Analysis of results
+
+One way of visualize the result is through a scatter plot, where every dot is a simulation in a 3D-plot where X=nSkeletons, Y=Consensus and Z=Fraction. The edge will also be colored according to the accuracy between the consensus skeleton and the final skeleton.
+
+The code below is only run in RStudio.
+```{r eval=FALSE}
+library(dplyr)
+library(plot3Drgl)
+
+setwd('tmp/figs/loops/wo_edge_filtering/')
+df <- as_tibble(read.csv2(file = 'percent_similarity.txt', sep = ',',
+                          header = FALSE, stringsAsFactors = FALSE))
+colnames(df) <- c('accuracy', 'consensus', 'nskeleton', 'fraction')
+df$accuracy <- as.numeric(df$accuracy)
+
+library(plot3D)
+
+scatter3D(x = df$nskeleton, z = df$consensus, y = df$fraction,
+          colvar = df$accuracy, clab = c("Accuracy"), pch = 19,
+          ticktype = "detailed",
+          bty = "b2", phi = 0, ylim=c(1,100), zlim=c(1,100),
+          xlim=c(1,100), zlab = c('% Consensus'), ylab = c('% fraction used'),
+          xlab = c('nSkeletons')
+          ) # try also without specifying phi
+# 3d interactive plot locally
+plotrgl()
+```
+
+```{r output_local_3D, echo=FALSE, fig.cap="3D plot of the simulation", out.width = '100%'}
+knitr::include_graphics("/home/mribeirodantas/dev/miic_r_package/tmp/figs/3D_output_default_w_ef.png")
+```
+
+This code produces the 3D interactive plot in this report.
+```{r, message=FALSE}
+library(threejs)
+library(dplyr)
+
+setwd('/home/mribeirodantas/dev/miic_r_package/tmp/figs/loops/wo_edge_filtering/')
+df <- as_tibble(read.csv2(file = 'percent_similarity.txt', sep = ',',
+                          header = FALSE, stringsAsFactors = FALSE))
+colnames(df) <- c('accuracy', 'consensus', 'nskeleton', 'fraction')
+df$accuracy <- as.numeric(df$accuracy)
+
+scatterplot3js(x = df$nskeleton, z = df$consensus, y = df$fraction,
+               color = rainbow(length(df$accuracy)), main=paste("Hover mouse",
+               " over dots to check accuraccy"),
+               labels=as.character(df$accuracy),
+               xlim=c(10,100),
+               ylim=c(10,100),
+               zlim=c(10,100),
+               size=0.5)
+```
+
+How much does accuracy vary through these parameters?
+```{r eval=FALSE}
+library(dplyr)
+
+nskeletons_min <- df %>%
+  filter(nskeleton == min(df$nskeleton)) %>%
+  summarise(min = min(accuracy), max = max(accuracy))
+nskeletons_max <- df %>%
+  filter(nskeleton == max(df$nskeleton)) %>%
+  summarise(min = min(accuracy), max = max(accuracy))
+diff <- nskeletons_max - nskeletons_min
+colnames(diff) <- c('diff in min (nskeletons)', 'diff in max (nskeletons)')
+abs(diff)
+
+fraction_min <- df %>%
+  filter(fraction == min(df$fraction)) %>%
+  summarise(min = min(accuracy), max = max(accuracy))
+fraction_max <- df %>%
+  filter(fraction == max(df$fraction)) %>%
+  summarise(min = min(accuracy), max = max(accuracy))
+diff <- fraction_max - fraction_min
+colnames(diff) <- c('diff in min (fraction)', 'diff in max (fraction)')
+abs(diff)
+
+consensus_min <- df %>%
+  filter(consensus == min(df$consensus)) %>%
+  summarise(min = min(accuracy), max = max(accuracy))
+consensus_max <- df %>%
+  filter(consensus == max(df$consensus)) %>%
+  summarise(min = min(accuracy), max = max(accuracy))
+diff <- consensus_max - consensus_min
+colnames(diff) <- c('diff in min (consensus)', 'diff in max (consensus)')
+abs(diff)
+
+```
+
+```{r echo=FALSE, eval=TRUE}
+library(dplyr)
+
+df <- matrix(c(15.85366, 0), ncol = 2, nrow = 1)
+colnames(df) <- c('diff in min (nskeletons)', 'diff in max (nskeletons)')
+as.data.frame(df)
+
+df <- matrix(c(23.17073, 4.878049), ncol = 2, nrow = 1)
+colnames(df) <- c('diff in min (fraction)', 'diff in max (fraction)')
+as.data.frame(df)
+
+df <- matrix(c(45.12195, 20.73171), ncol = 2, nrow = 1)
 colnames(df) <- c('diff in min (consensus)', 'diff in max (consensus)')
 as.data.frame(df)
 ```

@@ -5,15 +5,24 @@ library(miic)
 
 # Running robustness evaluation algorithm per se
 robustness_evaluation <- function(nSkeletons, consensus, fraction,
-                                  seed=2019) {
-  setwd('/home/mribeirodantas/dev/miic_r_package/tmp/figs/loops')
-  set.seed(seed)
+                                  seed=2019, edgeFiltering=FALSE) {
   # Running MIIC
-  miic.res = miic(inputData = hematoData, latent = TRUE, confidenceShuffle = 10,
-                  confidenceThreshold = 0.001,
-                  doConsensus = consensus,
-                  nSkeletons = nSkeletons,
-                  proportionToUndersample = fraction)
+  if (edgeFiltering) {
+    setwd('/home/mribeirodantas/dev/miic_r_package/tmp/figs/loops')
+    set.seed(seed)
+    miic.res = miic(inputData = hematoData, latent = TRUE,
+                    confidenceShuffle = 10, confidenceThreshold = 0.001,
+                    doConsensus = consensus,
+                    nSkeletons = nSkeletons,
+                    proportionToUndersample = fraction)
+  } else {
+    setwd('/home/mribeirodantas/dev/miic_r_package/tmp/figs/loops/wo_edge_filtering')
+    set.seed(seed)
+    miic.res = miic(inputData = hematoData, latent = TRUE,
+                    doConsensus = consensus,
+                    nSkeletons = nSkeletons,
+                    proportionToUndersample = fraction)
+  }
   # Plotting average CI by edge
   as_tibble(miic.res$skeletons) %>%
     group_by(x, y) %>%
@@ -73,7 +82,10 @@ option_list = list(
               metavar="integer"),
   make_option(c("-d", "--destinationPath"), 
               help="output destination [default= %default].",
-              metavar="string")
+              metavar="string"),
+  make_option(c("-e", "--edgeFiltering"), type="logical", default=FALSE,
+              help="if edges should be filtered or not [default= %default].",
+              metavar="logical")
 ); 
 
 opt_parser = OptionParser(option_list=option_list);
@@ -83,4 +95,5 @@ opt = parse_args(opt_parser);
 robustness_evaluation(nSkeletons = opt$nSkeletons,
                       consensus = opt$consensus,
                       fraction = opt$fraction,
-                      seed = opt$seed)
+                      seed = opt$seed,
+                      edgeFiltering = opt$edgeFiltering)
