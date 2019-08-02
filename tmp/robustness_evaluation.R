@@ -5,24 +5,15 @@ library(miic)
 
 # Running robustness evaluation algorithm per se
 robustness_evaluation <- function(nSkeletons, consensus, fraction,
-                                  seed=2019, edgeFiltering=FALSE) {
+                                  seed=2019, edgeFiltering=0) {
   # Running MIIC
-  if (edgeFiltering) {
-    setwd('/home/mribeirodantas/dev/miic_r_package/tmp/figs/loops')
-    set.seed(seed)
-    miic.res = miic(inputData = hematoData, latent = TRUE,
-                    confidenceShuffle = 10, confidenceThreshold = 0.001,
-                    doConsensus = consensus,
-                    nSkeletons = nSkeletons,
-                    proportionToUndersample = fraction)
-  } else {
-    setwd('/home/mribeirodantas/dev/miic_r_package/tmp/figs/loops/wo_edge_filtering')
-    set.seed(seed)
-    miic.res = miic(inputData = hematoData, latent = TRUE,
-                    doConsensus = consensus,
-                    nSkeletons = nSkeletons,
-                    proportionToUndersample = fraction)
-  }
+  setwd('/home/mribeirodantas/dev/miic_r_package/tmp/figs/loops/edge_filtering_only_fulldataset')
+  miic.res = miic(inputData = hematoData, latent = TRUE,
+                  confidenceShuffle = 10, confidenceThreshold = 0.001,
+                  doConsensus = consensus,
+                  nSkeletons = nSkeletons,
+                  proportionToUndersample = fraction,
+                  whereToEdgeFilter=edgeFiltering)
   # Plotting average CI by edge
   as_tibble(miic.res$skeletons) %>%
     group_by(x, y) %>%
@@ -67,25 +58,29 @@ robustness_evaluation <- function(nSkeletons, consensus, fraction,
 option_list = list(
   make_option(c("-n", "--nSkeletons"), type="integer", default=10, 
               help=paste("number of skeletons inferred for consensus skeleton",
-                         "[default= %default]."),
+                         "[default=%default]."),
               metavar="integer"),
   make_option(c("-c", "--consensus"), type="integer", default=80, 
               help=paste("frequency of occurrence for adding edge to consensus",
-              "network [default= %default]."),
+              "network [default=%default]."),
               metavar="integer"),
   make_option(c("-f", "--fraction"), type="integer", default=90, 
               help=paste("fraction that will be randomly sampled from original",
-              "data [default= %default]."),
+              "data [default=%default]."),
               metavar="integer"),
   make_option(c("-s", "--seed"), type="integer", default=2019, 
-              help="seed for reproduction of results [default= %default].",
+              help="seed for reproduction of results [default=%default].",
               metavar="integer"),
   make_option(c("-d", "--destinationPath"), 
-              help="output destination [default= %default].",
+              help="output destination [default=%default].",
               metavar="string"),
-  make_option(c("-e", "--edgeFiltering"), type="logical", default=FALSE,
-              help="if edges should be filtered or not [default= %default].",
-              metavar="logical")
+  make_option(c("-e", "--edgeFiltering"), type="integer", default=0,
+              help="0: filter no edges
+                1: filter all edges
+                2: filter edges from full dataset skeleton only
+                3: filter edges from resampled skeletons only
+                [default=%default].",
+              metavar="integer")
 ); 
 
 opt_parser = OptionParser(option_list=option_list);

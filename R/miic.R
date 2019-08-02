@@ -130,6 +130,12 @@
 #' proportion of the original data that should be undersampled. The rest will be left out.
 #' Setting this parameter will resample using the Jackknife method, instead of bootstrapping.
 #' 
+#' @param whereToEdgeFilter [a positive integer] This number will tell the
+#' algorithm to follow one of two possible paths: If it's 0, filter no edges. If it's 1,
+#' filter all edges. If it's 2 filter only edegs for the skeletons inferred from the
+#' resampled dataset. If it's 3, filter only from the skeletons from resampled data.
+#' anything.
+#'
 #' @return A \emph{miic-like} object that contains:
 #' \itemize{
 #'  \item{all.edges.summary:}{ a data frame with information about the relationship between
@@ -257,7 +263,8 @@ miic <- function(inputData, categoryOrder= NULL, trueEdges = NULL, blackBox = NU
                  cplx = c("nml", "mdl"), orientation = TRUE, propagation = TRUE, latent = FALSE,
                  neff = -1, edges=NULL, confidenceShuffle = 0, confidenceThreshold = 0, 
                  confList = NULL, sampleWeights = NULL, testMAR = TRUE, consistent = FALSE, 
-                 verbose = FALSE, doConsensus=0, nSkeletons=0, proportionToUndersample=100)
+                 verbose = FALSE, doConsensus=0, nSkeletons=0, proportionToUndersample=100,
+                 whereToEdgeFilter=0)
 {
   res = NULL
   skeleton = TRUE
@@ -325,12 +332,23 @@ miic <- function(inputData, categoryOrder= NULL, trueEdges = NULL, blackBox = NU
     stop("doConsensus can not be smaller than 0 or greater than 100.")
   if(nSkeletons < 0)
     stop("nSkeletons can not be smaller than 0.")
+
   #Jackknife
   if (proportionToUndersample > 100)
     stop("Proportion of original data (undersample) can not be larger than 100%.")
   if (proportionToUndersample == 0)
     stop("Proportion of original data (undersample) can not be 0%. That would mean no data being sampled.")
   
+  #When to filter edges?
+  if (whereToEdgeFilter < 0 || whereToEdgeFilter > 3)
+    stop("whereToEdgeFilter must have one of the following values: 0, 1, 2 or 3.")
+  if (whereToEdgeFilter %in% c(1,2,3) &&
+      (confidenceShuffle == 0 || confidenceThreshold == 0)) {
+    stop(paste0("You passed the parameter on when to perform edge filtering ",
+                "but passed no arguments for confidence shuffle or/and ",
+                "threshold."))
+  }
+
   if(verbose)
     cat("START miic...\n")
 
@@ -360,23 +378,31 @@ miic <- function(inputData, categoryOrder= NULL, trueEdges = NULL, blackBox = NU
     if(skeleton){
       if(verbose)
         cat("\t# -> START skeleton...\n")
+      # No consensus network will be built, therefore simply run default MIIC.
       if (doConsensus == 0) {
         res <- miic.skeleton(inputData = inputData, stateOrder= categoryOrder, nThreads= nThreads, cplx = cplx, latent = latent,
                              effN = neff, blackBox = blackBox, confidenceShuffle = confidenceShuffle,
                              confidenceThreshold= confidenceThreshold, verbose= verbose, cntVar = cntVar, typeOfData = typeOfData,
                              sampleWeights = sampleWeights, testMAR = testMAR, consistent = consistent)
+      # A consensus network should be built
       } else {
+        # If no undersampling will be done, then the method must be bootstraping, that is,
+        # sampling with replacement.
         if (proportionToUndersample == 100)
           if (verbose)
             cat("\t# -> Computing consensus skeleton by bootstrapping...\n")
         else
           if (verbose)
             cat("\t# -> Computing consensus skeleton by jackknife...\n")
-        
+        # No edge should be filtered
+        if (whereToEdgeFilter == 0) {
+          confidenceShuffle <- 0
+          confidenceThreshold <- 0
+        }
         skeletons <- NULL
         # nSkeletons skeletons will be inferred from resampled data. After that, another
         # skeleton will be inferred for the next steps of the MIIC algorithm in order to
-        # infer the final network.
+        # infer the final network (skeleton from full dataset)
         for (i in seq(nSkeletons+1)) {
           # Jackknife: undersample without replacement
           if (proportionToUndersample != 100)
@@ -387,16 +413,34 @@ miic <- function(inputData, categoryOrder= NULL, trueEdges = NULL, blackBox = NU
           # After tha last skeleton from resampled data, another skeleton should be inferred
           # for the next steps of MIIC, in order to infer the final network.
           if (i == nSkeletons+1) {
-            res <- miic.skeleton(inputData = inputData, stateOrder= categoryOrder, nThreads= nThreads, cplx = cplx, latent = latent,
-                                 effN = neff, blackBox = blackBox, confidenceShuffle = confidenceShuffle,
-                                 confidenceThreshold= confidenceThreshold, verbose= verbose, cntVar = cntVar, typeOfData = typeOfData,
-                                 sampleWeights = sampleWeights, testMAR = testMAR, consistent = consistent)
+            # If edge filtering should only be done for skeletons from resampling, don't do it here
+            if (whereToEdgeFilter == 3 || whereToEdgeFilter == 0) {
+              res <- miic.skeleton(inputData = inputData, stateOrder= categoryOrder, nThreads= nThreads, cplx = cplx, latent = latent,
+                                   effN = neff, blackBox = blackBox, confidenceShuffle = 0,
+                                   confidenceThreshold = 0, verbose= verbose, cntVar = cntVar, typeOfData = typeOfData,
+                                   sampleWeights = sampleWeights, testMAR = testMAR, consistent = consistent)
+            # But if edge filtering should always be done, or should be done in fulldataset skeleton, do it here
+            } else if (whereToEdgeFilter == 1 || whereToEdgeFilter == 2) {
+              res <- miic.skeleton(inputData = inputData, stateOrder= categoryOrder, nThreads= nThreads, cplx = cplx, latent = latent,
+                                   effN = neff, blackBox = blackBox, confidenceShuffle = confidenceShuffle,
+                                   confidenceThreshold = confidenceThreshold, verbose= verbose, cntVar = cntVar, typeOfData = typeOfData,
+                                   sampleWeights = sampleWeights, testMAR = testMAR, consistent = consistent)
+            }
+          # If it's skeleton from resampling..
           } else {
-            # Resample original data and infer a skeletno
-            res <- miic.skeleton(inputData = input, stateOrder= categoryOrder, nThreads= nThreads, cplx = cplx, latent = latent,
-                                 effN = neff, blackBox = blackBox, confidenceShuffle = confidenceShuffle,
-                                 confidenceThreshold= confidenceThreshold, verbose= verbose, cntVar = cntVar, typeOfData = typeOfData,
-                                 sampleWeights = sampleWeights, testMAR = testMAR, consistent = consistent)
+            # If edge filtering should only be done for full data skeleton, don't do it here
+            if (whereToEdgeFilter == 2 || whereToEdgeFilter == 0) {
+              # Resample original data and infer a skeletno
+              res <- miic.skeleton(inputData = input, stateOrder= categoryOrder, nThreads= nThreads, cplx = cplx, latent = latent,
+                                   effN = neff, blackBox = blackBox, confidenceShuffle = 0,
+                                   confidenceThreshold = 0, verbose= verbose, cntVar = cntVar, typeOfData = typeOfData,
+                                   sampleWeights = sampleWeights, testMAR = testMAR, consistent = consistent)
+            } else if (whereToEdgeFilter == 1 || whereToEdgeFilter == 3) {
+              res <- miic.skeleton(inputData = inputData, stateOrder= categoryOrder, nThreads= nThreads, cplx = cplx, latent = latent,
+                                   effN = neff, blackBox = blackBox, confidenceShuffle = confidenceShuffle,
+                                   confidenceThreshold = confidenceThreshold, verbose= verbose, cntVar = cntVar, typeOfData = typeOfData,
+                                   sampleWeights = sampleWeights, testMAR = testMAR, consistent = consistent)
+            }
           }
           # These lines and the global variables that change their scope are temporary and
           # will be removed at the end of the development of this feature
