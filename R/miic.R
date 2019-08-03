@@ -394,11 +394,6 @@ miic <- function(inputData, categoryOrder= NULL, trueEdges = NULL, blackBox = NU
         else
           if (verbose)
             cat("\t# -> Computing consensus skeleton by jackknife...\n")
-        # No edge should be filtered
-        if (whereToEdgeFilter == 0) {
-          confidenceShuffle <- 0
-          confidenceThreshold <- 0
-        }
         skeletons <- NULL
         # nSkeletons skeletons will be inferred from resampled data. After that, another
         # skeleton will be inferred for the next steps of the MIIC algorithm in order to
@@ -410,42 +405,44 @@ miic <- function(inputData, categoryOrder= NULL, trueEdges = NULL, blackBox = NU
           else
             # Bootstrap: sample with replacement
             input <- inputData[sample(nrow(inputData), replace=TRUE), ]
-          # After tha last skeleton from resampled data, another skeleton should be inferred
-          # for the next steps of MIIC, in order to infer the final network.
-          if (i == nSkeletons+1) {
-            # If edge filtering should only be done for skeletons from resampling, don't do it here
-            if (whereToEdgeFilter == 3 || whereToEdgeFilter == 0) {
-              res <- miic.skeleton(inputData = inputData, stateOrder= categoryOrder, nThreads= nThreads, cplx = cplx, latent = latent,
-                                   effN = neff, blackBox = blackBox, confidenceShuffle = 0,
-                                   confidenceThreshold = 0, verbose= verbose, cntVar = cntVar, typeOfData = typeOfData,
-                                   sampleWeights = sampleWeights, testMAR = testMAR, consistent = consistent)
-            # But if edge filtering should always be done, or should be done in fulldataset skeleton, do it here
-            } else if (whereToEdgeFilter == 1 || whereToEdgeFilter == 2) {
-              res <- miic.skeleton(inputData = inputData, stateOrder= categoryOrder, nThreads= nThreads, cplx = cplx, latent = latent,
-                                   effN = neff, blackBox = blackBox, confidenceShuffle = confidenceShuffle,
-                                   confidenceThreshold = confidenceThreshold, verbose= verbose, cntVar = cntVar, typeOfData = typeOfData,
-                                   sampleWeights = sampleWeights, testMAR = testMAR, consistent = consistent)
-            }
-          # If it's skeleton from resampling..
-          } else {
-            # If edge filtering should only be done for full data skeleton, don't do it here
-            if (whereToEdgeFilter == 2 || whereToEdgeFilter == 0) {
-              # Resample original data and infer a skeletno
+          # Filter no edges
+          if (whereToEdgeFilter == 0) {
+            confidenceShuffle <- 0
+            confidenceThreshold <- 0
+          }
+          # These are the skeletons for the building of a consensus skeleton
+          if (i < nSkeletons+1) {
+            # If it's only edge filtering for full dataset, don't do it here
+            if (whereToEdgeFilter == 2) {
               res <- miic.skeleton(inputData = input, stateOrder= categoryOrder, nThreads= nThreads, cplx = cplx, latent = latent,
                                    effN = neff, blackBox = blackBox, confidenceShuffle = 0,
+                                   confidenceThreshold= 0, verbose= verbose, cntVar = cntVar, typeOfData = typeOfData,
+                                   sampleWeights = sampleWeights, testMAR = testMAR, consistent = consistent)
+            # whereToEdgeFilter = 1 or 3
+            } else {
+              res <- miic.skeleton(inputData = input, stateOrder= categoryOrder, nThreads= nThreads, cplx = cplx, latent = latent,
+                                   effN = neff, blackBox = blackBox, confidenceShuffle = confidenceShuffle,
+                                   confidenceThreshold= confidenceThreshold, verbose= verbose, cntVar = cntVar, typeOfData = typeOfData,
+                                   sampleWeights = sampleWeights, testMAR = testMAR, consistent = consistent)
+            }
+          # Otherwise, it is the skeleton to infer from the full dataset
+          } else {
+            # If it's only edge filtering the skeletons for resmapled data don't do it here
+            if (whereToEdgeFilter == 3) {
+              res <- miic.skeleton(inputData = inputData, stateOrder= categoryOrder, nThreads= nThreads, cplx = cplx, latent = latent,
+                                   effN = neff, blackBox = blackBox, confidenceShuffle = 0,
                                    confidenceThreshold = 0, verbose= verbose, cntVar = cntVar, typeOfData = typeOfData,
                                    sampleWeights = sampleWeights, testMAR = testMAR, consistent = consistent)
-            } else if (whereToEdgeFilter == 1 || whereToEdgeFilter == 3) {
+            # whereToEdgeFilter = 1 or 2
+            } else {
               res <- miic.skeleton(inputData = inputData, stateOrder= categoryOrder, nThreads= nThreads, cplx = cplx, latent = latent,
                                    effN = neff, blackBox = blackBox, confidenceShuffle = confidenceShuffle,
-                                   confidenceThreshold = confidenceThreshold, verbose= verbose, cntVar = cntVar, typeOfData = typeOfData,
+                                   confidenceThreshold= confidenceThreshold, verbose= verbose, cntVar = cntVar, typeOfData = typeOfData,
                                    sampleWeights = sampleWeights, testMAR = testMAR, consistent = consistent)
             }
           }
-          # These lines and the global variables that change their scope are temporary and
-          # will be removed at the end of the development of this feature
-          # (consensus skeleton).
-          if (i != nSkeletons+1) {
+          # If the skeleton inferred is for the consensus skeleton..
+          if (i < nSkeletons+1) {
             x <- res$edges[res$edges$category == 3, 'x']
             y <- res$edges[res$edges$category == 3, 'y']
             I <- res$edges[res$edges$category == 3, 'Ixy_ai']
@@ -542,7 +539,7 @@ miic <- function(inputData, categoryOrder= NULL, trueEdges = NULL, blackBox = NU
 
     rm(resGmSummary)
 
-    if( confidenceShuffle > 0 & confidenceThreshold > 0 )
+    if( confidenceShuffle > 0 & confidenceThreshold > 0 & whereToEdgeFilter != 3)
     {
       # Insert the confidence ratio
       tmp_sum = res$all.edges.summary
