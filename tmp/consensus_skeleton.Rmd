@@ -26,7 +26,7 @@ One way to do such analysis is by resampling the original sample $N$ (nSkeletons
 # Resampling methods
 There are several resampling methods, as one can see in the figure below. For now, there are two methods implemented in MIIC: [Bootstraping](#bootstraping) and [jackknife](#jackknife).
 
-```{r resampling_methods, echo=FALSE, fig.cap="Resampling with different methods. Taken from an [StackOverflow answer](https://stats.stackexchange.com/questions/104040/resampling-simulation-methods-monte-carlo-bootstrapping-jackknifing-cross).", out.width = '100%'}
+```{r resampling_methods, echo=FALSE, fig.cap="Resampling with different methods. Taken from an [StackOverflow answer](https://stats.stackexchange.com/questions/104040/resampling-simulation-methods-monte-carlo-bootstrapping-jackknifing-cross). The networks above are [random](https://rpubs.com/lgadar/generate-graphs) and were used with the parameter for explanatory purposes.", out.width = '100%'}
 knitr::include_graphics("figs/resampling methods.jpg")
 ```
 
@@ -35,6 +35,12 @@ Bootstraping generally refers to any resampling method that does resamples with 
 
 ## Jackknife {#jackknife}
 Jackknife is a resampling method, without replacement, that does undersampling. One example would be to randomly choose 8 out of 10 samples, meaning a fraction of 80%. 
+
+So far, jackknife has been chosen as the resampling method so the proposed solution goes as the following figure:
+
+```{r workflow_consensus_network, echo=FALSE, fig.cap="Workflow to obtain the consensus network. Can be edited [here](https://www.draw.io/#G10BA0KiEFZl_YpKh6mIv2WlOP6cRgdyp0)", out.width = '100%'}
+knitr::include_graphics("figs/workflow_consensus_network.png")
+```
 
 # Test dataset
 Our proposed solution will be applied to binarized expression data of 33 transcription factors involved in early differentiation of primitive erythroid and endothelial cells (3934 cells). This dataset comes by default in the miic R package.
@@ -345,7 +351,7 @@ library(miic)
 # Running robustness evaluation algorithm per se
 robustness_evaluation <- function(nSkeletons, consensus, fraction,
                                   seed=2019) {
-  setwd('/home/mribeirodantas/dev/miic_r_package/tmp/figs/loops')
+  setwd('/home/mribeirodantas/dev/miic_r_package/tmp/figs/loops/edge_filtering_both')
   set.seed(seed)
   # Running MIIC
   miic.res = miic(inputData = hematoData, latent = TRUE, confidenceShuffle = 10,
@@ -917,12 +923,17 @@ scatter3D(x = df$nskeleton, z = df$consensus, y = df$fraction,
 plotrgl()
 ```
 
-```{r output_local_3D_ef_fds, echo=FALSE, fig.cap="3D plot of the simulation", out.width = '100%'}
+*Pending resimulation*
+
+```{r output_local_3D_ef_fds, echo=FALSE, eval=FALSE, fig.cap="3D plot of the simulation", out.width = '100%'}
 knitr::include_graphics("/home/mribeirodantas/dev/miic_r_package/tmp/figs/3D_output_default_w_ef_fds.png")
 ```
 
 This code produces the 3D interactive plot in this report.
-```{r, message=FALSE}
+
+*Pending resimulation*
+
+```{r, eval=FALSE, message=FALSE}
 library(threejs)
 library(dplyr)
 
