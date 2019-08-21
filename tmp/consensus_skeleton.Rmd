@@ -1224,3 +1224,18 @@ df <- matrix(c(41.46341, 18.29268), ncol = 2, nrow = 1)
 colnames(df) <- c('diff in min (consensus)', 'diff in max (consensus)')
 as.data.frame(df)
 ```
+
+# Benchmarking
+
+## INSURANCE
+[Insurance](http://www.bnlearn.com/bnrepository/discrete-medium.html#insurance) is a discrete bayesian network of medium size for evaluating car insurance risks with 27 variables and 984 parameters (possible values).
+
+```{r eval=TRUE, echo=TRUE}
+library(bnlearn)
+
+setwd('/home/mribeirodantas/dev/miic_r_package/tmp/INSURANCE/')
+myBnNet = read.bif(file='insurance.bif', debug = FALSE)
+myDataNet = try(rbn(myBnNet, n=1000, debug = F))
+
+
+```
