@@ -49,13 +49,35 @@ benchmark <- function(nSkeletons, consensus, fraction, seed=2019,
   final_network <- as.data.frame(cbind(miic.res$retained.edges.summary$x,
                                        miic.res$retained.edges.summary$y))
   colnames(final_network) <- colnames(miic.res$consensus_table) <- c('x', 'y')
-  # Proportion of final network which is not in the consensus table
-  n_edges_not_in_consensus <- nrow(dplyr::setdiff(final_network,
-                                                  miic.res$consensus_table))
-  n_total_final_network <- nrow(final_network)
-  prop_edges_not_in_consensus <- n_edges_not_in_consensus*100/n_total_final_network
-  prop_edges_in_consensus <- 100-prop_edges_not_in_consensus
-  write(paste0(prop_edges_in_consensus, ',',
+
+  # Calculating F-score
+  # MIIC edge filtering network: final_network
+  # Consensus:                   miic_cons
+  # Real network:                real_network
+  miic.res$consensus_table
+  # Obtaining real network
+  real_network <- bn.net(myBnNet)$arcs 
+  real_network <- as.data.frame(real_network)
+  colnames(real_network) <- c('x', 'y')
+  # precision = TP/(TP+FP)
+  # recall = TP/(TP+FN)
+  # F-score = 2*(Prec.Rec)/(Prec+Rec)
+ 
+  # Precision of miic_ef vs real_network
+  
+  # Precision of miic_cons vs real_network
+  
+  # Recall of miic_ef vs real_network
+  
+  # Recall of miic_cons vs real_network 
+  
+  # Calculate F-score miic_ef
+  
+  # Calculate F-score miic_cons
+  
+  # Calculate F-scores of miic_cons minus miic_ef
+  
+  write(paste0(fscore_diff, ',',
                consensus, ',',
                nSkeletons, ',',
                fraction),

@@ -1228,14 +1228,42 @@ as.data.frame(df)
 # Benchmarking
 
 ## INSURANCE
-[Insurance](http://www.bnlearn.com/bnrepository/discrete-medium.html#insurance) is a discrete bayesian network of medium size for evaluating car insurance risks with 27 variables and 984 parameters (possible values).
+[Insurance](http://www.bnlearn.com/bnrepository/discrete-medium.html#insurance) is a discrete bayesian network of medium size for evaluating car insurance risks with [27 variables](http://www.bnlearn.com/documentation/man/insurance.html) and 984 parameters (possible values). The more parameters, the bigger the sample size required to have a representative understanding of the scenario. Other networks will be obtained from [here](http://www.bnlearn.com/bnrepository/) later to perform benchmarking in other conditions.
 
-```{r eval=TRUE, echo=TRUE}
+One can generate samples from a BIF object by using the R snippet below.
+```{r eval=FALSE, echo=TRUE}
 library(bnlearn)
 
 setwd('/home/mribeirodantas/dev/miic_r_package/tmp/INSURANCE/')
 myBnNet = read.bif(file='insurance.bif', debug = FALSE)
+# Generate 1000 samples
 myDataNet = try(rbn(myBnNet, n=1000, debug = F))
+```
 
+You can also plot the real network by using the R snippet below.
+```{r eval=TRUE, echo=TRUE, message=FALSE}
+library(bnlearn)
 
+setwd('/home/mribeirodantas/dev/miic_r_package/tmp/INSURANCE/')
+myBnNet = read.bif(file='insurance.bif', debug = FALSE)
+
+plot(bn.net(myBnNet))
+```
+
+A better version of the network can be obtained in the [bnlearn website](http://www.bnlearn.com/bnrepository/discrete-medium.html#insurance) and is shown below.
+
+```{r insurance_real_network, echo=FALSE, out.width = '100%'}
+knitr::include_graphics("figs/insurance_network.png")
+```
+
+You can also check what is the markov blanket of a node X in a markov random field, that is, all nodes that are immediately associated with the node X.
+```{r eval=TRUE, echo=TRUE, message=FALSE}
+library(bnlearn)
+
+setwd('/home/mribeirodantas/dev/miic_r_package/tmp/INSURANCE/')
+myBnNet = read.bif(file='insurance.bif', debug = FALSE)
+
+network <- bn.net(myBnNet)
+# Markov blanket of nod AntiTheft
+print(c(network$nodes$AntiTheft$parents, network$nodes$AntiTheft$children))
 ```
