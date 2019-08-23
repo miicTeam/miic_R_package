@@ -1,7 +1,7 @@
 ---
 title: "Consensus skeleton feature"
 author: "Marcel Ribeiro-Dantas (marcel.ribeiro-dantas@curie.fr)"
-date: "7/25/2019"
+date: \`r format(Sys.Date(), " Created on 25/07/2019. **Last updated on** %d/%m/%Y.")`
 
 output:
   html_document:
