@@ -456,7 +456,7 @@ miic <- function(inputData, categoryOrder= NULL, trueEdges = NULL, blackBox = NU
         }
         # Computing consensus table
         skeletons <- as.data.frame(skeletons)
-        consensus_table <- as.data.frame(table(skeletons$x, skeletons$y))
+        consensus_table <- data.frame(table(skeletons$x, skeletons$y), stringsAsFactors = FALSE)
         consensus_table <- consensus_table[consensus_table$Freq*100/nSkeletons >= doConsensus, ]
         consensus_table$Freq <- NULL
       }

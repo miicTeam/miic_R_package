@@ -1267,3 +1267,63 @@ network <- bn.net(myBnNet)
 # Markov blanket of nod AntiTheft
 print(c(network$nodes$AntiTheft$parents, network$nodes$AntiTheft$children))
 ```
+
+I started playing with the benchmark with some specific arbitraly chosen values.
+
+> Comparing MIIC no edge filtering VS MIIC consensus ON
+> Consensus: 70%
+> nSkeletons: 100
+> Fraction: 85%
+> 2000 samples from INSURANCE
+
+> prec_cons
+[1] 0.64
+> prec_noef
+[1] 0.6538462
+
+> Comparing MIIC edge filtering VS MIIC consensus ON
+> Consensus: 70%
+> nSkeletons: 100
+> Fraction: 85%
+> 2000 samples from INSURANCE
+
+> prec_ef
+[1] 0.6730769
+> prec_cons
+[1] 0.6666667
+
+--------------------------
+> Comparing MIIC edge filtering VS MIIC consensus ON
+> Consensus: 80%
+> nSkeletons: 100
+> Fraction: 90%
+> 100 samples from INSURANCE
+
+> fscore_diff
+[1] -0.03054299
+
+> Comparing MIIC edge filtering VS MIIC consensus ON
+> Consensus: 50%
+> nSkeletons: 100
+> Fraction: 90%
+> 100 samples from INSURANCE
+> fscore_diff
+[1] 0
+
+> Comparing MIIC edge filtering VS MIIC consensus ON
+> Consensus: 10%
+> nSkeletons: 100
+> Fraction: 90%
+> 100 samples from INSURANCE
+
+> fscore_diff
+[1] 0.02939042
+
+> Comparing MIIC edge filtering VS MIIC consensus ON
+> Consensus: 10%
+> nSkeletons: 100
+> Fraction: 90%
+> 2000 samples from INSURANCE
+
+> fscore_diff
+[1] 0.02539913

@@ -46,37 +46,111 @@ benchmark <- function(nSkeletons, consensus, fraction, seed=2019,
          fill = "Log of average conditional mutual information")
   ggsave(paste("d-sep", consensus, nSkeletons, fraction, ".jpg", sep = ' '))
   # Proportion of similarity
-  final_network <- as.data.frame(cbind(miic.res$retained.edges.summary$x,
-                                       miic.res$retained.edges.summary$y))
+  final_network <- data.frame(cbind(miic.res$retained.edges.summary$x,
+                                    miic.res$retained.edges.summary$y),
+                              stringsAsFactors = FALSE)
   colnames(final_network) <- colnames(miic.res$consensus_table) <- c('x', 'y')
 
   # Calculating F-score
-  # MIIC edge filtering network: final_network
+  # MIIC edge filtering network: miic_ef
   # Consensus:                   miic_cons
   # Real network:                real_network
-  miic.res$consensus_table
+  miic_cons <- data.frame(miic.res$consensus_table, stringsAsFactors = FALSE)
+  miic_cons[] <- lapply(miic_cons, as.character)
+  miic_ef <- data.frame(final_network, stringsAsFactors = FALSE)
   # Obtaining real network
   real_network <- bn.net(myBnNet)$arcs 
   real_network <- as.data.frame(real_network)
   colnames(real_network) <- c('x', 'y')
+  real_network[] <- lapply(real_network, as.character)
+  # TP are edges that are in the inferred network and in the real network
+  # FP are edges that are in the inferred network and not in the real network
+  # FN are edges that are not in the inferred network and are in the real network
   # precision = TP/(TP+FP)
   # recall = TP/(TP+FN)
   # F-score = 2*(Prec.Rec)/(Prec+Rec)
  
-  # Precision of miic_ef vs real_network
-  
-  # Precision of miic_cons vs real_network
-  
-  # Recall of miic_ef vs real_network
-  
-  # Recall of miic_cons vs real_network 
+  # TP of miic_ef vs real_network
+  TP_ef <- 0
+  for (i in 1:max(nrow(real_network), nrow(miic_ef))) {
+    miic_ef %>%
+      rowwise() %>%
+      mutate(flag = setequal(c(x, y), real_network[i, ])) %>%
+      pluck(., "flag") %>%
+      sum + TP_ef -> TP_ef
+  }
+  # TP of miic_cons vs real_network
+  TP_cons <- 0
+  for (i in 1:max(nrow(real_network), nrow(miic_cons))) {
+    miic_cons %>%
+      rowwise() %>%
+      mutate(flag = setequal(c(x, y), real_network[i, ])) %>%
+      pluck(., "flag") %>%
+      sum + TP_cons -> TP_cons
+  }
+  # FP of miic_ef vs real_network
+  FP_ef <- 0
+  for (i in 1:max(nrow(real_network), nrow(miic_ef))) {
+    miic_ef %>%
+      rowwise() %>%
+      mutate(flag = setequal(c(x, y), real_network[i, ])) %>%
+      pluck(., "flag") %>%
+      sum -> asd
+    if (asd == 0) {
+      FP_ef <- FP_ef + 1
+    }
+  }
+  # FP of miic_cons vs real_network 
+  FP_cons <- 0
+  for (i in 1:max(nrow(real_network), nrow(miic_cons))) {
+    miic_ef %>%
+      rowwise() %>%
+      mutate(flag = setequal(c(x, y), real_network[i, ])) %>%
+      pluck(., "flag") %>%
+      sum -> asd
+    if (asd == 0) {
+      FP_cons <- FP_cons + 1
+    }
+  }
+  # FN of miic_ef vs real_network
+  FN_ef <- 0
+  for (i in 1:max(nrow(real_network), nrow(miic_ef))) {
+    real_network %>%
+      rowwise() %>%
+      mutate(flag = setequal(c(x, y), miic_ef[i, ])) %>%
+      pluck(., "flag") %>%
+      sum -> asd
+    if (asd == 0) {
+      FN_ef <- FN_ef + 1
+    }
+  }
+  # FN of miic_cons vs real_network
+  FN_cons <- 0
+  for (i in 1:max(nrow(real_network), nrow(miic_cons))) {
+    real_network %>%
+      rowwise() %>%
+      mutate(flag = setequal(c(x, y), miic_cons[i, ])) %>%
+      pluck(., "flag") %>%
+      sum -> asd
+    if (asd == 0) {
+      FN_cons <- FN_cons + 1
+    }
+  }
+  # Precision of miic_ef
+  prec_ef <- TP_ef/(TP_ef+FP_ef)
+  # Precision of miic_cons
+  prec_cons <- TP_cons/(TP_cons+FP_cons)
+  # Recall of miic_ef
+  rec_ef <- TP_ef/(TP_ef+FN_ef)
+  # Recall of miic_cons
+  rec_cons <- TP_cons/(TP_cons+FN_cons)
   
   # Calculate F-score miic_ef
-  
+  Fscore_ef <- 2*(prec_ef*rec_ef)/(prec_ef+rec_ef)
   # Calculate F-score miic_cons
-  
+  Fscore_cons <- 2*(prec_cons*rec_cons)/(prec_cons+rec_cons)
   # Calculate F-scores of miic_cons minus miic_ef
-  
+  fscore_diff <- Fscore_cons - Fscore_ef
   write(paste0(fscore_diff, ',',
                consensus, ',',
                nSkeletons, ',',
