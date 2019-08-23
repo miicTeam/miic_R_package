@@ -129,7 +129,30 @@ benchmark <- function(nSkeletons, consensus, fraction, seed=2019,
   # Calculate F-scores of miic_cons minus miic_ef
   fscore_diff <- Fscore_cons - Fscore_ef
 
-  write(paste0(fscore_diff, ',',
+  if (!file.exists('percent_similarity.txt')) {
+    write(paste0('True Positive EF', ',', 'True Positive Consensus', ',',
+                 'False Positive EF', ',', 'False Positive Consensus', ',',
+                 'False Negative EF', ',', 'False Negative Consensus', ',',
+                 'Recall EF', ',', 'Recall Consensus', ',',
+                 'Precision EF', ',', 'Precision Consensus', ',',
+                 'Fscore EF',  ',', 'Fscore Consensus', ',', 'Fscore Cons-EF',
+                 ',', 'Number of samples', ',','Consensus %', ',',
+                 'Number of Skeletons', ',', 'Fraction'), file="percent_similarity.txt")
+  }
+
+  write(paste0(TP_ef, ',',
+               TP_cons, ',',
+               FP_ef, ',',
+               FP_cons, ',',
+               FN_ef, ',',
+               FN_cons, ',',
+               rec_ef, ',',
+               rec_cons, ',',
+               prec_ef, ',',
+               prec_cons, ',',
+               Fscore_ef, ',',
+               Fscore_cons, ',',
+               fscore_diff, ',',
                nSamples, ',',
                consensus, ',',
                nSkeletons, ',',
