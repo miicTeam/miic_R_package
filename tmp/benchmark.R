@@ -1,5 +1,6 @@
 library(dplyr)
 library(ggplot2)
+library(purrr)
 library(optparse)
 library(miic)
 library(bnlearn)
@@ -69,73 +70,49 @@ benchmark <- function(nSkeletons, consensus, fraction, seed=2019,
   # precision = TP/(TP+FP)
   # recall = TP/(TP+FN)
   # F-score = 2*(Prec.Rec)/(Prec+Rec)
- 
+
+  is_in <- function(x, y, target) {
+    any(
+      (target[[1]] == x & target[[2]] == y) | (target[[2]] == x & target[[1]] == y)
+    )
+  }
+
   # TP of miic_ef vs real_network
-  TP_ef <- 0
-  for (i in 1:max(nrow(real_network), nrow(miic_ef))) {
-    miic_ef %>%
-      rowwise() %>%
-      mutate(flag = setequal(c(x, y), real_network[i, ])) %>%
-      pluck(., "flag") %>%
-      sum + TP_ef -> TP_ef
-  }
+  miic_ef %>%
+    mutate(flag = map2_lgl(x, y, is_in, target = real_network)) %>%
+    pluck(., "flag") %>%
+    sum -> TP_ef
+
   # TP of miic_cons vs real_network
-  TP_cons <- 0
-  for (i in 1:max(nrow(real_network), nrow(miic_cons))) {
-    miic_cons %>%
-      rowwise() %>%
-      mutate(flag = setequal(c(x, y), real_network[i, ])) %>%
-      pluck(., "flag") %>%
-      sum + TP_cons -> TP_cons
-  }
+  miic_cons %>%
+    mutate(flag = map2_lgl(x, y, is_in, target = real_network)) %>%
+    pluck(., "flag") %>%
+    sum -> TP_cons
+
   # FP of miic_ef vs real_network
-  FP_ef <- 0
-  for (i in 1:max(nrow(real_network), nrow(miic_ef))) {
-    miic_ef %>%
-      rowwise() %>%
-      mutate(flag = setequal(c(x, y), real_network[i, ])) %>%
-      pluck(., "flag") %>%
-      sum -> asd
-    if (asd == 0) {
-      FP_ef <- FP_ef + 1
-    }
-  }
+  miic_ef %>%
+    mutate(flag = !map2_lgl(x, y, is_in, target = real_network)) %>%
+    pluck(., "flag") %>%
+    sum -> FP_ef
+
   # FP of miic_cons vs real_network 
-  FP_cons <- 0
-  for (i in 1:max(nrow(real_network), nrow(miic_cons))) {
-    miic_ef %>%
-      rowwise() %>%
-      mutate(flag = setequal(c(x, y), real_network[i, ])) %>%
-      pluck(., "flag") %>%
-      sum -> asd
-    if (asd == 0) {
-      FP_cons <- FP_cons + 1
-    }
-  }
+  miic_cons %>%
+    mutate(flag = !map2_lgl(x, y, is_in, target = real_network)) %>%
+    pluck(., "flag") %>%
+    sum -> FP_cons
+
   # FN of miic_ef vs real_network
-  FN_ef <- 0
-  for (i in 1:max(nrow(real_network), nrow(miic_ef))) {
-    real_network %>%
-      rowwise() %>%
-      mutate(flag = setequal(c(x, y), miic_ef[i, ])) %>%
-      pluck(., "flag") %>%
-      sum -> asd
-    if (asd == 0) {
-      FN_ef <- FN_ef + 1
-    }
-  }
+  real_network %>%
+    mutate(flag = !map2_lgl(x, y, is_in, target = miic_ef)) %>%
+    pluck(., "flag") %>%
+    sum -> FN_ef
+
   # FN of miic_cons vs real_network
-  FN_cons <- 0
-  for (i in 1:max(nrow(real_network), nrow(miic_cons))) {
-    real_network %>%
-      rowwise() %>%
-      mutate(flag = setequal(c(x, y), miic_cons[i, ])) %>%
-      pluck(., "flag") %>%
-      sum -> asd
-    if (asd == 0) {
-      FN_cons <- FN_cons + 1
-    }
-  }
+  real_network %>%
+    mutate(flag = !map2_lgl(x, y, is_in, target = miic_cons)) %>%
+    pluck(., "flag") %>%
+    sum -> FN_cons
+
   # Precision of miic_ef
   prec_ef <- TP_ef/(TP_ef+FP_ef)
   # Precision of miic_cons
@@ -144,14 +121,16 @@ benchmark <- function(nSkeletons, consensus, fraction, seed=2019,
   rec_ef <- TP_ef/(TP_ef+FN_ef)
   # Recall of miic_cons
   rec_cons <- TP_cons/(TP_cons+FN_cons)
-  
+
   # Calculate F-score miic_ef
   Fscore_ef <- 2*(prec_ef*rec_ef)/(prec_ef+rec_ef)
   # Calculate F-score miic_cons
   Fscore_cons <- 2*(prec_cons*rec_cons)/(prec_cons+rec_cons)
   # Calculate F-scores of miic_cons minus miic_ef
   fscore_diff <- Fscore_cons - Fscore_ef
+
   write(paste0(fscore_diff, ',',
+               nSamples, ',',
                consensus, ',',
                nSkeletons, ',',
                fraction),
