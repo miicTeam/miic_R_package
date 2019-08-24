@@ -10,8 +10,16 @@ benchmark <- function(nSkeletons, consensus, fraction, seed=2019,
                       edgeFiltering=0, dataset, nSamples, outputPath) {
   # Which dataset?
   if (dataset == 'insurance') {
-    setwd('/home/mribeirodantas/dev/miic_r_package/tmp/INSURANCE/')
+    setwd('/home/mribeirodantas/dev/miic_r_package/tmp/data/real_networks/INSURANCE/')
     myBnNet = read.bif(file='insurance.bif', debug = FALSE)
+    input = try(rbn(myBnNet, n=nSamples, debug = F))
+  } else if (dataset == 'alarm') {
+    setwd('/home/mribeirodantas/dev/miic_r_package/tmp/data/real_networks/ALARM/')
+    myBnNet = read.bif(file='alarm.bif', debug = FALSE)
+    input = try(rbn(myBnNet, n=nSamples, debug = F))
+  } else if (dataset == 'barley') {
+    setwd('/home/mribeirodantas/dev/miic_r_package/tmp/data/real_networks/BARLEY/')
+    myBnNet = read.bif(file='barley.bif', debug = FALSE)
     input = try(rbn(myBnNet, n=nSamples, debug = F))
   }
 
