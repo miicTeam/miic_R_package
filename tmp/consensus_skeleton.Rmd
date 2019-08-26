@@ -1513,9 +1513,131 @@ The output folder is actually a symbolic link to my Dropbox backup and therefore
 ## ALARM
 [ALARM](http://www.bnlearn.com/bnrepository/discrete-medium.html#alarm) is a discrete bayesian network of medium size to provide an alarm message system for patient monitoring with [37 variables](http://www.bnlearn.com/documentation/man/alarm.html) and 509 parameters (possible values).
 
+```{r eval=TRUE, echo=TRUE}
+library(readr)
+library(dplyr)
+
+bind_rows(
+  lapply(
+    list.files(
+      c("/home/mribeirodantas/dev/miic_r_package/tmp/data/output/alarm_100_samples",
+        "/home/mribeirodantas/dev/miic_r_package/tmp/data/output/alarm_1000_samples",
+        "/home/mribeirodantas/dev/miic_r_package/tmp/data/output/alarm_10000_samples"),
+      pattern = ".txt", 
+      full.names = TRUE
+    ),
+    read_csv
+  )
+) -> alarm
+```
+
+```{r eval=TRUE, echo=TRUE}
+library(dplyr)
+library(plot3Drgl)
+library(plot3D)
+
+scatter3D(x=alarm$`Consensus %`, y=alarm$Fraction, z=alarm$`Fscore Cons-EF`,
+          clab=c("Fscore diff"), pch=19, ticktype = "detailed", bty = "b2", phi = 0,
+          xlab = c("% Consensus"), ylab = c("% Fraction"), zlab = c("F-score con - ef"))
+```
+
+```{r eval=TRUE, echo=TRUE}
+library(threejs)
+library(dplyr)
+
+scatterplot3js(x = alarm$`Consensus %`, y = alarm$Fraction,
+               z = alarm$`Fscore Cons-EF`,
+               color = rainbow(length(alarm$`Fscore Cons-EF`)),
+               main=paste("Hover mouse over dots to check data point information"),
+               labels=paste(alarm$`Consensus %`,
+                                     alarm$Fraction,
+                                     alarm$`Fscore Cons-EF`, ' '), size=0.5)
+```
 
 ## INSURANCE
 [INSURANCE](http://www.bnlearn.com/bnrepository/discrete-medium.html#insurance) is a discrete bayesian network of medium size for evaluating car insurance risks with [27 variables](http://www.bnlearn.com/documentation/man/insurance.html) and 984 parameters (possible values).
 
+```{r eval=TRUE, echo=TRUE}
+library(readr)
+library(dplyr)
+
+bind_rows(
+  lapply(
+    list.files(
+      c("/home/mribeirodantas/dev/miic_r_package/tmp/data/output/insurance_100_samples",
+        "/home/mribeirodantas/dev/miic_r_package/tmp/data/output/insurance_1000_samples",
+        "/home/mribeirodantas/dev/miic_r_package/tmp/data/output/insurance_10000_samples"),
+      pattern = ".txt", 
+      full.names = TRUE
+    ),
+    read_csv
+  )
+) -> insurance
+```
+
+```{r eval=TRUE, echo=TRUE}
+library(dplyr)
+library(plot3Drgl)
+library(plot3D)
+
+scatter3D(x=insurance$`Consensus %`, y=insurance$Fraction, z=insurance$`Fscore Cons-EF`,
+          clab=c("Fscore diff"), pch=19, ticktype = "detailed", bty = "b2", phi = 0,
+          xlab = c("% Consensus"), ylab = c("% Fraction"), zlab = c("F-score con - ef"))
+```
+
+```{r eval=TRUE, echo=TRUE}
+library(threejs)
+library(dplyr)
+
+scatterplot3js(x = insurance$`Consensus %`, y = insurance$Fraction,
+               z = insurance$`Fscore Cons-EF`,
+               color = rainbow(length(insurance$`Fscore Cons-EF`)),
+               main=paste("Hover mouse over dots to check data point information"),
+               labels=paste(insurance$`Consensus %`,
+                                     insurance$Fraction,
+                                     insurance$`Fscore Cons-EF`, ' '), size=0.5)
+```
+
 ## BARLEY
 [BARLEY](http://www.bnlearn.com/bnrepository/discrete-medium.html#barley) is a discrete bayesian network of medium size for evaluating car insurance risks with [48 variables](http://www.bnlearn.com/documentation/man/barley.html) and 114,005 parameters (possible values).
+
+```{r eval=TRUE, echo=TRUE}
+library(readr)
+library(dplyr)
+
+bind_rows(
+  lapply(
+    list.files(
+      c("/home/mribeirodantas/dev/miic_r_package/tmp/data/output/barley_100_samples",
+        "/home/mribeirodantas/dev/miic_r_package/tmp/data/output/barley_1000_samples",
+        "/home/mribeirodantas/dev/miic_r_package/tmp/data/output/barley_10000_samples"),
+      pattern = ".txt", 
+      full.names = TRUE
+    ),
+    read_csv
+  )
+) -> barley
+```
+
+```{r eval=TRUE, echo=TRUE}
+library(dplyr)
+library(plot3Drgl)
+library(plot3D)
+
+scatter3D(x=barley$`Consensus %`, y=barley$Fraction, z=barley$`Fscore Cons-EF`,
+          clab=c("Fscore diff"), pch=19, ticktype = "detailed", bty = "b2", phi = 0,
+          xlab = c("% Consensus"), ylab = c("% Fraction"), zlab = c("F-score con - ef"))
+```
+
+```{r eval=TRUE, echo=TRUE}
+library(threejs)
+library(dplyr)
+
+scatterplot3js(x = barley$`Consensus %`, y = barley$Fraction,
+               z = barley$`Fscore Cons-EF`,
+               color = rainbow(length(barley$`Fscore Cons-EF`)),
+               main=paste("Hover mouse over dots to check data point information"),
+               labels=paste(barley$`Consensus %`,
+                                     barley$Fraction,
+                                     barley$`Fscore Cons-EF`, ' '), size=0.5)
+```
