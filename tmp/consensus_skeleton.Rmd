@@ -1643,3 +1643,95 @@ scatterplot3js(x = barley$`Consensus %`, y = barley$Fraction,
                                      barley$Fraction,
                                      barley$`Fscore Cons-EF`, ' '), size=0.5)
 ```
+
+## Overview
+
+```{r eval=TRUE, echo=TRUE}
+library(ggplot2)
+library(dplyr)
+
+df <- bind_rows(
+  df <- alarm %>%
+    select(`Number of samples`, `Fscore Cons-EF`,
+           `Recall EF`, `Recall Consensus`,
+           `Precision EF`, `Precision Consensus`) %>%
+    mutate(dataset = rep('alarm',  nrow(alarm))),
+  df <- insurance %>%
+    select(`Number of samples`, `Fscore Cons-EF`,
+           `Recall EF`, `Recall Consensus`,
+           `Precision EF`, `Precision Consensus`) %>%
+    mutate(dataset = rep('insurance',  nrow(insurance))),
+  df <- barley %>%
+    select(`Number of samples`, `Fscore Cons-EF`,
+           `Recall EF`, `Recall Consensus`,
+           `Precision EF`, `Precision Consensus`) %>%
+    mutate(dataset = rep('barley',  nrow(barley)))
+  )
+  
+df %>%
+  mutate(FscoreConBetter = ifelse(`Fscore Cons-EF` > 0,
+                                  TRUE,
+                                  FALSE)) %>%
+  mutate(RecallConBetter = ifelse(`Recall Consensus` > `Recall EF`,
+                                  TRUE,
+                                  FALSE)) %>%
+  mutate(PrecisionConBetter = ifelse(`Precision Consensus` > `Precision EF`,
+                                  TRUE,
+                                  FALSE)) %>%
+  as_tibble -> df
+
+ggplot(data=df, aes(x=dataset,
+                    y=`Fscore Cons-EF`,
+                    fill=FscoreConBetter)) +
+  geom_bar(stat="identity", position = "stack") +
+  ggtitle('Comparison of F-score for all 216 simulations') +
+  scale_fill_discrete(name = "Consensus was superior") +
+  ylab("(F-score consensus) - (F-score Edge Filtering)")
+
+# Ordering facets
+df$dataset <- factor(df$dataset, levels=c("alarm", "insurance", "barley"))
+
+# F-score
+ggplot(data=df, aes(x=FscoreConBetter)) +
+  geom_histogram(stat="count", position = "stack", fill = "steelblue") +
+  ggtitle('Cases where consensus skeleton was better than edge filtering (F-score)') +
+  facet_grid(dataset ~ `Number of samples`) +
+  ylab("Number of simulations") + xlab("Consensus was superior?")
+
+# Recall
+ggplot(data=df, aes(x=RecallConBetter)) +
+  geom_histogram(stat="count", position = "stack", fill = "steelblue") +
+  ggtitle('Cases where consensus skeleton was better than edge filtering (Recall)') +
+  facet_grid(dataset ~ `Number of samples`) +
+  ylab("Number of simulations") + xlab("Consensus was superior?")
+
+# Precision
+ggplot(data=df, aes(x=PrecisionConBetter)) +
+  geom_histogram(stat="count", position = "stack", fill = "steelblue") +
+  ggtitle('Cases where consensus skeleton was better than edge filtering (Precision)') +
+  facet_grid(dataset ~ `Number of samples`) +
+  ylab("Number of simulations") + xlab("Consensus was superior?")
+
+```
+
+Proportion of cases where the F-score was better fon the consensus skeleton feature.
+```{r eval=TRUE, echo=TRUE}
+library(dplyr)
+# What is the proportion of cases where F-score was better for consensus?
+df %>%
+  group_by(dataset, `Number of samples`) %>%
+  summarise(n_consensus_better = sum(`Fscore Cons-EF`>0)) %>%
+  mutate(percent_consensus_better = n_consensus_better*100/24) %>%
+  arrange(-n_consensus_better)
+```
+
+Proportion of cases where the F-score was better for consensus or the same as the F-score of edge filtering.
+```{r eval=TRUE, echo=TRUE}
+# What is the proportion of cases where F-score was better for consensus or
+# just like the F-score of edge filtering?
+df %>%
+    group_by(dataset, `Number of samples`) %>%
+    summarise(n_consensus_better = sum(`Fscore Cons-EF`>=0)) %>%
+    mutate(percent_consensus_better = n_consensus_better*100/24) %>%
+    arrange(-n_consensus_better)
+```
