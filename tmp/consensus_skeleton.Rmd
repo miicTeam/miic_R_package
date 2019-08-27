@@ -1228,9 +1228,9 @@ as.data.frame(df)
 
 # Benchmarking
 
-The goal of this section is to apply MIIC in two different ways to data whose real network is known. I will first run MIIC with edge filtering and then MIIC with the consensus skeleton and measure which one got closer to the real network through F-score. We will start with the [ALARM](http://www.bnlearn.com/bnrepository/discrete-medium.html#alarm) network, then try with the [INSURANCE](http://www.bnlearn.com/bnrepository/discrete-medium.html#insurance) network which is a bit more complicated and then finally with the [BARLEY](http://www.bnlearn.com/bnrepository/discrete-medium.html#barley) network which is the most complicated of the three networks. The more parameters (number of possible values in the variables), the bigger the sample size required to have a representative understanding of the scenario. All the data and network information was obtained from [here](http://www.bnlearn.com/bnrepository/).
+The goal of this section is to apply MIIC in two different ways to data whose real network is known. I will first run MIIC with edge filtering and then MIIC with the consensus skeleton and measure which one got closer to the real network through the F-score metric. We will start with the [ALARM](http://www.bnlearn.com/bnrepository/discrete-medium.html#alarm) network, then try with the [INSURANCE](http://www.bnlearn.com/bnrepository/discrete-medium.html#insurance) network which is a bit more complicated and then finally with the [BARLEY](http://www.bnlearn.com/bnrepository/discrete-medium.html#barley) network which is the most complicated of the three networks. The more parameters (number of possible values in the variables), the bigger the sample size required to have a representative understanding of the scenario. All the data and network information was obtained from [here](http://www.bnlearn.com/bnrepository/).
 
-In order to generate samples, one must download the BIF object from the link above related to the chosen network. Then, run the code below, providing the number of samples (n parameter) you wish to generate (based on probability/metada information contained in the BIJ object).
+In order to generate samples, one must download the BIF object from the link above related to the chosen network. Then, run the code below, providing the number of samples (n parameter) you wish to generate (based on probability/metada information contained in the BIF object).
 
 ```{r eval=FALSE, echo=TRUE}
 library(bnlearn)
@@ -1269,7 +1269,8 @@ network <- bn.net(myBnNet)
 print(c(network$nodes$CATECHOL$parents, network$nodes$CATECHOL$children))
 ```
 
-In order to perform the simulations, I wrote a benchmark script (benchmark.R) whose code is shown below:
+In order to perform the simulations, I wrote a benchmark script (benchmark.R) whose code is shown below. I generated three cohorts for each of the three datasets. One with 100 samples, 1000 samples and 10,000 samples. Each simulation was run with confidence parameters from 50 to 100 (50, 60, 70, 80, 90, 100) and fraction parameters from 80 to 95 (80, 85, 90, 95) with a total of 24 simulations per sample size, 24x3 per dataset totalling 216 simulations for the three datasets. Confidence is how often among the resampling skeletons an edge must occur to be added to the consensus skeleton and fraction is the proportion of the undersampling from the original dataset.
+
 ```{r eval=FALSE, echo=TRUE}
 library(dplyr)
 library(ggplot2)
@@ -1407,11 +1408,11 @@ benchmark <- function(nSkeletons, consensus, fraction, seed=2019,
   rec_cons <- TP_cons/(TP_cons+FN_cons)
 
   # Calculate F-score miic_ef
-  Fscore_ef <- 2*(prec_ef*rec_ef)/(prec_ef+rec_ef)
+  F-score_ef <- 2*(prec_ef*rec_ef)/(prec_ef+rec_ef)
   # Calculate F-score miic_cons
-  Fscore_cons <- 2*(prec_cons*rec_cons)/(prec_cons+rec_cons)
+  F-score_cons <- 2*(prec_cons*rec_cons)/(prec_cons+rec_cons)
   # Calculate F-scores of miic_cons minus miic_ef
-  fscore_diff <- Fscore_cons - Fscore_ef
+  fscore_diff <- F-score_cons - F-score_ef
 
   if (!file.exists('percent_similarity.txt')) {
     write(paste0('True Positive EF', ',', 'True Positive Consensus', ',',
@@ -1419,7 +1420,7 @@ benchmark <- function(nSkeletons, consensus, fraction, seed=2019,
                  'False Negative EF', ',', 'False Negative Consensus', ',',
                  'Recall EF', ',', 'Recall Consensus', ',',
                  'Precision EF', ',', 'Precision Consensus', ',',
-                 'Fscore EF',  ',', 'Fscore Consensus', ',', 'Fscore Cons-EF',
+                 'F-score EF',  ',', 'F-score Consensus', ',', 'F-score Cons-EF',
                  ',', 'Number of samples', ',','Consensus %', ',',
                  'Number of Skeletons', ',', 'Fraction'),
           file="percent_similarity.txt")
@@ -1435,8 +1436,8 @@ benchmark <- function(nSkeletons, consensus, fraction, seed=2019,
                rec_cons, ',',
                prec_ef, ',',
                prec_cons, ',',
-               Fscore_ef, ',',
-               Fscore_cons, ',',
+               F-score_ef, ',',
+               F-score_cons, ',',
                fscore_diff, ',',
                nSamples, ',',
                consensus, ',',
@@ -1538,7 +1539,7 @@ library(plot3Drgl)
 library(plot3D)
 
 scatter3D(x=alarm$`Consensus %`, y=alarm$Fraction, z=alarm$`Fscore Cons-EF`,
-          clab=c("Fscore diff"), pch=19, ticktype = "detailed", bty = "b2", phi = 0,
+          clab=c("F-score diff"), pch=19, ticktype = "detailed", bty = "b2", phi = 0,
           xlab = c("% Consensus"), ylab = c("% Fraction"), zlab = c("F-score con - ef"))
 ```
 
@@ -1582,7 +1583,7 @@ library(plot3Drgl)
 library(plot3D)
 
 scatter3D(x=insurance$`Consensus %`, y=insurance$Fraction, z=insurance$`Fscore Cons-EF`,
-          clab=c("Fscore diff"), pch=19, ticktype = "detailed", bty = "b2", phi = 0,
+          clab=c("F-score diff"), pch=19, ticktype = "detailed", bty = "b2", phi = 0,
           xlab = c("% Consensus"), ylab = c("% Fraction"), zlab = c("F-score con - ef"))
 ```
 
@@ -1626,7 +1627,7 @@ library(plot3Drgl)
 library(plot3D)
 
 scatter3D(x=barley$`Consensus %`, y=barley$Fraction, z=barley$`Fscore Cons-EF`,
-          clab=c("Fscore diff"), pch=19, ticktype = "detailed", bty = "b2", phi = 0,
+          clab=c("F-score diff"), pch=19, ticktype = "detailed", bty = "b2", phi = 0,
           xlab = c("% Consensus"), ylab = c("% Fraction"), zlab = c("F-score con - ef"))
 ```
 
