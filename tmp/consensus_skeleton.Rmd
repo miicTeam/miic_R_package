@@ -1512,6 +1512,23 @@ done
 
 The output folder is actually a symbolic link to my Dropbox backup and therefore is not commited to the git repository. I decided to do it because the size of the files would make the git repository very heavy. Apart from the text files, there are plots (images).
 
+```{r eval=FALSE, echo=TRUE}
+# In order to have the same color for the same values in the following plots,
+# I had to find the global minimum and maxmium Fscore difference (Fcon - Fef)
+# and I did this in the snippet below, with the csv files loaded.
+color_min <- min(min(alarm$`Fscore Cons-EF`),
+                 min(insurance$`Fscore Cons-EF`),
+                 min(barley$`Fscore Cons-EF`))
+color_max <- max(max(alarm$`Fscore Cons-EF`),
+                  max(insurance$`Fscore Cons-EF`),
+                  max(barley$`Fscore Cons-EF`))
+# zlim was also defined like this, getting statically the max/min fscore diff.
+```
+```{r eval=TRUE, echo=TRUE}
+color_min = -0.26828
+color_max = 0.08257096
+```
+
 ## ALARM
 [ALARM](http://www.bnlearn.com/bnrepository/discrete-medium.html#alarm) is a discrete bayesian network of medium size to provide an alarm message system for patient monitoring with [37 variables](http://www.bnlearn.com/documentation/man/alarm.html) and 509 parameters (possible values).
 
@@ -1543,7 +1560,8 @@ library(plot3D)
 
 scatter3D(x=alarm$`Consensus %`, y=alarm$Fraction, z=alarm$`Fscore Cons-EF`,
           clab=c("F-score diff"), pch=19, ticktype = "detailed", bty = "b2", phi = 0,
-          xlab = c("% Consensus"), ylab = c("% Fraction"), zlab = c("F-score con - ef"))
+          xlab = c("% Consensus"), ylab = c("% Fraction"), zlab = c("F-score con - ef"),
+          zlim = c(-0.3,0.1), clim = c(color_min, color_max))
 ```
 
 ```{r eval=TRUE, echo=TRUE}
@@ -1590,7 +1608,8 @@ library(plot3D)
 
 scatter3D(x=insurance$`Consensus %`, y=insurance$Fraction, z=insurance$`Fscore Cons-EF`,
           clab=c("F-score diff"), pch=19, ticktype = "detailed", bty = "b2", phi = 0,
-          xlab = c("% Consensus"), ylab = c("% Fraction"), zlab = c("F-score con - ef"))
+          xlab = c("% Consensus"), ylab = c("% Fraction"), zlab = c("F-score con - ef"),
+          zlim = c(-0.3,0.1), clim = c(color_min, color_max))
 ```
 
 ```{r eval=TRUE, echo=TRUE}
@@ -1637,7 +1656,8 @@ library(plot3D)
 
 scatter3D(x=barley$`Consensus %`, y=barley$Fraction, z=barley$`Fscore Cons-EF`,
           clab=c("F-score diff"), pch=19, ticktype = "detailed", bty = "b2", phi = 0,
-          xlab = c("% Consensus"), ylab = c("% Fraction"), zlab = c("F-score con - ef"))
+          xlab = c("% Consensus"), ylab = c("% Fraction"), zlab = c("F-score con - ef"),
+          zlim = c(-0.3,0.1), clim = c(color_min, color_max))
 ```
 
 ```{r eval=TRUE, echo=TRUE}
