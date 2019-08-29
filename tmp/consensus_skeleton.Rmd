@@ -1524,7 +1524,10 @@ bind_rows(
     list.files(
       c("/home/mribeirodantas/dev/miic_r_package/tmp/data/output/alarm_100_samples",
         "/home/mribeirodantas/dev/miic_r_package/tmp/data/output/alarm_1000_samples",
-        "/home/mribeirodantas/dev/miic_r_package/tmp/data/output/alarm_10000_samples"),
+        "/home/mribeirodantas/dev/miic_r_package/tmp/data/output/alarm_10000_samples",
+        "/home/mribeirodantas/dev/miic_r_package/tmp/data/output/alarm_20000_samples",
+        "/home/mribeirodantas/dev/miic_r_package/tmp/data/output/alarm_100_samples_small_consensus/",
+        "/home/mribeirodantas/dev/miic_r_package/tmp/data/output/alarm_1000_samples_small_consensus/"),
       pattern = ".txt", 
       full.names = TRUE
     ),
@@ -1568,7 +1571,10 @@ bind_rows(
     list.files(
       c("/home/mribeirodantas/dev/miic_r_package/tmp/data/output/insurance_100_samples",
         "/home/mribeirodantas/dev/miic_r_package/tmp/data/output/insurance_1000_samples",
-        "/home/mribeirodantas/dev/miic_r_package/tmp/data/output/insurance_10000_samples"),
+        "/home/mribeirodantas/dev/miic_r_package/tmp/data/output/insurance_10000_samples",
+        "/home/mribeirodantas/dev/miic_r_package/tmp/data/output/insurance_20000_samples",
+        "/home/mribeirodantas/dev/miic_r_package/tmp/data/output/insurance_100_samples_small_consensus/",
+        "/home/mribeirodantas/dev/miic_r_package/tmp/data/output/insurance_1000_samples_small_consensus/"),
       pattern = ".txt", 
       full.names = TRUE
     ),
@@ -1612,7 +1618,10 @@ bind_rows(
     list.files(
       c("/home/mribeirodantas/dev/miic_r_package/tmp/data/output/barley_100_samples",
         "/home/mribeirodantas/dev/miic_r_package/tmp/data/output/barley_1000_samples",
-        "/home/mribeirodantas/dev/miic_r_package/tmp/data/output/barley_10000_samples"),
+        "/home/mribeirodantas/dev/miic_r_package/tmp/data/output/barley_10000_samples",
+        "/home/mribeirodantas/dev/miic_r_package/tmp/data/output/barley_20000_samples",
+        "/home/mribeirodantas/dev/miic_r_package/tmp/data/output/barley_100_samples_small_consensus/",
+        "/home/mribeirodantas/dev/miic_r_package/tmp/data/output/barley_1000_samples_small_consensus/"),
       pattern = ".txt", 
       full.names = TRUE
     ),
@@ -1667,7 +1676,7 @@ df <- bind_rows(
            `Precision EF`, `Precision Consensus`) %>%
     mutate(dataset = rep('barley',  nrow(barley)))
   )
-  
+
 df %>%
   mutate(FscoreConBetter = ifelse(`Fscore Cons-EF` > 0,
                                   TRUE,
@@ -1680,16 +1689,18 @@ df %>%
                                   FALSE)) %>%
   as_tibble -> df
 
+# Ordering facets
+df$dataset <- factor(df$dataset, levels=c("alarm", "insurance", "barley"))
+
 ggplot(data=df, aes(x=dataset,
                     y=`Fscore Cons-EF`,
                     fill=FscoreConBetter)) +
   geom_bar(stat="identity", position = "stack") +
-  ggtitle('Comparison of F-score for all 216 simulations') +
+  ggtitle(paste('Comparison of F-score for all',
+  nrow(df),
+  'simulations')) +
   scale_fill_discrete(name = "Consensus was superior") +
   ylab("(F-score consensus) - (F-score Edge Filtering)")
-
-# Ordering facets
-df$dataset <- factor(df$dataset, levels=c("alarm", "insurance", "barley"))
 
 # F-score
 ggplot(data=df, aes(x=FscoreConBetter)) +
@@ -1719,10 +1730,12 @@ Proportion of cases where the F-score was better fon the consensus skeleton feat
 library(dplyr)
 # What is the proportion of cases where F-score was better for consensus?
 df %>%
-  group_by(dataset, `Number of samples`) %>%
-  summarise(n_consensus_better = sum(`Fscore Cons-EF`>0)) %>%
-  mutate(percent_consensus_better = n_consensus_better*100/24) %>%
-  arrange(-n_consensus_better)
+    group_by(dataset, `Number of samples`) %>%
+    summarise(n_consensus_better = sum(`Fscore Cons-EF` > 0)) %>%
+    mutate(percent_consensus_better = ifelse(`Number of samples` %in% c(100, 1000),
+                                             n_consensus_better*100/40,
+                                             n_consensus_better*100/24)) %>%
+    arrange(dataset)
 ```
 
 Proportion of cases where the F-score was better for consensus or the same as the F-score of edge filtering.
@@ -1732,6 +1745,8 @@ Proportion of cases where the F-score was better for consensus or the same as th
 df %>%
     group_by(dataset, `Number of samples`) %>%
     summarise(n_consensus_better = sum(`Fscore Cons-EF`>=0)) %>%
-    mutate(percent_consensus_better = n_consensus_better*100/24) %>%
-    arrange(-n_consensus_better)
+    mutate(percent_consensus_better = ifelse(`Number of samples` %in% c(100, 1000),
+                                             n_consensus_better*100/40,
+                                             n_consensus_better*100/24)) %>%
+    arrange(dataset)
 ```
