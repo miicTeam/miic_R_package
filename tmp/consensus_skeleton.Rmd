@@ -1570,11 +1570,11 @@ library(dplyr)
 
 scatterplot3js(x = alarm$`Consensus %`, y = alarm$Fraction,
                z = alarm$`Fscore Cons-EF`,
-               color = rainbow(length(alarm$`Fscore Cons-EF`)),
+               color = rep("#FF0000", 500),
                main=paste("Hover mouse over dots to check data point information"),
                labels=paste(alarm$`Consensus %`,
                                      alarm$Fraction,
-                                     alarm$`Fscore Cons-EF`, ' '), size=0.5)
+                                     alarm$`Fscore Cons-EF`, ' '), size=0.3)
 ```
 
 ## INSURANCE
@@ -1618,11 +1618,11 @@ library(dplyr)
 
 scatterplot3js(x = insurance$`Consensus %`, y = insurance$Fraction,
                z = insurance$`Fscore Cons-EF`,
-               color = rainbow(length(insurance$`Fscore Cons-EF`)),
+               color = rep("#FF0000", 500),
                main=paste("Hover mouse over dots to check data point information"),
                labels=paste(insurance$`Consensus %`,
                                      insurance$Fraction,
-                                     insurance$`Fscore Cons-EF`, ' '), size=0.5)
+                                     insurance$`Fscore Cons-EF`, ' '), size=0.3)
 ```
 
 ## BARLEY
@@ -1666,11 +1666,11 @@ library(dplyr)
 
 scatterplot3js(x = barley$`Consensus %`, y = barley$Fraction,
                z = barley$`Fscore Cons-EF`,
-               color = rainbow(length(barley$`Fscore Cons-EF`)),
+               color = rep("#FF0000", 500),
                main=paste("Hover mouse over dots to check data point information"),
                labels=paste(barley$`Consensus %`,
                                      barley$Fraction,
-                                     barley$`Fscore Cons-EF`, ' '), size=0.5)
+                                     barley$`Fscore Cons-EF`, ' '), size=0.)3
 ```
 
 ## Overview
