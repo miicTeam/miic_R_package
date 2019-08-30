@@ -1525,6 +1525,7 @@ color_max <- max(max(alarm$`Fscore Cons-EF`),
 # zlim was also defined like this, getting statically the max/min fscore diff.
 ```
 ```{r eval=TRUE, echo=TRUE}
+# I hard coded below the min and max values for colors
 color_min = -0.26828
 color_max = 0.08257096
 ```
@@ -1553,6 +1554,7 @@ bind_rows(
 ) -> alarm
 ```
 
+The "F-score diff" mentioned in the plot below is the difference between the F-score of the inference with consensus skeleton and the F-score of the inference with edge filtering. A value bigger or equal to zero for "F-scoore diff" means that the consensus skeleton approach was better or just the same as the edge filtering one.
 ```{r eval=TRUE, echo=TRUE}
 library(dplyr)
 library(plot3Drgl)
@@ -1564,6 +1566,7 @@ scatter3D(x=alarm$`Consensus %`, y=alarm$Fraction, z=alarm$`Fscore Cons-EF`,
           zlim = c(-0.3,0.1), clim = c(color_min, color_max))
 ```
 
+When you hover the mouse over the point in the plot below, you will be provided with three values. It's the consensus (%), the fraction for undersampling and the difference between the F-score for consensus skeleton and edge filtering.
 ```{r eval=TRUE, echo=TRUE}
 library(threejs)
 library(dplyr)
@@ -1574,7 +1577,8 @@ scatterplot3js(x = alarm$`Consensus %`, y = alarm$Fraction,
                main=paste("Hover mouse over dots to check data point information"),
                labels=paste(alarm$`Consensus %`,
                                      alarm$Fraction,
-                                     alarm$`Fscore Cons-EF`, ' '), size=0.3)
+                                     alarm$`Fscore Cons-EF`, ' '), size=0.3,
+               axisLabels=c("Consensus", "Fraction", "Fscore Cons-EF"))
 ```
 
 ## INSURANCE
@@ -1601,6 +1605,7 @@ bind_rows(
 ) -> insurance
 ```
 
+The "F-score diff" mentioned in the plot below is the difference between the F-score of the inference with consensus skeleton and the F-score of the inference with edge filtering. A value bigger or equal to zero for "F-scoore diff" means that the consensus skeleton approach was better or just the same as the edge filtering one.
 ```{r eval=TRUE, echo=TRUE}
 library(dplyr)
 library(plot3Drgl)
@@ -1612,6 +1617,7 @@ scatter3D(x=insurance$`Consensus %`, y=insurance$Fraction, z=insurance$`Fscore C
           zlim = c(-0.3,0.1), clim = c(color_min, color_max))
 ```
 
+When you hover the mouse over the point in the plot below, you will be provided with three values. It's the consensus (%), the fraction for undersampling and the difference between the F-score for consensus skeleton and edge filtering.
 ```{r eval=TRUE, echo=TRUE}
 library(threejs)
 library(dplyr)
@@ -1622,7 +1628,8 @@ scatterplot3js(x = insurance$`Consensus %`, y = insurance$Fraction,
                main=paste("Hover mouse over dots to check data point information"),
                labels=paste(insurance$`Consensus %`,
                                      insurance$Fraction,
-                                     insurance$`Fscore Cons-EF`, ' '), size=0.3)
+                                     insurance$`Fscore Cons-EF`, ' '), size=0.3,
+               axisLabels=c("Consensus", "Fraction", "Fscore Cons-EF"))
 ```
 
 ## BARLEY
@@ -1649,6 +1656,7 @@ bind_rows(
 ) -> barley
 ```
 
+The "F-score diff" mentioned in the plot below is the difference between the F-score of the inference with consensus skeleton and the F-score of the inference with edge filtering. A value bigger or equal to zero for "F-scoore diff" means that the consensus skeleton approach was better or just the same as the edge filtering one.
 ```{r eval=TRUE, echo=TRUE}
 library(dplyr)
 library(plot3Drgl)
@@ -1660,6 +1668,7 @@ scatter3D(x=barley$`Consensus %`, y=barley$Fraction, z=barley$`Fscore Cons-EF`,
           zlim = c(-0.3,0.1), clim = c(color_min, color_max))
 ```
 
+When you hover the mouse over the point in the plot below, you will be provided with three values. It's the consensus (%), the fraction for undersampling and the difference between the F-score for consensus skeleton and edge filtering.
 ```{r eval=TRUE, echo=TRUE}
 library(threejs)
 library(dplyr)
@@ -1670,7 +1679,8 @@ scatterplot3js(x = barley$`Consensus %`, y = barley$Fraction,
                main=paste("Hover mouse over dots to check data point information"),
                labels=paste(barley$`Consensus %`,
                                      barley$Fraction,
-                                     barley$`Fscore Cons-EF`, ' '), size=0.)3
+                                     barley$`Fscore Cons-EF`, ' '), size=0.3,
+               axisLabels=c("Consensus", "Fraction", "Fscore Cons-EF"))
 ```
 
 ## Overview
