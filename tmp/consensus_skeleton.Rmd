@@ -1545,7 +1545,8 @@ bind_rows(
         "/home/mribeirodantas/dev/miic_r_package/tmp/data/output/alarm_10000_samples",
         "/home/mribeirodantas/dev/miic_r_package/tmp/data/output/alarm_20000_samples",
         "/home/mribeirodantas/dev/miic_r_package/tmp/data/output/alarm_100_samples_small_consensus/",
-        "/home/mribeirodantas/dev/miic_r_package/tmp/data/output/alarm_1000_samples_small_consensus/"),
+        "/home/mribeirodantas/dev/miic_r_package/tmp/data/output/alarm_1000_samples_small_consensus/",
+        "/home/mribeirodantas/dev/miic_r_package/tmp/data/output/alarm_10000_samples_small_consensus/"),
       pattern = ".txt", 
       full.names = TRUE
     ),
@@ -1578,7 +1579,7 @@ scatterplot3js(x = alarm$`Consensus %`, y = alarm$Fraction,
                labels=paste(alarm$`Consensus %`,
                                      alarm$Fraction,
                                      alarm$`Fscore Cons-EF`, ' '), size=0.3,
-               axisLabels=c("Consensus", "Fraction", "Fscore Cons-EF"))
+               axisLabels=c("Consensus", "Fscore Cons-EF", "Fraction"))
 ```
 
 ## INSURANCE
@@ -1596,7 +1597,8 @@ bind_rows(
         "/home/mribeirodantas/dev/miic_r_package/tmp/data/output/insurance_10000_samples",
         "/home/mribeirodantas/dev/miic_r_package/tmp/data/output/insurance_20000_samples",
         "/home/mribeirodantas/dev/miic_r_package/tmp/data/output/insurance_100_samples_small_consensus/",
-        "/home/mribeirodantas/dev/miic_r_package/tmp/data/output/insurance_1000_samples_small_consensus/"),
+        "/home/mribeirodantas/dev/miic_r_package/tmp/data/output/insurance_1000_samples_small_consensus/",
+        "/home/mribeirodantas/dev/miic_r_package/tmp/data/output/insurance_10000_samples_small_consensus/"),
       pattern = ".txt", 
       full.names = TRUE
     ),
@@ -1629,7 +1631,7 @@ scatterplot3js(x = insurance$`Consensus %`, y = insurance$Fraction,
                labels=paste(insurance$`Consensus %`,
                                      insurance$Fraction,
                                      insurance$`Fscore Cons-EF`, ' '), size=0.3,
-               axisLabels=c("Consensus", "Fraction", "Fscore Cons-EF"))
+               axisLabels=c("Consensus", "Fscore Cons-EF", "Fraction"))
 ```
 
 ## BARLEY
@@ -1647,7 +1649,8 @@ bind_rows(
         "/home/mribeirodantas/dev/miic_r_package/tmp/data/output/barley_10000_samples",
         "/home/mribeirodantas/dev/miic_r_package/tmp/data/output/barley_20000_samples",
         "/home/mribeirodantas/dev/miic_r_package/tmp/data/output/barley_100_samples_small_consensus/",
-        "/home/mribeirodantas/dev/miic_r_package/tmp/data/output/barley_1000_samples_small_consensus/"),
+        "/home/mribeirodantas/dev/miic_r_package/tmp/data/output/barley_1000_samples_small_consensus/",
+        "/home/mribeirodantas/dev/miic_r_package/tmp/data/output/barley_10000_samples_small_consensus/"),
       pattern = ".txt", 
       full.names = TRUE
     ),
@@ -1680,7 +1683,7 @@ scatterplot3js(x = barley$`Consensus %`, y = barley$Fraction,
                labels=paste(barley$`Consensus %`,
                                      barley$Fraction,
                                      barley$`Fscore Cons-EF`, ' '), size=0.3,
-               axisLabels=c("Consensus", "Fraction", "Fscore Cons-EF"))
+               axisLabels=c("Consensus", "Fscore Cons-EF", "Fraction"))
 ```
 
 ## Overview
@@ -1833,6 +1836,13 @@ ggplot(data=df2, aes(x=dataset,
   'simulations where Consensus % < 50')) +
   scale_fill_discrete(name = "Consensus was superior") +
   ylab("(F-score consensus) - (F-score Edge Filtering)")
+
+# F-score
+ggplot(data=df2, aes(x=FscoreConBetter)) +
+  geom_histogram(stat="count", position = "stack", fill = "steelblue") +
+  ggtitle('Cases where consensus skeleton was better than edge filtering (F-score)') +
+  facet_grid(dataset ~ `Number of samples`) +
+  ylab("Number of simulations") + xlab("Consensus was superior?")
 
 # Recall
 ggplot(data=df2, aes(x=RecallConBetter)) +
