@@ -1714,10 +1714,19 @@ df %>%
   mutate(FscoreConBetter = ifelse(`Fscore Cons-EF` > 0,
                                   TRUE,
                                   FALSE)) %>%
+  mutate(FscoreEFBetter = ifelse(`Fscore Cons-EF` < 0,
+                                  TRUE,
+                                  FALSE)) %>%
   mutate(RecallConBetter = ifelse(`Recall Consensus` > `Recall EF`,
                                   TRUE,
                                   FALSE)) %>%
+  mutate(RecallEFBetter = ifelse(`Recall EF` > `Recall Consensus`,
+                                  TRUE,
+                                  FALSE)) %>%
   mutate(PrecisionConBetter = ifelse(`Precision Consensus` > `Precision EF`,
+                                  TRUE,
+                                  FALSE)) %>%
+  mutate(PrecisionEFBetter = ifelse(`Precision EF` > `Precision Consensus`,
                                   TRUE,
                                   FALSE)) %>%
   as_tibble -> df
@@ -1756,6 +1765,15 @@ ggplot(data=df, aes(x=PrecisionConBetter)) +
   facet_grid(dataset ~ `Number of samples`) +
   ylab("Number of simulations") + xlab("Consensus was superior?")
 
+```
+
+Fscore, recall and precision comparison between consensus and edge filtering. The first row shows number of cases
+where they achieved the same performance, the second row shows cases where one outperformed the other and vice
+versa for the third row.
+```{r eval=TRUE, echo=TRUE}
+df %>% group_by(FscoreConBetter, FscoreEFBetter) %>% summarise(n = n())
+df %>% group_by(RecallConBetter, RecallEFBetter) %>% summarise(n = n())
+df %>% group_by(PrecisionConBetter, PrecisionEFBetter) %>% summarise(n = n())
 ```
 
 Proportion of cases where the F-score was better fon the consensus skeleton feature.
