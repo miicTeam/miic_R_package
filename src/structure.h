@@ -41,19 +41,39 @@ struct EdgeStructure {
 	int z_name_idx; // index of the last best contributor
 	std::vector<int> ui_vect_idx; // index of ui
 	std::vector<int> zi_vect_idx; // index of ui
-	int Nxyz_ui; // Ixy_uiz of the best z
 	double Rxyz_ui; // score of the best contributor
-	// string key;
+
 	double Ixy_ui;
 	double cplx;
 	int Nxy_ui;
 	short int status;
-
-	// double Ixyz_ui;
-	// double kxyz_ui;
+	// Keeping track of jointCounts (discrete) and jointSpace(continuous) for KL divergence when
+	//adding Us to the conditioning set.
+	double mutInfo;  // mutual information without conditioning
+	double cplx_noU;  // complexity without conditioning
+	int Nxy;  // count of joint factors without NA
 
 	std::vector<int> indexStruct; // memorize the corresponding structure in the structures list in the environment by its index
 	std::vector<int> edgesInSpeTpl_list; // memorize the index of open structures
+
+public:
+	EdgeStructure():
+		z_name_idx(-1),
+		ui_vect_idx(std::vector<int>()),
+		zi_vect_idx(std::vector<int>()),
+		Rxyz_ui(0.0),
+
+		Ixy_ui(0.0),
+		cplx(0.0),
+		status(-1),
+		Nxy_ui(-1),
+		mutInfo(0.0),
+		cplx_noU(0.0),
+		Nxy(-1),
+
+		indexStruct(std::vector<int>()),
+		edgesInSpeTpl_list(std::vector<int>())
+	{}
 };
 
 struct Node{
@@ -83,10 +103,6 @@ struct Edge{
 	short int isConnectedAfterInitialization;
 	short int areNeighboursAfterIteration;
 	EdgeStructure* edgeStructure;
-	// Keeping track of jointCounts (discrete) and jointSpace(continuous) for KL divergence when
-	//adding Us to the conditioning set.
-	double mutInfo;
-	double cplx_noU;
 };
 
 //
@@ -95,6 +111,7 @@ struct Edge{
 struct Environment {
 	ExecutionTime execTime;
 	bool consistentPhase;
+	bool iterationStepEven;
 	// for gaussian case
 	double** rho;
 	double* standardDeviations;
@@ -180,9 +197,6 @@ struct Environment {
 	int cplx;
 	int halfVStructures;
 
-	bool isSkeletonConsistent;
-	int countSearchMore;
-
 	int numberShuffles; // -s parameter
 	double confidenceThreshold; // -e parameter
 
@@ -202,46 +216,5 @@ struct Environment {
 	std::vector<Struct*> globalListOfStruct;
 	std::vector<int> vstructWithContradiction;
 };
-
-struct Container {
-	Environment* environment;
-	int start;
-	int stop;
-	bool printProgress;
-
-	MemorySpace m;
-};
-
-struct ContainerInit {
-	Environment* environment;
-	int i;
-	int j;
-	int steps;
-
-	MemorySpace m;
-};
-
-struct ContainerIterCont {
-	Environment* environment;
-	int start;
-	int stop;
-	bool printProgress;
-	int cplx;
-	int* ziContPosIdx;
-	int* myZi;
-	int myNbrUi;
-	int* posArray;
-
-	int myVarIdxX;
-	int myVarIdxY;
-
-	int** cut;
-	int* r;
-
-	double* scoresZ;
-
-	MemorySpace m;
-};
-
 
 #endif

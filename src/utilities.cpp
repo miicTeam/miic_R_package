@@ -1,3 +1,5 @@
+#include "utilities.h"
+
 #include <fstream>
 #include <sstream>
 #include <string>
@@ -5,7 +7,6 @@
 #include <cstdlib>
 #include <iostream>
 #include <map>
-//#include <algorithm>
 #include <cassert>
 #include <math.h>
 #include <sys/stat.h>
@@ -19,7 +20,6 @@
 
 #include "nanoflann.hpp"
 #include "KDTreeVectorOfVectorsAdaptor.h"
-#include "utilities.h"
 #include "computeInfo.h"
 
 //for memory space on continuous data
@@ -418,62 +418,6 @@ void createMemorySpace(Environment& environment, MemorySpace& m){
 	}
 }
 
-// bool createMemorySpaceThreads(Environment& environment, ContainerMemory& m){
-
-	// int maxLevel = 0;
-	// for(uint i =0; i<environment.numNodes; i++)
-	// 	if(environment.allLevels[i] > maxLevel)
-	// 		maxLevel = environment.allLevels[i];
-
-	// // cout<< "samples" << environment.numSamples << endl;
-	// int nrow=environment.numSamples+1;
-	// int sampleSize = environment.numSamples;
-	// int ncol=7;
-	// int bin_max=maxLevel;
-	// int iii;
-
-
-	// m.sortedSample = (int **)calloc(nrow, sizeof(int*));
-	// for(iii = 0; iii < nrow; iii++)
-	//  	m.sortedSample[iii] = (int *)calloc(ncol, sizeof(int));
-
-
-	// m.Nxuiz = (int **)calloc(bin_max+1, sizeof(int*));
-	// for(iii = 0; iii < bin_max+1; iii++)
-	// 	m.Nxuiz[iii] = (int *)calloc(bin_max+1, sizeof(int));
-
-
-	// m.Pxyuiz = (double *)calloc((bin_max+1), sizeof(double));
-
-	// m.Nyuiz = (int *)calloc((bin_max+1), sizeof(int));
-	// m.Nuiz = (int *)calloc((bin_max+1), sizeof(int));
-	// m.Nz = (int *)calloc((bin_max+1), sizeof(int));
-
-	// m.Ny = (int *)calloc((bin_max+1), sizeof(int));
-	// m.Nxui = (int *)calloc((bin_max+1), sizeof(int));
-	// m.Nx = (int *)calloc((bin_max+1), sizeof(int));
-	// m.bridge = (int *)calloc(sampleSize+2, sizeof(int));
-
-	// // FOR THREADS
-	// if(environment.atLeastOneContinuous){
-	// 	m.samplesToEvaluate = (int *) new int[environment.numSamples];
-	// 	m.samplesToEvaluateTemplate = (int *) new int[environment.numSamples];
-
-
-	// 	m.dataNumericIdx_red = (int **) new int*[(MAX_NBRUI +3)];
-	// 	m.dataNumeric_red = (int **) new int*[(MAX_NBRUI +3)];
-
-	// 	for(int j = 0; (j < MAX_NBRUI +3); j++){
-	// 		m.dataNumericIdx_red[j] =(int *) new int[environment.numSamples];
-	// 		m.dataNumeric_red[j] =(int *) new int[environment.numSamples];
-	// 	}
-
-	// 	m.AllLevels_red =(int *) new int[(MAX_NBRUI +3)];
-	// 	m.cnt_red = (int *) new int[(MAX_NBRUI +3)];
-	// 	m.posArray_red = (int *) new int[(MAX_NBRUI +3)];
-	// }
-// }
-
 
 void deleteMemorySpace(Environment& environment, MemorySpace& m){
 	if(environment.atLeastTwoDiscrete){
@@ -687,9 +631,9 @@ bool SortFunction(const XJAddress* a, const XJAddress* b, const Environment& env
 }
 
 class sorter {
-	  Environment &environment;
+	  const Environment& environment;
 		public:
-	  sorter(Environment& env) : environment(env) {}
+	  sorter(const Environment& env) : environment(env) {}
 	  bool operator()(XJAddress const* o1, XJAddress const* o2) const {
 			return SortFunction(o1, o2, environment );
 	  }
@@ -805,7 +749,7 @@ void saveAdjMatrixState(const Environment& environment, const string filename){
 /*
  * Transform a vector to a string
  */
-string vectorToStringNodeName(Environment& environment, const vector<int> vec){
+string vectorToStringNodeName(const Environment& environment, const vector<int> vec){
 	stringstream ss;
 	int length = vec.size();
 	if(length > 0){
@@ -847,7 +791,7 @@ string arrayToString1(const double* int_array, const int length){
   	return ss.str();
 }
 
-string zNameToString(Environment& environment, vector<int> vec, int pos){
+string zNameToString(const Environment& environment, vector<int> vec, int pos){
 	stringstream ss;
 	if(pos != -1)
 		ss << environment.nodes[vec[pos]].name;
@@ -1082,7 +1026,7 @@ bool isInteger(const string &s)
 
 
 
-bool readData(Environment &environment, bool& isNA){
+bool readData(Environment& environment, bool& isNA){
 /*
  * Read data matrix from file
  */
@@ -1562,7 +1506,7 @@ bool parseCommandLine(Environment& environment, int argc, char** argv) {
 			case 'c':{
 				environment.cplxType.append(optarg);
 
-				if((environment.cplxType.compare("mdl")!=0) & (environment.cplxType.compare("nml")!=0)){
+				if(environment.cplxType.compare("mdl")!=0 & environment.cplxType.compare("nml")!=0){
 					cout << "[ERR] Wrong complexity check option!\n";
 					exit(1);
 				} else if(environment.cplxType.compare("mdl") == 0){
@@ -1813,7 +1757,6 @@ void setEnvironment(Environment& environment){
 		readFileType(environment);
 	}
 
-
 	environment.sampleWeights = new double[environment.numSamples];
 	if(environment.sampleWeightsVec[0] != -1){
 		for(uint i=0; i<environment.numSamples; i++){
@@ -1894,7 +1837,6 @@ void setEnvironment(Environment& environment){
 	}
 
 	environment.initbins = min(30, int(0.5+cbrt(environment.numSamples)));
-
 
 	// for mixed
 	//if(environment.atLeastOneContinuous){

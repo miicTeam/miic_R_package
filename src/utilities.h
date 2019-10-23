@@ -15,8 +15,7 @@ bool existsTest(const std::string&);
 bool checkNA(int**, int, int);
 void saveAdjMatrix(const Environment&, const std::string);
 void saveAdjMatrixState(const Environment&, const std::string);
-void saveEdgesListAsTable(const Environment&, const std::string);
-std::vector< std::vector <std::string> > saveEdgesListAsTable1(Environment&);
+std::vector< std::vector <std::string> > saveEdgesListAsTable(Environment&);
 void saveExecTime(const Environment&, const std::string);
 double findAvg(const Environment&, double**, int);
 std::string arrayToString(Environment&, const int* , const int );
@@ -48,13 +47,13 @@ double get_cpu_time();
 double ramanujan(int n);
 int printProgress (double percentage, double startTime, string outdir, int prg_numSearchMore);
 //KL divergence functions
-//double compute_kl_divergence_continuous(double** space1, double** space2, int n1, int n2, int ndims, int k, 
+//double compute_kl_divergence_continuous(double** space1, double** space2, int n1, int n2, int ndims, int k,
 //										bool* flag_break_ties, int* map_samples);
-//double compute_kl_divergence_continuous(double* dist1, double* dist2, int n1, int n2, int k, 
+//double compute_kl_divergence_continuous(double* dist1, double* dist2, int n1, int n2, int k,
 //										bool flag_break_ties, int* map_samples);
 //double compute_k_nearest_distance(double* point, double** space, int ndims, int n, int k);
 //double compute_k_nearest_distance(double point, double* dist, int n, int k);
-double compute_kl_divergence(int* posArray, Environment& environment, int samplesNotNA, int** dataNumeric_red, 
+double compute_kl_divergence(int* posArray, Environment& environment, int samplesNotNA, int** dataNumeric_red,
 							 int* AllLevels_red, int* samplesToEvaluate);
 
 // static double igf(double S, double Z);
