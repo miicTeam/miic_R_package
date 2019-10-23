@@ -1,3 +1,5 @@
+#include "skeleton.h"
+
 #include <iostream>
 #include <fstream>
 #include <sstream>
@@ -144,92 +146,26 @@ extern "C" SEXP skeleton(SEXP inputDataR, SEXP typeOfDataR, SEXP cntVarR, SEXP n
 	long double spentTime = (get_wall_time() - startTime);
 	environment.execTime.init = spentTime;
 	if( environment.isVerbose == true ){ cout << "\n# ----> First contributing node elapsed time:" << spentTime << "sec\n\n"; }
-	
 
-	if(!firstStepIteration(environment)) return(empty_results());
-	if( environment.numNoMore == 0 && environment.numSearchMore == 0 ) { 
-		if( environment.isVerbose == true ){ cout << "# ------| Only phantom edges found.\n"; }
-	} else if( environment.numSearchMore > 0 ) {
-	
-		//// Search for other Contributing node(s) (possible only for the edges still in 'searchMore', ie. 2)
-		if( environment.isVerbose == true ){ cout << "\n# ---- Other Contributing node(s) ----\n\n"; }
-		startTime = get_wall_time();
-			
-		if(!skeletonIteration(environment)) return(empty_results());
-		long double spentTime = (get_wall_time() - startTime);
-		environment.execTime.iter = spentTime;
-		environment.execTime.initIter = environment.execTime.init + environment.execTime.iter;
-	}
-	// delete memory
-	for(uint i = 0; i < environment.nThreads; i++){
-		deleteMemorySpace(environment, environment.memoryThreads[i]);
-	}
-	delete [] environment.memoryThreads;
-	cout << endl;
-
-	int NEdgesBeforeIter = environment.numNoMore;
 	int maxConsistentIter = 10;
-	
-	//run of the skeleton iteration phase for the consistent part
-	if(environment.consistentPhase){
-
-		cout << "\n======	Consistent phase iterations	=====" << endl;
-		do{
-			cout << "Consistent phase " << maxConsistentIter-10 << " (maximum 10)" << endl;
-			int count = 0;
-			//save the neighbours in the areNeighboursAfterIteration structure
-			for(uint i = 0; i < environment.numNodes; i++){
-				for(uint j = 0; j < environment.numNodes; j++){
-					environment.edges[i][j].areNeighboursAfterIteration = environment.edges[i][j].isConnected;
-					if(environment.edges[i][j].areNeighboursAfterIteration)
-						count++;
-				}
+	//run the skeleton iteration phase if consistency is required
+	environment.iterationStepEven = true;
+	auto cycle_tracker = CycleTracker(environment);
+	do{
+		environment.iterationStepEven = !environment.iterationStepEven;
+		//save the neighbours in the areNeighboursAfterIteration structure
+		//and return back with structures at the moment of initialization
+		for(int i = 0; i < environment.numNodes; i++){
+			for(int j = 0; j < environment.numNodes; j++){
+				environment.edges[i][j].areNeighboursAfterIteration = environment.edges[i][j].isConnected;
+				environment.edges[i][j].isConnected = environment.edges[i][j].isConnectedAfterInitialization;
 			}
 
-            bool graph_is_consistent = true;
-			for(uint i = 0; i < environment.numNodes - 1; i++){
-				for(uint j = i + 1; j < environment.numNodes; j++){
-                    if (!environment.edges[i][j].isConnectedAfterInitialization || environment.edges[i][j].edgeStructure->status != 1)
-                        continue;
-                    if (!is_consistent(environment, i, j, environment.edges[i][j].edgeStructure->ui_vect_idx))
-                        graph_is_consistent = false;
-                }
-            }
-            if (graph_is_consistent && maxConsistentIter == 10)
-                break;
-
-			//return back with structures at the moment of initialization
-			environment.countSearchMore = 0;
-			for(uint i = 0; i < environment.numNodes; i++){
-				for(uint j = 0; j < environment.numNodes; j++){
-					environment.edges[i][j].isConnected = environment.edges[i][j].isConnectedAfterInitialization; 
-					if(environment.edges[i][j].isConnected && i>j)
-						environment.countSearchMore++;
-				}
-			}
-
-			for(uint i = 0; i < environment.numNodes - 1; i++){
-				for(uint j = i + 1; j < environment.numNodes; j++){
-					environment.edges[i][j].edgeStructure->zi_vect_idx.clear();
-					environment.edges[i][j].edgeStructure->ui_vect_idx.clear();
-					environment.edges[i][j].edgeStructure->z_name_idx = -1;
-					environment.edges[i][j].edgeStructure->Rxyz_ui = 0;
-				}
-			}
-
-			for(uint i = 0; i < environment.searchMoreAddress.size(); i++){
-				delete  environment.searchMoreAddress[i];
-			}
-
-			for(uint i = 0; i < environment.noMoreAddress.size(); i++){
-				delete  environment.noMoreAddress[i];
-			}
-
-			environment.noMoreAddress.clear();
-			environment.searchMoreAddress.clear();
-
-			firstStepIteration(environment);
-
+		firstStepIteration(environment);
+		if (environment.numNoMore == 0 && environment.numSearchMore == 0) {
+			if (environment.isVerbose == true)
+				cout << "# ------| Only phantom edges found.\n";
+		} else if (environment.numSearchMore > 0) {
 			//// Search for other Contributing node(s) (possible only for the edges still in 'searchMore', ie. 2)
 			if( environment.isVerbose == true ){ cout << "\n# ---- Other Contributing node(s) ----\n\n"; }
 			startTime = get_wall_time();
@@ -239,10 +175,20 @@ extern "C" SEXP skeleton(SEXP inputDataR, SEXP typeOfDataR, SEXP cntVarR, SEXP n
 			long double spentTime = (get_wall_time() - startTime);
 			environment.execTime.iter = spentTime;
 			environment.execTime.initIter = environment.execTime.init + environment.execTime.iter;
-			maxConsistentIter --;
-		} while(skeletonChanged(environment) && maxConsistentIter>0);
-		cout << "Returning consistent graph with " << environment.numNoMore << " edges (" << NEdgesBeforeIter << " before consistency checks)." << endl;
+		}
+		cout << "Number of edges: " << environment.numNoMore << endl;
+		maxConsistentIter --;
+	} while (environment.consistentPhase && !cycle_tracker.hasCycle());
+
+	int union_n_edges = 0;
+	for(int i = 0; i < environment.numNodes -1; i++){
+		for(int j = i+1; j < environment.numNodes; j++){
+			if(environment.edges[i][j].isConnected){
+				union_n_edges ++;
+			}
+		}
 	}
+	environment.numNoMore = union_n_edges;
 
 
 	startTime = get_wall_time();
@@ -299,4 +245,91 @@ extern "C" SEXP skeleton(SEXP inputDataR, SEXP typeOfDataR, SEXP cntVarR, SEXP n
 	deleteStruct(environment);
 
     return result;
+}
+
+bool CycleTracker::hasCycle() {
+    uint n_edge = env_.numNoMore;
+    // before saving the current iteration, search among previous iterations
+    // those with the same number of edges
+    auto range = edge_index_map_.equal_range(n_edge);
+    bool no_cycle_found = range.first == range.second;
+    // indices of iteration that is possibly the end point of a cycle
+    // example: suppose that iteration #1, #3, #6 have the same
+    // number of edges as the current iteration, and each of them is a
+    // possible start point of a cycle, therefore #2, #4, #7 are the
+    // corresponding possible end points of the cycle.
+    std::deque<uint> iter_indices;
+    for (auto it = range.first; it != range.second; ++it)
+        iter_indices.push_back(it->second + 1);
+    // save the current iteration
+    saveIteration();
+    if (no_cycle_found)
+        return false;
+    // backtracking requires starting from the largest index first
+    std::sort(iter_indices.begin(), iter_indices.end(), std::greater<uint>());
+    // set of edges that are to be marked as connected
+    std::set<uint> edges_union;
+    // check if an edge is changed. vector is chosen over map for
+    // quicker access and simpler syntax, at the cost of extra memory trace
+    // and (possible) extra time complexity (in practice there are very few
+    // changes between each pair of iterations).
+    std::vector<uint> changed(env_.numNodes * (env_.numNodes - 1) / 2, 0);
+    // vector keeping track of index of the iteration with maximum information
+    // initialized to the last iteration (push_front)
+    std::vector<EdgeInfo> max_info(env_.numNodes * (env_.numNodes - 1) / 2);
+    // backtracking over iteration to get changed_edges
+    uint cycle_size = 0;
+    for (auto& iter : iterations_) {
+        ++cycle_size;
+        if (cycle_size > max_cycle_size) {
+            // FIXME: decide what to do if cycle_size > max_cycle_size
+            std::cout << "cycle size out of limit size: "
+                << max_cycle_size << '\n';
+            return true;
+        }
+        for (auto& k : iter.changed_edges) {
+            edges_union.insert(k);
+            // changed twice == unchanged
+            changed[k] = 1 - changed[k];
+            // set max_info for each edge
+            if (max_info[k].is_empty ||
+                    iter.edge_info_list[k].Ixy_ui - iter.edge_info_list[k].cplx
+                    > max_info[k].Ixy_ui - max_info[k].cplx) {
+                max_info[k] = iter.edge_info_list[k];
+            }
+        }
+        if (iter.index != iter_indices.front())
+            continue;
+        iter_indices.pop_front();
+        // if any edge has been changed
+        if (std::any_of(changed.begin(), changed.end(),
+                    [](uint j){ return j != 0;})) {
+            // no cycle
+            if (iter_indices.empty())
+                break;
+            continue;
+        }
+        for (auto& k : edges_union)
+            setEdgeState(k, max_info[k]);
+
+        std::cout << "cycle found of size " << cycle_size << std::endl;
+        return true;
+    }
+    return false;
+}
+
+void CycleTracker::setEdgeState(edge_index_1d index, const EdgeInfo& edge_info) {
+    std::pair<uint, uint> p = getEdgeIndex2D(index);
+    env_.edges[p.first][p.second].isConnected = true;
+    env_.edges[p.second][p.first].isConnected = true;
+    EdgeStructure& eij = *(env_.edges[p.first][p.second].edgeStructure);
+    EdgeStructure& eji = *(env_.edges[p.second][p.first].edgeStructure);
+    // ugly but avoid touching Edge or EdgeStructure class
+    eij.Ixy_ui = edge_info.Ixy_ui;
+    eij.cplx = edge_info.cplx;
+    eij.Nxy_ui = edge_info.Nxy_ui;
+
+    eji.Ixy_ui = edge_info.Ixy_ui;
+    eji.cplx = edge_info.cplx;
+    eji.Nxy_ui = edge_info.Nxy_ui;
 }
