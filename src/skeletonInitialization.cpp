@@ -96,8 +96,6 @@ int initEdgeElt(Environment& environment, int i, int j, MemorySpace& m){
 
 bool skeletonInitialization(Environment& environment){
 
-	createMemorySpace(environment, environment.m);
-
 	environment.oneLineMatrix = new int[environment.numSamples*environment.numNodes];
 	for(uint i = 0; i < environment.numSamples;i++){
 		for(uint j = 0; j < environment.numNodes;j++){

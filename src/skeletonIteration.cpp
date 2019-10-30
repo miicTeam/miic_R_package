@@ -104,6 +104,10 @@ void searchAndSetZi(Environment& environment, const int posX, const int posY){
 bool firstStepIteration(Environment& environment){
 	//cout << "End of couples: " << endl;
 
+	// During first step iteration, search for U contributors is not parallelizable
+	// see flag "parallelizable" in computeEnsInformationContinuous() l. 1118 in computeEnsInformation.cpp
+	environment.firstIterationDone = false;
+
 	if(environment.isVerbose)
 		cout << "Number of searchMore: " << environment.countSearchMore << endl;
 

@@ -128,6 +128,7 @@ extern "C" SEXP skeleton(SEXP inputDataR, SEXP typeOfDataR, SEXP cntVarR, SEXP n
 	for(uint i = 0; i < environment.nThreads; i++){
 		createMemorySpace(environment, environment.memoryThreads[i]);
 	}
+	createMemorySpace(environment, environment.m);
 
 
 	if(!skeletonInitialization(environment))
@@ -160,12 +161,6 @@ extern "C" SEXP skeleton(SEXP inputDataR, SEXP typeOfDataR, SEXP cntVarR, SEXP n
 		environment.execTime.iter = spentTime;
 		environment.execTime.initIter = environment.execTime.init + environment.execTime.iter;
 	}
-	// delete memory
-	for(uint i = 0; i < environment.nThreads; i++){
-		deleteMemorySpace(environment, environment.memoryThreads[i]);
-	}
-	delete [] environment.memoryThreads;
-	cout << endl;
 
 	int NEdgesBeforeIter = environment.numNoMore;
 	int maxConsistentIter = 10;
@@ -175,7 +170,7 @@ extern "C" SEXP skeleton(SEXP inputDataR, SEXP typeOfDataR, SEXP cntVarR, SEXP n
 
 		cout << "\n======	Consistent phase iterations	=====" << endl;
 		do{
-			cout << "Consistent phase " << maxConsistentIter-10 << " (maximum 10)" << endl;
+			cout << "Consistent phase " << 10-maxConsistentIter << " (maximum 10)" << endl;
 			int count = 0;
 			//save the neighbours in the areNeighboursAfterIteration structure
 			for(uint i = 0; i < environment.numNodes; i++){
@@ -186,7 +181,7 @@ extern "C" SEXP skeleton(SEXP inputDataR, SEXP typeOfDataR, SEXP cntVarR, SEXP n
 				}
 			}
 
-            bool graph_is_consistent = true;
+            bool graph_is_consistent = false;
 			for(uint i = 0; i < environment.numNodes - 1; i++){
 				for(uint j = i + 1; j < environment.numNodes; j++){
                     if (!environment.edges[i][j].isConnectedAfterInitialization || environment.edges[i][j].edgeStructure->status != 1)
@@ -295,6 +290,9 @@ extern "C" SEXP skeleton(SEXP inputDataR, SEXP typeOfDataR, SEXP cntVarR, SEXP n
 	    ) ;
 	}
 
+	for(uint i = 0; i < environment.nThreads; i++){
+		deleteMemorySpace(environment, environment.memoryThreads[i]);
+	}
 	deleteMemorySpace(environment, environment.m);
 	deleteStruct(environment);
 
