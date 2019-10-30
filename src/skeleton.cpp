@@ -160,6 +160,7 @@ extern "C" SEXP skeleton(SEXP inputDataR, SEXP typeOfDataR, SEXP cntVarR, SEXP n
 				environment.edges[i][j].areNeighboursAfterIteration = environment.edges[i][j].isConnected;
 				environment.edges[i][j].isConnected = environment.edges[i][j].isConnectedAfterInitialization;
 			}
+        }
 
 		firstStepIteration(environment);
 		if (environment.numNoMore == 0 && environment.numSearchMore == 0) {
@@ -207,7 +208,7 @@ extern "C" SEXP skeleton(SEXP inputDataR, SEXP typeOfDataR, SEXP cntVarR, SEXP n
 
 	if( environment.numNoMore > 0){
 		cout << "Saving results for orientation..." << flush;
-		edgesMatrix = saveEdgesListAsTable1(environment);
+		edgesMatrix = saveEdgesListAsTable(environment);
 		cout << " done." << endl;
 	}
 

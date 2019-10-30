@@ -834,7 +834,7 @@ bool readBlackbox1(vector<string> v, Environment& environment){
 	return true;
 }
 
-vector< vector <string> > saveEdgesListAsTable1(Environment& environment){
+vector< vector <string> > saveEdgesListAsTable(Environment& environment){
 
 	vector< vector <string> > data;
 

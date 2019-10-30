@@ -1373,7 +1373,6 @@ void SearchForNewContributingNodeAndItsRank(Environment& environment, const int 
 			//// Doing this way, we make sure that the z.name has the right bin xyzi key
 			environment.edges[posX][posY].edgeStructure->z_name_idx = vect[3];
 			environment.edges[posX][posY].edgeStructure->Rxyz_ui = vect[6];
-			environment.edges[posX][posY].edgeStructure->Nxyz_ui = vect[3];
 			free(vect);
 
 
@@ -1394,7 +1393,6 @@ void SearchForNewContributingNodeAndItsRank(Environment& environment, const int 
 
 			//// The order matters: set first the z.name.idx, than get the corresponding zi from the original vect
 			//// Doing this way, we make sure that the z.name has the right bin xyzi key
-			environment.edges[posX][posY].edgeStructure->Nxyz_ui = vect[0];
 			environment.edges[posX][posY].edgeStructure->z_name_idx = vect[1];
 			environment.edges[posX][posY].edgeStructure->Rxyz_ui = vect[2];
 
@@ -1608,7 +1606,6 @@ if(test){
 		//environment.edges[posX][posY].edgeStructure->z_name = environment.nodes[z_name_idx];
 
 		environment.edges[posX][posY].edgeStructure->Rxyz_ui = score_vect[myZiBest_idx];
-		environment.edges[posX][posY].edgeStructure->Nxyz_ui = Ixy_uiz[myZiBest_idx];
 
 	} else if(environment.isVerbose) {
 		cout << "# --!!--> Rxyz_ui.tmp = " << score_vect[myZiBest_idx] << " < Rxyz_ui = " << environment.edges[posX][posY].edgeStructure->Rxyz_ui << "\n";

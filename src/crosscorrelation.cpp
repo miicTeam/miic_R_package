@@ -17,6 +17,7 @@
 #define FIRSTCOLUMN 0  // 1=first column corresponds to sample name/number
 using namespace std;
 using namespace Rcpp;
+using uint=unsigned int;
 
 /////////////////////////////////////////////////////////////////////////////////////
 //  ------------------           FUNCTIONS                 ---------------------
