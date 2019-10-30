@@ -418,63 +418,6 @@ void createMemorySpace(Environment& environment, MemorySpace& m){
 	}
 }
 
-// bool createMemorySpaceThreads(Environment& environment, ContainerMemory& m){
-
-	// int maxLevel = 0;
-	// for(uint i =0; i<environment.numNodes; i++)
-	// 	if(environment.allLevels[i] > maxLevel)
-	// 		maxLevel = environment.allLevels[i];
-
-	// // cout<< "samples" << environment.numSamples << endl;
-	// int nrow=environment.numSamples+1;
-	// int sampleSize = environment.numSamples;
-	// int ncol=7;
-	// int bin_max=maxLevel;
-	// int iii;
-
-
-	// m.sortedSample = (int **)calloc(nrow, sizeof(int*));
-	// for(iii = 0; iii < nrow; iii++)
-	//  	m.sortedSample[iii] = (int *)calloc(ncol, sizeof(int));
-
-
-	// m.Nxuiz = (int **)calloc(bin_max+1, sizeof(int*));
-	// for(iii = 0; iii < bin_max+1; iii++)
-	// 	m.Nxuiz[iii] = (int *)calloc(bin_max+1, sizeof(int));
-
-
-	// m.Pxyuiz = (double *)calloc((bin_max+1), sizeof(double));
-
-	// m.Nyuiz = (int *)calloc((bin_max+1), sizeof(int));
-	// m.Nuiz = (int *)calloc((bin_max+1), sizeof(int));
-	// m.Nz = (int *)calloc((bin_max+1), sizeof(int));
-
-	// m.Ny = (int *)calloc((bin_max+1), sizeof(int));
-	// m.Nxui = (int *)calloc((bin_max+1), sizeof(int));
-	// m.Nx = (int *)calloc((bin_max+1), sizeof(int));
-	// m.bridge = (int *)calloc(sampleSize+2, sizeof(int));
-
-	// // FOR THREADS
-	// if(environment.atLeastOneContinuous){
-	// 	m.samplesToEvaluate = (int *) new int[environment.numSamples];
-	// 	m.samplesToEvaluateTemplate = (int *) new int[environment.numSamples];
-
-
-	// 	m.dataNumericIdx_red = (int **) new int*[(MAX_NBRUI +3)];
-	// 	m.dataNumeric_red = (int **) new int*[(MAX_NBRUI +3)];
-
-	// 	for(int j = 0; (j < MAX_NBRUI +3); j++){
-	// 		m.dataNumericIdx_red[j] =(int *) new int[environment.numSamples];
-	// 		m.dataNumeric_red[j] =(int *) new int[environment.numSamples];
-	// 	}
-
-	// 	m.AllLevels_red =(int *) new int[(MAX_NBRUI +3)];
-	// 	m.cnt_red = (int *) new int[(MAX_NBRUI +3)];
-	// 	m.posArray_red = (int *) new int[(MAX_NBRUI +3)];
-	// }
-// }
-
-
 void deleteMemorySpace(Environment& environment, MemorySpace& m){
 	if(environment.atLeastTwoDiscrete){
 		int maxLevel = 0;
@@ -1789,6 +1732,7 @@ void setEnvironment(Environment& environment){
 	environment.atLeastTwoGaussian = 0;
 	environment.atLeastTwoDiscrete = 0;
 	environment.atLeastOneContinuous = 0;
+	environment.flag_sample_weights = false;
 
 	// environment.globalListOfStruct.clear();
 	// environment.vstructWithContradiction.clear();
@@ -1813,17 +1757,22 @@ void setEnvironment(Environment& environment){
 		readFileType(environment);
 	}
 
+	//// Set the effN if not already done
+	if(environment.effN == -1  || environment.effN > environment.numSamples)
+		environment.effN = environment.numSamples;
 
 	environment.sampleWeights = new double[environment.numSamples];
 	if(environment.sampleWeightsVec[0] != -1){
 		for(uint i=0; i<environment.numSamples; i++){
 			environment.sampleWeights[i] = environment.sampleWeightsVec[i];
 		}
+		environment.flag_sample_weights = true;
 	}
-	else{
+	else if (environment.effN != environment.numSamples) {
 		for(uint i = 0; i < environment.numSamples; i++){
 			environment.sampleWeights[i] = (environment.effN*1.0)/environment.numSamples;
 		}
+		environment.flag_sample_weights = true;
 	}
 
 	int count = 0;
@@ -1863,9 +1812,6 @@ void setEnvironment(Environment& environment){
 			transformToFactorsContinuous(environment, i); //update environment.dataNumeric not taking into account repetition
 	}
 
-	if(environment.effN > environment.numSamples)
-		environment.effN = environment.numSamples;
-
 	// for continuous non gaussian
 	if(environment.atLeastOneContinuous){
 
@@ -1876,10 +1822,6 @@ void setEnvironment(Environment& environment){
 			}
 		}
 	}
-
-	//// Set the effN if not already done
-	if(environment.effN == -1 )
-		environment.effN = environment.numSamples;
 
 	//// Set a variables with all properties name and levels
 	setNumberLevels(environment);

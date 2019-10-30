@@ -128,7 +128,7 @@ extern "C" SEXP skeleton(SEXP inputDataR, SEXP typeOfDataR, SEXP cntVarR, SEXP n
 	for(uint i = 0; i < environment.nThreads; i++){
 		createMemorySpace(environment, environment.memoryThreads[i]);
 	}
-	
+
 
 	if(!skeletonInitialization(environment))
 	{
@@ -139,22 +139,22 @@ extern "C" SEXP skeleton(SEXP inputDataR, SEXP typeOfDataR, SEXP cntVarR, SEXP n
 	    ) ;
 	    return result;
 	}
-	
+
 	// ----
 	long double spentTime = (get_wall_time() - startTime);
 	environment.execTime.init = spentTime;
 	if( environment.isVerbose == true ){ cout << "\n# ----> First contributing node elapsed time:" << spentTime << "sec\n\n"; }
-	
+
 
 	if(!firstStepIteration(environment)) return(empty_results());
-	if( environment.numNoMore == 0 && environment.numSearchMore == 0 ) { 
+	if( environment.numNoMore == 0 && environment.numSearchMore == 0 ) {
 		if( environment.isVerbose == true ){ cout << "# ------| Only phantom edges found.\n"; }
 	} else if( environment.numSearchMore > 0 ) {
-	
+
 		//// Search for other Contributing node(s) (possible only for the edges still in 'searchMore', ie. 2)
 		if( environment.isVerbose == true ){ cout << "\n# ---- Other Contributing node(s) ----\n\n"; }
 		startTime = get_wall_time();
-			
+
 		if(!skeletonIteration(environment)) return(empty_results());
 		long double spentTime = (get_wall_time() - startTime);
 		environment.execTime.iter = spentTime;
@@ -169,7 +169,7 @@ extern "C" SEXP skeleton(SEXP inputDataR, SEXP typeOfDataR, SEXP cntVarR, SEXP n
 
 	int NEdgesBeforeIter = environment.numNoMore;
 	int maxConsistentIter = 10;
-	
+
 	//run of the skeleton iteration phase for the consistent part
 	if(environment.consistentPhase){
 
@@ -202,7 +202,7 @@ extern "C" SEXP skeleton(SEXP inputDataR, SEXP typeOfDataR, SEXP cntVarR, SEXP n
 			environment.countSearchMore = 0;
 			for(uint i = 0; i < environment.numNodes; i++){
 				for(uint j = 0; j < environment.numNodes; j++){
-					environment.edges[i][j].isConnected = environment.edges[i][j].isConnectedAfterInitialization; 
+					environment.edges[i][j].isConnected = environment.edges[i][j].isConnectedAfterInitialization;
 					if(environment.edges[i][j].isConnected && i>j)
 						environment.countSearchMore++;
 				}
@@ -294,7 +294,7 @@ extern "C" SEXP skeleton(SEXP inputDataR, SEXP typeOfDataR, SEXP cntVarR, SEXP n
 			_["interrupted"] = false
 	    ) ;
 	}
-	
+
 	deleteMemorySpace(environment, environment.m);
 	deleteStruct(environment);
 

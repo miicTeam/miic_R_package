@@ -93,7 +93,7 @@ void reset_cutpoints(int** cut, int nbrUi, int* ptr_cnt, int* ptrVarIdx, int ini
 //inline __attribute__((always_inline))
 void optfun_onerun_kmdl_coarse(int *sortidx_var, int *data, int nbrV, int **factors, int *r, double sc,
                                int sc_levels1, int previous_levels, int n, int nnr, int *cut, int *r_opt,
-                               Environment& environment, bool flag_efN)
+                               Environment& environment)
 /*  DYNAMIC PROGRAMMING OPTIMIZATION FUNCTION
  *
  *  Takes as input the factors and joint factors and optimizes a variable by maximizing a given information.
@@ -205,6 +205,8 @@ void optfun_onerun_kmdl_coarse(int *sortidx_var, int *data, int nbrV, int **fact
     for(uint i = 0; i < np; i++){
 
         ir=0;//iterator on not repeated values
+        if(environment.flag_sample_weights && i > 0) sum_sample_weights[i] = sum_sample_weights[i-1];
+
         while((ir<coarse) && (njforward<n)){
 
             level_marginal = factors[1][sortidx_var[njforward]];
@@ -212,7 +214,7 @@ void optfun_onerun_kmdl_coarse(int *sortidx_var, int *data, int nbrV, int **fact
             coarse_counts_marginal(i, level_marginal) ++;
             coarse_counts_joint(i, level_joint) ++;
 
-            if(flag_efN) sum_sample_weights[i] += environment.sampleWeights[njforward];
+            if(environment.flag_sample_weights) sum_sample_weights[i] += environment.sampleWeights[njforward];
             if(njforward+1 < n){//check no repetition
                 ir += int(check_repet[njforward]);
             }
@@ -234,19 +236,19 @@ void optfun_onerun_kmdl_coarse(int *sortidx_var, int *data, int nbrV, int **fact
 
         njforward = n_values[j];
         ef_nj = sum_sample_weights[j];
-        if(flag_efN) efN_factor = ef_nj / njforward;
+        if(environment.flag_sample_weights) efN_factor = ef_nj / njforward;
         coarse_counts_joint.add_row(counts[0],j);
         coarse_counts_marginal.add_row(counts[1],j);
 
         Hk_kj[0]=0; //joint
         Hk_kj[1]=0; //marginal
         for(int level=0; level<r[0]; level++){
-            weighted_count = flag_efN ? int(efN_factor * counts[0][level] + 0.5) : counts[0][level];
+            weighted_count = environment.flag_sample_weights ? int(efN_factor * counts[0][level] + 0.5) : counts[0][level];
             Hk_kj[0] += environment.lookH[weighted_count];
         }
 
         for(int level=0; level<r[1]; level++){
-            weighted_count = flag_efN ? int(efN_factor * counts[1][level] + 0.5) : counts[1][level];
+            weighted_count = environment.flag_sample_weights ? int(efN_factor * counts[1][level] + 0.5) : counts[1][level];
             Hk_kj[1] -= environment.lookH[weighted_count];
 
             if(environment.cplx==0 && counts[1][level]>0) Hk_kj[1] -= sc * environment.looklog[n];
@@ -278,22 +280,22 @@ void optfun_onerun_kmdl_coarse(int *sortidx_var, int *data, int nbrV, int **fact
         for(uint k=0;k<j;k++){//k=1...n-2 possible cuts
 
             nkforward = n_values[k];
-            ef_nk = sum_sample_weights[k];
-            if(flag_efN) efN_factor = ef_nk / (njforward-nkforward);
+            ef_nk = sum_sample_weights[j] - sum_sample_weights[k];
+            if(environment.flag_sample_weights) efN_factor = ef_nk / (njforward-nkforward);
             coarse_counts_marginal.subtract_row(counts_k[1],k);
             coarse_counts_joint.subtract_row(counts_k[0],k);
 
             Hk_kj[0]=0;
             for(int level=0; level<r[0]; level++){
 
-                weighted_count = flag_efN ? int(efN_factor * counts_k[0][level] + 0.5) : counts_k[0][level];
+                weighted_count = environment.flag_sample_weights ? int(efN_factor * counts_k[0][level] + 0.5) : counts_k[0][level];
                 Hk_kj[0] += environment.lookH[weighted_count];//j_efN * nxyu_k[m][xyu]*looklog[int(j_efN * nxyu_k[m][xyu] + 0.5)];
             }
 
             Hk_kj[1]=0;
             for(int level=0; level<r[1]; level++){
 
-                weighted_count = flag_efN ? int(efN_factor * counts_k[1][level] + 0.5) : counts_k[1][level];
+                weighted_count = environment.flag_sample_weights ? int(efN_factor * counts_k[1][level] + 0.5) : counts_k[1][level];
                 Hk_kj[1] -= environment.lookH[weighted_count];//j_efN * nxyu_k[m][xyu]*looklog[int(j_efN * nxyu_k[m][xyu] + 0.5)];
 
                 if(environment.cplx==0 && counts_k[1][level]>0) Hk_kj[1] -= sc * environment.looklog[n];
@@ -357,7 +359,6 @@ double* compute_Ixy_alg1(int** data, int** sortidx, int* ptr_cnt, int* ptrVarIdx
     double** lookchoose = environment.lookchoose;
     double* looklog = environment.looklog;
     int cplx = environment.cplx;
-    bool flag_effN = environment.numSamples != environment.effN;
 
     int j,l,ll;
 
@@ -571,7 +572,7 @@ double* compute_Ixy_alg1(int** data, int** sortidx, int* ptr_cnt, int* ptrVarIdx
             // Optimization run on X.
             optfun_onerun_kmdl_coarse(sortidx[ptrVarIdx[0]], data[ptrVarIdx[0]], 2, factors1, rt1,
                                       sc, sc_levels1, sc_levels2, n, AllLevels[ptrVarIdx[0]], cut[0], &(r[0]),
-                                      environment, flag_effN); // 2 factors
+                                      environment); // 2 factors
         }
 
         ////////////////////////////////////////////////
@@ -598,7 +599,7 @@ double* compute_Ixy_alg1(int** data, int** sortidx, int* ptr_cnt, int* ptrVarIdx
             // Optimization run on Y.
             optfun_onerun_kmdl_coarse(sortidx[ptrVarIdx[1]], data[ptrVarIdx[1]],2, factors1, rt1, sc,
                                       sc_levels1, sc_levels2, n, AllLevels[ptrVarIdx[1]], cut[1], &(r[1]),
-                                      environment, flag_effN); // 2 factors
+                                      environment); // 2 factors
         }
 
         //////////////////////////////////////////
@@ -738,7 +739,6 @@ double* compute_Ixy_cond_u_new_alg1(int** data, int** sortidx, int* ptr_cnt, int
     double* lookH = environment.lookH;
     int cplx = environment.cplx;
     double* sample_weights = environment.sampleWeights;
-    bool flag_effN = environment.numSamples != environment.effN;
 
 
     int j,l,ll;
@@ -953,7 +953,7 @@ double* compute_Ixy_cond_u_new_alg1(int** data, int** sortidx, int* ptr_cnt, int
                     // Run optimization on U.
                     optfun_onerun_kmdl_coarse(sortidx[ptrVarIdx[l+2]], data[ptrVarIdx[l+2]], 2, factors1, rt1,
                                               sc, sc_levels1, sc_levels2, n, AllLevels[ptrVarIdx[l+2]], cut[l+2],
-                                              &(r[l+2]), environment, flag_effN); // 2 factors
+                                              &(r[l+2]), environment); // 2 factors
 
                     //update_datafactors(sortidx, ptrVarIdx[l+2], datafactors, l+2, n, cut); //moved outside of U loop
                 }
@@ -1020,7 +1020,7 @@ double* compute_Ixy_cond_u_new_alg1(int** data, int** sortidx, int* ptr_cnt, int
             // Run optimization on X.
             optfun_onerun_kmdl_coarse(sortidx[ptrVarIdx[0]], data[ptrVarIdx[0]], 2, factors1, rt1,
                                       sc, sc_levels1, sc_levels2, n, AllLevels[ptrVarIdx[0]], cut[0],
-                                      &(r[0]), environment, flag_effN); // 2 factors
+                                      &(r[0]), environment); // 2 factors
 
             //update_datafactors(sortidx, ptrVarIdx[0], datafactors, 0, n, cut); //moved to after Y opt
         }
@@ -1059,7 +1059,7 @@ double* compute_Ixy_cond_u_new_alg1(int** data, int** sortidx, int* ptr_cnt, int
                     // Run optimization on U.
                     optfun_onerun_kmdl_coarse(sortidx[ptrVarIdx[l+2]], data[ptrVarIdx[l+2]], 2, factors1, rt1,
                                               sc, sc_levels1, sc_levels2, n, AllLevels[ptrVarIdx[l+2]], cut[l+2],
-                                              &(r[l+2]), environment, flag_effN); // 2 factors
+                                              &(r[l+2]), environment); // 2 factors
 
                     //update_datafactors(sortidx, ptrVarIdx[l+2], datafactors, l+2, n, cut); //moved to outside U loop
                 }
@@ -1120,7 +1120,7 @@ double* compute_Ixy_cond_u_new_alg1(int** data, int** sortidx, int* ptr_cnt, int
             // Run optimization on Y.
             optfun_onerun_kmdl_coarse(sortidx[ptrVarIdx[1]], data[ptrVarIdx[1]], 2, factors1, rt1,
                                       sc, sc_levels1, sc_levels2, n, AllLevels[ptrVarIdx[1]], cut[1],
-                                      &(r[1]), environment, flag_effN); // 2 factors
+                                      &(r[1]), environment); // 2 factors
 
             //update_datafactors(sortidx, ptrVarIdx[1], datafactors, 1, n, cut); //moved to end of loop1
         }
@@ -1155,7 +1155,7 @@ double* compute_Ixy_cond_u_new_alg1(int** data, int** sortidx, int* ptr_cnt, int
                     //optimization run on ptrVarIdx[l+2]
                     optfun_onerun_kmdl_coarse(sortidx[ptrVarIdx[l+2]], data[ptrVarIdx[l+2]], 2, factors1, rt1,
                                               sc, sc_levels1, sc_levels2, n, AllLevels[ptrVarIdx[l+2]], cut[l+2],
-                                              &(r[l+2]), environment, flag_effN); // 2 factors //herve
+                                              &(r[l+2]), environment); // 2 factors //herve
 
                     //update_datafactors(sortidx, ptrVarIdx[l+2], datafactors, l+2, n, cut);
                     }
@@ -1218,7 +1218,7 @@ double* compute_Ixy_cond_u_new_alg1(int** data, int** sortidx, int* ptr_cnt, int
                     //optimization run on ptrVarIdx[l+2]
                     optfun_onerun_kmdl_coarse(sortidx[ptrVarIdx[l+2]], data[ptrVarIdx[l+2]], 2, factors1, rt1,
                                               sc, sc_levels1, sc_levels2, n, AllLevels[ptrVarIdx[l+2]], cut[l+2],
-                                              &(r[l+2]), environment, flag_effN); //2 factors
+                                              &(r[l+2]), environment); //2 factors
 
                     //update_datafactors(sortidx, ptrVarIdx[l+2], datafactors, l+2, n, cut);
                 }

@@ -38,6 +38,9 @@
 #' @param Neff [an int]
 #' The number of effective samples. When there is significant autocorrelation in the samples you may
 #' want to specify a number of effective samples that is lower than the number of points in the distribution.
+#' @param sample_weights [a vector of floats]
+#' Individual weights for each sample, used for the same reason as the effective sample number but with individual
+#' precision.
 #' @param is_discrete [a vector of booleans]
 #' Specify if each variable is to be treated as discrete (TRUE) or continuous (FALSE) in a
 #' logical vector of length ncol(matrixU)+2, in the order [X, Y, U1, U2...]. By default,
@@ -92,8 +95,8 @@
 #'}
 
 
-discretizeMutual <- function(X, Y, matrixU=NULL, maxbins=NULL,
-                             cplx="nml", Neff = NULL, is_discrete=NULL, plot=T)
+discretizeMutual <- function(X, Y, matrixU=NULL, maxbins=NULL, cplx="nml", Neff = NULL,
+                             sample_weights = NULL, is_discrete=NULL, plot=T)
 {
     nameDist1 = deparse(substitute(X))
     nameDist2 = deparse(substitute(Y))
@@ -106,8 +109,7 @@ discretizeMutual <- function(X, Y, matrixU=NULL, maxbins=NULL,
     }
 
     if(is.null(is_discrete)){
-        is_discrete = c((is.character(X) || is.factor(X)))
-        is_discrete = c(is_discrete, (is.character(Y) || is.factor(Y)))
+        is_discrete = c((is.character(X) || is.factor(X)), (is.character(Y) || is.factor(Y)))
         if(nbrU > 0){
             for(z in 1:nbrU){
                 is_discrete = c(is_discrete, (is.character(matrixU[,z]) || is.factor(matrixU[,z])))
@@ -118,21 +120,24 @@ discretizeMutual <- function(X, Y, matrixU=NULL, maxbins=NULL,
     if(all(is_discrete[1:2])) stop("Either X or Y must be continuous to be discretized.")
 
     if ( !is.vector(X) || !is.vector(Y) ) {
-        if( (is_discrete[1] && !is.factor(X)) || (is_discrete[2] && !is.factor(Y)) )
-            stop("Please provide the two samples X and Y as vectors for continuous variables and factors for discrete variables.")
+        if( (!is_discrete[1]) || (!is_discrete[2] ) )
+            stop("Please provide the two samples X and Y as numerical vectors for continuous variables and factors or character vectors for discrete variables.")
     }
 
     if ( length(X) != length(Y) ){
-        stop(paste("The two samples must have the same number of observation (", length(X), "vs",length(Y), ")."))
+        stop(paste("The two samples must have the same number of observation (found", length(X), "and",length(Y), ")."))
+    }
+
+    if((!is.null(sample_weights)) && (length(sample_weights) != length(X)) ){
+        stop(paste("The sample weight vector must be of the same length as the number of observations (found", length(sample_weights), "while there are",length(X), "observations)."))
     }
 
     if ( (!is.null(matrixU) && !is.matrix(matrixU)) || (!is.null(matrixU) && nrow(matrixU) != length(X)) ) {
         stop("matrixU is not a matrix or its number of rows differs from the number of observations.")
     }
 
-
     if ( !is.null(is_discrete) && ( length(is_discrete) != (2+nbrU)) ){
-        stop("The vector passed as is_discrete argument must have the same length as the number of variables, which is ncol(matrixU)+2.")
+        stop("The vector passed as is_discrete argument must be the same length as the number of variables, which is ncol(matrixU)+2.")
     }
 
     initbins = NULL
@@ -215,6 +220,10 @@ discretizeMutual <- function(X, Y, matrixU=NULL, maxbins=NULL,
         Neff = length(X)
     }
 
+    if(is.null(sample_weights)){
+        sample_weights = rep(-1, length(X))
+    }
+
     # Number of unique values for each input
     nlevels=numeric(nbrU+2)
     for(i in 1:(nbrU+2)){
@@ -226,7 +235,7 @@ discretizeMutual <- function(X, Y, matrixU=NULL, maxbins=NULL,
     # Call cpp code
     if (base::requireNamespace("Rcpp", quietly = TRUE)) {
         rescpp <- .Call('mydiscretizeMutual', X, Y, flatU, nbrU, maxbins, initbins, intcplx,
-                        cnt_vec, nlevels, Neff, PACKAGE = "miic")
+                        cnt_vec, nlevels, Neff, sample_weights, PACKAGE = "miic")
     }
     niterations = nrow(rescpp$cutpointsmatrix)/maxbins
 
@@ -235,7 +244,7 @@ discretizeMutual <- function(X, Y, matrixU=NULL, maxbins=NULL,
     result$niterations = niterations
     for(i in 0:(niterations-1)){
             result[[paste0("iteration",i+1)]] = list()
-        for(l in 1:(nbrU+2)){
+        for(l in 1:2){
             if(!is_discrete[l]){
                 clean_cutpoints = rescpp$cutpointsmatrix[,l][(maxbins*i)+(1:maxbins)]
                 clean_cutpoints = clean_cutpoints[clean_cutpoints != -1]

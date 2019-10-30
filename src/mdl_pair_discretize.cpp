@@ -119,7 +119,8 @@ void transformToFactorsContinuousIdx(int** dataNumeric, int** dataNumericIdx, in
 }
 
 extern "C" SEXP mydiscretizeMutual(SEXP RmyDist1, SEXP RmyDist2, SEXP RflatU, SEXP RnbrU, SEXP RmaxBins,
-                                   SEXP Rinitbin, SEXP Rcplx, SEXP Rcnt_vec, SEXP Rnlevels, SEXP ReffN){
+                                   SEXP Rinitbin, SEXP Rcplx, SEXP Rcnt_vec, SEXP Rnlevels, SEXP ReffN,
+                                   SEXP RsampleWeights){
 
     std::vector<double> myDist1Vec = Rcpp::as< vector <double> >(RmyDist1);
     std::vector<double> myDist2Vec = Rcpp::as< vector <double> >(RmyDist2);
@@ -395,16 +396,25 @@ extern "C" SEXP mydiscretizeMutual(SEXP RmyDist1, SEXP RmyDist2, SEXP RflatU, SE
     }
   }
 
-  double* sample_weights;
-  if(effN != n){
-      sample_weights = new double[n];
-      for(int i=0; i<n; i++) sample_weights[i] = double(effN)/n;
-  }
-  else{
-      sample_weights = NULL;
-  }
-
   ::Environment environment;
+
+  environment.flag_sample_weights = effN != n;
+
+  environment.sampleWeightsVec = Rcpp::as< vector <double> > (RsampleWeights);
+	environment.sampleWeights = new double[n];
+	if(environment.sampleWeightsVec[0] != -1){
+		for(uint i=0; i<n; i++){
+			environment.sampleWeights[i] = environment.sampleWeightsVec[i];
+		}
+		environment.flag_sample_weights = true;
+	}
+	else if (effN != n) {
+		for(uint i = 0; i < n; i++){
+			environment.sampleWeights[i] = (effN*1.0)/n;
+		}
+		environment.flag_sample_weights = true;
+	}
+
   environment.maxbins       = maxbins;
   environment.initbins      = init_bin;
   environment.lookH         = lookH;
@@ -413,7 +423,6 @@ extern "C" SEXP mydiscretizeMutual(SEXP RmyDist1, SEXP RmyDist2, SEXP RflatU, SE
   environment.c2terms       = c2terms;
   environment.lookchoose    = lookchoose;
   environment.cplx          = cplx;
-  environment.sampleWeights = sample_weights;
   environment.effN          = effN;
   environment.numSamples    = n;
 
@@ -497,7 +506,7 @@ extern "C" SEXP mydiscretizeMutual(SEXP RmyDist1, SEXP RmyDist2, SEXP RflatU, SE
       delete[] looklbc[i];
   }
   delete[] looklbc;
-  delete[] sample_weights;
+  //delete[] sample_weights;
 
   for(int i=0; i<STEPMAX*maxbins; i++){
       delete[] iterative_cutpoints[i];

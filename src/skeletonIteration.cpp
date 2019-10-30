@@ -167,7 +167,7 @@ bool firstStepIteration(Environment& environment){
 				continue; // will continue until out of for loop
 			}
 			#ifdef _OPENMP
-				threadnum = omp_get_thread_num(); 
+				threadnum = omp_get_thread_num();
 			#endif
 			if (threadnum == 0){
 				if(checkInterrupt(i/environment.nThreads%2 == 0)) {
@@ -293,7 +293,7 @@ bool skeletonIteration(Environment& environment){
 			topEdgeElt->Nxy_ui = v[0];
 			topEdgeElt->cplx = v[2];
 			free(v);
-		} else if(environment.columnAsGaussian[posX] == 1 && 
+		} else if(environment.columnAsGaussian[posX] == 1 &&
 				  environment.columnAsGaussian[posY] == 1 &&
 				  areallUiGaussian(environment, environment.edges[posX][posY].edgeStructure->ui_vect_idx,
 				  				   environment.edges[posX][posY].edgeStructure->ui_vect_idx.size())) {
@@ -307,7 +307,7 @@ bool skeletonIteration(Environment& environment){
 			delete [] v;
 
 		} else {
-			v = computeEnsInformationContinuous(environment, &environment.edges[posX][posY].edgeStructure->ui_vect_idx[0], 
+			v = computeEnsInformationContinuous(environment, &environment.edges[posX][posY].edgeStructure->ui_vect_idx[0],
 												environment.edges[posX][posY].edgeStructure->ui_vect_idx.size(),
 												NULL, 0, -1,  posX, posY, environment.cplx,environment.m);
 			topEdgeElt->Nxy_ui = v[0];
@@ -432,7 +432,7 @@ vector<int> bfs(const Environment& environment, int start, int end, const vector
 
     queue<pair<int, vector<int> > > bfs_queue;
 	vector<int> vect;
-    vect.push_back(start); 
+    vect.push_back(start);
     bfs_queue.push(make_pair(start, vect));
     while (!bfs_queue.empty()) {
         auto& p = bfs_queue.front();

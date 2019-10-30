@@ -20,7 +20,7 @@
 #' A data frame that contains the observational data. Each
 #' column corresponds to one variable and each row is a sample that gives the
 #' values for all the observed variables. The column names correspond to the
-#' names of the observed variables. Numeric columns will be treated as continuous 
+#' names of the observed variables. Numeric columns will be treated as continuous
 #' values, factors and character as categorical.
 #'
 #' @param blackBox [a data frame]
@@ -99,11 +99,11 @@
 #' An optional vector containing the weight of each observation.
 #'
 #' @param testMAR [a boolean value]
-#' If set to TRUE, distributions with missing values will be tested with Kullback-Leibler 
-#' divergence : conditioning variables for the given link \eqn{X\arrow Y}\eqn{Z} will be 
-#' considered only if the divergence between the full distribution and the non-missing 
-#' distribution \eqn{KL(P(X,Y) | P(X,Y)_{!NA})} is low enough (with \eqn{P(X,Y)_{!NA}} as 
-#' the joint distribution of \eqn{X} and \eqn{Y} on samples which are not missing on Z. 
+#' If set to TRUE, distributions with missing values will be tested with Kullback-Leibler
+#' divergence : conditioning variables for the given link \eqn{X\arrow Y}\eqn{Z} will be
+#' considered only if the divergence between the full distribution and the non-missing
+#' distribution \eqn{KL(P(X,Y) | P(X,Y)_{!NA})} is low enough (with \eqn{P(X,Y)_{!NA}} as
+#' the joint distribution of \eqn{X} and \eqn{Y} on samples which are not missing on Z.
 #' This is a way to ensure that data are missing at random for the considered
 #' interaction and to avoid selection bias. Set to TRUE by default
 #'
@@ -112,8 +112,8 @@
 #' @param verbose [a boolean value] If TRUE, debugging output is printed.
 #'
 #' @param nThreads [a positive integer]
-#' When set greater than 1, nThreads parallel threads will be used for computation. Make sure 
-#' your compiler is compatible with openmp if you wish to use multithreading. 
+#' When set greater than 1, nThreads parallel threads will be used for computation. Make sure
+#' your compiler is compatible with openmp if you wish to use multithreading.
 #'
 #' @return A \emph{miic-like} object that contains:
 #' \itemize{
@@ -238,10 +238,10 @@
 #' miic.write.network.cytoscape(g = miic.res, file = file.path(tempdir(),"temp"))
 #'}
 
-miic <- function(inputData, categoryOrder= NULL, trueEdges = NULL, blackBox = NULL, nThreads=1, 
+miic <- function(inputData, categoryOrder= NULL, trueEdges = NULL, blackBox = NULL, nThreads=1,
                  cplx = c("nml", "mdl"), orientation = TRUE, propagation = TRUE, latent = FALSE,
-                 neff = -1, edges=NULL, confidenceShuffle = 0, confidenceThreshold = 0, 
-                 confList = NULL, sampleWeights = NULL, testMAR = TRUE, consistent = FALSE, 
+                 neff = -1, edges=NULL, confidenceShuffle = 0, confidenceThreshold = 0,
+                 confList = NULL, sampleWeights = NULL, testMAR = TRUE, consistent = FALSE,
                  verbose = FALSE)
 {
   res = NULL
@@ -305,15 +305,19 @@ miic <- function(inputData, categoryOrder= NULL, trueEdges = NULL, blackBox = NU
   # continuous or discrete?
   cntVar = sapply(inputData, is.numeric)
   for(col in colnames(inputData)){
-    if(cntVar[[col]] && (length(unique(inputData[[col]])) <= 40) && (nrow(inputData) > 40 )){
-      warning(paste0("Variable ", col, " is treated as continuous but only has ", length(unique(inputData[[col]])), " unique values."))
+    unique_values = length(unique(inputData[[col]][!is.na(inputData[[col]])]))
+    if(cntVar[[col]] && (unique_values <= 40) && (nrow(inputData) > 40 )){
+      if(cntVar[[col]] && (unique_values <= 2) && (nrow(inputData) > 40 )){
+        stop(paste0("Numerical variable ", col, " only has ", unique_values, " non-NA unique values. Is this a factor ?"))
+      }
+      warning(paste0("Numerical variable ", col, " is treated as continuous but only has ", unique_values, " unique values."))
     }
-    if((!cntVar[[col]]) && (length(unique(inputData[[col]])) >= 40) && (nrow(inputData) > 40 )){
-      warning(paste0("Variable ", col, " is treated as discrete but has many levels (", length(unique(inputData[[col]])), ")."))
+    if((!cntVar[[col]]) && (unique_values >= 40) && (nrow(inputData) > 40 )){
+      warning(paste0(col, " is treated as discrete but has many levels (", unique_values, ")."))
     }
   }
   typeOfData = 0 # Assume all discrete
-  if(any(cntVar)){ 
+  if(any(cntVar)){
     typeOfData = 2 # Mixed if any are continuous
     if(all(cntVar)){
       typeOfData = 1 # All continuous
@@ -328,7 +332,7 @@ miic <- function(inputData, categoryOrder= NULL, trueEdges = NULL, blackBox = NU
     if(skeleton){
       if(verbose)
        cat("\t# -> START skeleton...\n")
-      res <- miic.skeleton(inputData = inputData, stateOrder= categoryOrder, nThreads= nThreads, cplx = cplx, latent = latent, 
+      res <- miic.skeleton(inputData = inputData, stateOrder= categoryOrder, nThreads= nThreads, cplx = cplx, latent = latent,
                            effN = neff, blackBox = blackBox, confidenceShuffle = confidenceShuffle,
                            confidenceThreshold= confidenceThreshold, verbose= verbose, cntVar = cntVar, typeOfData = typeOfData,
                            sampleWeights = sampleWeights, testMAR = testMAR, consistent = consistent)
@@ -357,7 +361,7 @@ miic <- function(inputData, categoryOrder= NULL, trueEdges = NULL, blackBox = NU
         cat("\tSTART orientation...")
       ptm <- proc.time()
       res = miic.orient(inputData= inputData, stateOrder = categoryOrder, edges = edges, effN = neff,
-                        cplx = cplx,  latent = latent, propagation = propagation, cntVar = cntVar, 
+                        cplx = cplx,  latent = latent, propagation = propagation, cntVar = cntVar,
                         typeOfData = typeOfData, verbose = FALSE)
 
       timeOrt=(proc.time() - ptm)["elapsed"]

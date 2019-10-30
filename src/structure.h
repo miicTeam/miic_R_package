@@ -105,6 +105,7 @@ struct Environment {
 	int ** iterative_cuts;
 	double* sampleWeights;
 	std::vector<double> sampleWeightsVec;
+	bool flag_sample_weights;
 
 
 	bool testDistribution;
@@ -202,46 +203,5 @@ struct Environment {
 	std::vector<Struct*> globalListOfStruct;
 	std::vector<int> vstructWithContradiction;
 };
-
-struct Container {
-	Environment* environment;
-	int start;
-	int stop;
-	bool printProgress;
-
-	MemorySpace m;
-};
-
-struct ContainerInit {
-	Environment* environment;
-	int i;
-	int j;
-	int steps;
-
-	MemorySpace m;
-};
-
-struct ContainerIterCont {
-	Environment* environment;
-	int start;
-	int stop;
-	bool printProgress;
-	int cplx;
-	int* ziContPosIdx;
-	int* myZi;
-	int myNbrUi;
-	int* posArray;
-
-	int myVarIdxX;
-	int myVarIdxY;
-
-	int** cut;
-	int* r;
-
-	double* scoresZ;
-
-	MemorySpace m;
-};
-
 
 #endif
