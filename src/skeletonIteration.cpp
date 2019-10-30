@@ -104,6 +104,10 @@ void searchAndSetZi(Environment& environment, const int posX, const int posY){
 
 bool firstStepIteration(Environment& environment){
 
+	// During first step iteration, search for U contributors is not parallelizable
+	// see flag "parallelizable" in computeEnsInformationContinuous() l. 1118 in computeEnsInformation.cpp
+	environment.firstIterationDone = false;
+
     if (environment.consistentPhase)
         cout << (environment.iterationStepEven ? "Even step" : "Odd step") << endl;
 

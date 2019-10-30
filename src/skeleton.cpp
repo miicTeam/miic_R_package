@@ -130,6 +130,7 @@ extern "C" SEXP skeleton(SEXP inputDataR, SEXP typeOfDataR, SEXP cntVarR, SEXP n
 	for(uint i = 0; i < environment.nThreads; i++){
 		createMemorySpace(environment, environment.memoryThreads[i]);
 	}
+	createMemorySpace(environment, environment.m);
 
 
 	if(!skeletonInitialization(environment))
@@ -242,6 +243,9 @@ extern "C" SEXP skeleton(SEXP inputDataR, SEXP typeOfDataR, SEXP cntVarR, SEXP n
 	    ) ;
 	}
 
+	for(uint i = 0; i < environment.nThreads; i++){
+		deleteMemorySpace(environment, environment.memoryThreads[i]);
+	}
 	deleteMemorySpace(environment, environment.m);
 	deleteStruct(environment);
 
