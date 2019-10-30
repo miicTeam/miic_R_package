@@ -324,7 +324,7 @@ bool skeletonIteration(Environment& environment){
 			topEdgeElt->Nxy_ui = v[0];
 			topEdgeElt->cplx = v[2];
 			free(v);
-		} else if(environment.columnAsGaussian[posX] == 1 && 
+		} else if(environment.columnAsGaussian[posX] == 1 &&
 				  environment.columnAsGaussian[posY] == 1 &&
 				  areallUiGaussian(environment, environment.edges[posX][posY].edgeStructure->ui_vect_idx,
 				  				   environment.edges[posX][posY].edgeStructure->ui_vect_idx.size())) {

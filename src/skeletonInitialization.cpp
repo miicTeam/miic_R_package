@@ -33,7 +33,7 @@ int initEdgeElt(Environment& environment, int i, int j, MemorySpace& m){
 	else if(environment.columnAsGaussian[i] == 1 && environment.columnAsGaussian[j] == 1){
 		res = corrMutInfo(environment, environment.dataDouble, NULL, 0, NULL, 0, i, j, -2);
 		int N = environment.nSamples[i][j];
-		environment.edges[i][j].edgeStructure->Ixy_ui = res[0]; 
+		environment.edges[i][j].edgeStructure->Ixy_ui = res[0];
 		environment.edges[i][j].edgeStructure->cplx = 0.5 * (environment.edges[i][j].edgeStructure->ui_vect_idx.size() + 2) * log(N);
 		environment.edges[i][j].edgeStructure->Nxy_ui = N;
 		delete [] res;
@@ -41,8 +41,6 @@ int initEdgeElt(Environment& environment, int i, int j, MemorySpace& m){
 
 	}
 	else {
-		//cout<< "GUIDO: " << environment.nodes[i].name << "-" << environment.nodes[j].name << flush;
-
 		res = computeEnsInformationContinuous(environment, NULL, 0, NULL, 0, -1, i, j, environment.cplx, m);
 		environment.edges[i][j].edgeStructure->Ixy_ui = res[1];
 		environment.edges[i][j].edgeStructure->cplx = res[2];

@@ -130,7 +130,7 @@ extern "C" SEXP skeleton(SEXP inputDataR, SEXP typeOfDataR, SEXP cntVarR, SEXP n
 	for(uint i = 0; i < environment.nThreads; i++){
 		createMemorySpace(environment, environment.memoryThreads[i]);
 	}
-	
+
 
 	if(!skeletonInitialization(environment))
 	{
@@ -141,7 +141,7 @@ extern "C" SEXP skeleton(SEXP inputDataR, SEXP typeOfDataR, SEXP cntVarR, SEXP n
 	    ) ;
 	    return result;
 	}
-	
+
 	// ----
 	long double spentTime = (get_wall_time() - startTime);
 	environment.execTime.init = spentTime;
@@ -241,7 +241,7 @@ extern "C" SEXP skeleton(SEXP inputDataR, SEXP typeOfDataR, SEXP cntVarR, SEXP n
 			_["interrupted"] = false
 	    ) ;
 	}
-	
+
 	deleteMemorySpace(environment, environment.m);
 	deleteStruct(environment);
 

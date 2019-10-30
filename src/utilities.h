@@ -1,7 +1,6 @@
 #include "structure.h"
 #include "log.h"
 void createMemorySpace(Environment&, MemorySpace&);
-// bool createMemorySpaceThreads(Environment&, ContainerMemory&);
 void deleteMemorySpace(Environment&, MemorySpace&);
 std::string printNodesName(Environment&);
 void printMatrix(Environment&, std::string);

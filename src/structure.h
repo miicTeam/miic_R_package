@@ -122,6 +122,7 @@ struct Environment {
 	int ** iterative_cuts;
 	double* sampleWeights;
 	std::vector<double> sampleWeightsVec;
+	bool flag_sample_weights;
 
 
 	bool testDistribution;
