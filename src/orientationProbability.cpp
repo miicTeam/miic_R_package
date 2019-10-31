@@ -1,3 +1,5 @@
+#include "orientationProbability.h"
+
 #include <iostream>
 #include <fstream>
 #include <sstream>
@@ -129,55 +131,15 @@ void getSStructure(::Environment& environment, const int posX, const int posY, c
 	allI3.push_back(Is);
 }
 
-
-extern "C" SEXP orientationProbability(SEXP inputDataR, SEXP typeOfDataR, SEXP cntVarR, SEXP numNodesR, SEXP edgefileR, 
-									   SEXP effNR, SEXP cplxR, SEXP etaR, SEXP hvsR, SEXP isLatentR, SEXP isK23R,
-									   SEXP isDegeneracyR, SEXP propagationR, SEXP sampleWeightsR, SEXP verboseR)
-{
-
-
-	// define the environment
-	::Environment environment;
-	environment.myVersion="V79";
-	string cplx;
-
+vector<vector<string> > orientationProbability(::Environment& environment) {
 	// output of orientation table
 	vector< vector <string> > orientations;
-
-	environment.numNodes = Rcpp::as<int> (numNodesR);
-	environment.vectorData = Rcpp::as< vector <string> > (inputDataR);
-	environment.typeOfData = Rcpp::as<int> (typeOfDataR);
-	vector<string> edgesVectorOneLine;
-	edgesVectorOneLine = Rcpp::as< vector <string> > (edgefileR);
-	
-	vector<string> v;
-
-	environment.effN = Rcpp::as<int> (effNR);
-	cplx = Rcpp::as<string> (cplxR);
-	//environment.eta = Rcpp::as<int> (etaR);
-	environment.halfVStructures = Rcpp::as<int> (hvsR);
-	environment.isLatent = Rcpp::as<bool> (isLatentR);
-	environment.isK23 = Rcpp::as<bool> (isK23R);
-	environment.isDegeneracy = Rcpp::as<bool> (isDegeneracyR);
-	environment.isPropagation = Rcpp::as<bool> (propagationR);
-	bool isVerbose = Rcpp::as<bool> (verboseR);
-	environment.isVerbose = isVerbose;
-
-	environment.sampleWeightsVec = Rcpp::as< vector <double> > (sampleWeightsR);
-	environment.cntVarVec = Rcpp::as< vector <int> > (cntVarR);
-
-
-	if(cplx.compare("nml") == 0)
-		environment.cplx = 1;
-	else if(cplx.compare("mdl") == 0)
-		environment.cplx = 0;
-
-	readFilesAndFillStructures(edgesVectorOneLine, environment);
-	createMemorySpace(environment, environment.m);
 
 	vector< vector<int> > allTpl;
 	vector<double> allI3;
 	double* ptrRetProbValues;
+
+	bool isVerbose = environment.isVerbose;
 
 	////// GET ALL TPL that could be V/NON-V-STRUCTURES #######
 
@@ -444,20 +406,8 @@ extern "C" SEXP orientationProbability(SEXP inputDataR, SEXP typeOfDataR, SEXP c
 		}
 	}
 
-	vector< vector <string> >  adjMatrix;
-	adjMatrix = getAdjMatrix(environment);
-
-	List result;
-
-	result = List::create(
-        _["adjMatrix"] = adjMatrix,
-        _["orientations.prob"] = orientations
-    ) ;
-	
 	delete [] oneLineMatrixallTpl;
 	delete [] ptrRetProbValues;
 
-    deleteMemorySpace(environment, environment.m);
-
-	return result;
+	return orientations;
 }

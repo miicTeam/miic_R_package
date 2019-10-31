@@ -20,6 +20,7 @@
 #include "skeletonInitialization.h"
 #include "skeletonIteration.h"
 #include "confidenceCut.h"
+#include "orientationProbability.h"
 
 
 
@@ -45,9 +46,9 @@ List empty_results(){
 	return(result);
 }
 
-extern "C" SEXP skeleton(SEXP inputDataR, SEXP typeOfDataR, SEXP cntVarR, SEXP numNodesR, SEXP nThreadsR, SEXP blackBoxR, SEXP effNR, SEXP cplxR,
-						 SEXP etaR, SEXP isLatentR, SEXP isTplReuseR, SEXP isK23R, SEXP isDegeneracyR, SEXP isNoInitEtaR, SEXP confidenceShuffleR,
-						 SEXP confidenceThresholdR, SEXP sampleWeightsR, SEXP consistentR, SEXP testDistR, SEXP verboseR)
+extern "C" SEXP reconstruct(SEXP inputDataR, SEXP typeOfDataR, SEXP cntVarR, SEXP numNodesR, SEXP nThreadsR, SEXP edgefileR, SEXP blackBoxR, SEXP effNR, SEXP cplxR,
+							SEXP etaR, SEXP hvsR, SEXP isLatentR, SEXP isTplReuseR, SEXP isK23R, SEXP isDegeneracyR, SEXP propagationR, SEXP isNoInitEtaR, SEXP confidenceShuffleR,
+							SEXP confidenceThresholdR, SEXP sampleWeightsR, SEXP consistentR, SEXP testDistR, SEXP verboseR)
 {
 
 	vector< vector <double> > outScore;
@@ -85,10 +86,12 @@ extern "C" SEXP skeleton(SEXP inputDataR, SEXP typeOfDataR, SEXP cntVarR, SEXP n
 	cplx = Rcpp::as<string> (cplxR);
 	//environment.eta = Rcpp::as<int> (etaR);
 	//environment.shuffle = 0;
+	environment.halfVStructures = Rcpp::as<int> (hvsR);
 	environment.isLatent = Rcpp::as<bool> (isLatentR);
 	environment.isTplReuse = Rcpp::as<bool> (isTplReuseR);
 	environment.isK23 = Rcpp::as<bool> (isK23R);
 	environment.isDegeneracy = Rcpp::as<bool> (isDegeneracyR);
+	environment.isPropagation = Rcpp::as<bool> (propagationR);
 	environment.isNoInitEta = Rcpp::as<bool> (isNoInitEtaR);
 
 	environment.confidenceThreshold = Rcpp::as<double> (confidenceThresholdR);
@@ -206,11 +209,11 @@ extern "C" SEXP skeleton(SEXP inputDataR, SEXP typeOfDataR, SEXP cntVarR, SEXP n
 		environment.execTime.cut = 0;
 	}
 
-
+	vector<vector<string> > orientations;
 	if( environment.numNoMore > 0){
-		cout << "Saving results for orientation..." << flush;
 		edgesMatrix = saveEdgesListAsTable(environment);
-		cout << " done." << endl;
+        // orientation
+        orientations = orientationProbability(environment);
 	}
 
 
@@ -231,6 +234,7 @@ extern "C" SEXP skeleton(SEXP inputDataR, SEXP typeOfDataR, SEXP cntVarR, SEXP n
 	    	_["confData"] = confVect,
 		 	_["adjMatrix"] = adjMatrix,
 	        _["edges"] = edgesMatrix,
+	        _["orientations.prob"] = orientations,
 	        _["time"] = time,
 			_["interrupted"] = false
 	    ) ;
@@ -238,6 +242,7 @@ extern "C" SEXP skeleton(SEXP inputDataR, SEXP typeOfDataR, SEXP cntVarR, SEXP n
 		result = List::create(
 		 	_["adjMatrix"] = adjMatrix,
 	        _["edges"] = edgesMatrix,
+	        _["orientations.prob"] = orientations,
 	        _["time"] = time,
 			_["interrupted"] = false
 	    ) ;

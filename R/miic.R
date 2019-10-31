@@ -328,50 +328,28 @@ miic <- function(inputData, categoryOrder= NULL, trueEdges = NULL, blackBox = NU
   if(err_code != "0"){
     print(errorCodeToString(err_code))
   } else {
+    if(verbose)
+      cat("\t# -> START reconstruction...\n")
 
-    if(skeleton){
-      if(verbose)
-       cat("\t# -> START skeleton...\n")
-      res <- miic.skeleton(inputData = inputData, stateOrder= categoryOrder, nThreads= nThreads, cplx = cplx, latent = latent,
-                           effN = neff, blackBox = blackBox, confidenceShuffle = confidenceShuffle,
-                           confidenceThreshold= confidenceThreshold, verbose= verbose, cntVar = cntVar, typeOfData = typeOfData,
-                           sampleWeights = sampleWeights, testMAR = testMAR, consistent = consistent)
-      if(res$interrupted){
-        warning("Interupted by user")
-        return(NULL)
-      }
-      # print(res)
-      edges = res$edges
-      confData = res$confData
-      time = res$time
-      if(verbose)
-        cat("\t# -> END skeleton...\n\t# --------\n")
+    res <- miic.reconstruct(inputData = inputData, stateOrder= categoryOrder, nThreads= nThreads, cplx = cplx, latent = latent,
+                            effN = neff, blackBox = blackBox, confidenceShuffle = confidenceShuffle, edges = edges, orientation = orientation, propagation = propagation,
+                            confidenceThreshold= confidenceThreshold, verbose= verbose, cntVar = cntVar, typeOfData = typeOfData,
+                            sampleWeights = sampleWeights, testMAR = testMAR, consistent = consistent)
+    if(res$interrupted){
+      warning("Interupted by user")
+      return(NULL)
     }
+    time = res$time
+    if(verbose)
+      cat("\t# -> END reconstruction...\n\t# --------\n")
 
-    if( confidenceShuffle < 0 | confidenceThreshold < 0 ){
-      cat("Warning! ConfidenceShuffle and confidenceThreshold must be greater than 0, the confidence cut step will not be performed.")
-      confidenceShuffle =0
-    }
+    #if( confidenceShuffle < 0 | confidenceThreshold < 0 ){
+    #  cat("Warning! ConfidenceShuffle and confidenceThreshold must be greater than 0, the confidence cut step will not be performed.")
+    #  confidenceShuffle =0
+    #}
 
-
-    timeOrt=0
-    if(orientation){
-
-      if(verbose)
-        cat("\tSTART orientation...")
-      ptm <- proc.time()
-      res = miic.orient(inputData= inputData, stateOrder = categoryOrder, edges = edges, effN = neff,
-                        cplx = cplx,  latent = latent, propagation = propagation, cntVar = cntVar,
-                        typeOfData = typeOfData, verbose = FALSE)
-
-      timeOrt=(proc.time() - ptm)["elapsed"]
-      timeInitIterOrt = time["initIter"]+timeOrt
-
-      res$edges <- edges
-      res$confData <- confData
-      if(verbose)
-        cat("\tEND orientation...")
-    }
+    timeOrt=0 #TODO: wrong time
+    timeInitIterOrt = time["initIter"]+timeOrt
 
     # Summarize the results
     # --------
@@ -384,7 +362,6 @@ miic <- function(inputData, categoryOrder= NULL, trueEdges = NULL, blackBox = NU
         trueEdges = NULL
       }
     }
-
 
     #STATE ORDER FILE
     if(  !is.null( categoryOrder ) ){

@@ -9,7 +9,7 @@
 
 #include "structure.h"
 
-bool skeleton(Environment&, std::string, double, int, char*[]);
+bool reconstruct(Environment&, std::string, double, int, char*[]);
 
 class CycleTracker {
     using uint = unsigned int;

@@ -2,6 +2,6 @@
 #define _ORIENTATION_PROBABILITY_H_
 #include "structure.h"
 
-void orientationProbability(Environment&, string, bool);
+vector<vector<string> > orientationProbability(Environment&);
 
 #endif
