@@ -56,7 +56,6 @@ struct EdgeStructure {
 	std::vector<int> indexStruct; // memorize the corresponding structure in the structures list in the environment by its index
 	std::vector<int> edgesInSpeTpl_list; // memorize the index of open structures
 
-public:
 	EdgeStructure():
 		z_name_idx(-1),
 		ui_vect_idx(std::vector<int>()),
@@ -65,8 +64,8 @@ public:
 
 		Ixy_ui(0.0),
 		cplx(0.0),
-		status(-1),
 		Nxy_ui(-1),
+		status(-1),
 		mutInfo(0.0),
 		cplx_noU(0.0),
 		Nxy(-1),
@@ -74,6 +73,29 @@ public:
 		indexStruct(std::vector<int>()),
 		edgesInSpeTpl_list(std::vector<int>())
 	{}
+
+    void reset() {
+        z_name_idx = -1;
+        zi_vect_idx.clear();
+        ui_vect_idx.clear();
+        Rxyz_ui = 0;
+        status = -1;
+        Ixy_ui = mutInfo;
+        cplx = cplx_noU;
+        Nxy_ui = Nxy;
+        indexStruct.clear();
+        edgesInSpeTpl_list.clear();
+    }
+
+    void setUndirected () {
+        z_name_idx = -1;
+        ui_vect_idx.clear();
+        Rxyz_ui = 0;
+        status = 3;
+        Ixy_ui = mutInfo;
+        cplx = cplx_noU;
+        Nxy_ui = Nxy;
+    }
 };
 
 struct Node{
@@ -96,6 +118,9 @@ struct ExecutionTime{
 struct XJAddress{
 	int i;
 	int j;
+
+    XJAddress() {}
+    XJAddress(int i, int j) : i(i), j(j) {}
 };
 
 struct Edge{
@@ -111,7 +136,6 @@ struct Edge{
 struct Environment {
 	ExecutionTime execTime;
 	bool consistentPhase;
-	bool iterationStepEven;
 	// for gaussian case
 	double** rho;
 	double* standardDeviations;

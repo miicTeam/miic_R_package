@@ -10,20 +10,16 @@
 #include <unistd.h>
 #include <string.h>
 #include <math.h>
-#include <Rcpp.h>
 
 #include "structure.h"
 #include "utilities.h"
 #include "computeEnsInformation.h"
 
-
 #include "probaOrientation_interface.h"
 
-
-using namespace Rcpp;
 using namespace std;
 
-void getSStructure(::Environment& environment, const int posX, const int posY, const int posZ, bool isVerbose,
+void getSStructure(Environment& environment, const int posX, const int posY, const int posZ, bool isVerbose,
 				   vector< vector<int> >& allTpl, vector<double>& allI3)
 {
 	//// To check if xk belongs to the {ui} of the base
@@ -131,7 +127,7 @@ void getSStructure(::Environment& environment, const int posX, const int posY, c
 	allI3.push_back(Is);
 }
 
-vector<vector<string> > orientationProbability(::Environment& environment) {
+vector<vector<string> > orientationProbability(Environment& environment) {
 	// output of orientation table
 	vector< vector <string> > orientations;
 

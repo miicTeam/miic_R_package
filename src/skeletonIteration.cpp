@@ -68,18 +68,14 @@ class sorter1 {
 	  }
 };
 
-template<bool consistentPhase=false, bool isLatent=false>
+template<bool isLatent=false>
 void searchAndSetZi(Environment& environment, const int posX, const int posY){
-    /**
-     * Search candidate nodes for the separation set of X and Y
-     */
+    // Search candidate nodes for the separation set of X and Y
 	int numZiPos = 0;
     for(int c = 0; c < environment.numNodes; c++){
         if (c == posX || c == posY)
             continue;
         if (!isLatent && !environment.edges[posX][c].areNeighboursAfterIteration && !environment.edges[posY][c].areNeighboursAfterIteration)
-            continue;
-        if (consistentPhase && !is_consistent(environment, posX, posY, c))
             continue;
         environment.edges[posX][posY].edgeStructure->zi_vect_idx.push_back(c);
         numZiPos++;
@@ -90,30 +86,17 @@ void searchAndSetZi(Environment& environment, const int posX, const int posY){
 }
 
 void searchAndSetZi(Environment& environment, const int posX, const int posY){
-    if (environment.consistentPhase)
-        if (environment.isLatent)
-            return searchAndSetZi<true, true>(environment, posX, posY);
-        else
-            return searchAndSetZi<true, false>(environment, posX, posY);
+    if (environment.isLatent)
+        return searchAndSetZi<true>(environment, posX, posY);
     else
-        if (environment.isLatent)
-            return searchAndSetZi<false, true>(environment, posX, posY);
-        else
-            return searchAndSetZi<false, false>(environment, posX, posY);
+        return searchAndSetZi<false>(environment, posX, posY);
 }
 
-bool firstStepIteration(Environment& environment){
+bool firstStepIteration(Environment& environment, BCC& bcc) {
 
 	// During first step iteration, search for U contributors is not parallelizable
 	// see flag "parallelizable" in computeEnsInformationContinuous() l. 1118 in computeEnsInformation.cpp
 	environment.firstIterationDone = false;
-
-    if (environment.consistentPhase)
-        cout << (environment.iterationStepEven ? "Even step" : "Odd step") << endl;
-
-	//set the diagonal of the adj matrix to 0 Redundant, already done in setEnvironment
-	for(uint i = 0; i < environment.numNodes; i++)
-		environment.edges[i][i].isConnected = 0;
 
     for (unsigned i = 0; i < environment.searchMoreAddress.size(); i++)
         delete	environment.searchMoreAddress[i];
@@ -121,43 +104,21 @@ bool firstStepIteration(Environment& environment){
     for (unsigned i = 0; i < environment.noMoreAddress.size(); i++)
         delete	environment.noMoreAddress[i];
 
-	environment.noMoreAddress.clear();
-	environment.searchMoreAddress.clear();
+    environment.noMoreAddress.clear();
+    environment.searchMoreAddress.clear();
 
 	// create and fill the searchMoreAddress struct, that keep track of i and j positions of searchMore Edges
 	environment.numSearchMore = 0;
 	environment.numNoMore= 0;
 	for(int i = 0; i < environment.numNodes - 1; i++){
 		for(int j = i + 1; j < environment.numNodes; j++){
+            // Do dot consider edges removed with unconditional independence
 			if (!environment.edges[i][j].isConnected)
 				continue;
-
-			XJAddress* s = new XJAddress();
-			s->i = i;
-			s->j = j;
-
-			if (!environment.consistentPhase ||
-					(environment.iterationStepEven && !environment.edges[i][j].areNeighboursAfterIteration) ||
-					(!environment.iterationStepEven && environment.edges[i][j].areNeighboursAfterIteration))
-			{
-				environment.edges[i][j].edgeStructure->zi_vect_idx.clear();
-				environment.edges[i][j].edgeStructure->ui_vect_idx.clear();
-				environment.edges[i][j].edgeStructure->z_name_idx = -1;
-				environment.edges[i][j].edgeStructure->Rxyz_ui = 0;
-
-				environment.edges[i][j].edgeStructure->Ixy_ui = environment.edges[i][j].edgeStructure->mutInfo;
-				environment.edges[i][j].edgeStructure->cplx = environment.edges[i][j].edgeStructure->cplx_noU;
-
-				environment.searchMoreAddress.push_back(s);
-				environment.numSearchMore ++;
-			} else if (environment.edges[i][j].areNeighboursAfterIteration) {
-				environment.noMoreAddress.push_back(s);
-				environment.numNoMore ++;
-				environment.edges[i][j].edgeStructure->status = 3;
-			} else {
-				environment.edges[i][j].isConnected = 0;
-				environment.edges[j][i].isConnected = 0;
-			}
+			environment.edges[i][j].edgeStructure->reset();
+			XJAddress* s = new XJAddress(i, j);
+			environment.searchMoreAddress.push_back(s);
+			environment.numSearchMore++;
 		}
 	}
 
@@ -165,25 +126,14 @@ bool firstStepIteration(Environment& environment){
 	bool interrupt = false;
 	int prg_numSearchMore = -1;
 	cout << "First round of conditional independences :\n";
-	// if there exists searchMore edges
 	if( environment.numSearchMore > 0 ) {
 		if( environment.isVerbose == true )
 			cout << "\n# -> searchMore edges, to get zi and noMore...\n" ;
-		//// Define the pairs among which the candidate {zi} should be searched
-
-		//// For all non-phantom pairs xy in G, find zi that are neighbours of x or y
-		//// If no z is found, the edge goes to "noMore", otherwise "searchMore"
-
-		BCC bcc(environment);
 
 		for(int i = 0; i < environment.numSearchMore; i++){
 			int posX = environment.searchMoreAddress[i]->i;
 			int posY = environment.searchMoreAddress[i]->j;
 			if( environment.isVerbose){ cout << "\n# --------------------\n# ----> EDGE: " << environment.nodes[posX].name << "--" << environment.nodes[posY].name << "\n# --------------------" ; }
-
-			//// Find all zi, such that xzi or yzi is not a phantom
-			// search in the row of the edge matrix
-
 			if (environment.consistentPhase)
 			    bcc.set_candidate_z(posX, posY);
 			else
@@ -215,7 +165,7 @@ bool firstStepIteration(Environment& environment){
 			int posY = environment.searchMoreAddress[i]->j;
 			if(environment.isVerbose)cout << "##  " << "XY: " << environment.nodes[posX].name << " " << environment.nodes[posY].name << "\n\n";
 			if(environment.edges[posX][posY].edgeStructure->zi_vect_idx.size() > 0 ){
-				//// Search for new contributing node and its rank
+				// Search for new contributing node and its rank
 				if(environment.isAllGaussian == 0){
 					SearchForNewContributingNodeAndItsRank(environment, posX, posY, environment.memoryThreads[threadnum]);
 				} else {
@@ -241,16 +191,14 @@ bool firstStepIteration(Environment& environment){
 			} else {
 				if(environment.isVerbose)
 				{ cout << "## ------!!--> Remove the edge element from searchMore.\n## ------!!--> Add edge to 'noMore' (no good zi candidate)\n";}
-				//// Put this edge element to "noMore" and update the vector of status
+				// Put this edge element to "noMore"
 				environment.noMoreAddress.push_back(environment.searchMoreAddress[i]);
 				environment.numNoMore++;
-
-				//// Remove the element from searchMore
+				// Remove the element from searchMore
 				environment.searchMoreAddress.erase(environment.searchMoreAddress.begin() + i);
 				environment.numSearchMore--;
 				i--;
-
-				//update the status
+				// Update the status
 				environment.edges[posX][posY].edgeStructure->status = 3;
 			}
 			if(environment.isVerbose)
@@ -278,7 +226,6 @@ bool skeletonIteration(Environment& environment){
 	if(environment.isVerbose)
 		cout << "Number of numSearchMore: " << environment.numSearchMore << endl;
 
-
 	cout << "\nSkeleton iteration :\n";
 	environment.execTime.startTimeIter = get_wall_time();
 	int start_numSearchMore = environment.numSearchMore;
@@ -292,8 +239,7 @@ bool skeletonIteration(Environment& environment){
 		}
 		iIteration_count++;
 		if(environment.isVerbose) { cout << "\n# Iteration " << iIteration_count << "\n"; }
-		// cout << "\n# Iteration " << iIteration_count << "\n";
-		//// Get the first edge
+		// Get the first edge
 		int posX = environment.searchMoreAddress[max]->i;
 		int posY = environment.searchMoreAddress[max]->j;
 
@@ -359,13 +305,13 @@ bool skeletonIteration(Environment& environment){
 			topEdgeElt_kxy_ui = topEdgeElt->cplx + (topEdgeElt->ui_vect_idx.size()*log(3));
 
 		//// *****
-		int leftEdges = environment.numSearchMore + environment.numNoMore;
+		int nRemainingEdges = environment.numSearchMore + environment.numNoMore;
 		//// *****
 
 		if(environment.isVerbose)
 		{
 			//cout << "\n# After adding new zi to {ui}:" << displayEdge(topEdgeElt);
-			cout << "# --> nbrEdges L = " << leftEdges << "\n";
+			cout << "# --> nbrEdges L = " << nRemainingEdges << "\n";
 			cout << "# --> nbrProp P = " << environment.numNodes << "\n\n";
 
 			//cout << "\n# After adding new zi to {ui}:" << displayEdge(topEdgeElt);
@@ -447,81 +393,24 @@ bool skeletonIteration(Environment& environment){
 	return(true);
 }
 
-vector<int> bfs(const Environment& environment, int start, int end, const vector<int>& excludes)
-{
-    /**
-     * Return the shortest path between two nodes.
-     *
-     * @param environment.
-     * @param int start, end Starting, ending nodes.
-     * @param excludes Nodes to be excluded from the path, default to be an empty vector.
-     * @return Path as a vector<int> of node indices.
-     */
-    uint numNodes = environment.numNodes;
-    vector<int> visited(numNodes, 0);
-    for (auto& node : excludes) {
-        if (node == start || node == end)
-            return vector<int>();
-        visited[node] = 1;
-    }
-
-    queue<pair<int, vector<int> > > bfs_queue;
-    bfs_queue.push(make_pair(start, vector<int>{start}));
-    while (!bfs_queue.empty()) {
-        auto& p = bfs_queue.front();
-        visited[p.first] = 1;
-        for(uint i=0; i<numNodes; i++) {
-            if (!visited[i] && environment.edges[p.first][i].areNeighboursAfterIteration) {
-                vector<int> new_path(p.second);
-                new_path.push_back(i);
-                if (i == end)
-                    return new_path;
-                else
-                    bfs_queue.push(make_pair(i, new_path));
-            }
-        }
-        bfs_queue.pop();
-    }
-
-    return vector<int>();
-}
-
-bool is_consistent(const Environment& environment, int x, int y, int z) {
-    /**
-     * Check if node z lies on either path between node x and node y.
-     *
-     * @param environment.
-     * @param x, y, z Indices of nodes.
-     * @return bool.
-     */
-    if (x==z || y==z)
-        return false;
-
-    vector<int> x2z = bfs(environment, x, z);
-    if (x2z.size() > 0)
-        x2z.pop_back();  // remove z from path (not to be excluded in the following step)
-    if (!x2z.empty() && !bfs(environment, y, z, x2z).empty())  // exclude nodes in path x2z
+bool BCC::is_consistent(int x, int y, const vector<int>& vect_z) const {
+    // For each node z in vect_z, check if
+    // (1) z lies on a path between node x and node y, and
+    // (2) z is a non-child of either x or y.
+    if (vect_z.empty())
         return true;
-
-    vector<int> y2z = bfs(environment, y, z);
-    if (y2z.size() > 0)
-        y2z.pop_back();
-    if (!y2z.empty() && !bfs(environment, x, z, y2z).empty())
-        return true;
-
-    return false;
-}
-
-bool is_consistent(const Environment& environment, int x, int y, const vector<int>& vect_z) {
+    std::set<int> set_z = get_candidate_z(x, y);
     for (auto& z : vect_z) {
-        if (!is_consistent(environment, x, y, z))
+        if (set_z.find(z) == set_z.end() ||
+                (environment.edges[z][x].isConnected <= 0 &&
+                 environment.edges[z][y].isConnected <= 0))
             return false;
     }
     return true;
 }
 
 void BCC::bcc_aux(int u, int& time, vector<int>& parent, vector<int>& lowest,
-        vector<int>& depth, stack<pair<int, int> >& st)
+        vector<int>& depth, stack<pair<int, int> >& st) {
     /**
      * Auxiliary recurrent method for biconnected component decomposition.
      *
@@ -532,13 +421,15 @@ void BCC::bcc_aux(int u, int& time, vector<int>& parent, vector<int>& lowest,
      * @param vector<int> depth Time when each vertex is visited in the dfs search.
      * @param stack<pair<int> > st Stack for the dfs search.
      */
-{
     int numNodes = environment.numNodes;
     int children = 0;
     depth[u] = lowest[u] = ++time;
 
     for (int v=0; v<numNodes; v++) {
-        if (!environment.edges[u][v].areNeighboursAfterIteration)
+        // graph maybe (partially) directed, whereas biconnected component
+        // concerns only the skeleton
+        if (!environment.edges[u][v].isConnected
+                && !environment.edges[v][u].isConnected)
             continue;
 
         if (depth[v] == -1) {
@@ -599,9 +490,9 @@ void BCC::bcc() {
     }
 
     int bc_tree_size = count(is_cp.begin(), is_cp.end(), 1) + bcc_list.size();
-    bc_tree_adj_list = vector<set<int> >(bc_tree_size, set<int>());
-    bc_tree_inverse_index = vector<int>(bc_tree_size, -1);
-    bc_tree_node_is_cp = vector<int>(bc_tree_size, 0);
+    bc_tree_adj_list.assign(bc_tree_size, set<int>());
+    bc_tree_inverse_index.assign(bc_tree_size, -1);
+    bc_tree_node_is_cp.assign(bc_tree_size, 0);
 
     int bc_tree_index = 0;
     for (size_t index=0; index < bcc_list.size(); index++) {
@@ -628,19 +519,21 @@ void BCC::bcc() {
 
     for (int i=0; i<numNodes; i++){
         for (int j=0; j<numNodes; j++) {
-            degree_of[i] += environment.edges[i][j].areNeighboursAfterIteration;
+            degree_of[i] += static_cast<int>(
+                    environment.edges[i][j].isConnected ||
+                    environment.edges[j][i].isConnected);
         }
     }
 }
 
-vector<int> BCC::bc_tree_bfs(int start, int end){
+vector<int> BCC::bc_tree_bfs(int start, int end) const {
     /**
      * Return the shortest path between two nodes in the block-cut tree.
      *
      * @param int start, end Starting, ending nodes.
      * @return Path as a vector of node indices.
      */
-    int numNodes = environment.numNodes;
+    int numNodes = bc_tree_adj_list.size();
     vector<int> visited(numNodes, 0);
 
     queue<pair<int, vector<int> > > bfs_queue;
@@ -665,16 +558,15 @@ vector<int> BCC::bc_tree_bfs(int start, int end){
     return vector<int>();
 }
 
-void BCC::set_candidate_z(int x, int y){
+std::set<int> BCC::get_candidate_z(int x, int y) const {
     /**
      * Find and set all candidate Z for a given pair of vertices
      * using biconnected components and block-cut tree.
      */
-    vector<int>& vect_z = environment.edges[x][y].edgeStructure->zi_vect_idx;
     set<int> set_z;
     insert_iterator<set<int> > insert_it = inserter(set_z, set_z.begin());
 
-    if (degree_of[x] < 1 || degree_of[y] < 1) return;
+    if (degree_of[x] < 1 || degree_of[y] < 1) return set_z;
 
     vector<int> common_bcc;
     set_intersection(
@@ -691,21 +583,25 @@ void BCC::set_candidate_z(int x, int y){
                 continue;
 
             const set<int>& bcc_set = bcc_list[bc_tree_inverse_index[node]];
-            copy_if(bcc_set.begin(), bcc_set.end(),
-                    insert_it, [this, x, y](int i){
-                    return i != x && i != y && (environment.isLatent ||
-                            environment.edges[x][i].areNeighboursAfterIteration ||
-                            environment.edges[y][i].areNeighboursAfterIteration);
-                    });
+            copy_if(bcc_set.begin(), bcc_set.end(), insert_it,
+                    [this, x, y](int i){ return i != x && i != y; });
         }
-        vect_z.assign(set_z.begin(), set_z.end());
+        return set_z;
     } else {
         const set<int>& bcc_set = bcc_list[common_bcc[0]];
-        copy_if(bcc_set.begin(), bcc_set.end(),
-                insert_it, [this, x, y](int i){
-                        return i != x && i != y && (environment.isLatent ||
-                                environment.edges[x][i].areNeighboursAfterIteration ||
-                                environment.edges[y][i].areNeighboursAfterIteration);});
-        vect_z.assign(set_z.begin(), set_z.end());
+        copy_if(bcc_set.begin(), bcc_set.end(), insert_it,
+                [this, x, y](int i){ return i != x && i != y; });
+        return set_z;
     }
+}
+
+void BCC::set_candidate_z(int x, int y) {
+    vector<int>& vect_z = environment.edges[x][y].edgeStructure->zi_vect_idx;
+    insert_iterator<vector<int> > insert_it = inserter(vect_z, vect_z.begin());
+    set<int> set_z = get_candidate_z(x, y);
+    copy_if(set_z.begin(), set_z.end(), insert_it, [this, x, y](int i) {
+        return (environment.isLatent ||
+                environment.edges[i][x].areNeighboursAfterIteration > 0 ||
+                environment.edges[i][y].areNeighboursAfterIteration > 0);
+    });
 }

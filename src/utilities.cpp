@@ -748,7 +748,7 @@ void saveAdjMatrixState(const Environment& environment, const string filename){
 /*
  * Transform a vector to a string
  */
-string vectorToStringNodeName(const Environment& environment, const vector<int> vec){
+string vectorToStringNodeName(const Environment& environment, const vector<int>& vec){
 	stringstream ss;
 	int length = vec.size();
 	if(length > 0){
@@ -764,7 +764,7 @@ string vectorToStringNodeName(const Environment& environment, const vector<int> 
   	return ss.str();
 }
 
-string vectorToString(const vector<int> vec){
+string vectorToString(const vector<int>& vec){
 	stringstream ss;
 	int length = vec.size();
 	if(length > 0){

@@ -109,7 +109,6 @@ extern "C" SEXP reconstruct(SEXP inputDataR, SEXP typeOfDataR, SEXP cntVarR, SEX
 
 	double startTime;
 
-
 	vector< vector <string> > retShuffle;
 	vector< vector <string> > retShuffleAvg;
 	vector <string> shfVec;
@@ -135,7 +134,7 @@ extern "C" SEXP reconstruct(SEXP inputDataR, SEXP typeOfDataR, SEXP cntVarR, SEX
 	}
 	createMemorySpace(environment, environment.m);
 
-
+    // Initialize skeleton, find unconditional independence
 	if(!skeletonInitialization(environment))
 	{
 		// structure the output
@@ -151,14 +150,15 @@ extern "C" SEXP reconstruct(SEXP inputDataR, SEXP typeOfDataR, SEXP cntVarR, SEX
 	environment.execTime.init = spentTime;
 	if( environment.isVerbose == true ){ cout << "\n# ----> First contributing node elapsed time:" << spentTime << "sec\n\n"; }
 
-	int maxConsistentIter = 10;
 	//run the skeleton iteration phase if consistency is required
-	environment.iterationStepEven = true;
+    // Create biconnected component analysis structure
+	BCC bcc(environment);
 	auto cycle_tracker = CycleTracker(environment);
 	do{
-		environment.iterationStepEven = !environment.iterationStepEven;
+        if (environment.consistentPhase)
+            bcc.analyse();
 		//save the neighbours in the areNeighboursAfterIteration structure
-		//and return back with structures at the moment of initialization
+		//and revert to the structure at the moment of initialization
 		for(int i = 0; i < environment.numNodes; i++){
 			for(int j = 0; j < environment.numNodes; j++){
 				environment.edges[i][j].areNeighboursAfterIteration = environment.edges[i][j].isConnected;
@@ -166,7 +166,7 @@ extern "C" SEXP reconstruct(SEXP inputDataR, SEXP typeOfDataR, SEXP cntVarR, SEX
 			}
         }
 
-		firstStepIteration(environment);
+		firstStepIteration(environment, bcc);
 		if (environment.numNoMore == 0 && environment.numSearchMore == 0) {
 			if (environment.isVerbose == true)
 				cout << "# ------| Only phantom edges found.\n";
@@ -182,7 +182,6 @@ extern "C" SEXP reconstruct(SEXP inputDataR, SEXP typeOfDataR, SEXP cntVarR, SEX
 			environment.execTime.initIter = environment.execTime.init + environment.execTime.iter;
 		}
 		cout << "Number of edges: " << environment.numNoMore << endl;
-		maxConsistentIter --;
 	} while (environment.consistentPhase && !cycle_tracker.hasCycle());
 
 	int union_n_edges = 0;
@@ -211,11 +210,35 @@ extern "C" SEXP reconstruct(SEXP inputDataR, SEXP typeOfDataR, SEXP cntVarR, SEX
 
 	vector<vector<string> > orientations;
 	if( environment.numNoMore > 0){
-		edgesMatrix = saveEdgesListAsTable(environment);
         // orientation
         orientations = orientationProbability(environment);
+        // Check inconsistency after orientation, add undirected edge to pairs
+        // with inconsistent conditional independence.
+        bcc.analyse();
+        uint n_inconsistency = 0;
+        for (uint i = 0; i < environment.numNodes - 1; i++) {
+            for (uint j = i+1; j < environment.numNodes; j++) {
+                auto& edges = environment.edges;
+                if (edges[i][j].isConnected)
+                    continue;
+                if (!bcc.is_consistent(i, j,
+                            edges[i][j].edgeStructure->ui_vect_idx)) {
+                    edges[i][j].isConnected = 1;
+                    edges[j][i].isConnected = 1;
+                    cout << environment.nodes[i].name << ",\t"
+                        << environment.nodes[j].name << "\t| "
+                        << vectorToStringNodeName(environment, edges[i][j].edgeStructure->ui_vect_idx)
+                        << endl;
+                    edges[i][j].edgeStructure->setUndirected();
+                    ++n_inconsistency;
+                }
+            }
+        }
+        cout << n_inconsistency
+            << " inconsistent conditional independences"
+            << " found after orientation." << endl;
+		edgesMatrix = saveEdgesListAsTable(environment);
 	}
-
 
 	vector< vector <string> >  adjMatrix;
 	adjMatrix = getAdjMatrix(environment);
