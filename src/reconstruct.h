@@ -5,7 +5,6 @@
 #include <deque>
 #include <set>
 #include <vector>
-#include <assert.h>
 
 #include "structure.h"
 
@@ -17,41 +16,24 @@ class CycleTracker {
 private:
     // max number of iterations for which we keep the edgeStructure of all
     // changed edges
-    static constexpr uint max_cycle_size = 10;
-    // internal struct keeping record of edge information
-    struct EdgeInfo {
-        double Ixy_ui;  // mutual information with conditioning
-        double cplx;  // complexity with conditioning
-        int Nxy_ui;  // count of joint factors with conditioning and without NA
-
-        bool is_empty = true;
-
-        explicit EdgeInfo(const Edge& e) :
-            Ixy_ui(e.edgeStructure->Ixy_ui),
-            cplx(e.edgeStructure->cplx), Nxy_ui(e.edgeStructure->Nxy_ui),
-            is_empty(false)
-        {}
-        EdgeInfo() = default;
-    };
+    static constexpr uint max_cycle_size = 100;
 
     struct Iteration {
         uint index;
-        std::set<uint> changed_edges;
-        std::vector<EdgeInfo> edge_info_list;
+        // key: index of edge
+        // value: status of edge in the previous iteration
+        std::map<uint, int> changed_edges;
 
-        Iteration(const Environment& env, uint i) : index(i),
-            // edges undirected, keep track of the lower triangular part
-            edge_info_list(env.numNodes * (env.numNodes - 1) / 2)
-        {
-            for (int i = 1; i < env.numNodes; ++i) {
-                for (int j = 0; j < i; ++j) {
-                    int index_1d = getEdgeIndex1D(i, j);
-                    if (env.edges[i][j].areNeighboursAfterIteration ==
-                            env.edges[i][j].isConnected) {
+        Iteration(const Environment& env, uint i) : index(i) {
+            // Keep track of the lower triangular part
+            for (uint i = 1; i < env.numNodes; ++i) {
+                for (uint j = 0; j < i; ++j) {
+                    const auto& edge = env.edges[i][j];
+                    if (edge.areNeighboursAfterIteration == edge.isConnected)
                         continue;
-                    }
-                    changed_edges.insert(index_1d);
-                    edge_info_list[index_1d] = EdgeInfo(env.edges[i][j]);
+                    auto index_1d = getEdgeIndex1D(i, j);
+                    changed_edges.insert(std::make_pair(
+                                index_1d, edge.areNeighboursAfterIteration));
                 }
             }
         }
@@ -96,15 +78,12 @@ private:
         if (index != 0)
             iterations_.add(Iteration(env_, index));
     }
-    // set info of edges of interest to its max value;
-    void setEdgeState(edge_index_1d index, const EdgeInfo& edge_info);
 
 public:
     CycleTracker(Environment& env) : env_(env) {}
 
     // convert lower triangular indices to 1d index
     static edge_index_1d getEdgeIndex1D(uint i, uint j) {
-        assert(i != j);
         return (j < i ? j + i * (i - 1) / 2 : i + j * (j - 1) / 2);
     }
 

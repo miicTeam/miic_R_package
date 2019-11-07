@@ -119,7 +119,7 @@ struct XJAddress{
 	int i;
 	int j;
 
-    XJAddress() {}
+    XJAddress() = default;
     XJAddress(int i, int j) : i(i), j(j) {}
 };
 
@@ -135,7 +135,7 @@ struct Edge{
  */
 struct Environment {
 	ExecutionTime execTime;
-	bool consistentPhase;
+	int consistentPhase;
 	// for gaussian case
 	double** rho;
 	double* standardDeviations;

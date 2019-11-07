@@ -1768,7 +1768,7 @@ void setEnvironment(Environment& environment){
 		}
 		environment.flag_sample_weights = true;
 	}
-	else if (environment.effN != environment.numSamples) {
+	else {
 		for(uint i = 0; i < environment.numSamples; i++){
 			environment.sampleWeights[i] = (environment.effN*1.0)/environment.numSamples;
 		}

@@ -107,7 +107,12 @@
 #' This is a way to ensure that data are missing at random for the considered
 #' interaction and to avoid selection bias. Set to TRUE by default
 #'
-#' @param consistent [a boolean value] If TRUE, runs the consistent version.
+#' @param consistent [a string; \emph{c("orientation", "skeleton")}]
+#' if "orientation": iterate over skeleton and orientation steps to ensure
+#' consistency of the network;
+#' if "skeleton": iterate over skeleton step to get a consistent skeleton, then
+#' orient edges and discard inconsistent orientations to ensure consistency of
+#' the network.
 #'
 #' @param verbose [a boolean value] If TRUE, debugging output is printed.
 #'
@@ -241,11 +246,13 @@
 miic <- function(inputData, categoryOrder= NULL, trueEdges = NULL, blackBox = NULL, nThreads=1,
                  cplx = c("nml", "mdl"), orientation = TRUE, propagation = TRUE, latent = FALSE,
                  neff = -1, edges=NULL, confidenceShuffle = 0, confidenceThreshold = 0,
-                 confList = NULL, sampleWeights = NULL, testMAR = TRUE, consistent = FALSE,
+                 confList = NULL, sampleWeights = NULL, testMAR = TRUE, consistent = c("orientation", "skeleton"),
                  verbose = FALSE)
 {
   res = NULL
   skeleton = TRUE
+  # if not specified, do not run consistent algorithm
+  consistent_code = 0
 
   #### Check the input arguments
   if( is.null( inputData ) )
@@ -269,6 +276,12 @@ miic <- function(inputData, categoryOrder= NULL, trueEdges = NULL, blackBox = NU
   #     stop("True edges file does not correspond to the input data matrix. Please check node names.")
   #   }
   # }
+
+  #consistent
+  if (consistent == "orientation")
+    consistent_code = 1
+  else if (consistent == "skeleton")
+    consistent_code = 2
 
   #cplx
   if(length(cplx) == 2)
@@ -334,7 +347,7 @@ miic <- function(inputData, categoryOrder= NULL, trueEdges = NULL, blackBox = NU
     res <- miic.reconstruct(inputData = inputData, stateOrder= categoryOrder, nThreads= nThreads, cplx = cplx, latent = latent,
                             effN = neff, blackBox = blackBox, confidenceShuffle = confidenceShuffle, edges = edges, orientation = orientation, propagation = propagation,
                             confidenceThreshold= confidenceThreshold, verbose= verbose, cntVar = cntVar, typeOfData = typeOfData,
-                            sampleWeights = sampleWeights, testMAR = testMAR, consistent = consistent)
+                            sampleWeights = sampleWeights, testMAR = testMAR, consistent = consistent_code)
     if(res$interrupted){
       warning("Interupted by user")
       return(NULL)

@@ -1,4 +1,4 @@
-#include "skeleton.h"
+#include "reconstruct.h"
 
 #include <iostream>
 #include <fstream>
@@ -21,8 +21,6 @@
 #include "skeletonIteration.h"
 #include "confidenceCut.h"
 #include "orientationProbability.h"
-
-
 
 using namespace std;
 using namespace Rcpp;
@@ -70,7 +68,7 @@ extern "C" SEXP reconstruct(SEXP inputDataR, SEXP typeOfDataR, SEXP cntVarR, SEX
 			threads = omp_get_num_procs();
 		omp_set_num_threads(threads);
 	#endif
-	environment.consistentPhase = Rcpp::as<bool> (consistentR);
+	environment.consistentPhase = Rcpp::as<int> (consistentR);
 	environment.testDistribution = Rcpp::as<bool> (testDistR);
 
 	environment.vectorData = Rcpp::as< vector <string> > (inputDataR);
@@ -154,6 +152,7 @@ extern "C" SEXP reconstruct(SEXP inputDataR, SEXP typeOfDataR, SEXP cntVarR, SEX
     // Create biconnected component analysis structure
 	BCC bcc(environment);
 	auto cycle_tracker = CycleTracker(environment);
+	vector<vector<string> > orientations;
 	do{
         if (environment.consistentPhase)
             bcc.analyse();
@@ -181,19 +180,23 @@ extern "C" SEXP reconstruct(SEXP inputDataR, SEXP typeOfDataR, SEXP cntVarR, SEX
 			environment.execTime.iter = spentTime;
 			environment.execTime.initIter = environment.execTime.init + environment.execTime.iter;
 		}
+        // orientation consistent algorithm
+        if (environment.numNoMore > 0 && environment.consistentPhase == 1) {
+            // Orient edges.
+            orientations = orientationProbability(environment);
+        }
 		cout << "Number of edges: " << environment.numNoMore << endl;
 	} while (environment.consistentPhase && !cycle_tracker.hasCycle());
 
 	int union_n_edges = 0;
-	for(int i = 0; i < environment.numNodes -1; i++){
-		for(int j = i+1; j < environment.numNodes; j++){
-			if(environment.edges[i][j].isConnected){
+	for (uint i = 1; i < environment.numNodes; i++) {
+		for (uint j = 0; j < i; j++) {
+			if (environment.edges[i][j].isConnected) {
 				union_n_edges ++;
 			}
 		}
 	}
 	environment.numNoMore = union_n_edges;
-
 
 	startTime = get_wall_time();
 	vector< vector <string> >confVect;
@@ -208,36 +211,42 @@ extern "C" SEXP reconstruct(SEXP inputDataR, SEXP typeOfDataR, SEXP cntVarR, SEX
 		environment.execTime.cut = 0;
 	}
 
-	vector<vector<string> > orientations;
-	if( environment.numNoMore > 0){
-        // orientation
-        orientations = orientationProbability(environment);
-        // Check inconsistency after orientation, add undirected edge to pairs
-        // with inconsistent conditional independence.
-        bcc.analyse();
-        uint n_inconsistency = 0;
-        for (uint i = 0; i < environment.numNodes - 1; i++) {
-            for (uint j = i+1; j < environment.numNodes; j++) {
-                auto& edges = environment.edges;
-                if (edges[i][j].isConnected)
-                    continue;
-                if (!bcc.is_consistent(i, j,
-                            edges[i][j].edgeStructure->ui_vect_idx)) {
-                    edges[i][j].isConnected = 1;
-                    edges[j][i].isConnected = 1;
-                    cout << environment.nodes[i].name << ",\t"
-                        << environment.nodes[j].name << "\t| "
-                        << vectorToStringNodeName(environment, edges[i][j].edgeStructure->ui_vect_idx)
-                        << endl;
-                    edges[i][j].edgeStructure->setUndirected();
+	if (environment.numNoMore > 0) {
+        // skeleton consistent algorithm
+        if (environment.consistentPhase == 2) {
+            orientations = orientationProbability(environment);
+            // Check inconsistency after orientation, add undirected edge to
+            // pairs with inconsistent conditional independence.
+            bcc.analyse();
+            uint n_inconsistency = 0;
+            std::vector<std::pair<uint, uint> > inconsistent_edges;
+            for (uint i = 1; i < environment.numNodes; i++) {
+                for (uint j = 0; j < i; j++) {
+                    const Edge& edge = environment.edges[i][j];
+                    if (edge.isConnected || bcc.is_consistent(i, j,
+                                edge.edgeStructure->ui_vect_idx))
+                        continue;
+                    if (environment.isVerbose) {
+                        cout << environment.nodes[i].name << ",\t"
+                            << environment.nodes[j].name << "\t| "
+                            << vectorToStringNodeName(environment,
+                                    edge.edgeStructure->ui_vect_idx)
+                            << endl;
+                    }
+                    inconsistent_edges.emplace_back(i, j);
                     ++n_inconsistency;
                 }
             }
+            for (const auto& k : inconsistent_edges) {
+                environment.edges[k.first][k.second].isConnected = 1;
+                environment.edges[k.second][k.first].isConnected = 1;
+                environment.edges[k.first][k.second].edgeStructure->setUndirected();
+            }
+            cout << n_inconsistency
+                << " inconsistent conditional independences"
+                << " found after orientation." << endl;
         }
-        cout << n_inconsistency
-            << " inconsistent conditional independences"
-            << " found after orientation." << endl;
-		edgesMatrix = saveEdgesListAsTable(environment);
+        edgesMatrix = saveEdgesListAsTable(environment);
 	}
 
 	vector< vector <string> >  adjMatrix;
@@ -282,54 +291,49 @@ extern "C" SEXP reconstruct(SEXP inputDataR, SEXP typeOfDataR, SEXP cntVarR, SEX
 
 bool CycleTracker::hasCycle() {
     uint n_edge = env_.numNoMore;
-    // before saving the current iteration, search among previous iterations
+    // Before saving the current iteration, search among previous iterations
     // those with the same number of edges
     auto range = edge_index_map_.equal_range(n_edge);
     bool no_cycle_found = range.first == range.second;
-    // indices of iteration that is possibly the end point of a cycle
-    // example: suppose that iteration #1, #3, #6 have the same
-    // number of edges as the current iteration, and each of them is a
+    // Indices of iteration that is possibly the end point of a cycle
+    // in the backtracking sense.
+    // Example: suppose that iteration #1, #3, #6 have the same
+    // number of edges as the current iteration #8, and each of them is a
     // possible start point of a cycle, therefore #2, #4, #7 are the
-    // corresponding possible end points of the cycle.
+    // corresponding possible end points of the cycle
+    // (#8 #7 ... #2), (#8 #7 ... #4), (#8 #7).
     std::deque<uint> iter_indices;
     for (auto it = range.first; it != range.second; ++it)
         iter_indices.push_back(it->second + 1);
-    // save the current iteration
     saveIteration();
     if (no_cycle_found)
         return false;
-    // backtracking requires starting from the largest index first
+    // Backtracking requires starting from the largest index first
     std::sort(iter_indices.begin(), iter_indices.end(), std::greater<uint>());
-    // set of edges that are to be marked as connected
+    // Set of edges that are to be marked as connected and undirected
     std::set<uint> edges_union;
-    // check if an edge is changed. vector is chosen over map for
+    // Check if an edge is changed. vector is chosen over map for
     // quicker access and simpler syntax, at the cost of extra memory trace
     // and (possible) extra time complexity (in practice there are very few
     // changes between each pair of iterations).
-    std::vector<uint> changed(env_.numNodes * (env_.numNodes - 1) / 2, 0);
-    // vector keeping track of index of the iteration with maximum information
-    // initialized to the last iteration (push_front)
-    std::vector<EdgeInfo> max_info(env_.numNodes * (env_.numNodes - 1) / 2);
+    std::vector<int> changed(env_.numNodes * (env_.numNodes - 1) / 2, 0);
     // backtracking over iteration to get changed_edges
     uint cycle_size = 0;
-    for (auto& iter : iterations_) {
+    for (const auto& iter : iterations_) {
         ++cycle_size;
         if (cycle_size > max_cycle_size) {
             // FIXME: decide what to do if cycle_size > max_cycle_size
-            std::cout << "cycle size out of limit size: "
+            std::cout << "Cycle size out of limit size: "
                 << max_cycle_size << '\n';
             return true;
         }
-        for (auto& k : iter.changed_edges) {
-            edges_union.insert(k);
-            // changed twice == unchanged
-            changed[k] = 1 - changed[k];
-            // set max_info for each edge
-            if (max_info[k].is_empty ||
-                    iter.edge_info_list[k].Ixy_ui - iter.edge_info_list[k].cplx
-                    > max_info[k].Ixy_ui - max_info[k].cplx) {
-                max_info[k] = iter.edge_info_list[k];
-            }
+        for (const auto& k : iter.changed_edges) {
+            edges_union.insert(k.first);
+            // compare edge status in the previous iteration
+            // against the latest edge status
+            std::pair<uint, uint> p = getEdgeIndex2D(k.first);
+            changed[k.first] = (k.second !=
+                    env_.edges[p.first][p.second].isConnected);
         }
         if (iter.index != iter_indices.front())
             continue;
@@ -342,27 +346,15 @@ bool CycleTracker::hasCycle() {
                 break;
             continue;
         }
-        for (auto& k : edges_union)
-            setEdgeState(k, max_info[k]);
+        for (auto& k : edges_union) {
+            std::pair<uint, uint> p = getEdgeIndex2D(k);
+            env_.edges[p.first][p.second].isConnected = 1;
+            env_.edges[p.second][p.first].isConnected = 1;
+            env_.edges[p.first][p.second].edgeStructure->setUndirected();
+        }
 
         std::cout << "cycle found of size " << cycle_size << std::endl;
         return true;
     }
     return false;
-}
-
-void CycleTracker::setEdgeState(edge_index_1d index, const EdgeInfo& edge_info) {
-    std::pair<uint, uint> p = getEdgeIndex2D(index);
-    env_.edges[p.first][p.second].isConnected = true;
-    env_.edges[p.second][p.first].isConnected = true;
-    EdgeStructure& eij = *(env_.edges[p.first][p.second].edgeStructure);
-    EdgeStructure& eji = *(env_.edges[p.second][p.first].edgeStructure);
-    // ugly but avoid touching Edge or EdgeStructure class
-    eij.Ixy_ui = edge_info.Ixy_ui;
-    eij.cplx = edge_info.cplx;
-    eij.Nxy_ui = edge_info.Nxy_ui;
-
-    eji.Ixy_ui = edge_info.Ixy_ui;
-    eji.cplx = edge_info.cplx;
-    eji.Nxy_ui = edge_info.Nxy_ui;
 }
