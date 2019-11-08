@@ -430,9 +430,7 @@ double* computeEnsInformationContinuous_Orientation(Environment& environment, in
 			}
 
 			if(cnt_red[j] == 1){
-				if(isContinuousDiscrete(dataNumeric_red, samplesNotNA, j)){
-					//cnt_red[j] = 0;
-				}
+				if(nnr < 3) cnt_red[j] = 0;
 			}
 
 			if(cnt_red[j] == 1)
@@ -474,9 +472,7 @@ double* computeEnsInformationContinuous_Orientation(Environment& environment, in
 		}
 
 		if(cnt_red[l] == 1){
-			if(isContinuousDiscrete(dataNumeric_red, samplesNotNA, l)){
-				//cnt_red[l] = 0;
-			}
+			if(nnr < 3) cnt_red[l] = 0;
 		}
 
 		if(cnt_red[l] == 1)
@@ -710,9 +706,7 @@ void computeContributingScores(Environment& environment, int* ziContPosIdx, int 
 				}
 
 				if(cnt_red[j] == 1){
-					if(isContinuousDiscrete(dataNumeric_red, samplesNotNA, j)){
-						//cnt_red[j] = 0;
-					}
+					if(nnr < 3) cnt_red[j] = 0;
 				}
 
 				if(cnt_red[j] == 1)
@@ -775,9 +769,7 @@ void computeContributingScores(Environment& environment, int* ziContPosIdx, int 
 				}
 
 				if(cnt_red[l] == 1){
-					if(isContinuousDiscrete(dataNumeric_red, samplesNotNA, l)){
-						//cnt_red[l] = 0;
-					}
+					if(nnr < 3) cnt_red[l] = 0;
 				}
 
 				if(cnt_red[l] == 1)
@@ -995,9 +987,7 @@ double* computeEnsInformationContinuous(Environment& environment, int* myCond, i
 				}
 
 				if(cnt_red[j] == 1){
-					if(isContinuousDiscrete(dataNumeric_red, samplesNotNA, j)){
-						//cnt_red[j] = 0;
-					}
+					if(nnr < 3) cnt_red[j] = 0;
 				}
 
 
@@ -1249,9 +1239,8 @@ double* computeEnsInformationNew(Environment& environment, int* myCond, int myNb
 	double** jointFreqs = getJointFreqs(environment, posArray[0], posArray[1], numSamples_nonNA);
 
 	double *res_new = getAllInfoNEW(environment.oneLineMatrix, environment.allLevels, posArray, myNbrUi, myZi,
-																	myNbrZi, myZiPos, environment.numSamples, environment.effN, cplx, environment.isK23,
-																	environment.c2terms,
-																	&m, environment.sampleWeights, jointFreqs, environment.testDistribution);
+									myNbrZi, myZiPos, environment.numSamples, environment.effN, cplx, environment.isK23,
+									environment.c2terms, &m, environment.sampleWeights, jointFreqs, environment.testDistribution);
 
 	for(int level0 = 0; level0 < environment.allLevels[posArray[0]]; level0++)
 		delete[] jointFreqs[level0];
