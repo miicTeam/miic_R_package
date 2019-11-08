@@ -7,7 +7,7 @@
 #include <tuple>
 
 using namespace std;
-
+using uint=unsigned int;
 
 struct StructWithOrtToPropagate{
 	int name;
@@ -41,19 +41,61 @@ struct EdgeStructure {
 	int z_name_idx; // index of the last best contributor
 	std::vector<int> ui_vect_idx; // index of ui
 	std::vector<int> zi_vect_idx; // index of ui
-	int Nxyz_ui; // Ixy_uiz of the best z
 	double Rxyz_ui; // score of the best contributor
-	// string key;
+
 	double Ixy_ui;
 	double cplx;
 	int Nxy_ui;
 	short int status;
-
-	// double Ixyz_ui;
-	// double kxyz_ui;
+	// Keeping track of jointCounts (discrete) and jointSpace(continuous) for KL divergence when
+	//adding Us to the conditioning set.
+	double mutInfo;  // mutual information without conditioning
+	double cplx_noU;  // complexity without conditioning
+	int Nxy;  // count of joint factors without NA
 
 	std::vector<int> indexStruct; // memorize the corresponding structure in the structures list in the environment by its index
 	std::vector<int> edgesInSpeTpl_list; // memorize the index of open structures
+
+	EdgeStructure():
+		z_name_idx(-1),
+		ui_vect_idx(std::vector<int>()),
+		zi_vect_idx(std::vector<int>()),
+		Rxyz_ui(0.0),
+
+		Ixy_ui(0.0),
+		cplx(0.0),
+		Nxy_ui(-1),
+		status(-1),
+		mutInfo(0.0),
+		cplx_noU(0.0),
+		Nxy(-1),
+
+		indexStruct(std::vector<int>()),
+		edgesInSpeTpl_list(std::vector<int>())
+	{}
+
+    void reset() {
+        z_name_idx = -1;
+        zi_vect_idx.clear();
+        ui_vect_idx.clear();
+        Rxyz_ui = 0;
+        status = -1;
+        Ixy_ui = mutInfo;
+        cplx = cplx_noU;
+        Nxy_ui = Nxy;
+        indexStruct.clear();
+        edgesInSpeTpl_list.clear();
+    }
+
+    void setUndirected () {
+        z_name_idx = -1;
+        ui_vect_idx.clear();
+        Rxyz_ui = 0;
+        status = 3;
+        Ixy_ui = mutInfo;
+        cplx = cplx_noU;
+        Nxy_ui = Nxy;
+    }
 };
 
 struct Node{
@@ -76,6 +118,9 @@ struct ExecutionTime{
 struct XJAddress{
 	int i;
 	int j;
+
+    XJAddress() = default;
+    XJAddress(int i, int j) : i(i), j(j) {}
 };
 
 struct Edge{
@@ -83,10 +128,6 @@ struct Edge{
 	short int isConnectedAfterInitialization;
 	short int areNeighboursAfterIteration;
 	EdgeStructure* edgeStructure;
-	// Keeping track of jointCounts (discrete) and jointSpace(continuous) for KL divergence when
-	//adding Us to the conditioning set.
-	double mutInfo;
-	double cplx_noU;
 };
 
 //
@@ -94,7 +135,7 @@ struct Edge{
  */
 struct Environment {
 	ExecutionTime execTime;
-	bool consistentPhase;
+	int consistentPhase;
 	// for gaussian case
 	double** rho;
 	double* standardDeviations;
@@ -180,9 +221,6 @@ struct Environment {
 	int isTplReuse; // -r parameter
 	int cplx;
 	int halfVStructures;
-
-	bool isSkeletonConsistent;
-	int countSearchMore;
 
 	int numberShuffles; // -s parameter
 	double confidenceThreshold; // -e parameter

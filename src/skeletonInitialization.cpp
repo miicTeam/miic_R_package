@@ -63,8 +63,9 @@ int initEdgeElt(Environment& environment, int i, int j, MemorySpace& m){
 
 	double myTest = 0;
 	string category;
-	environment.edges[i][j].mutInfo = environment.edges[i][j].edgeStructure->Ixy_ui;
-	environment.edges[i][j].cplx_noU = environment.edges[i][j].edgeStructure->cplx;
+	environment.edges[i][j].edgeStructure->mutInfo = environment.edges[i][j].edgeStructure->Ixy_ui;
+	environment.edges[i][j].edgeStructure->cplx_noU = environment.edges[i][j].edgeStructure->cplx;
+	environment.edges[i][j].edgeStructure->Nxy = environment.edges[i][j].edgeStructure->Nxy_ui;
 
 	if(environment.isNoInitEta)
 		myTest = environment.edges[i][j].edgeStructure->Ixy_ui - environment.edges[i][j].edgeStructure->cplx;
@@ -104,8 +105,6 @@ bool skeletonInitialization(Environment& environment){
 			environment.oneLineMatrix[j * environment.numSamples + i] = environment.dataNumeric[i][j];
 		}
 	}
-
-	environment.countSearchMore = 0;
 
 	int threadnum = 0;
 
@@ -147,7 +146,7 @@ bool skeletonInitialization(Environment& environment){
 					#ifdef _OPENMP
 					#pragma omp critical
 					#endif
-					environment.countSearchMore++;
+					environment.numSearchMore++;
 				}
 			}
 		}

@@ -1,3 +1,5 @@
+#include "utilities.h"
+
 #include <fstream>
 #include <sstream>
 #include <string>
@@ -5,7 +7,6 @@
 #include <cstdlib>
 #include <iostream>
 #include <map>
-//#include <algorithm>
 #include <cassert>
 #include <math.h>
 #include <sys/stat.h>
@@ -19,7 +20,6 @@
 
 #include "nanoflann.hpp"
 #include "KDTreeVectorOfVectorsAdaptor.h"
-#include "utilities.h"
 #include "computeInfo.h"
 
 //for memory space on continuous data
@@ -630,9 +630,9 @@ bool SortFunction(const XJAddress* a, const XJAddress* b, const Environment& env
 }
 
 class sorter {
-	  Environment &environment;
+	  const Environment& environment;
 		public:
-	  sorter(Environment& env) : environment(env) {}
+	  sorter(const Environment& env) : environment(env) {}
 	  bool operator()(XJAddress const* o1, XJAddress const* o2) const {
 			return SortFunction(o1, o2, environment );
 	  }
@@ -748,7 +748,7 @@ void saveAdjMatrixState(const Environment& environment, const string filename){
 /*
  * Transform a vector to a string
  */
-string vectorToStringNodeName(Environment& environment, const vector<int> vec){
+string vectorToStringNodeName(const Environment& environment, const vector<int>& vec){
 	stringstream ss;
 	int length = vec.size();
 	if(length > 0){
@@ -764,7 +764,7 @@ string vectorToStringNodeName(Environment& environment, const vector<int> vec){
   	return ss.str();
 }
 
-string vectorToString(const vector<int> vec){
+string vectorToString(const vector<int>& vec){
 	stringstream ss;
 	int length = vec.size();
 	if(length > 0){
@@ -790,7 +790,7 @@ string arrayToString1(const double* int_array, const int length){
   	return ss.str();
 }
 
-string zNameToString(Environment& environment, vector<int> vec, int pos){
+string zNameToString(const Environment& environment, vector<int> vec, int pos){
 	stringstream ss;
 	if(pos != -1)
 		ss << environment.nodes[vec[pos]].name;
@@ -833,7 +833,7 @@ bool readBlackbox1(vector<string> v, Environment& environment){
 	return true;
 }
 
-vector< vector <string> > saveEdgesListAsTable1(Environment& environment){
+vector< vector <string> > saveEdgesListAsTable(Environment& environment){
 
 	vector< vector <string> > data;
 
@@ -1025,7 +1025,7 @@ bool isInteger(const string &s)
 
 
 
-bool readData(Environment &environment, bool& isNA){
+bool readData(Environment& environment, bool& isNA){
 /*
  * Read data matrix from file
  */
@@ -1505,7 +1505,7 @@ bool parseCommandLine(Environment& environment, int argc, char** argv) {
 			case 'c':{
 				environment.cplxType.append(optarg);
 
-				if((environment.cplxType.compare("mdl")!=0) & (environment.cplxType.compare("nml")!=0)){
+				if(environment.cplxType.compare("mdl")!=0 & environment.cplxType.compare("nml")!=0){
 					cout << "[ERR] Wrong complexity check option!\n";
 					exit(1);
 				} else if(environment.cplxType.compare("mdl") == 0){
@@ -1839,7 +1839,6 @@ void setEnvironment(Environment& environment){
 	}
 
 	environment.initbins = min(30, int(0.5+cbrt(environment.numSamples)));
-
 
 	// for mixed
 	//if(environment.atLeastOneContinuous){

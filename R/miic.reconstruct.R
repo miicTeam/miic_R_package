@@ -1,6 +1,6 @@
 
-miic.skeleton <- function(inputData = NULL, cntVar = NULL, blackBox = NULL, stateOrder = NULL, nThreads= nThreads, 
-                          effN = -1, cplx = c("nml", "mdl"), eta = 1, latent = FALSE, confidenceShuffle = 0,
+miic.reconstruct <- function(inputData = NULL, cntVar = NULL, blackBox = NULL, stateOrder = NULL, nThreads= nThreads,
+                          effN = -1, cplx = c("nml", "mdl"), eta = 1, latent = FALSE, confidenceShuffle = 0, edges = NULL, orientation = TRUE, propagation = TRUE,
                           confidenceThreshold = 0, verbose = FALSE, typeOfData = NULL, sampleWeights = NULL,
                           testMAR = TRUE, consistent = FALSE)
 {
@@ -28,6 +28,12 @@ miic.skeleton <- function(inputData = NULL, cntVar = NULL, blackBox = NULL, stat
     bB = c("")
   }
 
+  if(!is.null(edges)){
+    edges <- as.vector(as.character(t(as.matrix(blackBox))))
+  } else {
+    edges = c("")
+  }
+
   if(!is.null(stateOrder)){
     stateOrder <- as.vector(as.character(t(as.matrix(stateOrder))))
   } else {
@@ -37,10 +43,11 @@ miic.skeleton <- function(inputData = NULL, cntVar = NULL, blackBox = NULL, stat
   if(is.null(sampleWeights)){
     sampleWeights = c(-1,rep(0, nrow(inputData)-1))
   }
+  hvs=0
   cntVar = as.numeric(cntVar)
   if (base::requireNamespace("Rcpp", quietly = TRUE)) {
-      res <- .Call('skeleton', inData, typeOfData, cntVar, numNodes, nThreads, bB, effN, cplx, eta, latent, isTplReuse,
-               isK23, isDegeneracy, isNoInitEta, confidenceShuffle, confidenceThreshold, sampleWeights, consistent, 
+      res <- .Call('reconstruct', inData, typeOfData, cntVar, numNodes, nThreads, edges, bB, effN, cplx, eta, hvs, latent, isTplReuse,
+               isK23, isDegeneracy, propagation, isNoInitEta, confidenceShuffle, confidenceThreshold, sampleWeights, consistent,
                testMAR, verbose, PACKAGE = "miic")
       if(res$interrupted) return(list(interrupted=TRUE))
   }
@@ -55,7 +62,6 @@ miic.skeleton <- function(inputData = NULL, cntVar = NULL, blackBox = NULL, stat
     colnames(df) <-tmp
     df[ df == "NA" ] = NA
     df[,c(6:10)] = sapply(df[,c(6:10)], as.numeric)
-
     # update the returned object
     res$edges <- df
 
@@ -67,7 +73,6 @@ miic.skeleton <- function(inputData = NULL, cntVar = NULL, blackBox = NULL, stat
     colnames(df) <-tmp
     df = sapply(df, as.numeric)
     row.names(df) <- tmp
-
     # update the returned adj matrix
     res$adjMatrix <- df
   # } else {
@@ -109,8 +114,24 @@ miic.skeleton <- function(inputData = NULL, cntVar = NULL, blackBox = NULL, stat
   time[which(time == 0)]=NA
 
   res$time <- stats::setNames(as.numeric(time),c("init", "iter", "initIter", "cut"))
-  res$interrupted <- FALSE
 
+  #create the data frame of the structures after orientation
+  df = res$orientations.prob
+  if(length(res$orientations.prob) > 0)
+  {
+    tmp <- unlist(res$orientations.prob)[1:length(res$orientations.prob[[1]])]
+    res1 <- unlist(res$orientations.prob)[(length(res$orientations.prob[[1]])+1):length(unlist(res$orientations.prob))]
+    df <- data.frame(matrix(res1, nrow=length(res$orientations.prob)-1, byrow=T),stringsAsFactors=FALSE)
+    colnames(df) <-tmp
+
+    df[,c(2:3)] = sapply(df[,c(2:3)], as.numeric)
+    df[,c(5:6)] = sapply(df[,c(5:6)], as.numeric)
+    df[,c(8:9)] = sapply(df[,c(8:9)], as.numeric)
+  }
+  # update the returned matrix
+  res$orientations.prob <- df
+
+  res$interrupted <- FALSE
 
   res
 }
