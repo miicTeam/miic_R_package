@@ -278,10 +278,12 @@ miic <- function(inputData, categoryOrder= NULL, trueEdges = NULL, blackBox = NU
   # }
 
   #consistent
-  if (consistent == "orientation")
-    consistent_code = 1
-  else if (consistent == "skeleton")
-    consistent_code = 2
+  if (length(consistent) == 1) {
+    if (consistent == "orientation")
+      consistent_code = 1
+    else if (consistent == "skeleton")
+      consistent_code = 2
+  }
 
   #cplx
   if(length(cplx) == 2)
