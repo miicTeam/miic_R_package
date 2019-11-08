@@ -80,9 +80,9 @@ void getSStructure(::Environment& environment, const int posX, const int posY, c
 			}
 
 			Is = Is + Cs;
-		} 
+		}
 	} else if(environment.typeOfData == 2 || (environment.typeOfData == 1 && environment.isAllGaussian == 0)){
-		res = computeEnsInformationContinuous_Orientation(environment, ui, u.size(), zi, posX, posZ, 
+		res = computeEnsInformationContinuous_Orientation(environment, ui, u.size(), zi, posX, posZ,
 														  environment.cplx, environment.m);
 
 		Is = res[1];
@@ -95,7 +95,7 @@ void getSStructure(::Environment& environment, const int posX, const int posY, c
 			}
 
 			Is = Is - Cs;
-		} 
+		}
 		//if(environment.nodes[posX].name.compare("Ppp2r1b")==0 && environment.nodes[posZ].name.compare("Pfkfb2")==0){
 		//	cout << "HELLO	"  << environment.nodes[posY].name.c_str() << "  " << environment.nodes[u[0]].name.c_str() << "  " << Is << endl;
 		//}
@@ -115,12 +115,12 @@ void getSStructure(::Environment& environment, const int posX, const int posY, c
 			}
 
 			Is = Is - Cs;
-		} 
+		}
 	}
 
 	delete(res);
-	
-	
+
+
 	vector<int> v;
 	v.push_back(posX+1);
 	v.push_back(posY+1);
@@ -130,7 +130,7 @@ void getSStructure(::Environment& environment, const int posX, const int posY, c
 }
 
 
-extern "C" SEXP orientationProbability(SEXP inputDataR, SEXP typeOfDataR, SEXP cntVarR, SEXP numNodesR, SEXP edgefileR, 
+extern "C" SEXP orientationProbability(SEXP inputDataR, SEXP typeOfDataR, SEXP cntVarR, SEXP numNodesR, SEXP edgefileR,
 									   SEXP effNR, SEXP cplxR, SEXP etaR, SEXP hvsR, SEXP isLatentR, SEXP isK23R,
 									   SEXP isDegeneracyR, SEXP propagationR, SEXP sampleWeightsR, SEXP verboseR)
 {
@@ -149,7 +149,7 @@ extern "C" SEXP orientationProbability(SEXP inputDataR, SEXP typeOfDataR, SEXP c
 	environment.typeOfData = Rcpp::as<int> (typeOfDataR);
 	vector<string> edgesVectorOneLine;
 	edgesVectorOneLine = Rcpp::as< vector <string> > (edgefileR);
-	
+
 	vector<string> v;
 
 	environment.effN = Rcpp::as<int> (effNR);
@@ -327,13 +327,13 @@ extern "C" SEXP orientationProbability(SEXP inputDataR, SEXP typeOfDataR, SEXP c
 		// set results to file
 		vector <string> vec;
 
-		vec.push_back("node1");
+		vec.push_back("source1");
 		vec.push_back("p1");
 		vec.push_back("p2");
-		vec.push_back("mid-node");
+		vec.push_back("target");
 		vec.push_back("p3");
 		vec.push_back("p4");
-		vec.push_back("node2");
+		vec.push_back("source2");
 		vec.push_back("NI3");
 		vec.push_back("Error");
 
@@ -342,7 +342,7 @@ extern "C" SEXP orientationProbability(SEXP inputDataR, SEXP typeOfDataR, SEXP c
 		for (uint i=0; i < allTpl.size(); i++){
 			vec.clear();
 			int error = 0;
-			int info_sign = allI3[i];
+			int info_sign = round(allI3[i] - 0.5);
 			int proba_sign = 0;
 
 			if(ptrRetProbValues[i + (1 * allTpl.size())] > 0.5 && ptrRetProbValues[i + (2 * allTpl.size())] > 0.5)
@@ -392,7 +392,7 @@ extern "C" SEXP orientationProbability(SEXP inputDataR, SEXP typeOfDataR, SEXP c
 
 	vector<double> myProba;
 
-	//// UPDATE ADJ MATRIX 
+	//// UPDATE ADJ MATRIX
 	if( myNbrTpl > 0 ){
 		for(uint i = 0; i < allTpl.size(); i++){
 			myProba.clear();;
@@ -453,7 +453,7 @@ extern "C" SEXP orientationProbability(SEXP inputDataR, SEXP typeOfDataR, SEXP c
         _["adjMatrix"] = adjMatrix,
         _["orientations.prob"] = orientations
     ) ;
-	
+
 	delete [] oneLineMatrixallTpl;
 	delete [] ptrRetProbValues;
 

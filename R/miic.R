@@ -48,11 +48,13 @@
 #' Normalized Maximum Likelihood (NML) criterion can be used (set the option with "nml").
 #' The default is "nml" (see Affeldt \emph{et al.}, UAI 2015).
 #'
-#' @param latent [a boolean value]
-#' When set to TRUE, the network reconstruction is taking into account
-#' hidden (latent) variables. Dependence between two observed variables due to
-#' a latent variable is indicated with a '6' in the adjacency matrix and in the
-#' network edges.summary and by a bi-directed edge in the (partially) oriented graph.
+#' @param latent [a string; \emph{c("no", "yes", "ort")}]
+#' When set to "yes", the network reconstruction is taking into account hidden (latent)
+#' variables. When set to "ort", latent variables are not considered during the skeleton
+#' reconstruction but allows bi-directed edges during the orientation. Dependence
+#' between two observed variables due to a latent variable is indicated with a '6' in
+#' the adjacency matrix and in the network edges.summary and by a bi-directed edge
+#' in the (partially) oriented graph.
 #'
 #' @param orientation [a boolean value]
 #' The miic network skeleton can be partially directed
@@ -239,7 +241,7 @@
 #'}
 
 miic <- function(inputData, categoryOrder= NULL, trueEdges = NULL, blackBox = NULL, nThreads=1,
-                 cplx = c("nml", "mdl"), orientation = TRUE, propagation = TRUE, latent = FALSE,
+                 cplx = c("nml", "mdl"), orientation = TRUE, propagation = TRUE, latent = c("no", "yes", "ort"),
                  neff = -1, edges=NULL, confidenceShuffle = 0, confidenceThreshold = 0,
                  confList = NULL, sampleWeights = NULL, testMAR = TRUE, consistent = FALSE,
                  verbose = FALSE)
@@ -257,10 +259,10 @@ miic <- function(inputData, categoryOrder= NULL, trueEdges = NULL, blackBox = NU
   effnAnalysis = miic.evaluate.effn(inputData, plot=F)
   if(effnAnalysis$neff < 0.5 * nrow(inputData) ){
     if(effnAnalysis$exponential_decay){
-        print(paste("Warning! Your samples in the datasets seem to be correlated! We suggest to re run the method specifying",
+        warning(paste("Your samples in the datasets seem to be correlated! We suggest to re run the method specifying",
           effnAnalysis$neff, " in the neff parameter. See the autocorrelation plot for more details."))
       } else {
-        print("Warning! Your samples in the datasets seem to be correlated but the correlation decay is not exponential. Are your samples correlated in some way? See the autocorrelation plot for more details.")
+        warning("Your samples in the datasets seem to be correlated but the correlation decay is not exponential. Are your samples correlated in some way? See the autocorrelation plot for more details.")
       }
   }
 
@@ -270,15 +272,11 @@ miic <- function(inputData, categoryOrder= NULL, trueEdges = NULL, blackBox = NU
   #   }
   # }
 
-  #cplx
-  if(length(cplx) == 2)
-    cplx = "nml"
-
-  if(cplx != "nml" && cplx != "mdl")
-  { stop("The complexity method is not allowed") }
+  cplx <- match.arg(cplx)
+  latent <- match.arg(latent)
 
   if(neff > nrow(inputData))
-  { stop("The number of effective samples can't be greater than the number of samples.") }
+  { stop("The number of effective samples cannot be greater than the number of samples.") }
 
   #edges
   if(!is.null(edges)){
@@ -294,10 +292,6 @@ miic <- function(inputData, categoryOrder= NULL, trueEdges = NULL, blackBox = NU
   #orientation
   if(orientation != TRUE && orientation != FALSE)
     stop("The orientation type is not correct. Allowed types are TRUE or FALSE")
-
-  #latent
-  if(latent != TRUE && latent != FALSE)
-    stop("The latent type is not correct. Allowed types are TRUE or FALSE")
 
   if(verbose)
     cat("START miic...\n")
@@ -332,7 +326,7 @@ miic <- function(inputData, categoryOrder= NULL, trueEdges = NULL, blackBox = NU
     if(skeleton){
       if(verbose)
        cat("\t# -> START skeleton...\n")
-      res <- miic.skeleton(inputData = inputData, stateOrder= categoryOrder, nThreads= nThreads, cplx = cplx, latent = latent,
+      res <- miic.skeleton(inputData = inputData, stateOrder= categoryOrder, nThreads= nThreads, cplx = cplx, latent = latent=="yes",
                            effN = neff, blackBox = blackBox, confidenceShuffle = confidenceShuffle,
                            confidenceThreshold= confidenceThreshold, verbose= verbose, cntVar = cntVar, typeOfData = typeOfData,
                            sampleWeights = sampleWeights, testMAR = testMAR, consistent = consistent)
@@ -349,7 +343,7 @@ miic <- function(inputData, categoryOrder= NULL, trueEdges = NULL, blackBox = NU
     }
 
     if( confidenceShuffle < 0 | confidenceThreshold < 0 ){
-      cat("Warning! ConfidenceShuffle and confidenceThreshold must be greater than 0, the confidence cut step will not be performed.")
+      warning("ConfidenceShuffle and confidenceThreshold must be greater than 0, the confidence cut step will not be performed.")
       confidenceShuffle =0
     }
 
@@ -361,8 +355,8 @@ miic <- function(inputData, categoryOrder= NULL, trueEdges = NULL, blackBox = NU
         cat("\tSTART orientation...")
       ptm <- proc.time()
       res = miic.orient(inputData= inputData, stateOrder = categoryOrder, edges = edges, effN = neff,
-                        cplx = cplx,  latent = latent, propagation = propagation, cntVar = cntVar,
-                        typeOfData = typeOfData, verbose = FALSE)
+                        cplx = cplx,  latent = latent %in% c("yes", "ort"), propagation = propagation,
+                        cntVar = cntVar, typeOfData = typeOfData, verbose = FALSE)
 
       timeOrt=(proc.time() - ptm)["elapsed"]
       timeInitIterOrt = time["initIter"]+timeOrt
@@ -446,5 +440,8 @@ miic <- function(inputData, categoryOrder= NULL, trueEdges = NULL, blackBox = NU
     if(verbose)
       cat("END miic")
   }
+
+  res$all.edges.summary$isCausal = isCausal(res$all.edges.summary, res$orientations.prob)
+
   res
 }

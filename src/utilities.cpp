@@ -1758,7 +1758,7 @@ void setEnvironment(Environment& environment){
 	}
 
 	//// Set the effN if not already done
-	if(environment.effN == -1  || environment.effN > environment.numSamples)
+	if((environment.effN == -1) || (environment.effN > environment.numSamples))
 		environment.effN = environment.numSamples;
 
 	environment.sampleWeights = new double[environment.numSamples];
@@ -1768,9 +1768,12 @@ void setEnvironment(Environment& environment){
 		}
 		environment.flag_sample_weights = true;
 	}
-	else if (environment.effN != environment.numSamples) {
+	else {
 		for(uint i = 0; i < environment.numSamples; i++){
-			environment.sampleWeights[i] = (environment.effN*1.0)/environment.numSamples;
+			if(environment.effN == environment.numSamples)
+				environment.sampleWeights[i] = 1;
+			else
+				environment.sampleWeights[i] = (environment.effN*1.0)/environment.numSamples;
 		}
 		environment.flag_sample_weights = true;
 	}
