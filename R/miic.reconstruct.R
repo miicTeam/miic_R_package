@@ -1,23 +1,15 @@
 
 miic.reconstruct <- function(inputData = NULL, cntVar = NULL, blackBox = NULL, stateOrder = NULL, nThreads= nThreads,
-                          effN = -1, cplx = c("nml", "mdl"), eta = 1, latent = FALSE, confidenceShuffle = 0, edges = NULL, orientation = TRUE, propagation = TRUE,
-                          confidenceThreshold = 0, verbose = FALSE, typeOfData = NULL, sampleWeights = NULL,
-                          testMAR = TRUE, consistent = FALSE)
+                             effN = -1, cplx = c("nml", "mdl"), eta = 1, latent = c("no", "yes", "ort"),
+                             confidenceShuffle = 0, edges = NULL, orientation = TRUE, propagation = TRUE,
+                             confidenceThreshold = 0, verbose = FALSE, typeOfData = NULL, sampleWeights = NULL,
+                             testMAR = TRUE, consistent = c("no", "orientation", "skeleton"))
 {
 
   isTplReuse = TRUE
   isK23 = TRUE
   isDegeneracy = FALSE
   isNoInitEta = FALSE
-
-  if( is.null( inputData ) )
-  { stop("The input data file is required") }
-
-  if(length(cplx) == 2)
-    cplx = "nml"
-
-  if(cplx != "nml" && cplx != "mdl")
-  { stop("The complexity method is not allowed") }
 
   numNodes <- length(inputData)
 

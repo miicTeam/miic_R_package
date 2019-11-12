@@ -277,9 +277,39 @@ miic <- function(inputData, categoryOrder= NULL, trueEdges = NULL, blackBox = NU
   #   }
   # }
 
-  cplx <- match.arg(cplx)
-  latent <- match.arg(latent)
-  consistent <- match.arg(consistent)
+  cplx = tryCatch({
+      match.arg(cplx)
+  }, error = function(e) {
+      if(grepl("object .* not found", e$message)){
+        message(e, "")
+        return("")
+       }
+      return(toString(cplx))
+  })
+  cplx = match.arg(cplx)
+
+  latent = tryCatch({
+      match.arg(latent)
+  }, error = function(e) {
+      if(grepl("object .* not found", e$message)){
+        message(e, "")
+        return("")
+       }
+      return(toString(latent))
+  })
+  latent = match.arg(latent)
+
+  consistent = tryCatch({
+      match.arg(consistent)
+  }, error = function(e) {
+      if(grepl("object .* not found", e$message)){
+        message(e, "")
+        return("")
+       }
+      return(toString(consistent))
+  })
+  consistent = match.arg(consistent)
+
 
   if(neff > nrow(inputData))
   { stop("The number of effective samples cannot be greater than the number of samples.") }
@@ -336,8 +366,7 @@ miic <- function(inputData, categoryOrder= NULL, trueEdges = NULL, blackBox = NU
                             confidenceThreshold= confidenceThreshold, verbose= verbose, cntVar = cntVar, typeOfData = typeOfData,
                             sampleWeights = sampleWeights, testMAR = testMAR, consistent = consistent)
     if(res$interrupted){
-      warning("Interupted by user")
-      return(NULL)
+      stop("Interupted by user")
     }
     time = res$time
     if(verbose)
@@ -424,7 +453,8 @@ miic <- function(inputData, categoryOrder= NULL, trueEdges = NULL, blackBox = NU
       cat("END miic")
   }
 
-  res$all.edges.summary$isCausal = isCausal(res$all.edges.summary, res$orientations.prob)
+  #print(res$orientations.prob)
+  #res$all.edges.summary$isCausal = isCausal(res$all.edges.summary, res$orientations.prob)
 
   res
 }

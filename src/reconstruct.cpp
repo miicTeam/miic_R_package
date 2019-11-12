@@ -175,7 +175,7 @@ extern "C" SEXP reconstruct(SEXP inputDataR, SEXP typeOfDataR, SEXP cntVarR, SEX
 			}
         }
 
-		firstStepIteration(environment, bcc);
+		if(!firstStepIteration(environment, bcc)) return(empty_results()); // If interrupted
 		if (environment.numNoMore == 0 && environment.numSearchMore == 0) {
 			if (environment.isVerbose == true)
 				cout << "# ------| Only phantom edges found.\n";
@@ -184,7 +184,7 @@ extern "C" SEXP reconstruct(SEXP inputDataR, SEXP typeOfDataR, SEXP cntVarR, SEX
 			if( environment.isVerbose == true ){ cout << "\n# ---- Other Contributing node(s) ----\n\n"; }
 			startTime = get_wall_time();
 
-			skeletonIteration(environment);
+			if(!skeletonIteration(environment)) return(empty_results()); // If interrupted
 
 			long double spentTime = (get_wall_time() - startTime);
 			environment.execTime.iter = spentTime;
