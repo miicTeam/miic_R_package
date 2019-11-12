@@ -119,8 +119,7 @@ discretizeMutual <- function(X, Y, matrixU=NULL, maxbins=NULL, cplx="nml", Neff 
 
     if(all(is_discrete[1:2])) stop("Either X or Y must be continuous to be discretized.")
 
-    if ( !is.vector(X) || !is.vector(Y) ) {
-        if( (!is_discrete[1]) || (!is_discrete[2] ) )
+    if ( !(is.vector(X) || is.factor(X)) || !(is.vector(Y) || is.factor(Y)) ) {
             stop("Please provide the two samples X and Y as numerical vectors for continuous variables and factors or character vectors for discrete variables.")
     }
 

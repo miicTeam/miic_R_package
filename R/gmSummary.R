@@ -1,7 +1,7 @@
 gmSummary <- function(inputData=NULL, edges = NULL, trueEdges = NULL,
                       stateOrder = NULL, adjMatrix = NULL, verbose = FALSE)
 {
-
+  
   if( is.null( inputData ) )
   { stop("The input data file is required") }
 
@@ -109,8 +109,7 @@ gmSummary <- function(inputData=NULL, edges = NULL, trueEdges = NULL,
   #### Initialize the output data frame
   ### LV // adding 2 columns: signs & partial_correlation
   outputSummary.df <- data.frame( x = character(edgesNbr), y = character(edgesNbr)
-                                  , type = character(edgesNbr), ai = character(edgesNbr)
-                                  , info = numeric(edgesNbr) , info_cond = numeric(edgesNbr)
+                                  , type = character(edgesNbr), ai = character(edgesNbr), info = numeric(edgesNbr)
                                   , cplx = numeric(edgesNbr), Nxy_ai = numeric(edgesNbr)
                                   , log_confidence = numeric(edgesNbr)
                                   , infOrt = numeric(edgesNbr), trueOrt = numeric(edgesNbr)
@@ -118,8 +117,6 @@ gmSummary <- function(inputData=NULL, edges = NULL, trueEdges = NULL,
                                   , essential = character(edgesNbr)
                                   , sign = character(edgesNbr)
                                   , partial_correlation = character(edgesNbr)
-                                  , is_causal = character(edgesNbr)
-                                  , proba = character(edgesNbr)
                                   , stringsAsFactors = FALSE )
 
   #### ----
@@ -154,8 +151,6 @@ gmSummary <- function(inputData=NULL, edges = NULL, trueEdges = NULL,
         , essential = rep( NA, currentN )
         , sign = rep( NA, currentN )
         , partial_correlation = rep( NA, currentN )
-        , is_causal = rep( NA, currentN )
-        , proba = rep( NA, currentN )
         , stringsAsFactors = FALSE )
 
       #### Update the total row count
