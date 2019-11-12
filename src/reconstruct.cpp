@@ -190,8 +190,8 @@ extern "C" SEXP reconstruct(SEXP inputDataR, SEXP typeOfDataR, SEXP cntVarR, SEX
 			environment.execTime.iter = spentTime;
 			environment.execTime.initIter = environment.execTime.init + environment.execTime.iter;
 		}
-        // orientation consistent algorithm
-        if (environment.numNoMore > 0 && environment.consistentPhase == 1) {
+        // Oriente edges for non-consistent/orientation consistent algorithm
+        if (environment.numNoMore > 0 && environment.consistentPhase <= 1) {
             // Orient edges.
             orientations = orientationProbability(environment);
         }
