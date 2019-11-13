@@ -29,11 +29,11 @@ private:
             for (uint i = 1; i < env.numNodes; ++i) {
                 for (uint j = 0; j < i; ++j) {
                     const auto& edge = env.edges[i][j];
-                    if (edge.areNeighboursAfterIteration == edge.isConnected)
+                    if (edge.status_prev == edge.status)
                         continue;
                     auto index_1d = getEdgeIndex1D(i, j);
                     changed_edges.insert(std::make_pair(
-                                index_1d, edge.areNeighboursAfterIteration));
+                                index_1d, edge.status_prev));
                 }
             }
         }

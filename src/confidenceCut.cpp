@@ -47,15 +47,15 @@ void shuffle_lookup(int *array, int *array2, size_t n)
 //	output.close();
 //}
 
-bool SortFunctionNoMore2(const XJAddress* a, const XJAddress* b, const Environment& environment) {
-	 return (environment.edges[a->i][a->j].edgeStructure->Ixy_ui) > (environment.edges[b->i][b->j].edgeStructure->Ixy_ui);
+bool SortFunctionNoMore2(const EdgeID* a, const EdgeID* b, const Environment& environment) {
+	 return (environment.edges[a->i][a->j].shared_info->Ixy_ui) > (environment.edges[b->i][b->j].shared_info->Ixy_ui);
 }
 
 class sorterNoMore2 {
 	  Environment &environment;
 		public:
 	  sorterNoMore2(Environment& env) : environment(env) {}
-	  bool operator()(XJAddress const* o1, XJAddress const* o2) const {
+	  bool operator()(EdgeID const* o1, EdgeID const* o2) const {
 			return SortFunctionNoMore2(o1, o2, environment );
 	  }
 };
@@ -99,7 +99,7 @@ vector< vector <string> > confidenceCut(Environment& environment){
 
 	for(uint i = 0; i < environment.numNodes -1; i++){
 		for(uint j = i+1; j < environment.numNodes; j++){
-			if(environment.edges[i][j].isConnected){
+			if(environment.edges[i][j].status){
 				inferredEdges_tab[pos][0] = i;
 				inferredEdges_tab[pos][1] = j;
 				pos++;
@@ -343,19 +343,19 @@ vector< vector <string> > confidenceCut(Environment& environment){
 	for(int i = 0; i < environment.numNoMore; i++){
 		int X = inferredEdges_tab[i][0] ;
  		int Y = inferredEdges_tab[i][1] ;
- 		confidence = exp (- (environment.edges[X][Y].edgeStructure->Ixy_ui - environment.edges[X][Y].edgeStructure->cplx));
+ 		confidence = exp (- (environment.edges[X][Y].shared_info->Ixy_ui - environment.edges[X][Y].shared_info->cplx));
  		confVect[i] = confidence / confVect[i];
  		if(confVect[i] > environment.confidenceThreshold){
  			if(X > Y)
- 				environment.edges[X][Y].edgeStructure->status = 1; 
+ 				environment.edges[X][Y].shared_info->connected = 1; 
  			else
- 				environment.edges[Y][X].edgeStructure->status = 1; 
-			environment.edges[X][Y].isConnected = 0;
-			environment.edges[Y][X].isConnected = 0;
-			// environment.edges[Y][X].edgeStructure->Ixy_ui = 0;
+ 				environment.edges[Y][X].shared_info->connected = 1; 
+			environment.edges[X][Y].status = 0;
+			environment.edges[Y][X].status = 0;
+			// environment.edges[Y][X].shared_info->Ixy_ui = 0;
 
 			// cout << environment.nodes[X].name << "\t" <<environment.nodes[Y].name << "\t" << confidence << "\t" << 
-			// exp (- (environment.edges[X][Y].edgeStructure->Ixy_ui - environment.edges[X][Y].edgeStructure->cplx)) << "\t" <<
+			// exp (- (environment.edges[X][Y].shared_info->Ixy_ui - environment.edges[X][Y].shared_info->cplx)) << "\t" <<
 			// confVect[i] << endl;
 
 			toDelete.push_back(i);
@@ -370,7 +370,7 @@ vector< vector <string> > confidenceCut(Environment& environment){
 		if(!(std::find(toDelete.begin(), toDelete.end(), i) != toDelete.end())) {
 			int X = inferredEdges_tab[i][0] ;
  			int Y = inferredEdges_tab[i][1] ;
-			XJAddress* s = new XJAddress();
+			EdgeID* s = new EdgeID();
 			s->i=X;
 			s->j=Y;
 			environment.noMoreAddress.push_back(s);
@@ -382,9 +382,9 @@ vector< vector <string> > confidenceCut(Environment& environment){
 		
 	for(uint X = 0; X < environment.numNodes -1; X++){
 		for(uint Y = X+1; Y < environment.numNodes; Y++){
-			if(environment.edges[X][Y].isConnected == -2 || environment.edges[X][Y].isConnected == 2 || environment.edges[X][Y].isConnected == 6){
-	 			environment.edges[X][Y].isConnected = 1;
-	 			environment.edges[Y][X].isConnected = 1;
+			if(environment.edges[X][Y].status == -2 || environment.edges[X][Y].status == 2 || environment.edges[X][Y].status == 6){
+	 			environment.edges[X][Y].status = 1;
+	 			environment.edges[Y][X].status = 1;
 	 		}
 	 	}
 	 }

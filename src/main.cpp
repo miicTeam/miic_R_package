@@ -202,7 +202,7 @@
 //	// for(uint i = 0; i < environment.numNodes -1; i++){
 //	// 	for(uint j = i+1; j < environment.numNodes; j++)
 //	// 	{
-//	// 		if(environment.edges[i][j].isConnected == -2 || environment.edges[i][j].isConnected == 2 || environment.edges[i][j].isConnected == 1)
+//	// 		if(environment.edges[i][j].status == -2 || environment.edges[i][j].status == 2 || environment.edges[i][j].status == 1)
 //	// 			output << environment.nodes[i].name << "\t" << environment.nodes[j].name << "\n";
 //	// 	}
 //	// }
@@ -223,7 +223,7 @@
 //
 //	for(uint i = 0; i < environment.numSamples -1 ;i++ ){
 //		for(uint j = i+1; j < environment.numNodes; j++){
-//			delete environment.edges[i][j].edgeStructure;
+//			delete environment.edges[i][j].shared_info;
 //		}
 //	}
 //

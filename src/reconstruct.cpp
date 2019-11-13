@@ -28,7 +28,7 @@ using namespace Rcpp;
 bool skeletonChanged(::Environment& environment){
 	for(uint i = 0; i < environment.numNodes; i++){
 		for(uint j = 0; j < environment.numNodes; j++){
-			if(environment.edges[i][j].isConnected != environment.edges[i][j].areNeighboursAfterIteration){
+			if(environment.edges[i][j].status != environment.edges[i][j].status_prev){
 				return true;
 			}
 		}
@@ -166,12 +166,12 @@ extern "C" SEXP reconstruct(SEXP inputDataR, SEXP typeOfDataR, SEXP cntVarR, SEX
 	do{
         if (environment.consistentPhase)
             bcc.analyse();
-		//save the neighbours in the areNeighboursAfterIteration structure
+		//save the neighbours in the status_prev structure
 		//and revert to the structure at the moment of initialization
 		for(int i = 0; i < environment.numNodes; i++){
 			for(int j = 0; j < environment.numNodes; j++){
-				environment.edges[i][j].areNeighboursAfterIteration = environment.edges[i][j].isConnected;
-				environment.edges[i][j].isConnected = environment.edges[i][j].isConnectedAfterInitialization;
+				environment.edges[i][j].status_prev = environment.edges[i][j].status;
+				environment.edges[i][j].status = environment.edges[i][j].status_init;
 			}
         }
 
@@ -201,7 +201,7 @@ extern "C" SEXP reconstruct(SEXP inputDataR, SEXP typeOfDataR, SEXP cntVarR, SEX
 	int union_n_edges = 0;
 	for (uint i = 1; i < environment.numNodes; i++) {
 		for (uint j = 0; j < i; j++) {
-			if (environment.edges[i][j].isConnected) {
+			if (environment.edges[i][j].status) {
 				union_n_edges ++;
 			}
 		}
@@ -233,14 +233,14 @@ extern "C" SEXP reconstruct(SEXP inputDataR, SEXP typeOfDataR, SEXP cntVarR, SEX
             for (uint i = 1; i < environment.numNodes; i++) {
                 for (uint j = 0; j < i; j++) {
                     const Edge& edge = environment.edges[i][j];
-                    if (edge.isConnected || bcc.is_consistent(i, j,
-                                edge.edgeStructure->ui_vect_idx))
+                    if (edge.status || bcc.is_consistent(i, j,
+                                edge.shared_info->ui_vect_idx))
                         continue;
                     if (environment.isVerbose) {
                         cout << environment.nodes[i].name << ",\t"
                             << environment.nodes[j].name << "\t| "
                             << vectorToStringNodeName(environment,
-                                    edge.edgeStructure->ui_vect_idx)
+                                    edge.shared_info->ui_vect_idx)
                             << endl;
                     }
                     inconsistent_edges.emplace_back(i, j);
@@ -248,9 +248,9 @@ extern "C" SEXP reconstruct(SEXP inputDataR, SEXP typeOfDataR, SEXP cntVarR, SEX
                 }
             }
             for (const auto& k : inconsistent_edges) {
-                environment.edges[k.first][k.second].isConnected = 1;
-                environment.edges[k.second][k.first].isConnected = 1;
-                environment.edges[k.first][k.second].edgeStructure->setUndirected();
+                environment.edges[k.first][k.second].status = 1;
+                environment.edges[k.second][k.first].status = 1;
+                environment.edges[k.first][k.second].shared_info->setUndirected();
             }
             cout << n_inconsistency
                 << " inconsistent conditional independences"
@@ -343,7 +343,7 @@ bool CycleTracker::hasCycle() {
             // against the latest edge status
             std::pair<uint, uint> p = getEdgeIndex2D(k.first);
             changed[k.first] = (k.second !=
-                    env_.edges[p.first][p.second].isConnected);
+                    env_.edges[p.first][p.second].status);
         }
         if (iter.index != iter_indices.front())
             continue;
@@ -358,9 +358,9 @@ bool CycleTracker::hasCycle() {
         }
         for (auto& k : edges_union) {
             std::pair<uint, uint> p = getEdgeIndex2D(k);
-            env_.edges[p.first][p.second].isConnected = 1;
-            env_.edges[p.second][p.first].isConnected = 1;
-            env_.edges[p.first][p.second].edgeStructure->setUndirected();
+            env_.edges[p.first][p.second].status = 1;
+            env_.edges[p.second][p.first].status = 1;
+            env_.edges[p.first][p.second].shared_info->setUndirected();
         }
 
         std::cout << "cycle found of size " << cycle_size << std::endl;

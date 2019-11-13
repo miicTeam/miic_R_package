@@ -24,10 +24,10 @@ void getSStructure(Environment& environment, const int posX, const int posY, con
 {
 	//// To check if xk belongs to the {ui} of the base
 
-	vector<int> u(environment.edges[posX][posZ].edgeStructure->ui_vect_idx);
-	if(environment.edges[posX][posZ].edgeStructure->ui_vect_idx.size() > 0){
+	vector<int> u(environment.edges[posX][posZ].shared_info->ui_vect_idx);
+	if(environment.edges[posX][posZ].shared_info->ui_vect_idx.size() > 0){
 		//// Remove xk from the {ui} if needed
-		for(uint i = 0; i < environment.edges[posX][posZ].edgeStructure->ui_vect_idx.size(); i++){
+		for(uint i = 0; i < environment.edges[posX][posZ].shared_info->ui_vect_idx.size(); i++){
 			if(u[i] == posY){
 				u.erase(u.begin() + i);
 				break;
@@ -58,7 +58,7 @@ void getSStructure(Environment& environment, const int posX, const int posY, con
 	// double* Ixixj_uixk_list = computeEnsInformation(environment, ui, u.size(), zi, z.size(), u.size()+2, posX, posZ, environment.cplx);
 
 	// //// Is = N.I(xi; xj; xk) = N.I(xi; xj|{ui})[xk] - N.I(xi; xj|{xk, ui})
-	// int nbrRetValues = 3 * environment.edges[posX][posZ].edgeStructure->zi_vect_idx.size();
+	// int nbrRetValues = 3 * environment.edges[posX][posZ].shared_info->zi_vect_idx.size();
 
 	////  Compute I(xyz|ui)[xyuiz] = I(xy|ui)[xyuiz] - I(xz|ui,z)[xyuiz]
 	//double Is=  Ixixj_ui_xk_list[0] - Ixixj_uixk_list[0];
@@ -103,7 +103,7 @@ void getSStructure(Environment& environment, const int posX, const int posY, con
 		Is = computeEnsInformationContinuous_Gaussian(environment, posX, posY, posZ);
 
 
-		Cs = 0.5 * (environment.edges[posX][posY].edgeStructure->ui_vect_idx.size() + 2) * log(environment.numSamples);
+		Cs = 0.5 * (environment.edges[posX][posY].shared_info->ui_vect_idx.size() + 2) * log(environment.numSamples);
 
 
 		if(environment.isK23){
@@ -151,9 +151,9 @@ vector<vector<string> > orientationProbability(Environment& environment) {
 			int posX1 = environment.noMoreAddress[i]->i;
 			int posY1 = environment.noMoreAddress[i]->j;
 
-			if(posY1 == posX && !environment.edges[posY][posX1].isConnected)
+			if(posY1 == posX && !environment.edges[posY][posX1].status)
 				neighboursX.push_back(posX1);
-			else if(posY1 == posY && !environment.edges[posX][posX1].isConnected)
+			else if(posY1 == posY && !environment.edges[posX][posX1].status)
 				neighboursY.push_back(posX1);
 		}
 
@@ -161,9 +161,9 @@ vector<vector<string> > orientationProbability(Environment& environment) {
 			int posX1 = environment.noMoreAddress[i]->i;
 			int posY1 = environment.noMoreAddress[i]->j;
 
-			if(posX1 == posX && !environment.edges[posY][posY1].isConnected)
+			if(posX1 == posX && !environment.edges[posY][posY1].status)
 				neighboursX.push_back(posY1);
-			else if(posX1 == posY && !environment.edges[posX][posY1].isConnected)
+			else if(posX1 == posY && !environment.edges[posX][posY1].status)
 				neighboursY.push_back(posY1);
 		}
 
@@ -365,15 +365,15 @@ vector<vector<string> > orientationProbability(Environment& environment) {
 	            	double a = myProba[0] - *max_element(myProba.begin(), myProba.end() );
 	                if( a == 0 )  // If p1 is max: n1 <-- n2
 	                {
-	                	environment.edges[allTpl[i][0]][allTpl[i][1]].isConnected = -2;
-	                	environment.edges[allTpl[i][1]][allTpl[i][0]].isConnected = 2;
+	                	environment.edges[allTpl[i][0]][allTpl[i][1]].status = -2;
+	                	environment.edges[allTpl[i][1]][allTpl[i][0]].status = 2;
 	                } else {
-	                	environment.edges[allTpl[i][0]][allTpl[i][1]].isConnected = 2;
-	                	environment.edges[allTpl[i][1]][allTpl[i][0]].isConnected = -2;
+	                	environment.edges[allTpl[i][0]][allTpl[i][1]].status = 2;
+	                	environment.edges[allTpl[i][1]][allTpl[i][0]].status = -2;
 	                }
 				} else {
-					environment.edges[allTpl[i][0]][allTpl[i][1]].isConnected = 6;
-                	environment.edges[allTpl[i][1]][allTpl[i][0]].isConnected = 6;
+					environment.edges[allTpl[i][0]][allTpl[i][1]].status = 6;
+                	environment.edges[allTpl[i][1]][allTpl[i][0]].status = 6;
 				}
 			}
 
@@ -388,15 +388,15 @@ vector<vector<string> > orientationProbability(Environment& environment) {
 	            	double a = myProba[0] - *max_element(myProba.begin(), myProba.end() );
 	            	if( a == 0 )  // If p1 is max: n1 <-- n2
 	                {
-	                	environment.edges[allTpl[i][1]][allTpl[i][2]].isConnected = -2;
-	                	environment.edges[allTpl[i][2]][allTpl[i][1]].isConnected = 2;
+	                	environment.edges[allTpl[i][1]][allTpl[i][2]].status = -2;
+	                	environment.edges[allTpl[i][2]][allTpl[i][1]].status = 2;
 	                } else {
-	                	environment.edges[allTpl[i][1]][allTpl[i][2]].isConnected = 2;
-	                	environment.edges[allTpl[i][2]][allTpl[i][1]].isConnected = -2;
+	                	environment.edges[allTpl[i][1]][allTpl[i][2]].status = 2;
+	                	environment.edges[allTpl[i][2]][allTpl[i][1]].status = -2;
 	                }
                 } else {
-					environment.edges[allTpl[i][1]][allTpl[i][2]].isConnected = 6;
-	            	environment.edges[allTpl[i][2]][allTpl[i][1]].isConnected = 6;
+					environment.edges[allTpl[i][1]][allTpl[i][2]].status = 6;
+	            	environment.edges[allTpl[i][2]][allTpl[i][1]].status = 6;
 				}
 			}
 		}

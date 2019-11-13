@@ -341,7 +341,7 @@ vector< vector <string> > getAdjMatrix(const Environment& environment){
 		vec.push_back(environment.nodes[i].name);
 		for(uint j = 0; j < environment.numNodes; j++){
 			ss.str("");
-			ss << environment.edges[i][j].isConnected;
+			ss << environment.edges[i][j].status;
 			vec.push_back(ss.str());
 		}
 		adjMatrix.push_back(vec);
@@ -502,7 +502,7 @@ void deleteStruct(Environment& environment){
 
 	for(uint i = 0; i < environment.numNodes - 1; i++){
 		for(uint j = i + 1; j < environment.numNodes; j++){
-			delete environment.edges[i][j].edgeStructure;
+			delete environment.edges[i][j].shared_info;
 		}
 	}
 
@@ -588,42 +588,42 @@ bool isOnlyDouble(const char* str) {
 bool comparatorPairs ( const pair<double,int>& l, const pair<double,int>& r) {
 	return l.first < r.first; }
 
-bool SortFunctionNoMore1(const XJAddress* a, const XJAddress* b, const Environment& environment) {
-	return environment.edges[a->i][a->j].edgeStructure->Ixy_ui > environment.edges[b->i][b->j].edgeStructure->Ixy_ui;
+bool SortFunctionNoMore1(const EdgeID* a, const EdgeID* b, const Environment& environment) {
+	return environment.edges[a->i][a->j].shared_info->Ixy_ui > environment.edges[b->i][b->j].shared_info->Ixy_ui;
 }
 
 class sorterNoMore {
 	  Environment& environment;
 		public:
 	  sorterNoMore(Environment& env) : environment(env) {}
-	  bool operator()(XJAddress const* o1, XJAddress const* o2) const {
+	  bool operator()(EdgeID const* o1, EdgeID const* o2) const {
 			return SortFunctionNoMore1(o1, o2, environment );
 	  }
 };
 
-bool SortFunction(const XJAddress* a, const XJAddress* b, const Environment& environment) {
+bool SortFunction(const EdgeID* a, const EdgeID* b, const Environment& environment) {
 
-	if(environment.edges[a->i][a->j].edgeStructure->status > environment.edges[b->i][b->j].edgeStructure->status)
+	if(environment.edges[a->i][a->j].shared_info->connected > environment.edges[b->i][b->j].shared_info->connected)
 		return true;
-	else if(environment.edges[a->i][a->j].edgeStructure->status < environment.edges[b->i][b->j].edgeStructure->status)
+	else if(environment.edges[a->i][a->j].shared_info->connected < environment.edges[b->i][b->j].shared_info->connected)
 		return false;
 
-	if(environment.edges[a->i][a->j].edgeStructure->status == 1 && environment.edges[b->i][b->j].edgeStructure->status == 1){
-		if(environment.edges[a->i][a->j].edgeStructure->Rxyz_ui == 0 && environment.edges[b->i][b->j].edgeStructure->Rxyz_ui != 0)
+	if(environment.edges[a->i][a->j].shared_info->connected == 1 && environment.edges[b->i][b->j].shared_info->connected == 1){
+		if(environment.edges[a->i][a->j].shared_info->Rxyz_ui == 0 && environment.edges[b->i][b->j].shared_info->Rxyz_ui != 0)
 			return true;
-		else if(environment.edges[a->i][a->j].edgeStructure->Rxyz_ui != 0 && environment.edges[b->i][b->j].edgeStructure->Rxyz_ui == 0)
+		else if(environment.edges[a->i][a->j].shared_info->Rxyz_ui != 0 && environment.edges[b->i][b->j].shared_info->Rxyz_ui == 0)
 			return false;
 
-		if(environment.edges[a->i][a->j].edgeStructure->Rxyz_ui > environment.edges[b->i][b->j].edgeStructure->Rxyz_ui)
+		if(environment.edges[a->i][a->j].shared_info->Rxyz_ui > environment.edges[b->i][b->j].shared_info->Rxyz_ui)
 			return true;
-		else if(environment.edges[a->i][a->j].edgeStructure->Rxyz_ui < environment.edges[b->i][b->j].edgeStructure->Rxyz_ui)
+		else if(environment.edges[a->i][a->j].shared_info->Rxyz_ui < environment.edges[b->i][b->j].shared_info->Rxyz_ui)
 			return false;
 	}
 
-	if(environment.edges[a->i][a->j].edgeStructure->status == 3 && environment.edges[b->i][b->j].edgeStructure->status == 3){
-		if(environment.edges[a->i][a->j].edgeStructure->Ixy_ui > environment.edges[b->i][b->j].edgeStructure->Ixy_ui)
+	if(environment.edges[a->i][a->j].shared_info->connected == 3 && environment.edges[b->i][b->j].shared_info->connected == 3){
+		if(environment.edges[a->i][a->j].shared_info->Ixy_ui > environment.edges[b->i][b->j].shared_info->Ixy_ui)
 			return true;
-		else if(environment.edges[a->i][a->j].edgeStructure->Ixy_ui < environment.edges[b->i][b->j].edgeStructure->Ixy_ui)
+		else if(environment.edges[a->i][a->j].shared_info->Ixy_ui < environment.edges[b->i][b->j].shared_info->Ixy_ui)
 			return false;
 	}
 	return false;
@@ -633,7 +633,7 @@ class sorter {
 	  const Environment& environment;
 		public:
 	  sorter(const Environment& env) : environment(env) {}
-	  bool operator()(XJAddress const* o1, XJAddress const* o2) const {
+	  bool operator()(EdgeID const* o1, EdgeID const* o2) const {
 			return SortFunction(o1, o2, environment );
 	  }
 };
@@ -694,7 +694,7 @@ void saveAdjMatrix(const Environment& environment, const string filename){
 		output << environment.nodes[i].name << "\t";
 		for(uint j=0; j < environment.numNodes; j++)
 		{
-			output << environment.edges[i][j].isConnected;
+			output << environment.edges[i][j].status;
 			if(j + 1 < environment.numNodes)
 				output << "\t";
 		}
@@ -722,14 +722,14 @@ void saveAdjMatrixState(const Environment& environment, const string filename){
 		for(uint j=0; j < environment.numNodes; j++)
 		{
 			if(j > i){
-				if(environment.edges[i][j].edgeStructure->status == 3)
+				if(environment.edges[i][j].shared_info->connected == 3)
 					output << "1";
 			   	else
 			   		output << "0";
 				if(j + 1 < environment.numNodes)
 					output << "\t";
 			} else if( i > j){
-				if(environment.edges[j][i].edgeStructure->status == 3)
+				if(environment.edges[j][i].shared_info->connected == 3)
 					output << "1";
 			   	else
 			   		output << "0";
@@ -825,8 +825,8 @@ bool readBlackbox1(vector<string> v, Environment& environment){
 		}
 
 		if(posX != -1 && posY != -1){
-			environment.edges[posX][posY].isConnected = 0;
-			environment.edges[posY][posX].isConnected = 0;
+			environment.edges[posX][posY].status = 0;
+			environment.edges[posY][posX].status = 0;
 		}
 	}
 
@@ -837,12 +837,12 @@ vector< vector <string> > saveEdgesListAsTable(Environment& environment){
 
 	vector< vector <string> > data;
 
-	vector<XJAddress*> allEdges;
+	vector<EdgeID*> allEdges;
 
 	for(uint i = 0; i < environment.numNodes -1; i++){
 	 	for(uint j = i + 1; j < environment.numNodes; j++){
-			//if( (environment.edges[i][j].isConnected) || (environment.edges[i][j].edgeStructure->ui_vect_idx.size() > 0)){
-				XJAddress* s = new XJAddress();
+			//if( (environment.edges[i][j].status) || (environment.edges[i][j].shared_info->ui_vect_idx.size() > 0)){
+				EdgeID* s = new EdgeID();
 				s->i=i;
 				s->j=j;
 				allEdges.push_back(s);
@@ -881,28 +881,28 @@ vector< vector <string> > saveEdgesListAsTable(Environment& environment){
 		row.push_back(output.str());
 		row.push_back(environment.nodes[allEdges[i]->i].name);
 		row.push_back(environment.nodes[allEdges[i]->j].name);
- 		row.push_back(zNameToString(environment, environment.edges[allEdges[i]->i][allEdges[i]->j].edgeStructure->zi_vect_idx, environment.edges[allEdges[i]->i][allEdges[i]->j].edgeStructure->z_name_idx));
- 		row.push_back(vectorToStringNodeName(environment, environment.edges[allEdges[i]->i][allEdges[i]->j].edgeStructure->ui_vect_idx));
- 		row.push_back(vectorToStringNodeName(environment, environment.edges[allEdges[i]->i][allEdges[i]->j].edgeStructure->zi_vect_idx));
+ 		row.push_back(zNameToString(environment, environment.edges[allEdges[i]->i][allEdges[i]->j].shared_info->zi_vect_idx, environment.edges[allEdges[i]->i][allEdges[i]->j].shared_info->z_name_idx));
+ 		row.push_back(vectorToStringNodeName(environment, environment.edges[allEdges[i]->i][allEdges[i]->j].shared_info->ui_vect_idx));
+ 		row.push_back(vectorToStringNodeName(environment, environment.edges[allEdges[i]->i][allEdges[i]->j].shared_info->zi_vect_idx));
 
  		output.str("");
- 		output << environment.edges[allEdges[i]->i][allEdges[i]->j].edgeStructure->Ixy_ui;
+ 		output << environment.edges[allEdges[i]->i][allEdges[i]->j].shared_info->Ixy_ui;
  		row.push_back(output.str());
 
  		output.str("");
- 		output << environment.edges[allEdges[i]->i][allEdges[i]->j].edgeStructure->cplx;
+ 		output << environment.edges[allEdges[i]->i][allEdges[i]->j].shared_info->cplx;
  		row.push_back(output.str());
 
  		output.str("");
- 		output << environment.edges[allEdges[i]->i][allEdges[i]->j].edgeStructure->Rxyz_ui;
+ 		output << environment.edges[allEdges[i]->i][allEdges[i]->j].shared_info->Rxyz_ui;
  		row.push_back(output.str());
 
  		output.str("");
- 		output << environment.edges[allEdges[i]->i][allEdges[i]->j].edgeStructure->status;
+ 		output << environment.edges[allEdges[i]->i][allEdges[i]->j].shared_info->connected;
  		row.push_back(output.str());
 
  		output.str("");
- 		output << environment.edges[allEdges[i]->i][allEdges[i]->j].edgeStructure->Nxy_ui;
+ 		output << environment.edges[allEdges[i]->i][allEdges[i]->j].shared_info->Nxy_ui;
  		row.push_back(output.str());
 
  		data.push_back(row);
@@ -1291,8 +1291,8 @@ int getNumSamples_nonNA(Environment& environment, int i, int j){
 	for(uint k = 0; k < environment.numSamples; k++){
 		sampleOk = true;
 		if(environment.dataNumeric[k][i] != -1 && environment.dataNumeric[k][j] != -1){
-			for(uint u = 0 ; u < environment.edges[i][j].edgeStructure->ui_vect_idx.size(); u++){
-				if(environment.dataNumeric[k][environment.edges[i][j].edgeStructure->ui_vect_idx[u]] == -1){
+			for(uint u = 0 ; u < environment.edges[i][j].shared_info->ui_vect_idx.size(); u++){
+				if(environment.dataNumeric[k][environment.edges[i][j].shared_info->ui_vect_idx[u]] == -1){
 					sampleOk = false;
 				}
 			}
@@ -1313,8 +1313,8 @@ void getJointSpace(Environment& environment, int i, int j, vector<vector<double>
 		sampleOk = true;
 		curr_samplesToEvaluate[k] = 0;
 		if(environment.dataNumeric[k][i] != -1 && environment.dataNumeric[k][j] != -1){
-			for(uint u = 0 ; u < environment.edges[i][j].edgeStructure->ui_vect_idx.size(); u++){
-				if(environment.dataNumeric[k][environment.edges[i][j].edgeStructure->ui_vect_idx[u]] == -1){
+			for(uint u = 0 ; u < environment.edges[i][j].shared_info->ui_vect_idx.size(); u++){
+				if(environment.dataNumeric[k][environment.edges[i][j].shared_info->ui_vect_idx[u]] == -1){
 					sampleOk = false;
 				}
 			}
@@ -1343,8 +1343,8 @@ double** getJointFreqs(Environment& environment, int i, int j, int numSamples_no
 	for(uint k = 0; k < environment.numSamples; k++){
 		sampleOk = true;
 		if(environment.dataNumeric[k][i] != -1 && environment.dataNumeric[k][j] != -1){
-			for(uint u = 0 ; u < environment.edges[i][j].edgeStructure->ui_vect_idx.size(); u++){
-				if(environment.dataNumeric[k][environment.edges[i][j].edgeStructure->ui_vect_idx[u]] == -1)
+			for(uint u = 0 ; u < environment.edges[i][j].shared_info->ui_vect_idx.size(); u++){
+				if(environment.dataNumeric[k][environment.edges[i][j].shared_info->ui_vect_idx[u]] == -1)
 					sampleOk = false;
 			}
 			if(sampleOk)
@@ -1373,8 +1373,8 @@ void getJointMixed(Environment& environment, int i, int j, int* mixedDiscrete, d
 		sampleOk = true;
 		curr_samplesToEvaluate[k] = 0;
 		if(environment.dataNumeric[k][i] != -1 && environment.dataNumeric[k][j] != -1){
-			for(uint u = 0 ; u < environment.edges[i][j].edgeStructure->ui_vect_idx.size(); u++){
-				if(environment.dataNumeric[k][environment.edges[i][j].edgeStructure->ui_vect_idx[u]] == -1){
+			for(uint u = 0 ; u < environment.edges[i][j].shared_info->ui_vect_idx.size(); u++){
+				if(environment.dataNumeric[k][environment.edges[i][j].shared_info->ui_vect_idx[u]] == -1){
 					sampleOk = false;
 				}
 			}
@@ -1904,19 +1904,19 @@ void setEnvironment(Environment& environment){
 		for(uint j = 0; j < environment.numNodes; j++){
 			if((environment.columnAsContinuous[i] == 0 && environment.allLevels[i] == environment.numSamples ) || ( environment.columnAsContinuous[j] == 0 && environment.allLevels[j] == environment.numSamples)){
 				//If a node is discrete with as many levels as there are samples, its information with other nodes is null.
-				environment.edges[i][j].isConnected = 0;
-				environment.edges[i][j].areNeighboursAfterIteration = 0;
+				environment.edges[i][j].status = 0;
+				environment.edges[i][j].status_prev = 0;
 			} else {
 				//Initialise all other edges.
-				environment.edges[i][j].isConnected = 1;
-				environment.edges[i][j].areNeighboursAfterIteration = 1;
+				environment.edges[i][j].status = 1;
+				environment.edges[i][j].status_prev = 1;
 			}
 		}
 	}
 
 	for(uint i = 0; i < environment.numNodes; i++){
-		environment.edges[i][i].isConnected = 0;
-		environment.edges[i][i].areNeighboursAfterIteration = 0;
+		environment.edges[i][i].status = 0;
+		environment.edges[i][i].status_prev = 0;
 	}
 
 	environment.noiseVec = new double[2*environment.numSamples];
@@ -1990,18 +1990,18 @@ void readFilesAndFillStructures(vector<string> edgesVectorOneLine, Environment& 
 		environment.edges[i] = new Edge[environment.numNodes];
 
 	for(uint i = 0; i < environment.numNodes; i++){
-		environment.edges[i][i].isConnected = 0;
-		environment.edges[i][i].isConnectedAfterInitialization = 0;
+		environment.edges[i][i].status = 0;
+		environment.edges[i][i].status_init = 0;
 	}
 
 	for(uint i = 0; i < environment.numNodes - 1; i++){
 		for(uint j = i + 1; j < environment.numNodes; j++){
 			// create a structure for the nodes that need to store information about them
-			environment.edges[i][j].edgeStructure = new EdgeStructure();
-			environment.edges[j][i].edgeStructure = environment.edges[i][j].edgeStructure ;
+			environment.edges[i][j].shared_info = new EdgeSharedInfo();
+			environment.edges[j][i].shared_info = environment.edges[i][j].shared_info ;
 			// initialize the structure
-			environment.edges[j][i].edgeStructure->z_name_idx = -1;
-			environment.edges[j][i].edgeStructure->status = -1;
+			environment.edges[j][i].shared_info->z_name_idx = -1;
+			environment.edges[j][i].shared_info->connected = -1;
 		}
 	}
 
@@ -2054,7 +2054,7 @@ void readFilesAndFillStructures(vector<string> edgesVectorOneLine, Environment& 
 								break;
 							}
 						}
-						environment.edges[posX][posY].edgeStructure->ui_vect_idx.push_back(ival);
+						environment.edges[posX][posY].shared_info->ui_vect_idx.push_back(ival);
 					}
 				}
 			} else if(col == 4){
@@ -2070,33 +2070,33 @@ void readFilesAndFillStructures(vector<string> edgesVectorOneLine, Environment& 
 								break;
 							}
 						}
-						environment.edges[posX][posY].edgeStructure->zi_vect_idx.push_back(ival);
+						environment.edges[posX][posY].shared_info->zi_vect_idx.push_back(ival);
 					}
 				}
 			} else if(col == 5){
-				environment.edges[posX][posY].edgeStructure->Ixy_ui = atof(s.c_str());
+				environment.edges[posX][posY].shared_info->Ixy_ui = atof(s.c_str());
 			} else if(col == 6){
-				environment.edges[posX][posY].edgeStructure->cplx = atof(s.c_str());
+				environment.edges[posX][posY].shared_info->cplx = atof(s.c_str());
 			} else if(col == 7){
-				environment.edges[posX][posY].edgeStructure->Rxyz_ui = atof(s.c_str());
+				environment.edges[posX][posY].shared_info->Rxyz_ui = atof(s.c_str());
 			} else if(col == 8){
 				int state = atoi(s.c_str());
-				environment.edges[posX][posY].edgeStructure->status = state;
+				environment.edges[posX][posY].shared_info->connected = state;
 				if(state == 3){
-					environment.edges[posX][posY].isConnected = 1;
-					environment.edges[posY][posX].isConnected = 1;
+					environment.edges[posX][posY].status = 1;
+					environment.edges[posY][posX].status = 1;
 					// add the edge to Nomore
-					XJAddress* ij = new XJAddress();
+					EdgeID* ij = new EdgeID();
 					ij->i = posX;
 					ij->j = posY;
 					environment.noMoreAddress.push_back(ij);
 				}
 				else{
-					environment.edges[posX][posY].isConnected = 0;
-					environment.edges[posY][posX].isConnected = 0;
+					environment.edges[posX][posY].status = 0;
+					environment.edges[posY][posX].status = 0;
 				}
 			} else if(col == 9){
-				environment.edges[posX][posY].edgeStructure->Nxy_ui = atof(s.c_str());
+				environment.edges[posX][posY].shared_info->Nxy_ui = atof(s.c_str());
 			}
 		}
 
@@ -2148,8 +2148,8 @@ bool readBlackbox(Environment& environment, string slash){
 			col++;
 		}
 		if(posX != -1 && posY != -1){
-			environment.edges[posX][posY].isConnected = 0;
-			environment.edges[posY][posX].isConnected = 0;
+			environment.edges[posX][posY].status = 0;
+			environment.edges[posY][posX].status = 0;
 		}
 		else
 			cout << "[WARNING] Edge " << s1 << "-" << s2 << " is not an edge of the network\n";

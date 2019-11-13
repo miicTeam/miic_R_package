@@ -19,15 +19,15 @@
 
 using namespace std;
 
-bool SortFunctionNoMore(const XJAddress* a, const XJAddress* b, const Environment& environment) {
-	 return environment.edges[a->i][a->j].edgeStructure->Ixy_ui > environment.edges[b->i][b->j].edgeStructure->Ixy_ui;
+bool SortFunctionNoMore(const EdgeID* a, const EdgeID* b, const Environment& environment) {
+	 return environment.edges[a->i][a->j].shared_info->Ixy_ui > environment.edges[b->i][b->j].shared_info->Ixy_ui;
 }
 
 class sorterNoMore {
 	  Environment &environment;
 		public:
 	  sorterNoMore(Environment& env) : environment(env) {}
-	  bool operator()(XJAddress const* o1, XJAddress const* o2) const {
+	  bool operator()(EdgeID const* o1, EdgeID const* o2) const {
 			return SortFunctionNoMore(o1, o2, environment );
 	  }
 };
@@ -55,15 +55,15 @@ bool areallUiDiscrete(Environment& environment, std::vector<int> uis, int size){
  * Sort the ranks of the function
  */
 
-bool SortFunction1(const XJAddress* a, const XJAddress* b, const Environment& environment) {
-	 return environment.edges[a->i][a->j].edgeStructure->Rxyz_ui > environment.edges[b->i][b->j].edgeStructure->Rxyz_ui;
+bool SortFunction1(const EdgeID* a, const EdgeID* b, const Environment& environment) {
+	 return environment.edges[a->i][a->j].shared_info->Rxyz_ui > environment.edges[b->i][b->j].shared_info->Rxyz_ui;
 }
 
 class sorter1 {
 	  Environment &environment;
 		public:
 	  sorter1(Environment& env) : environment(env) {}
-	  bool operator()(XJAddress const* o1, XJAddress const* o2) const {
+	  bool operator()(EdgeID const* o1, EdgeID const* o2) const {
 			return SortFunction1(o1, o2, environment );
 	  }
 };
@@ -75,9 +75,9 @@ void searchAndSetZi(Environment& environment, const int posX, const int posY){
     for(int c = 0; c < environment.numNodes; c++){
         if (c == posX || c == posY)
             continue;
-        if (!isLatent && !environment.edges[posX][c].areNeighboursAfterIteration && !environment.edges[posY][c].areNeighboursAfterIteration)
+        if (!isLatent && !environment.edges[posX][c].status_prev && !environment.edges[posY][c].status_prev)
             continue;
-        environment.edges[posX][posY].edgeStructure->zi_vect_idx.push_back(c);
+        environment.edges[posX][posY].shared_info->zi_vect_idx.push_back(c);
         numZiPos++;
     }
 
@@ -113,10 +113,10 @@ bool firstStepIteration(Environment& environment, BCC& bcc) {
 	for(int i = 0; i < environment.numNodes - 1; i++){
 		for(int j = i + 1; j < environment.numNodes; j++){
             // Do dot consider edges removed with unconditional independence
-			if (!environment.edges[i][j].isConnected)
+			if (!environment.edges[i][j].status)
 				continue;
-			environment.edges[i][j].edgeStructure->reset();
-			XJAddress* s = new XJAddress(i, j);
+			environment.edges[i][j].shared_info->reset();
+			EdgeID* s = new EdgeID(i, j);
 			environment.searchMoreAddress.push_back(s);
 			environment.numSearchMore++;
 		}
@@ -164,7 +164,7 @@ bool firstStepIteration(Environment& environment, BCC& bcc) {
 			int posX = environment.searchMoreAddress[i]->i;
 			int posY = environment.searchMoreAddress[i]->j;
 			if(environment.isVerbose)cout << "##  " << "XY: " << environment.nodes[posX].name << " " << environment.nodes[posY].name << "\n\n";
-			if(environment.edges[posX][posY].edgeStructure->zi_vect_idx.size() > 0 ){
+			if(environment.edges[posX][posY].shared_info->zi_vect_idx.size() > 0 ){
 				// Search for new contributing node and its rank
 				if(environment.isAllGaussian == 0){
 					SearchForNewContributingNodeAndItsRank(environment, posX, posY, environment.memoryThreads[threadnum]);
@@ -183,11 +183,11 @@ bool firstStepIteration(Environment& environment, BCC& bcc) {
 		for(int i = 0; i < environment.numSearchMore; i++){
 			int posX = environment.searchMoreAddress[i]->i;
 			int posY = environment.searchMoreAddress[i]->j;
-			if(environment.edges[posX][posY].edgeStructure->z_name_idx != -1)
+			if(environment.edges[posX][posY].shared_info->z_name_idx != -1)
 			{
 				if(environment.isVerbose)
 				{ cout << "## ------!!--> Update the edge element in 'searchMore': " <<
-					environment.nodes[environment.edges[posX][posY].edgeStructure->zi_vect_idx[environment.edges[posX][posY].edgeStructure->z_name_idx]].name << " is a good zi candidate\n";}
+					environment.nodes[environment.edges[posX][posY].shared_info->zi_vect_idx[environment.edges[posX][posY].shared_info->z_name_idx]].name << " is a good zi candidate\n";}
 			} else {
 				if(environment.isVerbose)
 				{ cout << "## ------!!--> Remove the edge element from searchMore.\n## ------!!--> Add edge to 'noMore' (no good zi candidate)\n";}
@@ -199,7 +199,7 @@ bool firstStepIteration(Environment& environment, BCC& bcc) {
 				environment.numSearchMore--;
 				i--;
 				// Update the status
-				environment.edges[posX][posY].edgeStructure->status = 3;
+				environment.edges[posX][posY].shared_info->connected = 3;
 			}
 			if(environment.isVerbose)
 				cout << "\n";
@@ -246,7 +246,7 @@ bool skeletonIteration(Environment& environment){
 		if(environment.isVerbose)
 			cout << "Pos x : " << posX << " , pos y: " << posY << endl << flush;
 
-		EdgeStructure* topEdgeElt = environment.edges[posX][posY].edgeStructure;
+		EdgeSharedInfo* topEdgeElt = environment.edges[posX][posY].shared_info;
 
 		if( environment.isVerbose ) cout << "# Before adding new zi to {ui}: " ; //displayEdge(topEdgeElt)
 
@@ -265,9 +265,9 @@ bool skeletonIteration(Environment& environment){
 
 		double* v =NULL;
 		if(environment.columnAsContinuous[posX] == 0 && environment.columnAsContinuous[posY] == 0 &&
-			areallUiDiscrete(environment, environment.edges[posX][posY].edgeStructure->ui_vect_idx, environment.edges[posX][posY].edgeStructure->ui_vect_idx.size())){
+			areallUiDiscrete(environment, environment.edges[posX][posY].shared_info->ui_vect_idx, environment.edges[posX][posY].shared_info->ui_vect_idx.size())){
 
-			v = computeEnsInformationNew(environment, &environment.edges[posX][posY].edgeStructure->ui_vect_idx[0], environment.edges[posX][posY].edgeStructure->ui_vect_idx.size(),
+			v = computeEnsInformationNew(environment, &environment.edges[posX][posY].shared_info->ui_vect_idx[0], environment.edges[posX][posY].shared_info->ui_vect_idx.size(),
 					NULL, 0, -1,  posX, posY, environment.cplx, environment.m);
 
 			topEdgeElt->Ixy_ui = v[1];
@@ -276,20 +276,20 @@ bool skeletonIteration(Environment& environment){
 			free(v);
 		} else if(environment.columnAsGaussian[posX] == 1 &&
 				  environment.columnAsGaussian[posY] == 1 &&
-				  areallUiGaussian(environment, environment.edges[posX][posY].edgeStructure->ui_vect_idx,
-				  				   environment.edges[posX][posY].edgeStructure->ui_vect_idx.size())) {
+				  areallUiGaussian(environment, environment.edges[posX][posY].shared_info->ui_vect_idx,
+				  				   environment.edges[posX][posY].shared_info->ui_vect_idx.size())) {
 
-			int s = environment.edges[posX][posY].edgeStructure->ui_vect_idx.size();
-			v = corrMutInfo(environment, environment.dataDouble, &environment.edges[posX][posY].edgeStructure->ui_vect_idx[0], s, NULL, 0, posX, posY, -2);
+			int s = environment.edges[posX][posY].shared_info->ui_vect_idx.size();
+			v = corrMutInfo(environment, environment.dataDouble, &environment.edges[posX][posY].shared_info->ui_vect_idx[0], s, NULL, 0, posX, posY, -2);
 			int N = environment.nSamples[posX][posY];
-			environment.edges[posX][posY].edgeStructure->Nxy_ui = N;
-			topEdgeElt->cplx = 0.5 * (environment.edges[posX][posY].edgeStructure->ui_vect_idx.size() + 2) * log(N);
+			environment.edges[posX][posY].shared_info->Nxy_ui = N;
+			topEdgeElt->cplx = 0.5 * (environment.edges[posX][posY].shared_info->ui_vect_idx.size() + 2) * log(N);
 			topEdgeElt->Ixy_ui = v[0];
 			delete [] v;
 
 		} else {
-			v = computeEnsInformationContinuous(environment, &environment.edges[posX][posY].edgeStructure->ui_vect_idx[0],
-												environment.edges[posX][posY].edgeStructure->ui_vect_idx.size(),
+			v = computeEnsInformationContinuous(environment, &environment.edges[posX][posY].shared_info->ui_vect_idx[0],
+												environment.edges[posX][posY].shared_info->ui_vect_idx.size(),
 												NULL, 0, -1,  posX, posY, environment.cplx,environment.m);
 			topEdgeElt->Nxy_ui = v[0];
 			topEdgeElt->Ixy_ui = v[1];
@@ -329,10 +329,10 @@ bool skeletonIteration(Environment& environment){
 			environment.numSearchMore--;
 
 			// set the connection to 0 on the adj matrix
-			environment.edges[posX][posY].isConnected = 0;
-			environment.edges[posY][posX].isConnected = 0;
+			environment.edges[posX][posY].status = 0;
+			environment.edges[posY][posX].status = 0;
 			//// Save the phantom status
-			topEdgeElt->status = 1;
+			topEdgeElt->connected = 1;
 		} else {
 			//// Reinit Rxyz_ui
 			topEdgeElt->Rxyz_ui = environment.thresPc;
@@ -352,7 +352,7 @@ bool skeletonIteration(Environment& environment){
 			}
 
 			 if(environment.isVerbose){
-				if(environment.edges[posX][posY].edgeStructure->z_name_idx == -1)
+				if(environment.edges[posX][posY].shared_info->z_name_idx == -1)
 					cout << "# See topEdgeElt[['z.name']]: NA\n" ;
 				else
 					cout << "# See topEdgeElt[['z.name']]: " << environment.nodes[topEdgeElt->zi_vect_idx[topEdgeElt->z_name_idx]].name << "\n" ;
@@ -371,7 +371,7 @@ bool skeletonIteration(Environment& environment){
 					environment.searchMoreAddress.erase(environment.searchMoreAddress.begin() + max);
 					environment.numSearchMore--;
 					//// Update the status of the edge
-					topEdgeElt->status = 3;
+					topEdgeElt->connected = 3;
 			}
 		}
 
@@ -380,8 +380,8 @@ bool skeletonIteration(Environment& environment){
 
 		max = 0;
 		for(int i = 0; i < environment.numSearchMore; i++){
-			if(environment.edges[environment.searchMoreAddress[i]->i][environment.searchMoreAddress[i]->j].edgeStructure->Rxyz_ui >
-				environment.edges[environment.searchMoreAddress[max]->i][environment.searchMoreAddress[max]->j].edgeStructure->Rxyz_ui)
+			if(environment.edges[environment.searchMoreAddress[i]->i][environment.searchMoreAddress[i]->j].shared_info->Rxyz_ui >
+				environment.edges[environment.searchMoreAddress[max]->i][environment.searchMoreAddress[max]->j].shared_info->Rxyz_ui)
 			max = i;
 		}
 		// cout << 1.0*(start_numSearchMore - environment.numSearchMore)/(start_numSearchMore-1) << "\t" << prg_numSearchMore << "\n" << flush;
@@ -402,8 +402,8 @@ bool BCC::is_consistent(int x, int y, const vector<int>& vect_z) const {
     std::set<int> set_z = get_candidate_z(x, y);
     for (auto& z : vect_z) {
         if (set_z.find(z) == set_z.end() ||
-                (environment.edges[z][x].isConnected <= 0 &&
-                 environment.edges[z][y].isConnected <= 0))
+                (environment.edges[z][x].status <= 0 &&
+                 environment.edges[z][y].status <= 0))
             return false;
     }
     return true;
@@ -428,8 +428,8 @@ void BCC::bcc_aux(int u, int& time, vector<int>& parent, vector<int>& lowest,
     for (int v=0; v<numNodes; v++) {
         // graph maybe (partially) directed, whereas biconnected component
         // concerns only the skeleton
-        if (!environment.edges[u][v].isConnected
-                && !environment.edges[v][u].isConnected)
+        if (!environment.edges[u][v].status
+                && !environment.edges[v][u].status)
             continue;
 
         if (depth[v] == -1) {
@@ -520,8 +520,8 @@ void BCC::bcc() {
     for (int i=0; i<numNodes; i++){
         for (int j=0; j<numNodes; j++) {
             degree_of[i] += static_cast<int>(
-                    environment.edges[i][j].isConnected ||
-                    environment.edges[j][i].isConnected);
+                    environment.edges[i][j].status ||
+                    environment.edges[j][i].status);
         }
     }
 }
@@ -596,12 +596,12 @@ std::set<int> BCC::get_candidate_z(int x, int y) const {
 }
 
 void BCC::set_candidate_z(int x, int y) {
-    vector<int>& vect_z = environment.edges[x][y].edgeStructure->zi_vect_idx;
+    vector<int>& vect_z = environment.edges[x][y].shared_info->zi_vect_idx;
     insert_iterator<vector<int> > insert_it = inserter(vect_z, vect_z.begin());
     set<int> set_z = get_candidate_z(x, y);
     copy_if(set_z.begin(), set_z.end(), insert_it, [this, x, y](int i) {
         return (environment.isLatent ||
-                environment.edges[i][x].areNeighboursAfterIteration > 0 ||
-                environment.edges[i][y].areNeighboursAfterIteration > 0);
+                environment.edges[i][x].status_prev > 0 ||
+                environment.edges[i][y].status_prev > 0);
     });
 }

@@ -37,7 +37,7 @@ struct Struct{
 	short int orgD2;
 };
 
-struct EdgeStructure {
+struct EdgeSharedInfo {
 	int z_name_idx; // index of the last best contributor
 	std::vector<int> ui_vect_idx; // index of ui
 	std::vector<int> zi_vect_idx; // index of ui
@@ -46,7 +46,7 @@ struct EdgeStructure {
 	double Ixy_ui;
 	double cplx;
 	int Nxy_ui;
-	short int status;
+	short int connected;
 	// Keeping track of jointCounts (discrete) and jointSpace(continuous) for KL divergence when
 	//adding Us to the conditioning set.
 	double mutInfo;  // mutual information without conditioning
@@ -56,7 +56,7 @@ struct EdgeStructure {
 	std::vector<int> indexStruct; // memorize the corresponding structure in the structures list in the environment by its index
 	std::vector<int> edgesInSpeTpl_list; // memorize the index of open structures
 
-	EdgeStructure():
+	EdgeSharedInfo():
 		z_name_idx(-1),
 		ui_vect_idx(std::vector<int>()),
 		zi_vect_idx(std::vector<int>()),
@@ -65,7 +65,7 @@ struct EdgeStructure {
 		Ixy_ui(0.0),
 		cplx(0.0),
 		Nxy_ui(-1),
-		status(-1),
+		connected(-1),
 		mutInfo(0.0),
 		cplx_noU(0.0),
 		Nxy(-1),
@@ -79,7 +79,7 @@ struct EdgeStructure {
         zi_vect_idx.clear();
         ui_vect_idx.clear();
         Rxyz_ui = 0;
-        status = -1;
+        connected = -1;
         Ixy_ui = mutInfo;
         cplx = cplx_noU;
         Nxy_ui = Nxy;
@@ -91,7 +91,7 @@ struct EdgeStructure {
         z_name_idx = -1;
         ui_vect_idx.clear();
         Rxyz_ui = 0;
-        status = 3;
+        connected = 3;
         Ixy_ui = mutInfo;
         cplx = cplx_noU;
         Nxy_ui = Nxy;
@@ -115,19 +115,26 @@ struct ExecutionTime{
 	long double total;
 };
 
-struct XJAddress{
+struct EdgeID{
 	int i;
 	int j;
 
-    XJAddress() = default;
-    XJAddress(int i, int j) : i(i), j(j) {}
+    EdgeID() = default;
+    EdgeID(int i, int j) : i(i), j(j) {}
 };
 
 struct Edge{
-	short int isConnected;
-	short int isConnectedAfterInitialization;
-	short int areNeighboursAfterIteration;
-	EdgeStructure* edgeStructure;
+	// Edge is stored in Edge** edges
+	// Status code (suppose edges[X][Y]):
+	// 0: not connected;
+	// 1: connected and undirected;
+	// 2: connected directed X -> Y;
+	// -2: connected directed X <- Y;
+	// 6: connected bidirected X <-> Y;
+	short int status;  // Current status.
+	short int status_init;  // Status after initialization.
+	short int status_prev;  // Status in the previous iteration.
+	EdgeSharedInfo* shared_info;
 };
 
 //
@@ -178,8 +185,8 @@ struct Environment {
 	uint numSamples;
 	bool firstIterationDone;
 
-	std::vector<XJAddress*> searchMoreAddress;
-	std::vector<XJAddress*> noMoreAddress;
+	std::vector<EdgeID*> searchMoreAddress;
+	std::vector<EdgeID*> noMoreAddress;
 	int numSearchMore;
 	int numNoMore;
 

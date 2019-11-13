@@ -268,7 +268,7 @@ double* computeEnsInformationContinuous_Orientation(Environment& environment, in
  * Computes the two point information X;Y|Ui and the three point information X;Y;Z|Ui
  */
 {
-	int* posArray = new int[2 + environment.edges[myVarIdxX][myVarIdxY].edgeStructure->ui_vect_idx.size()];
+	int* posArray = new int[2 + environment.edges[myVarIdxX][myVarIdxY].shared_info->ui_vect_idx.size()];
 	posArray[0] = myVarIdxX;
 	posArray[1] = myVarIdxY;
 
@@ -853,7 +853,7 @@ void computeContributingScores(Environment& environment, int* ziContPosIdx, int 
 double* computeEnsInformationContinuous(Environment& environment, int* myCond, int myNbrUi, int* myZi, int myNbrZi, int myZiPos,
 										const int myVarIdxX, const int myVarIdxY, const int cplx, MemorySpace& m){
 
-	int* posArray = new int[2 + environment.edges[myVarIdxX][myVarIdxY].edgeStructure->ui_vect_idx.size()];
+	int* posArray = new int[2 + environment.edges[myVarIdxX][myVarIdxY].shared_info->ui_vect_idx.size()];
 	posArray[0] = myVarIdxX;
 	posArray[1] = myVarIdxY;
 
@@ -1180,7 +1180,7 @@ double* computeEnsInformationNew(Environment& environment, int* myCond, int myNb
 	bool test = false;
 
 
-	int* posArray = new int[2 + environment.edges[myVarIdxX][myVarIdxY].edgeStructure->ui_vect_idx.size()];
+	int* posArray = new int[2 + environment.edges[myVarIdxX][myVarIdxY].shared_info->ui_vect_idx.size()];
 	posArray[0] = myVarIdxX;
 	posArray[1] = myVarIdxY;
 
@@ -1300,7 +1300,7 @@ void removeifBothPhantomAndNA(Environment& environment, vector<int>& vec, const 
 	vector<int>::iterator it = vec.begin();
 
 	while(it != vec.end()) {
-		if(!environment.edges[posX][*it].isConnected && !environment.edges[posY][*it].isConnected){
+		if(!environment.edges[posX][*it].status && !environment.edges[posY][*it].status){
 			vec.erase(it);
 		}
 		else
@@ -1311,18 +1311,18 @@ void removeifBothPhantomAndNA(Environment& environment, vector<int>& vec, const 
 
 void SearchForNewContributingNodeAndItsRank(Environment& environment, const int posX, const int posY, MemorySpace& m) {
 
-	if(environment.edges[posX][posY].edgeStructure->zi_vect_idx.size() == 0)
+	if(environment.edges[posX][posY].shared_info->zi_vect_idx.size() == 0)
 	 	return;
 
 	//// If needed, remove the NA (-1) elements
-	removeifNA(environment, environment.edges[posX][posY].edgeStructure->zi_vect_idx,
+	removeifNA(environment, environment.edges[posX][posY].shared_info->zi_vect_idx,
 	    	posX, posY);
 
 	if(!environment.isLatent)
-		removeifBothPhantomAndNA(environment, environment.edges[posX][posY].edgeStructure->zi_vect_idx,
+		removeifBothPhantomAndNA(environment, environment.edges[posX][posY].shared_info->zi_vect_idx,
 	    	posX, posY);
 
-	int nbrZi = environment.edges[posX][posY].edgeStructure->zi_vect_idx.size();
+	int nbrZi = environment.edges[posX][posY].shared_info->zi_vect_idx.size();
 
 	if(nbrZi == 0)
 	 	return;
@@ -1330,15 +1330,15 @@ void SearchForNewContributingNodeAndItsRank(Environment& environment, const int 
 	int* ui;
 	int* zi;
 
-	if(environment.edges[posX][posY].edgeStructure->ui_vect_idx.empty())
+	if(environment.edges[posX][posY].shared_info->ui_vect_idx.empty())
 		ui = NULL;
 	else
-		ui = &environment.edges[posX][posY].edgeStructure->ui_vect_idx[0];
+		ui = &environment.edges[posX][posY].shared_info->ui_vect_idx[0];
 
-	if(environment.edges[posX][posY].edgeStructure->zi_vect_idx.empty())
+	if(environment.edges[posX][posY].shared_info->zi_vect_idx.empty())
 		zi = NULL;
 	else
-		zi = &environment.edges[posX][posY].edgeStructure->zi_vect_idx[0];
+		zi = &environment.edges[posX][posY].shared_info->zi_vect_idx[0];
 
 	int argEnsInfo = -1;
 	if(environment.isK23 == true)
@@ -1348,47 +1348,47 @@ void SearchForNewContributingNodeAndItsRank(Environment& environment, const int 
 
 
 	if(environment.typeOfData == 0){
-		vect = computeEnsInformationNew(environment, ui, environment.edges[posX][posY].edgeStructure->ui_vect_idx.size(), zi,
-										environment.edges[posX][posY].edgeStructure->zi_vect_idx.size(),
-										environment.edges[posX][posY].edgeStructure->ui_vect_idx.size()+2,    posX, posY, argEnsInfo, m);
-		if(vect[6] - environment.edges[posX][posY].edgeStructure->Rxyz_ui > 0 ){
+		vect = computeEnsInformationNew(environment, ui, environment.edges[posX][posY].shared_info->ui_vect_idx.size(), zi,
+										environment.edges[posX][posY].shared_info->zi_vect_idx.size(),
+										environment.edges[posX][posY].shared_info->ui_vect_idx.size()+2,    posX, posY, argEnsInfo, m);
+		if(vect[6] - environment.edges[posX][posY].shared_info->Rxyz_ui > 0 ){
 			if(environment.isVerbose){
 				cout << "\n" << posX << "    " << posY << "# -----> possible zi: " <<
-				environment.nodes[environment.edges[posX][posY].edgeStructure->zi_vect_idx[vect[3]]].name << "(" <<
-					vect[6] << " > " << environment.edges[posX][posY].edgeStructure->Rxyz_ui << ")\n";
+				environment.nodes[environment.edges[posX][posY].shared_info->zi_vect_idx[vect[3]]].name << "(" <<
+					vect[6] << " > " << environment.edges[posX][posY].shared_info->Rxyz_ui << ")\n";
 			}
 
 			//// The order matters: set first the z.name.idx, than get the corresponding zi from the original vect
 			//// Doing this way, we make sure that the z.name has the right bin xyzi key
-			environment.edges[posX][posY].edgeStructure->z_name_idx = vect[3];
-			environment.edges[posX][posY].edgeStructure->Rxyz_ui = vect[6];
+			environment.edges[posX][posY].shared_info->z_name_idx = vect[3];
+			environment.edges[posX][posY].shared_info->Rxyz_ui = vect[6];
 			free(vect);
 
 
 		} else if(environment.isVerbose) {
-			cout << "# --!!--> Rxyz_ui.tmp = " << vect[6] << " < Rxyz_ui = " << environment.edges[posX][posY].edgeStructure->Rxyz_ui << "\n";
+			cout << "# --!!--> Rxyz_ui.tmp = " << vect[6] << " < Rxyz_ui = " << environment.edges[posX][posY].shared_info->Rxyz_ui << "\n";
 		}
 
 	} else if(environment.typeOfData == 2 || (environment.typeOfData == 1 && environment.isAllGaussian == 0)){
-		vect = computeEnsInformationContinuous(environment, ui, environment.edges[posX][posY].edgeStructure->ui_vect_idx.size(), zi,
-											   environment.edges[posX][posY].edgeStructure->zi_vect_idx.size(),
-											   environment.edges[posX][posY].edgeStructure->ui_vect_idx.size()+2, posX, posY, argEnsInfo, m);
-		if(vect[2] - environment.edges[posX][posY].edgeStructure->Rxyz_ui > 0 ){
+		vect = computeEnsInformationContinuous(environment, ui, environment.edges[posX][posY].shared_info->ui_vect_idx.size(), zi,
+											   environment.edges[posX][posY].shared_info->zi_vect_idx.size(),
+											   environment.edges[posX][posY].shared_info->ui_vect_idx.size()+2, posX, posY, argEnsInfo, m);
+		if(vect[2] - environment.edges[posX][posY].shared_info->Rxyz_ui > 0 ){
 			if(environment.isVerbose){
 				cout << "\n" << posX << " " << posY << " # -----> possible zi: " <<
-				environment.nodes[environment.edges[posX][posY].edgeStructure->zi_vect_idx[vect[1]]].name << "(" <<
-					vect[2] << " > " << environment.edges[posX][posY].edgeStructure->Rxyz_ui << ")\n";
+				environment.nodes[environment.edges[posX][posY].shared_info->zi_vect_idx[vect[1]]].name << "(" <<
+					vect[2] << " > " << environment.edges[posX][posY].shared_info->Rxyz_ui << ")\n";
 			}
 
 			//// The order matters: set first the z.name.idx, than get the corresponding zi from the original vect
 			//// Doing this way, we make sure that the z.name has the right bin xyzi key
-			environment.edges[posX][posY].edgeStructure->z_name_idx = vect[1];
-			environment.edges[posX][posY].edgeStructure->Rxyz_ui = vect[2];
+			environment.edges[posX][posY].shared_info->z_name_idx = vect[1];
+			environment.edges[posX][posY].shared_info->Rxyz_ui = vect[2];
 
 
 		}
 		 else if(environment.isVerbose) {
-			cout << "# --!!--> Rxyz_ui.tmp = " << vect[2] << " < Rxyz_ui = " << environment.edges[posX][posY].edgeStructure->Rxyz_ui << "\n";
+			cout << "# --!!--> Rxyz_ui.tmp = " << vect[2] << " < Rxyz_ui = " << environment.edges[posX][posY].shared_info->Rxyz_ui << "\n";
 		}
 		delete [] vect;
 	}
@@ -1401,18 +1401,18 @@ void SearchForNewContributingNodeAndItsRankGaussian(Environment& environment, co
 
 	//// --------
 
-	if(environment.edges[posX][posY].edgeStructure->zi_vect_idx.size() == 0)
+	if(environment.edges[posX][posY].shared_info->zi_vect_idx.size() == 0)
 	 	return;
 
 	//// If needed, remove the NA (-1) elements
-	removeifNA(environment, environment.edges[posX][posY].edgeStructure->zi_vect_idx,
+	removeifNA(environment, environment.edges[posX][posY].shared_info->zi_vect_idx,
 	    	posX, posY);
 
 	if(!environment.isLatent)
-		removeifBothPhantomAndNA(environment, environment.edges[posX][posY].edgeStructure->zi_vect_idx,
+		removeifBothPhantomAndNA(environment, environment.edges[posX][posY].shared_info->zi_vect_idx,
 	    	posX, posY);
 
-	int nbrZi = environment.edges[posX][posY].edgeStructure->zi_vect_idx.size();
+	int nbrZi = environment.edges[posX][posY].shared_info->zi_vect_idx.size();
 
 	if(nbrZi == 0)
 	 	return;
@@ -1420,21 +1420,21 @@ void SearchForNewContributingNodeAndItsRankGaussian(Environment& environment, co
 	int* ui;
 	int* zi;
 
-	if(environment.edges[posX][posY].edgeStructure->ui_vect_idx.empty())
+	if(environment.edges[posX][posY].shared_info->ui_vect_idx.empty())
 		ui = NULL;
 	else
-		ui = &environment.edges[posX][posY].edgeStructure->ui_vect_idx[0];
+		ui = &environment.edges[posX][posY].shared_info->ui_vect_idx[0];
 
-	if(environment.edges[posX][posY].edgeStructure->zi_vect_idx.empty())
+	if(environment.edges[posX][posY].shared_info->zi_vect_idx.empty())
 		zi = NULL;
 	else
-		zi = &environment.edges[posX][posY].edgeStructure->zi_vect_idx[0];
+		zi = &environment.edges[posX][posY].shared_info->zi_vect_idx[0];
 
-	double* Ixy_ui_z = corrMutInfo(environment, environment.dataDouble, ui,environment.edges[posX][posY].edgeStructure->ui_vect_idx.size(),
-								   zi, environment.edges[posX][posY].edgeStructure->zi_vect_idx.size(), posX, posY, -1);
+	double* Ixy_ui_z = corrMutInfo(environment, environment.dataDouble, ui,environment.edges[posX][posY].shared_info->ui_vect_idx.size(),
+								   zi, environment.edges[posX][posY].shared_info->zi_vect_idx.size(), posX, posY, -1);
 
 	// Get all I(xy|ui)[xyuiz]
-	//double* Ixy_ui_z = computeEnsInformation(environment, ui,environment.edges[posX][posY].edgeStructure->ui_vect_idx.size(), zi, environment.edges[posX][posY].edgeStructure->zi_vect_idx.size(), -1, posX, posY, argEnsInfo);
+	//double* Ixy_ui_z = computeEnsInformation(environment, ui,environment.edges[posX][posY].shared_info->ui_vect_idx.size(), zi, environment.edges[posX][posY].shared_info->zi_vect_idx.size(), -1, posX, posY, argEnsInfo);
 
 #if _MY_DEBUG_
 	if(test){
@@ -1446,8 +1446,8 @@ void SearchForNewContributingNodeAndItsRankGaussian(Environment& environment, co
 	}
 #endif // _MY_DEBUG_
 	//// Get all I(zy|ui)[xyuiz]
-	double* Izy_ui = corrMutInfo(environment, environment.dataDouble, ui,environment.edges[posX][posY].edgeStructure->ui_vect_idx.size(),
-								 zi, environment.edges[posX][posY].edgeStructure->zi_vect_idx.size(), posX, posY, 0);
+	double* Izy_ui = corrMutInfo(environment, environment.dataDouble, ui,environment.edges[posX][posY].shared_info->ui_vect_idx.size(),
+								 zi, environment.edges[posX][posY].shared_info->zi_vect_idx.size(), posX, posY, 0);
 #if _MY_DEBUG_
 	if(test){
 		cout << "Izy_ui: ";
@@ -1459,8 +1459,8 @@ void SearchForNewContributingNodeAndItsRankGaussian(Environment& environment, co
 #endif // _MY_DEBUG_
 
 	// #### Get all I(xz|ui)[xyuiz]
-	double* Ixz_ui = corrMutInfo(environment, environment.dataDouble, ui,environment.edges[posX][posY].edgeStructure->ui_vect_idx.size(),
-								 zi, environment.edges[posX][posY].edgeStructure->zi_vect_idx.size(), posX, posY, 1);
+	double* Ixz_ui = corrMutInfo(environment, environment.dataDouble, ui,environment.edges[posX][posY].shared_info->ui_vect_idx.size(),
+								 zi, environment.edges[posX][posY].shared_info->zi_vect_idx.size(), posX, posY, 1);
 #if _MY_DEBUG_
 if(test){
 		cout << "Ixz_ui: ";
@@ -1471,8 +1471,8 @@ if(test){
 	}
 #endif // _MY_DEBUG_
 	//// Get all I(xy|ui,z)[xyuiz]
-	double* Ixy_uiz = corrMutInfo(environment, environment.dataDouble, ui,environment.edges[posX][posY].edgeStructure->ui_vect_idx.size(),
-								  zi, environment.edges[posX][posY].edgeStructure->zi_vect_idx.size(), posX, posY, 2);
+	double* Ixy_uiz = corrMutInfo(environment, environment.dataDouble, ui,environment.edges[posX][posY].shared_info->ui_vect_idx.size(),
+								  zi, environment.edges[posX][posY].shared_info->zi_vect_idx.size(), posX, posY, 2);
 #if _MY_DEBUG_
 	if(test){
 		cout << "Ixy_uiz: ";
@@ -1566,7 +1566,7 @@ if(test){
 	if(environment.isVerbose){
 		cout << "# ------> scores: ";
 		for (int i = 0; i < nbrZi; ++i){
-			cout << environment.nodes[environment.edges[posX][posY].edgeStructure->zi_vect_idx[i]].name << ": " << score_vect[i];
+			cout << environment.nodes[environment.edges[posX][posY].shared_info->zi_vect_idx[i]].name << ": " << score_vect[i];
 			if(i+1<nbrZi)
 				cout << ", ";
 		}
@@ -1585,19 +1585,19 @@ if(test){
 	if(score_vect[myZiBest_idx] > 0 ){
 		if(environment.isVerbose){
 			cout << "\n# -----> possible zi: " <<
-			environment.nodes[environment.edges[posX][posY].edgeStructure->zi_vect_idx[myZiBest_idx]].name << "(" <<
-				score_vect[myZiBest_idx] << " > " << environment.edges[posX][posY].edgeStructure->Rxyz_ui << ")\n";
+			environment.nodes[environment.edges[posX][posY].shared_info->zi_vect_idx[myZiBest_idx]].name << "(" <<
+				score_vect[myZiBest_idx] << " > " << environment.edges[posX][posY].shared_info->Rxyz_ui << ")\n";
 		}
 
 		//// The order matters: set first the z.name.idx, than get the corresponding zi from the original vect
 		//// Doing this way, we make sure that the z.name has the right bin xyzi key
-		environment.edges[posX][posY].edgeStructure->z_name_idx = myZiBest_idx;
-		//environment.edges[posX][posY].edgeStructure->z_name = environment.nodes[z_name_idx];
+		environment.edges[posX][posY].shared_info->z_name_idx = myZiBest_idx;
+		//environment.edges[posX][posY].shared_info->z_name = environment.nodes[z_name_idx];
 
-		environment.edges[posX][posY].edgeStructure->Rxyz_ui = score_vect[myZiBest_idx];
+		environment.edges[posX][posY].shared_info->Rxyz_ui = score_vect[myZiBest_idx];
 
 	} else if(environment.isVerbose) {
-		cout << "# --!!--> Rxyz_ui.tmp = " << score_vect[myZiBest_idx] << " < Rxyz_ui = " << environment.edges[posX][posY].edgeStructure->Rxyz_ui << "\n";
+		cout << "# --!!--> Rxyz_ui.tmp = " << score_vect[myZiBest_idx] << " < Rxyz_ui = " << environment.edges[posX][posY].shared_info->Rxyz_ui << "\n";
 	}
 
 	delete [] Ixy_ui_z;
@@ -1619,21 +1619,21 @@ if(test){
 
 double computeEnsInformationContinuous_Gaussian(Environment& environment, const int posX, const int posY, const int posZ) {
 
-	if(environment.edges[posX][posY].edgeStructure->zi_vect_idx.size() == 0)
+	if(environment.edges[posX][posY].shared_info->zi_vect_idx.size() == 0)
 	 	return true;
 
 	//// If needed, remove the NA (-1) elements
-	removeifNA(environment, environment.edges[posX][posY].edgeStructure->zi_vect_idx, posX, posY);
+	removeifNA(environment, environment.edges[posX][posY].shared_info->zi_vect_idx, posX, posY);
 
 	if(!environment.isLatent)
-		removeifBothPhantomAndNA(environment, environment.edges[posX][posY].edgeStructure->zi_vect_idx,
+		removeifBothPhantomAndNA(environment, environment.edges[posX][posY].shared_info->zi_vect_idx,
 	    	posX, posY);
 
 	int* ui;
-	if(environment.edges[posX][posY].edgeStructure->ui_vect_idx.empty())
+	if(environment.edges[posX][posY].shared_info->ui_vect_idx.empty())
 		ui = NULL;
 	else
-		ui = &environment.edges[posX][posY].edgeStructure->ui_vect_idx[0];
+		ui = &environment.edges[posX][posY].shared_info->ui_vect_idx[0];
 
 	int* zi = new int[1];
 	zi[0]=posZ;
@@ -1641,17 +1641,17 @@ double computeEnsInformationContinuous_Gaussian(Environment& environment, const 
 
 	int nbrZi = 1;
 
-	double* Ixy_ui = corrMutInfo(environment, environment.dataDouble, ui,environment.edges[posX][posY].edgeStructure->ui_vect_idx.size(), zi, 1, posX, posY, -1);
+	double* Ixy_ui = corrMutInfo(environment, environment.dataDouble, ui,environment.edges[posX][posY].shared_info->ui_vect_idx.size(), zi, 1, posX, posY, -1);
 
 	//// Get all I(zy|ui)[xyuiz]
-	double* Izy_ui = corrMutInfo(environment, environment.dataDouble, ui,environment.edges[posX][posY].edgeStructure->ui_vect_idx.size(), zi, 1, posX, posY, 0);
+	double* Izy_ui = corrMutInfo(environment, environment.dataDouble, ui,environment.edges[posX][posY].shared_info->ui_vect_idx.size(), zi, 1, posX, posY, 0);
 
 
 	// #### Get all I(xz|ui)[xyuiz]
-	double* Ixz_ui = corrMutInfo(environment, environment.dataDouble, ui,environment.edges[posX][posY].edgeStructure->ui_vect_idx.size(), zi, 1, posX, posY, 1);
+	double* Ixz_ui = corrMutInfo(environment, environment.dataDouble, ui,environment.edges[posX][posY].shared_info->ui_vect_idx.size(), zi, 1, posX, posY, 1);
 
 	//// Get all I(xy|ui,z)[xyuiz]
-	double* Ixy_uiz = corrMutInfo(environment, environment.dataDouble, ui,environment.edges[posX][posY].edgeStructure->ui_vect_idx.size(), zi, 1, posX, posY, 2);
+	double* Ixy_uiz = corrMutInfo(environment, environment.dataDouble, ui,environment.edges[posX][posY].shared_info->ui_vect_idx.size(), zi, 1, posX, posY, 2);
 
 
 	////    Compute I(xyz|ui)[xyuiz] = I(xy|ui)[xyuiz] - I(xy|ui,z)[xyuiz]
