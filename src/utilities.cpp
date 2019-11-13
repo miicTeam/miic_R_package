@@ -1734,9 +1734,6 @@ void setEnvironment(Environment& environment){
 	environment.atLeastOneContinuous = 0;
 	environment.flag_sample_weights = false;
 
-	// environment.globalListOfStruct.clear();
-	// environment.vstructWithContradiction.clear();
-
 	bool isNA = false;
 
 	readData(environment, isNA);
@@ -1889,7 +1886,6 @@ void setEnvironment(Environment& environment){
 
 	//// Set the probability threshold for the rank
 	environment.thresPc = 0;	// if the contribution probability is the min value
-	environment.l = (environment.numNodes*(environment.numNodes-1)/2);
 
 	// Stats test correction
 	// environment.logEta = log( environment.eta);
@@ -1999,9 +1995,6 @@ void readFilesAndFillStructures(vector<string> edgesVectorOneLine, Environment& 
 			// create a structure for the nodes that need to store information about them
 			environment.edges[i][j].shared_info = new EdgeSharedInfo();
 			environment.edges[j][i].shared_info = environment.edges[i][j].shared_info ;
-			// initialize the structure
-			environment.edges[j][i].shared_info->z_name_idx = -1;
-			environment.edges[j][i].shared_info->connected = -1;
 		}
 	}
 

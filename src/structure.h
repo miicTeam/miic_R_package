@@ -1,4 +1,3 @@
-#include "memory.h"
 #ifndef STRUCTURE_H
 #define STRUCTURE_H
 #include <string>
@@ -6,36 +5,10 @@
 #include <map>
 #include <tuple>
 
+#include "memory.h"
+
 using namespace std;
 using uint=unsigned int;
-
-struct StructWithOrtToPropagate{
-	int name;
-	int idxStruct;
-	int vStruct;
-	int idxEdge;
-	int dir;
-};
-
-struct Struct{
-	int xi;
-	int xk;
-	int xj;
-
-	int originalPositionStruct;
-
-	double rv;
-	int sv;
-	double Ibase;
-	double Istruct;
-
-	short int d1;
-	short int d2;
-	short int isOut;
-	short int orgOut;
-	short int orgD1;
-	short int orgD2;
-};
 
 struct EdgeSharedInfo {
 	int z_name_idx; // index of the last best contributor
@@ -53,9 +26,6 @@ struct EdgeSharedInfo {
 	double cplx_noU;  // complexity without conditioning
 	int Nxy;  // count of joint factors without NA
 
-	std::vector<int> indexStruct; // memorize the corresponding structure in the structures list in the environment by its index
-	std::vector<int> edgesInSpeTpl_list; // memorize the index of open structures
-
 	EdgeSharedInfo():
 		z_name_idx(-1),
 		ui_vect_idx(std::vector<int>()),
@@ -68,12 +38,10 @@ struct EdgeSharedInfo {
 		connected(-1),
 		mutInfo(0.0),
 		cplx_noU(0.0),
-		Nxy(-1),
-
-		indexStruct(std::vector<int>()),
-		edgesInSpeTpl_list(std::vector<int>())
+		Nxy(-1)
 	{}
 
+    // Remove knowledge about all contributing nodes.
     void reset() {
         z_name_idx = -1;
         zi_vect_idx.clear();
@@ -83,8 +51,6 @@ struct EdgeSharedInfo {
         Ixy_ui = mutInfo;
         cplx = cplx_noU;
         Nxy_ui = Nxy;
-        indexStruct.clear();
-        edgesInSpeTpl_list.clear();
     }
 
     void setUndirected () {
@@ -137,9 +103,7 @@ struct Edge{
 	EdgeSharedInfo* shared_info;
 };
 
-//
- /* Structure for all the needed parameters (input plus state variables)
- */
+// Structure for all the needed parameters (input plus state variables)
 struct Environment {
 	ExecutionTime execTime;
 	int consistentPhase;
@@ -155,14 +119,14 @@ struct Environment {
 	std::vector<double> sampleWeightsVec;
 	bool flag_sample_weights;
 
-
 	bool testDistribution;
 	int seed;
 	uint nThreads;
 	MemorySpace m;
 	std::vector<int> steps;
 	MemorySpace* memoryThreads;
-	double** shuffleListNumEdges; // matrix to keep the number of edges for each eta and shuffle
+    // Matrix to keep the number of edges for each eta and shuffle
+	double** shuffleListNumEdges;
 	double* c2terms;
 	double** cterms;
 	double** lookchoose;
@@ -203,7 +167,6 @@ struct Environment {
 	Edge** edges;
 	std::vector<std::string>  vectorData;
 	std::vector< std::vector <std::string> > data;
-	//std::string** data;
 	int** dataNumeric;
 	int** dataNumericIdx;
 	int* allLevels;
@@ -213,7 +176,6 @@ struct Environment {
 	int** cut;
 
 	double logEta;
-	double l;
 
 	bool myTest;
 	bool isDegeneracy; // -d parameter
@@ -243,10 +205,6 @@ struct Environment {
 	double* lookH;
 
 	double* noiseVec;
-
-	int iCountStruct;
-	std::vector<Struct*> globalListOfStruct;
-	std::vector<int> vstructWithContradiction;
 };
 
 #endif

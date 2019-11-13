@@ -57,7 +57,6 @@ int initEdgeElt(Environment& environment, int i, int j, MemorySpace& m){
 		cout << "# --> Ixy_ui = " << environment.edges[i][j].shared_info->Ixy_ui/environment.edges[i][j].shared_info->Nxy_ui << "[Ixy_ui*Nxy_ui =" << environment.edges[i][j].shared_info->Ixy_ui << "]\n"
 			 << "# --> Cplx = " << environment.edges[i][j].shared_info->cplx << "\n"
 			 << "# --> Nxy_ui = " << environment.edges[i][j].shared_info->Nxy_ui << "\n"
-			 << "# --> nbrEdges L = " << environment.l << "\n"
 			 << "# --> nbrProp P = " << environment.numNodes << "\n";
 	}
 
@@ -74,7 +73,7 @@ int initEdgeElt(Environment& environment, int i, int j, MemorySpace& m){
 
 	//// set the edge status
 	if(myTest <= 0){
-		// the node is a phantom one
+		// Unconditional independence
 		environment.edges[i][j].shared_info->connected = 1;
 		environment.edges[i][j].status = 0;
 		environment.edges[j][i].status = 0;

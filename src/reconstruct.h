@@ -10,12 +10,16 @@
 
 bool reconstruct(Environment&, std::string, double, int, char*[]);
 
+// During each consistent iteration of the network reconstruction, keep track of
+// number of edges in the graph, edges with modified status with respect to the
+// previous iteration, and the corresponding edge status in the previous
+// iteration.
 class CycleTracker {
     using uint = unsigned int;
     using edge_index_1d = uint;
 private:
-    // max number of iterations for which we keep the edgeStructure of all
-    // changed edges
+    // Max number of iterations to track in a cycle, cycle of larger size won't
+    // be recognized.
     static constexpr uint max_cycle_size = 100;
 
     struct Iteration {
@@ -64,14 +68,13 @@ private:
     Environment& env_;
     IterationList iterations_;
     uint n_saved = 0;  // number of saving operations performed
-    // key: number of edges in the graph whose equal relation is a necessary
-    // condition for a cycle
-    // value: index of iteration, used to access set in changed_edges_list_
+    // key: number of edges in the graph
+    // value: index of iteration
     std::multimap<uint, uint> edge_index_map_;
     // save changed edges of an iteration
     void saveIteration() {
         uint n_edge = env_.numNoMore;
-        // absolute index of the iteration (since IterationList has fixed size)
+        // Index of the iteration starting from 0
         uint index = n_saved++;
         edge_index_map_.insert(std::make_pair(n_edge, index));
         // skip the first iteration as its previous step is the initial graph
@@ -81,12 +84,10 @@ private:
 
 public:
     CycleTracker(Environment& env) : env_(env) {}
-
     // convert lower triangular indices to 1d index
     static edge_index_1d getEdgeIndex1D(uint i, uint j) {
         return (j < i ? j + i * (i - 1) / 2 : i + j * (j - 1) / 2);
     }
-
     // convert 1d index to lower triangular indices
     std::pair<uint, uint> getEdgeIndex2D(uint k) {
         // floor is equivalent to a int cast for positive number
