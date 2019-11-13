@@ -71,24 +71,21 @@ int initEdgeElt(Environment& environment, int i, int j, MemorySpace& m){
 	 else
 	 	myTest = environment.edges[i][j].shared_info->Ixy_ui - environment.edges[i][j].shared_info->cplx - environment.logEta;
 
-	//// set the edge status
-	if(myTest <= 0){
+	if (myTest <= 0) {
 		// Unconditional independence
 		environment.edges[i][j].shared_info->connected = 1;
 		environment.edges[i][j].status = 0;
 		environment.edges[j][i].status = 0;
 		category = "phantom";
 	} else {
-		// the node is a searchMore one
 		environment.edges[i][j].shared_info->connected = 3;
 		environment.edges[i][j].status = 1;
 		environment.edges[j][i].status = 1;
 		category= "searchMore";
 	}
 
-	// cout << myTest << "\n";
-
-	if(environment.isVerbose) { cout << "# --> Category = " << category << "\n" ; }
+	if(environment.isVerbose)
+        cout << "# --> Category = " << category << "\n";
 
 	return environment.edges[i][j].status;
 }
@@ -131,15 +128,10 @@ bool skeletonInitialization(Environment& environment){
 			if(environment.isVerbose) { cout << "\n# Edge " << environment.nodes[i].name << "," << environment.nodes[j].name << "\n" ; }
 
 			// create a structure for the nodes that need to store information about them
-			environment.edges[i][j].shared_info = new EdgeSharedInfo();
+			environment.edges[i][j].shared_info = std::make_shared<EdgeSharedInfo>();
 
 			environment.edges[j][i].shared_info = environment.edges[i][j].shared_info ;
-
-			// initialize the structure
-			environment.edges[j][i].shared_info->z_name_idx = -1;
-			environment.edges[j][i].shared_info->connected = -1;
-
-			//reserve space for vectors
+			// Reserve space for vectors
 			if(environment.edges[i][j].status){
 				if(initEdgeElt(environment, i, j, environment.memoryThreads[threadnum]) == 1){
 					#ifdef _OPENMP
@@ -159,8 +151,6 @@ bool skeletonInitialization(Environment& environment){
 			environment.edges[i][j].status_init = environment.edges[i][j].status;
 		}
 	}
-	// if(environment.atLeastOneContinuous == 1)
-	// 	environment.nThreads = 1;
 
 	return true;
 }

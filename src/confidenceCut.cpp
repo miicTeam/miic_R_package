@@ -10,10 +10,10 @@ using namespace std;
 
 void shuffle_lookup(int *array, int *array2, size_t n)
 {
-    if (n > 1) 
+    if (n > 1)
     {
         size_t i;
-        for (i = 0; i < n - 1; i++) 
+        for (i = 0; i < n - 1; i++)
         {
           size_t j = i + rand() / (RAND_MAX / (n - i) + 1);
           int t = array[j];
@@ -25,7 +25,7 @@ void shuffle_lookup(int *array, int *array2, size_t n)
 }
 
 //void saveConfidenceVector(Environment& environment, int** inferredEdges_tab, double* confVect,  string outDir, string slash){
-//	
+//
 //
 //	stringstream ss;
 //	ss.str("");
@@ -43,7 +43,7 @@ void shuffle_lookup(int *array, int *array2, size_t n)
 //
 //		output << environment.nodes[X].name << "\t" << environment.nodes[Y].name << "\t" << confVect[i] << endl;
 //	}
-//	
+//
 //	output.close();
 //}
 
@@ -155,7 +155,7 @@ vector< vector <string> > confidenceCut(Environment& environment){
 	int* nodes_toShf = new int[environment.numNodes];
   	for(uint i=0; i<environment.numNodes; i++)
   		nodes_toShf[i]=0;
-  	
+
   	//indexes of nodes to shuffle
   	for(int i=0; i<environment.numNoMore; i++)
 	{
@@ -204,10 +204,10 @@ vector< vector <string> > confidenceCut(Environment& environment){
 						if( environment.dataNumeric[lookup2[row]][col] != -1 ){
 							// cout << lookup2[safe_stateIdx[col][row]] << " ";
 							environment.dataNumericIdx[col][row2] = lookup2[row];
-							
+
 							row2++;
 						}
-					}					
+					}
 				}
 				if(environment.columnAsContinuous[col] != 0){
 					// cout << "\n" << col << " " << row2  << flush;
@@ -244,10 +244,10 @@ vector< vector <string> > confidenceCut(Environment& environment){
 			// 			if( lookup2[safe_stateIdx[col][row]]!=-1 ){
 			// 				// cout << lookup2[safe_stateIdx[col][row]] << " ";
 			// 				environment.dataNumericIdx[col][row2] = lookup2[safe_stateIdx[col][row]];
-							
+
 			// 				row2++;
 			// 			}
-			// 		}					
+			// 		}
 			// 	}
 
 			// 	if(environment.columnAsContinuous[col] != 0){
@@ -273,7 +273,7 @@ vector< vector <string> > confidenceCut(Environment& environment){
 			//compute the means and standard deviations
 			computeMeansandStandardDeviations(environment);
 
-			
+
 			//compute the correlations coefficients
 			computeCorrelations(environment);
 		}
@@ -286,9 +286,9 @@ vector< vector <string> > confidenceCut(Environment& environment){
 		 	X = inferredEdges_tab[i][0] ;
 	 		Y = inferredEdges_tab[i][1] ;
 
-			double* res; 
+			double* res;
 
-			// cout << environment.nodes[X].name << "( " << X << " " <<  nodes_toShf[X] << ")" << environment.nodes[Y].name << "( " << Y << " " <<  
+			// cout << environment.nodes[X].name << "( " << X << " " <<  nodes_toShf[X] << ")" << environment.nodes[Y].name << "( " << Y << " " <<
 					// nodes_toShf[Y] << ")" << endl;
 			//discrete case
 			if(environment.columnAsContinuous[X] == 0 && environment.columnAsContinuous[Y] == 0){
@@ -316,9 +316,9 @@ vector< vector <string> > confidenceCut(Environment& environment){
 				free(res);
 
 				// cout << "GUIDO: " << N_xy_ui << " " << NIxy_ui << " " << k_xy_ui << endl;
-				
 
-			} 
+
+			}
 
 			double ni = NIxy_ui-k_xy_ui;
 			if(ni <= 0){ ni = 0 ;}
@@ -328,58 +328,45 @@ vector< vector <string> > confidenceCut(Environment& environment){
 
 	//evaluate the average confidence
 	for(int nb=0;nb<environment.numNoMore;nb++){
-		confVect[nb] /= environment.numberShuffles;	
+		confVect[nb] /= environment.numberShuffles;
 	}
 
 	//put values > 1 to 1
 	for(int nb=0;nb<environment.numNoMore;nb++)
-		if(confVect[nb] > 1) 
-			confVect[nb] = 1;	
+		if(confVect[nb] > 1)
+			confVect[nb] = 1;
 
 	//remove edges based on confidence cut
 	double confidence;
 	vector<int> toDelete ;
 
 	for(int i = 0; i < environment.numNoMore; i++){
-		int X = inferredEdges_tab[i][0] ;
- 		int Y = inferredEdges_tab[i][1] ;
+		int X = inferredEdges_tab[i][0];
+ 		int Y = inferredEdges_tab[i][1];
  		confidence = exp (- (environment.edges[X][Y].shared_info->Ixy_ui - environment.edges[X][Y].shared_info->cplx));
  		confVect[i] = confidence / confVect[i];
  		if(confVect[i] > environment.confidenceThreshold){
- 			if(X > Y)
- 				environment.edges[X][Y].shared_info->connected = 1; 
- 			else
- 				environment.edges[Y][X].shared_info->connected = 1; 
+			environment.edges[X][Y].shared_info->connected = 1;
 			environment.edges[X][Y].status = 0;
 			environment.edges[Y][X].status = 0;
-			// environment.edges[Y][X].shared_info->Ixy_ui = 0;
-
-			// cout << environment.nodes[X].name << "\t" <<environment.nodes[Y].name << "\t" << confidence << "\t" << 
-			// exp (- (environment.edges[X][Y].shared_info->Ixy_ui - environment.edges[X][Y].shared_info->cplx)) << "\t" <<
-			// confVect[i] << endl;
-
 			toDelete.push_back(i);
  		}
 	}
-
 	cout << "# -- number of edges cut: " << toDelete.size() << "\n";
 
-	//delete from vector
+	// Delete from vector
 	environment.noMoreAddress.clear();
 	for(int i = 0; i < environment.numNoMore; i++){
 		if(!(std::find(toDelete.begin(), toDelete.end(), i) != toDelete.end())) {
-			int X = inferredEdges_tab[i][0] ;
- 			int Y = inferredEdges_tab[i][1] ;
-			EdgeID* s = new EdgeID();
-			s->i=X;
-			s->j=Y;
-			environment.noMoreAddress.push_back(s);
+			int X = inferredEdges_tab[i][0];
+ 			int Y = inferredEdges_tab[i][1];
+			environment.noMoreAddress.emplace_back(new EdgeID(X, Y));
 		}
 	}
 
 
 
-		
+
 	for(uint X = 0; X < environment.numNodes -1; X++){
 		for(uint Y = X+1; Y < environment.numNodes; Y++){
 			if(environment.edges[X][Y].status == -2 || environment.edges[X][Y].status == 2 || environment.edges[X][Y].status == 6){
@@ -391,7 +378,7 @@ vector< vector <string> > confidenceCut(Environment& environment){
 
 
 
-	//////////////////////////////////////////////// copy data back
+	// Copy data back
 	for(uint i=0; i<environment.numSamples; i++)
 	{
 		if(environment.sampleWeightsVec[0]==-1){
@@ -414,13 +401,11 @@ vector< vector <string> > confidenceCut(Environment& environment){
 	}
 
 	if(environment.atLeastOneContinuous){
-		//create the data matrix for factors indexes
-	
+		// Create the data matrix for factors indexes
 		for(uint i = 0; i < environment.numNodes; i++){
-			for(uint j = 0; j < environment.numSamples; j++) 
+			for(uint j = 0; j < environment.numSamples; j++)
 				environment.dataNumericIdx[i][j]=-1;
 		}
-
 
 		for(uint j = 0; j < environment.numNodes; j++){
 			if(environment.columnAsContinuous[j] != 0){
@@ -434,17 +419,10 @@ vector< vector <string> > confidenceCut(Environment& environment){
 			environment.means[i] = 0.0;
 			environment.standardDeviations[i] = 0.0;
 		}
-		//compute the means and standard deviations
 		computeMeansandStandardDeviations(environment);
-
-		
-		//compute the correlations coefficients
 		computeCorrelations(environment);
 	}
-	 //////////////////////////////////////////////// end copy data back
-
-	//saveConfidenceVector(environment, inferredEdges_tab, confVect, environment.outDir, slash);
-
+	// End copy data back
 
 	std::sort(environment.noMoreAddress.begin(), environment.noMoreAddress.end(), sorterNoMore2(environment));
 	environment.numNoMore = environment.noMoreAddress.size();
@@ -470,7 +448,6 @@ vector< vector <string> > confidenceCut(Environment& environment){
 	}
 	delete[] nodes_toShf;
 
-
 	vector< vector <string> > confVect1;
 	vector <string> v;
 	v.push_back("x");
@@ -488,7 +465,7 @@ vector< vector <string> > confidenceCut(Environment& environment){
 	for(int i=0; i < noMore; i++)
 		delete inferredEdges_tab[i];
 	delete[] inferredEdges_tab;
-	delete[] confVect; 
-	
+	delete[] confVect;
+
 	return confVect1;
 }

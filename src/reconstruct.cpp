@@ -72,10 +72,6 @@ extern "C" SEXP reconstruct(SEXP inputDataR, SEXP typeOfDataR, SEXP cntVarR, SEX
 	environment.testDistribution = Rcpp::as<bool> (testDistR);
 	environment.vectorData = Rcpp::as< vector <string> > (inputDataR);
 
-	vector<string> v;
-	v = Rcpp::as< vector <string> > (blackBoxR);
-
-
 	environment.effN = Rcpp::as<int> (effNR);
 	environment.typeOfData = Rcpp::as<int> (typeOfDataR);
 	environment.halfVStructures = Rcpp::as<int> (hvsR);
@@ -130,7 +126,8 @@ extern "C" SEXP reconstruct(SEXP inputDataR, SEXP typeOfDataR, SEXP cntVarR, SEX
 
 	// set the environment
 	setEnvironment(environment);
-		if(v.size() > 1)
+	vector<string> v(Rcpp::as<vector<string> >(blackBoxR));
+	if(v.size() > 1)
 		readBlackbox1(v, environment);
 
 	startTime = get_wall_time();
@@ -158,16 +155,15 @@ extern "C" SEXP reconstruct(SEXP inputDataR, SEXP typeOfDataR, SEXP cntVarR, SEX
 	environment.execTime.init = spentTime;
 	if( environment.isVerbose == true ){ cout << "\n# ----> First contributing node elapsed time:" << spentTime << "sec\n\n"; }
 
-	//run the skeleton iteration phase if consistency is required
-    // Create biconnected component analysis structure
+	// Run the skeleton iteration phase if consistency is required.
 	BCC bcc(environment);
 	auto cycle_tracker = CycleTracker(environment);
 	vector<vector<string> > orientations;
 	do{
         if (environment.consistentPhase)
             bcc.analyse();
-		//save the neighbours in the status_prev structure
-		//and revert to the structure at the moment of initialization
+		// Save the neighbours in the status_prev structure
+		// and revert to the structure at the moment of initialization
 		for(int i = 0; i < environment.numNodes; i++){
 			for(int j = 0; j < environment.numNodes; j++){
 				environment.edges[i][j].status_prev = environment.edges[i][j].status;

@@ -116,8 +116,7 @@ bool firstStepIteration(Environment& environment, BCC& bcc) {
 			if (!environment.edges[i][j].status)
 				continue;
 			environment.edges[i][j].shared_info->reset();
-			EdgeID* s = new EdgeID(i, j);
-			environment.searchMoreAddress.push_back(s);
+			environment.searchMoreAddress.emplace_back(new EdgeID(i, j));
 			environment.numSearchMore++;
 		}
 	}
@@ -246,7 +245,7 @@ bool skeletonIteration(Environment& environment){
 		if(environment.isVerbose)
 			cout << "Pos x : " << posX << " , pos y: " << posY << endl << flush;
 
-		EdgeSharedInfo* topEdgeElt = environment.edges[posX][posY].shared_info;
+		auto topEdgeElt = environment.edges[posX][posY].shared_info;
 
 		if( environment.isVerbose ) cout << "# Before adding new zi to {ui}: " ; //displayEdge(topEdgeElt)
 
@@ -298,43 +297,35 @@ bool skeletonIteration(Environment& environment){
 			delete [] v;
 		}
 
-
 		double topEdgeElt_kxy_ui = topEdgeElt->cplx;
 
 	 	if(environment.isDegeneracy)
 			topEdgeElt_kxy_ui = topEdgeElt->cplx + (topEdgeElt->ui_vect_idx.size()*log(3));
 
-		//// *****
 		int nRemainingEdges = environment.numSearchMore + environment.numNoMore;
-		//// *****
 
-		if(environment.isVerbose)
-		{
-			//cout << "\n# After adding new zi to {ui}:" << displayEdge(topEdgeElt);
+		if (environment.isVerbose) {
 			cout << "# --> nbrEdges L = " << nRemainingEdges << "\n";
 			cout << "# --> nbrProp P = " << environment.numNodes << "\n\n";
-
-			//cout << "\n# After adding new zi to {ui}:" << displayEdge(topEdgeElt);
 			cout << "topEdgeElt->Ixy_ui "<< topEdgeElt->Ixy_ui << "\n";
 			cout << "topEdgeElt_kxy_ui "<< topEdgeElt_kxy_ui << "\n";
 			cout << "environment.logEta "<< environment.logEta <<"\n";
 			cout << "IsPhantom? " << (topEdgeElt->Ixy_ui - topEdgeElt_kxy_ui - environment.logEta <= 0 )<<endl;
 		}
-		if( topEdgeElt->Ixy_ui - topEdgeElt_kxy_ui - environment.logEta <= 0 )
-		{
+		if (topEdgeElt->Ixy_ui - topEdgeElt_kxy_ui - environment.logEta <= 0) {
 			if(environment.isVerbose) { cout << "# PHANTOM" << environment.nodes[posX].name << "," << environment.nodes[posY].name << "\n"; }
 
-			//// Move this edge from the list searchMore to phantom
+			// Move this edge from the list searchMore to phantom
 			environment.searchMoreAddress.erase(environment.searchMoreAddress.begin() + max);
 			environment.numSearchMore--;
 
-			// set the connection to 0 on the adj matrix
+			// Set the connection to 0 on the adj matrix
 			environment.edges[posX][posY].status = 0;
 			environment.edges[posY][posX].status = 0;
-			//// Save the phantom status
+			// Save the phantom status
 			topEdgeElt->connected = 1;
 		} else {
-			//// Reinit Rxyz_ui
+			// Reinit Rxyz_ui
 			topEdgeElt->Rxyz_ui = environment.thresPc;
 
 			if(environment.isVerbose) { cout << "# Do SearchForNewContributingNodeAndItsRank\n" ; }

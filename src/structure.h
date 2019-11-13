@@ -1,5 +1,6 @@
 #ifndef STRUCTURE_H
 #define STRUCTURE_H
+#include <memory>
 #include <string>
 #include <vector>
 #include <map>
@@ -11,35 +12,19 @@ using namespace std;
 using uint=unsigned int;
 
 struct EdgeSharedInfo {
-	int z_name_idx; // index of the last best contributor
 	std::vector<int> ui_vect_idx; // index of ui
 	std::vector<int> zi_vect_idx; // index of ui
-	double Rxyz_ui; // score of the best contributor
+	int z_name_idx      = -1; // index of the last best contributor
+	double Rxyz_ui      = 0; // score of the best contributor
+	double Ixy_ui       = 0;
+	double cplx         = 0;
+	int Nxy_ui          = -1;
+	short int connected = -1;
+	double mutInfo      = 0;  // mutual information without conditioning
+	double cplx_noU     = 0;  // complexity without conditioning
+	int Nxy             = -1;  // count of joint factors without NA
 
-	double Ixy_ui;
-	double cplx;
-	int Nxy_ui;
-	short int connected;
-	// Keeping track of jointCounts (discrete) and jointSpace(continuous) for KL divergence when
-	//adding Us to the conditioning set.
-	double mutInfo;  // mutual information without conditioning
-	double cplx_noU;  // complexity without conditioning
-	int Nxy;  // count of joint factors without NA
-
-	EdgeSharedInfo():
-		z_name_idx(-1),
-		ui_vect_idx(std::vector<int>()),
-		zi_vect_idx(std::vector<int>()),
-		Rxyz_ui(0.0),
-
-		Ixy_ui(0.0),
-		cplx(0.0),
-		Nxy_ui(-1),
-		connected(-1),
-		mutInfo(0.0),
-		cplx_noU(0.0),
-		Nxy(-1)
-	{}
+	EdgeSharedInfo() = default;
 
     // Remove knowledge about all contributing nodes.
     void reset() {
@@ -82,10 +67,8 @@ struct ExecutionTime{
 };
 
 struct EdgeID{
-	int i;
-	int j;
-
-    EdgeID() = default;
+	int i, j;
+    EdgeID() = delete;
     EdgeID(int i, int j) : i(i), j(j) {}
 };
 
@@ -100,7 +83,7 @@ struct Edge{
 	short int status;  // Current status.
 	short int status_init;  // Status after initialization.
 	short int status_prev;  // Status in the previous iteration.
-	EdgeSharedInfo* shared_info;
+	std::shared_ptr<EdgeSharedInfo> shared_info;
 };
 
 // Structure for all the needed parameters (input plus state variables)
@@ -160,7 +143,7 @@ struct Environment {
 	int atLeastOneContinuous;
 	int atLeastTwoDiscrete;
 
-	// keep a trace of the number of edges for every state
+	// Keep a trace of the number of edges for every state
 	int phantomEdgenNum;
 
 	Node* nodes;
@@ -196,7 +179,6 @@ struct Environment {
 
 	uint effN; // -n parameter
 	int minN;
-	//int nDg;
 	int thresPc;
 
 	int maxbins;

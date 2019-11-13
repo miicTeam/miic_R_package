@@ -486,9 +486,8 @@ void deleteMemorySpace(Environment& environment, MemorySpace& m){
 
 void deleteStruct(Environment& environment){
 
-	for(int i = 0 ; i < environment.numNoMore; i++)
-		delete environment.noMoreAddress[i];
-
+	for (auto& address : environment.noMoreAddress)
+		delete address;
 
 	delete [] environment.oneLineMatrix;
 	delete [] environment.allLevels;
@@ -498,14 +497,6 @@ void deleteStruct(Environment& environment){
 	delete [] environment.dataNumeric;
 	delete [] environment.c2terms;
 	delete [] environment.nodes;
-
-
-	for(uint i = 0; i < environment.numNodes - 1; i++){
-		for(uint j = i + 1; j < environment.numNodes; j++){
-			delete environment.edges[i][j].shared_info;
-		}
-	}
-
 
 	for(uint i = 0; i < environment.numNodes; i++){
 		delete [] environment.edges[i];
@@ -800,13 +791,8 @@ string zNameToString(const Environment& environment, vector<int> vec, int pos){
 }
 
 bool readBlackbox1(vector<string> v, Environment& environment){
-	string lineData;
-	string s;
-	string s1;
-	string s2;
-	int posX;
-	int posY;
-
+	string s1, s2;
+	int posX, posY;
 	for(uint pos = 0; pos < v.size(); pos++){
 		posX = -1;
 		posY = -1;
@@ -840,14 +826,9 @@ vector< vector <string> > saveEdgesListAsTable(Environment& environment){
 	vector<EdgeID*> allEdges;
 
 	for(uint i = 0; i < environment.numNodes -1; i++){
-	 	for(uint j = i + 1; j < environment.numNodes; j++){
-			//if( (environment.edges[i][j].status) || (environment.edges[i][j].shared_info->ui_vect_idx.size() > 0)){
-				EdgeID* s = new EdgeID();
-				s->i=i;
-				s->j=j;
-				allEdges.push_back(s);
-			//}
-	 	}
+		for(uint j = i + 1; j < environment.numNodes; j++){
+			allEdges.emplace_back(new EdgeID(i, j));
+		}
 	}
 
 	vector<string> row;
@@ -1420,14 +1401,9 @@ bool parseCommandLine(Environment& environment, int argc, char** argv) {
 		environment.atLeastOneContinuous = 0;
 		environment.nThreads = 0;
 		environment.testDistribution = true;
-		environment.consistentPhase = false;
+		environment.consistentPhase = 0;
 
-		//cout << 	environment.sampleWeightsFile << endl;
-
-	//}
-
-	// parse the command line
-
+	// Parse the command line
 	while ((c = getopt (argc, argv, "j:i:o:b:d:c:e:s:r:q:k:n:p:a:h:m:t:u:z:x:l:gfv?")) != -1){
 		switch (c){
 			case 'i':{
@@ -1644,11 +1620,9 @@ bool parseCommandLine(Environment& environment, int argc, char** argv) {
 	return true;
 }
 
-/*
- * Print the most important variables of the environment
- */
+// Print the most important variables of the environment.
 void printEnvironment(Environment& environment, Log* pLog){
-	//// Recall the main parameters
+	// Recall the main parameters
 	stringstream s;
 	s << "# --------\n# Inputs:\n# ----\n"
 		<< "# Input data file --> " << environment.inData << "\n"
@@ -1671,9 +1645,6 @@ void printEnvironment(Environment& environment, Log* pLog){
 		<< "# --------\n";
 
 		cout << s.str();
-
-		//char* msg =  const_cast<char*>  (s.str().c_str());
-		//pLog->write(msg);
 }
 
 void readFileType(Environment& environment){
@@ -1716,13 +1687,7 @@ void readFileType(Environment& environment){
 	}
 }
 
-/*
- * Set the variables in the environment structure
- */
 void setEnvironment(Environment& environment){
-	// Load the data
-
-	// ----
 	environment.noMoreAddress.clear();
 	environment.numNoMore = 0;
 	environment.searchMoreAddress.clear();
@@ -1738,10 +1703,7 @@ void setEnvironment(Environment& environment){
 
 	readData(environment, isNA);
 
-	if(isNA){
-		//// Remove the lines that are all 'NA'
-		removeRowsAllNA(environment);
-	}
+	if (isNA) removeRowsAllNA(environment);
 
 	environment.columnAsContinuous = new int[environment.numNodes];
 	environment.columnAsGaussian = new int[environment.numNodes];
@@ -1754,7 +1716,7 @@ void setEnvironment(Environment& environment){
 		readFileType(environment);
 	}
 
-	//// Set the effN if not already done
+	// Set the effN if not already done
 	if((environment.effN == -1) || (environment.effN > environment.numSamples))
 		environment.effN = environment.numSamples;
 
@@ -1992,8 +1954,7 @@ void readFilesAndFillStructures(vector<string> edgesVectorOneLine, Environment& 
 
 	for(uint i = 0; i < environment.numNodes - 1; i++){
 		for(uint j = i + 1; j < environment.numNodes; j++){
-			// create a structure for the nodes that need to store information about them
-			environment.edges[i][j].shared_info = new EdgeSharedInfo();
+			environment.edges[i][j].shared_info = std::make_shared<EdgeSharedInfo>();
 			environment.edges[j][i].shared_info = environment.edges[i][j].shared_info ;
 		}
 	}
@@ -2079,10 +2040,8 @@ void readFilesAndFillStructures(vector<string> edgesVectorOneLine, Environment& 
 					environment.edges[posX][posY].status = 1;
 					environment.edges[posY][posX].status = 1;
 					// add the edge to Nomore
-					EdgeID* ij = new EdgeID();
-					ij->i = posX;
-					ij->j = posY;
-					environment.noMoreAddress.push_back(ij);
+					environment.noMoreAddress.emplace_back(
+							new EdgeID(posX, posY));
 				}
 				else{
 					environment.edges[posX][posY].status = 0;
