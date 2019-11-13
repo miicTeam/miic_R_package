@@ -342,11 +342,11 @@ vector< vector <string> > confidenceCut(Environment& environment){
 
 	for(int i = 0; i < environment.numNoMore; i++){
 		int X = inferredEdges_tab[i][0];
- 		int Y = inferredEdges_tab[i][1];
- 		confidence = exp (- (environment.edges[X][Y].shared_info->Ixy_ui - environment.edges[X][Y].shared_info->cplx));
+		int Y = inferredEdges_tab[i][1];
+		confidence = exp (- (environment.edges[X][Y].shared_info->Ixy_ui - environment.edges[X][Y].shared_info->cplx));
  		confVect[i] = confidence / confVect[i];
  		if(confVect[i] > environment.confidenceThreshold){
-			environment.edges[X][Y].shared_info->connected = 1;
+			environment.edges[X][Y].shared_info->connected = 0;
 			environment.edges[X][Y].status = 0;
 			environment.edges[Y][X].status = 0;
 			toDelete.push_back(i);
@@ -364,9 +364,6 @@ vector< vector <string> > confidenceCut(Environment& environment){
 		}
 	}
 
-
-
-
 	for(uint X = 0; X < environment.numNodes -1; X++){
 		for(uint Y = X+1; Y < environment.numNodes; Y++){
 			if(environment.edges[X][Y].status == -2 || environment.edges[X][Y].status == 2 || environment.edges[X][Y].status == 6){
@@ -375,8 +372,6 @@ vector< vector <string> > confidenceCut(Environment& environment){
 	 		}
 	 	}
 	 }
-
-
 
 	// Copy data back
 	for(uint i=0; i<environment.numSamples; i++)

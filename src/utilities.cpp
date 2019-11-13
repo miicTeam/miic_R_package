@@ -599,7 +599,7 @@ bool SortFunction(const EdgeID* a, const EdgeID* b, const Environment& environme
 	else if(environment.edges[a->i][a->j].shared_info->connected < environment.edges[b->i][b->j].shared_info->connected)
 		return false;
 
-	if(environment.edges[a->i][a->j].shared_info->connected == 1 && environment.edges[b->i][b->j].shared_info->connected == 1){
+	if(environment.edges[a->i][a->j].shared_info->connected == 0 && environment.edges[b->i][b->j].shared_info->connected == 0){
 		if(environment.edges[a->i][a->j].shared_info->Rxyz_ui == 0 && environment.edges[b->i][b->j].shared_info->Rxyz_ui != 0)
 			return true;
 		else if(environment.edges[a->i][a->j].shared_info->Rxyz_ui != 0 && environment.edges[b->i][b->j].shared_info->Rxyz_ui == 0)
@@ -611,7 +611,7 @@ bool SortFunction(const EdgeID* a, const EdgeID* b, const Environment& environme
 			return false;
 	}
 
-	if(environment.edges[a->i][a->j].shared_info->connected == 3 && environment.edges[b->i][b->j].shared_info->connected == 3){
+	if(environment.edges[a->i][a->j].shared_info->connected == 1 && environment.edges[b->i][b->j].shared_info->connected == 1){
 		if(environment.edges[a->i][a->j].shared_info->Ixy_ui > environment.edges[b->i][b->j].shared_info->Ixy_ui)
 			return true;
 		else if(environment.edges[a->i][a->j].shared_info->Ixy_ui < environment.edges[b->i][b->j].shared_info->Ixy_ui)
@@ -713,14 +713,14 @@ void saveAdjMatrixState(const Environment& environment, const string filename){
 		for(uint j=0; j < environment.numNodes; j++)
 		{
 			if(j > i){
-				if(environment.edges[i][j].shared_info->connected == 3)
+				if(environment.edges[i][j].shared_info->connected == 1)
 					output << "1";
 			   	else
 			   		output << "0";
 				if(j + 1 < environment.numNodes)
 					output << "\t";
 			} else if( i > j){
-				if(environment.edges[j][i].shared_info->connected == 3)
+				if(environment.edges[j][i].shared_info->connected == 1)
 					output << "1";
 			   	else
 			   		output << "0";
@@ -2036,7 +2036,7 @@ void readFilesAndFillStructures(vector<string> edgesVectorOneLine, Environment& 
 			} else if(col == 8){
 				int state = atoi(s.c_str());
 				environment.edges[posX][posY].shared_info->connected = state;
-				if(state == 3){
+				if(state == 1){
 					environment.edges[posX][posY].status = 1;
 					environment.edges[posY][posX].status = 1;
 					// add the edge to Nomore

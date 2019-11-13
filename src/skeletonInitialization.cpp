@@ -69,23 +69,23 @@ int initEdgeElt(Environment& environment, int i, int j, MemorySpace& m){
 	if(environment.isNoInitEta)
 		myTest = environment.edges[i][j].shared_info->Ixy_ui - environment.edges[i][j].shared_info->cplx;
 	 else
-	 	myTest = environment.edges[i][j].shared_info->Ixy_ui - environment.edges[i][j].shared_info->cplx - environment.logEta;
+		myTest = environment.edges[i][j].shared_info->Ixy_ui - environment.edges[i][j].shared_info->cplx - environment.logEta;
 
 	if (myTest <= 0) {
 		// Unconditional independence
-		environment.edges[i][j].shared_info->connected = 1;
+		environment.edges[i][j].shared_info->connected = 0;
 		environment.edges[i][j].status = 0;
 		environment.edges[j][i].status = 0;
 		category = "phantom";
 	} else {
-		environment.edges[i][j].shared_info->connected = 3;
+		environment.edges[i][j].shared_info->connected = 1;
 		environment.edges[i][j].status = 1;
 		environment.edges[j][i].status = 1;
 		category= "searchMore";
 	}
 
 	if(environment.isVerbose)
-        cout << "# --> Category = " << category << "\n";
+		cout << "# --> Category = " << category << "\n";
 
 	return environment.edges[i][j].status;
 }

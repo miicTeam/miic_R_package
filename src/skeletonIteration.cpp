@@ -51,10 +51,6 @@ bool areallUiDiscrete(Environment& environment, std::vector<int> uis, int size){
 	return true;
 }
 
-/*
- * Sort the ranks of the function
- */
-
 bool SortFunction1(const EdgeID* a, const EdgeID* b, const Environment& environment) {
 	 return environment.edges[a->i][a->j].shared_info->Rxyz_ui > environment.edges[b->i][b->j].shared_info->Rxyz_ui;
 }
@@ -198,7 +194,7 @@ bool firstStepIteration(Environment& environment, BCC& bcc) {
 				environment.numSearchMore--;
 				i--;
 				// Update the status
-				environment.edges[posX][posY].shared_info->connected = 3;
+				environment.edges[posX][posY].shared_info->connected = 1;
 			}
 			if(environment.isVerbose)
 				cout << "\n";
@@ -323,7 +319,7 @@ bool skeletonIteration(Environment& environment){
 			environment.edges[posX][posY].status = 0;
 			environment.edges[posY][posX].status = 0;
 			// Save the phantom status
-			topEdgeElt->connected = 1;
+			topEdgeElt->connected = 0;
 		} else {
 			// Reinit Rxyz_ui
 			topEdgeElt->Rxyz_ui = environment.thresPc;
@@ -362,7 +358,7 @@ bool skeletonIteration(Environment& environment){
 					environment.searchMoreAddress.erase(environment.searchMoreAddress.begin() + max);
 					environment.numSearchMore--;
 					//// Update the status of the edge
-					topEdgeElt->connected = 3;
+					topEdgeElt->connected = 1;
 			}
 		}
 
@@ -402,16 +398,14 @@ bool BCC::is_consistent(int x, int y, const vector<int>& vect_z) const {
 
 void BCC::bcc_aux(int u, int& time, vector<int>& parent, vector<int>& lowest,
         vector<int>& depth, stack<pair<int, int> >& st) {
-    /**
-     * Auxiliary recurrent method for biconnected component decomposition.
-     *
-     * @param int u Current node under consideration.
-     * @param int& time global time used to set the depth of each vertex.
-     * @param vector<int> parent Parent vertex of each vertex in the dfs search.
-     * @param vector<int> lowest Lowest point of each vertex.
-     * @param vector<int> depth Time when each vertex is visited in the dfs search.
-     * @param stack<pair<int> > st Stack for the dfs search.
-     */
+     // Auxiliary recurrent method for biconnected component decomposition.
+     //
+     // @param int u Current node under consideration.
+     // @param int& time global time used to set the depth of each vertex.
+     // @param vector<int> parent Parent vertex of each vertex in the dfs search.
+     // @param vector<int> lowest Lowest point of each vertex.
+     // @param vector<int> depth Time when each vertex is visited in the dfs search.
+     // @param stack<pair<int> > st Stack for the dfs search.
     int numNodes = environment.numNodes;
     int children = 0;
     depth[u] = lowest[u] = ++time;
@@ -452,11 +446,8 @@ void BCC::bcc_aux(int u, int& time, vector<int>& parent, vector<int>& lowest,
 }
 
 void BCC::bcc() {
-    /**
-     * Biconnected components decomposition of the graph contained in the
-     * environment, allowing for fast search of candidate vertices for
-     * separation.
-     */
+    // Biconnected components decomposition of the graph contained in the
+    // environment, allowing for search of candidate vertices for separation.
     int time = 0;
     int numNodes = environment.numNodes;
     vector<int> depth(numNodes, -1), lowest(numNodes, -1), parent(numNodes, -1);
@@ -510,20 +501,17 @@ void BCC::bcc() {
 
     for (int i=0; i<numNodes; i++){
         for (int j=0; j<numNodes; j++) {
-            degree_of[i] += static_cast<int>(
-                    environment.edges[i][j].status ||
-                    environment.edges[j][i].status);
+            if (i == j) continue;
+            degree_of[i] += environment.edges[i][j].shared_info->connected;
         }
     }
 }
 
 vector<int> BCC::bc_tree_bfs(int start, int end) const {
-    /**
-     * Return the shortest path between two nodes in the block-cut tree.
-     *
-     * @param int start, end Starting, ending nodes.
-     * @return Path as a vector of node indices.
-     */
+    // Return the shortest path between two nodes in the block-cut tree.
+    //
+    // @param int start, end Starting, ending nodes.
+    // @return Path as a vector of node indices.
     int numNodes = bc_tree_adj_list.size();
     vector<int> visited(numNodes, 0);
 
@@ -550,10 +538,8 @@ vector<int> BCC::bc_tree_bfs(int start, int end) const {
 }
 
 std::set<int> BCC::get_candidate_z(int x, int y) const {
-    /**
-     * Find and set all candidate Z for a given pair of vertices
-     * using biconnected components and block-cut tree.
-     */
+    // Find and set all candidate Z for a given pair of vertices
+    // using biconnected components and block-cut tree.
     set<int> set_z;
     insert_iterator<set<int> > insert_it = inserter(set_z, set_z.begin());
 

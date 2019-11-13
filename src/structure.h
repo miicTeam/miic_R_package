@@ -12,40 +12,41 @@ using namespace std;
 using uint=unsigned int;
 
 struct EdgeSharedInfo {
-	std::vector<int> ui_vect_idx; // index of ui
-	std::vector<int> zi_vect_idx; // index of ui
-	int z_name_idx      = -1; // index of the last best contributor
-	double Rxyz_ui      = 0; // score of the best contributor
+	std::vector<int> ui_vect_idx;  // Indice of separating nodes
+	// Indice of candidate nodes contributing to the conditional independence
+	std::vector<int> zi_vect_idx;
+	int z_name_idx      = -1;  // Index of the last best contributor
+	double Rxyz_ui      = 0;  // Score of the best contributor
 	double Ixy_ui       = 0;
 	double cplx         = 0;
 	int Nxy_ui          = -1;
-	short int connected = -1;
-	double mutInfo      = 0;  // mutual information without conditioning
-	double cplx_noU     = 0;  // complexity without conditioning
-	int Nxy             = -1;  // count of joint factors without NA
+	short int connected = 1;  // 1 or 0. An edge is by default connceted.
+	double mutInfo      = 0;  // Mutual information without conditioning
+	double cplx_noU     = 0;  // Complexity without conditioning
+	int Nxy             = -1;  // Count of joint factors without NA
 
 	EdgeSharedInfo() = default;
 
     // Remove knowledge about all contributing nodes.
     void reset() {
-        z_name_idx = -1;
         zi_vect_idx.clear();
         ui_vect_idx.clear();
-        Rxyz_ui = 0;
-        connected = -1;
-        Ixy_ui = mutInfo;
-        cplx = cplx_noU;
-        Nxy_ui = Nxy;
+        z_name_idx = -1;
+        Rxyz_ui    = 0;
+        Ixy_ui     = mutInfo;
+        cplx       = cplx_noU;
+        Nxy_ui     = Nxy;
+        connected  = 1;
     }
 
     void setUndirected () {
-        z_name_idx = -1;
         ui_vect_idx.clear();
-        Rxyz_ui = 0;
-        connected = 3;
-        Ixy_ui = mutInfo;
-        cplx = cplx_noU;
-        Nxy_ui = Nxy;
+        z_name_idx = -1;
+        Rxyz_ui    = 0;
+        Ixy_ui     = mutInfo;
+        cplx       = cplx_noU;
+        Nxy_ui     = Nxy;
+        connected  = 1;
     }
 };
 
