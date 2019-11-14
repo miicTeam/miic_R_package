@@ -355,9 +355,11 @@ void createMemorySpace(Environment& environment, MemorySpace& m){
 	if(environment.atLeastTwoDiscrete){
 
 		int maxLevel = 0;
-		for(uint i =0; i<environment.numNodes; i++)
-			if(environment.allLevels[i] > maxLevel)
+		for (uint i=0; i<environment.numNodes; i++) {
+			if (environment.columnAsContinuous[i] == 0
+					&& environment.allLevels[i] > maxLevel)
 				maxLevel = environment.allLevels[i];
+		}
 		m.maxlevel = maxLevel;
 		// cout<< "samples" << environment.numSamples << endl;
 		int nrow=environment.numSamples+1;
@@ -421,9 +423,11 @@ void createMemorySpace(Environment& environment, MemorySpace& m){
 void deleteMemorySpace(Environment& environment, MemorySpace& m){
 	if(environment.atLeastTwoDiscrete){
 		int maxLevel = 0;
-		for(uint i =0; i<environment.numNodes; i++)
-			if(environment.allLevels[i] > maxLevel)
+		for (uint i=0; i<environment.numNodes; i++) {
+			if (environment.columnAsContinuous[i] == 0
+					&& environment.allLevels[i] > maxLevel)
 				maxLevel = environment.allLevels[i];
+		}
 
 		int nrow=environment.numSamples+1;
 		int bin_max=maxLevel;
