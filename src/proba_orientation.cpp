@@ -1,3 +1,5 @@
+#include "proba_orientation.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -21,20 +23,11 @@ static double dminarg1,dminarg2;
 #define DMIN(a,b) (dminarg1=(a),dminarg2=(b),(dminarg1) < (dminarg2) ?\
         (dminarg1) : (dminarg2))
 
-
-#include "probaOrientation.h"
-//-------------------------------------------------------------------------
-//-------------------------------------------------------------------------
-//-------------------------------------------------------------------------
-//-------------------------------------------------------------------------
-
-class sort_indices_3points
-{
-   private:
-     double* mparr;
-   public:
-     sort_indices_3points(double* parr) : mparr(parr) {}
-     bool operator()(int i, int j) const { return mparr[i]<mparr[j]; }
+class sort_indices_3points {
+	double* mparr;
+public:
+	sort_indices_3points(double* parr) : mparr(parr) {}
+	bool operator()(int i, int j) const { return mparr[i]<mparr[j]; }
 };
 
 
@@ -51,8 +44,9 @@ double logF2(double scoreTpl, double I3){
 
 /*-------------------------------------------------------------------------*/
 
-int OrientTpl_LV_Deg_Propag(int NbTpl, int *Tpl, double *I3, double *ProbArrowhead, int LV, int deg, int Propag, int HALFVSTRUCT)
-{
+int miic::reconstruction::OrientTpl_LV_Deg_Propag(int NbTpl, int *Tpl,
+		double *I3, double *ProbArrowhead, int LV, int deg, int Propag,
+		int HALFVSTRUCT) {
 
 	int i,j,n1,n2,n3,TRUE=1,FALSE=0,*orderTpl,maxTpl,ok,count=0;
 	double maxscoreTpl;
@@ -670,4 +664,28 @@ int OrientTpl_LV_Deg_Propag(int NbTpl, int *Tpl, double *I3, double *ProbArrowhe
 	delete(scoreTpl);
 	delete(orderTpl);
 
+}
+
+double* miic::reconstruction::getOrientTplLVDegPropag( int nbrTpl, int* ptrAllTpl, double* ptrAllI3,
+		int LV , int isDeg , int isPropag, int halfVStructures) {
+	int nbrRetProbaValues = -1;  // Nbr proba to return
+	double *ptrRetProbValues;	 // To return ProbArrowhead
+                                 // >> ProbArrowhead[1][i] 1<-->2 ProbArrowhead[2][i]
+	                             // >> ProbArrowhead[3][i] 2<-->3 ProbArrowhead[4][i]
+	                             //
+	                             // ProbArrowhead > 0.5: an arrow head  (>)
+	                             // ProbArrowhead < 0.5: an arrow tail  (-)
+	nbrRetProbaValues = (4*nbrTpl);
+	ptrRetProbValues = new double[nbrRetProbaValues];
+    // Initialise the arrowhead probabilities to 0.5
+    for (int i = 0; i < nbrTpl; i++) {
+		for (int j = 0; j < 4; j++ ) {
+			ptrRetProbValues[i+j*nbrTpl] = 0.5;
+		}
+	}
+    // Iteratively converge towards partially oriented graphs including possible
+	// latent variables and Propagation/Non-Propagation rules.
+	OrientTpl_LV_Deg_Propag( nbrTpl, ptrAllTpl, ptrAllI3, ptrRetProbValues, LV, isDeg, isPropag, halfVStructures);
+
+	return ptrRetProbValues;
 }

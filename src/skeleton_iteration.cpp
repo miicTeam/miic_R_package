@@ -1,4 +1,4 @@
-#include "skeletonIteration.h"
+#include "reconstruct.h"
 
 #include <iostream>
 #include <string>
@@ -13,11 +13,17 @@
 #endif
 
 #include "structure.h"
-#include "computeEnsInformation.h"
-#include "skeletonInitialization.h"
+#include "compute_ens_information.h"
 #include "utilities.h"
 
-using namespace std;
+using uint = unsigned int;
+using std::cout;
+using std::endl;
+using std::vector;
+using namespace miic::computation;
+using namespace miic::reconstruction;
+using namespace miic::structure;
+using namespace miic::utility;
 
 bool SortFunctionNoMore(const EdgeID* a, const EdgeID* b, const Environment& environment) {
 	 return environment.edges[a->i][a->j].shared_info->Ixy_ui > environment.edges[b->i][b->j].shared_info->Ixy_ui;
@@ -33,7 +39,7 @@ class sorterNoMore {
 };
 
 
-bool areallUiGaussian(Environment& environment, std::vector<int> uis, int size){
+bool areallUiGaussian(Environment& environment, vector<int> uis, int size) {
 	for(int i = 0; i < size; i++){
 		if(environment.columnAsGaussian[uis[i]] != 1)
 			return false;
@@ -42,7 +48,7 @@ bool areallUiGaussian(Environment& environment, std::vector<int> uis, int size){
 	return true;
 }
 
-bool areallUiDiscrete(Environment& environment, std::vector<int> uis, int size){
+bool areallUiDiscrete(Environment& environment, vector<int> uis, int size) {
 	for(int i = 0; i < size; i++){
 		if(environment.columnAsContinuous[uis[i]] != 0)
 			return false;
@@ -65,10 +71,10 @@ class sorter1 {
 };
 
 template<bool isLatent=false>
-void searchAndSetZi(Environment& environment, const int posX, const int posY){
+void searchAndSetZi(Environment& environment, const uint posX, const uint posY){
     // Search candidate nodes for the separation set of X and Y
 	int numZiPos = 0;
-    for(int c = 0; c < environment.numNodes; c++){
+    for(uint c = 0; c < environment.numNodes; c++){
         if (c == posX || c == posY)
             continue;
         if (!isLatent && !environment.edges[posX][c].status_prev && !environment.edges[posY][c].status_prev)
@@ -81,14 +87,17 @@ void searchAndSetZi(Environment& environment, const int posX, const int posY){
 		cout << "The number of neighbours is: " << numZiPos << endl;
 }
 
-void searchAndSetZi(Environment& environment, const int posX, const int posY){
+void searchAndSetZi(Environment& environment, const uint posX, const uint posY){
     if (environment.isLatent)
         return searchAndSetZi<true>(environment, posX, posY);
     else
         return searchAndSetZi<false>(environment, posX, posY);
 }
 
-bool firstStepIteration(Environment& environment, BCC& bcc) {
+namespace miic { namespace reconstruction {
+
+bool firstStepIteration(Environment& environment,
+		BCC& bcc) {
 
 	// During first step iteration, search for U contributors is not parallelizable
 	// see flag "parallelizable" in computeEnsInformationContinuous() l. 1118 in computeEnsInformation.cpp
@@ -106,8 +115,8 @@ bool firstStepIteration(Environment& environment, BCC& bcc) {
 	// create and fill the searchMoreAddress struct, that keep track of i and j positions of searchMore Edges
 	environment.numSearchMore = 0;
 	environment.numNoMore= 0;
-	for(int i = 0; i < environment.numNodes - 1; i++){
-		for(int j = i + 1; j < environment.numNodes; j++){
+	for(uint i = 0; i < environment.numNodes - 1; i++){
+		for(uint j = i + 1; j < environment.numNodes; j++){
             // Do dot consider edges removed with unconditional independence
 			if (!environment.edges[i][j].status)
 				continue;
@@ -211,8 +220,6 @@ bool firstStepIteration(Environment& environment, BCC& bcc) {
 	return(true);
 }
 
-
-
 bool skeletonIteration(Environment& environment){
 
 	int iIteration_count = 0;
@@ -239,22 +246,22 @@ bool skeletonIteration(Environment& environment){
 		int posY = environment.searchMoreAddress[max]->j;
 
 		if(environment.isVerbose)
-			cout << "Pos x : " << posX << " , pos y: " << posY << endl << flush;
+			cout << "Pos x : " << posX << " , pos y: " << posY << endl;
 
 		auto topEdgeElt = environment.edges[posX][posY].shared_info;
 
-		if( environment.isVerbose ) cout << "# Before adding new zi to {ui}: " ; //displayEdge(topEdgeElt)
+		if( environment.isVerbose ) cout << "# Before adding new zi to {ui}: ";
 
-		//// Keep the previous z.name for this edge
-		string accepted_z_name = environment.nodes[topEdgeElt->z_name_idx].name;
+		// Keep the previous z.name for this edge
+		std::string accepted_z_name = environment.nodes[topEdgeElt->z_name_idx].name;
 
-		//// Reinit ui.vect, z.name, zi.vect, z.name.idx
+		// Reinit ui.vect, z.name, zi.vect, z.name.idx
 		if(environment.isVerbose) { cout << "# DO: Add new zi to {ui}: " << topEdgeElt->z_name_idx << endl;}
 
-		//// Ui
+		// Ui
 		topEdgeElt->ui_vect_idx.push_back(topEdgeElt->zi_vect_idx[topEdgeElt->z_name_idx]);
-		//// Zi
-		// ttopEdgeElt->z.name = NA
+		// Zi
+		// topEdgeElt->z.name = NA
 		topEdgeElt->zi_vect_idx[topEdgeElt->z_name_idx] = -1;
 		topEdgeElt->z_name_idx = -1;
 
@@ -397,7 +404,7 @@ bool BCC::is_consistent(int x, int y, const vector<int>& vect_z) const {
 }
 
 void BCC::bcc_aux(int u, int& time, vector<int>& parent, vector<int>& lowest,
-        vector<int>& depth, stack<pair<int, int> >& st) {
+        vector<int>& depth, std::stack<std::pair<int, int> >& st) {
      // Auxiliary recurrent method for biconnected component decomposition.
      //
      // @param int u Current node under consideration.
@@ -420,11 +427,11 @@ void BCC::bcc_aux(int u, int& time, vector<int>& parent, vector<int>& lowest,
         if (depth[v] == -1) {
             parent[v] = u;
             children ++;
-            st.push(make_pair(u, v));
+            st.push(std::make_pair(u, v));
 
             bcc_aux(v, time, parent, lowest, depth, st);
 
-            lowest[u] = min(lowest[u], lowest[v]);
+            lowest[u] = std::min(lowest[u], lowest[v]);
             if ((parent[u] == -1 && children > 1) || (parent[u] != -1 && lowest[v] >= depth[u])) {
                 is_cp[u] = 1;
                 set<int> s;
@@ -439,8 +446,8 @@ void BCC::bcc_aux(int u, int& time, vector<int>& parent, vector<int>& lowest,
                 bcc_list.push_back(s);
             }
         } else if (v != parent[u] && depth[u] > depth[v]) {
-            lowest[u] = min(lowest[u], depth[v]);
-            st.push(make_pair(u, v));
+            lowest[u] = std::min(lowest[u], depth[v]);
+            st.push(std::make_pair(u, v));
         }
     }
 }
@@ -451,7 +458,7 @@ void BCC::bcc() {
     int time = 0;
     int numNodes = environment.numNodes;
     vector<int> depth(numNodes, -1), lowest(numNodes, -1), parent(numNodes, -1);
-    stack<pair<int, int> > st;
+	std::stack<std::pair<int, int> > st;
 
     for (int u=0; u<numNodes; u++) {
         if (depth[u] == -1)
@@ -515,8 +522,8 @@ vector<int> BCC::bc_tree_bfs(int start, int end) const {
     int numNodes = bc_tree_adj_list.size();
     vector<int> visited(numNodes, 0);
 
-    queue<pair<int, vector<int> > > bfs_queue;
-    bfs_queue.push(make_pair(start, vector<int>{start}));
+	std::queue<std::pair<int, vector<int> > > bfs_queue;
+    bfs_queue.push(std::make_pair(start, vector<int>{start}));
 
     while (!bfs_queue.empty()){
         auto& p = bfs_queue.front();
@@ -541,7 +548,7 @@ std::set<int> BCC::get_candidate_z(int x, int y) const {
     // Find and set all candidate Z for a given pair of vertices
     // using biconnected components and block-cut tree.
     set<int> set_z;
-    insert_iterator<set<int> > insert_it = inserter(set_z, set_z.begin());
+	std::insert_iterator<set<int> > insert_it = inserter(set_z, set_z.begin());
 
     if (degree_of[x] < 1 || degree_of[y] < 1) return set_z;
 
@@ -574,7 +581,7 @@ std::set<int> BCC::get_candidate_z(int x, int y) const {
 
 void BCC::set_candidate_z(int x, int y) {
     vector<int>& vect_z = environment.edges[x][y].shared_info->zi_vect_idx;
-    insert_iterator<vector<int> > insert_it = inserter(vect_z, vect_z.begin());
+	std::insert_iterator<vector<int> > insert_it = inserter(vect_z, vect_z.begin());
     set<int> set_z = get_candidate_z(x, y);
     copy_if(set_z.begin(), set_z.end(), insert_it, [this, x, y](int i) {
         return (environment.isLatent ||
@@ -582,3 +589,5 @@ void BCC::set_candidate_z(int x, int y) {
                 environment.edges[i][y].status_prev > 0);
     });
 }
+
+} }  // namespace miic::reconstruction

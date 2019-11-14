@@ -1,3 +1,5 @@
+#include "mutual_information.h"
+
 #include <stdio.h>
 #include <math.h>
 #include <stdlib.h>
@@ -9,13 +11,9 @@
 
 #include "utilities.h"
 
-#include "computeInfo.h"
+#include "compute_info.h"
 
-using namespace std;
 //functions utilities for dynamic programming optimization
-
-
-///////////////////////////////////////////////////////////////////////////////////////////
 
 //#define _MY_DEBUG_NEW 1
 //#define _MY_DEBUG_NEW_UI_2 1
@@ -27,7 +25,10 @@ using namespace std;
 //#define _MY_DEBUG_NEW_3p_f 1
 //#define DEBUG 1
 
+namespace miic { namespace computation {
 
+using std::vector;
+using namespace miic::utility;
 
 /////////////////////////////////////////////////////////////////////////////
 //INPUT:
@@ -38,9 +39,8 @@ using namespace std;
 //OUTPUT:
 //r : number cuts
 //cut: vector with cuts point-> [0 cut[0]][cut[0]+1 cut[1]]...[cut[r-2] cut[r-1]]
-
-int reconstruction_cut_coarse(vector<int>& memory_cuts, vector<int>& memory_cuts2, int np, int n,int *cut)
-{
+int reconstruction_cut_coarse(vector<int>& memory_cuts,
+		vector<int>& memory_cuts2, int np, int n,int *cut) {
 		int ncuts=0;
 		int l,s;
 
@@ -132,7 +132,6 @@ void jointfactors_uiyx(int **datafactors, int dui, int n, int Mui, int *r, int *
 		int *dataui=(int*)calloc(n,sizeof(int));
 
 		int j,jj,l;
-		int uu=0;
 		bool tooManyLevels = false;
 
 		/////////////////
@@ -338,25 +337,6 @@ void jointfactors_uiyx(int **datafactors, int dui, int n, int Mui, int *r, int *
 
 		return;
 }
-////////////////////////////////////////////////////////////////////////////////////////////////
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-/////////////////////////////////////////////////////////////////////////////////////////
 
 //INPUT:
 //datarank, datafactors, cut
@@ -364,7 +344,6 @@ void jointfactors_uiyx(int **datafactors, int dui, int n, int Mui, int *r, int *
 
 //OUTPUT
 //return joint datafactors ui and uiy uix uixy, with number of levels ruiyx[0,1,2,3]
-
 void jointfactors_uyx(int **datafactors, int* ptrVar, int n, int Mui, int *r, int **uyxfactors,int *ruyx)
 {
 
@@ -376,7 +355,6 @@ void jointfactors_uyx(int **datafactors, int* ptrVar, int n, int Mui, int *r, in
 		int *dataui=(int*)calloc(n,sizeof(int));
 
 		int j,jj,l;
-		int uu=0;
 		bool tooManyLevels = false;
 
 		/////////////////
@@ -593,7 +571,7 @@ void jointfactors_u(int **datafactors,int *ptrIdx,int n, int Mui, int *r, int *u
 		//from cuts to joint datafactors
 
 		int jj;
-		int i,j,l;
+		int j,l;
 
 		if(Mui==1){
 			for(jj=0;jj<=n-1;jj++){
@@ -859,7 +837,7 @@ double* computeMIcond_kmdl(int **uiyxfactors, int *ruiyx, int *r,int n, double* 
 
 	double *I=(double*)calloc(2,sizeof(double));
 
-	int j,l,u,ux,uy,uyx;
+	int j,u,ux,uy,uyx;
 
 	double Hux=0,Huy=0,Huyx=0,Hu=0,SC=0;
 
@@ -953,3 +931,5 @@ double* computeMI_kmdl(int* xfactors,int* ufactors,int* uxfactors,int* rux,int n
 	return I;
 
 }
+
+} }  // namespace miic::computation

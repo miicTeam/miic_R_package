@@ -1,82 +1,49 @@
-#include <math.h>
+#include "reconstruct.h"
+
 #include <algorithm>
 #include <iostream>
-#include <sstream>
+#include <math.h>
+#include <vector>
 
+#include "compute_ens_information.h"
 #include "structure.h"
-#include "computeEnsInformation.h"
 #include "utilities.h"
-using namespace std;
 
-void shuffle_lookup(int *array, int *array2, size_t n)
-{
-    if (n > 1)
-    {
-        size_t i;
-        for (i = 0; i < n - 1; i++)
-        {
-          size_t j = i + rand() / (RAND_MAX / (n - i) + 1);
-          int t = array[j];
-          array[j] = array[i];
-          array[i] = t;
-          array2[t] = i;
-        }
-    }
+using uint = unsigned int;
+using std::vector;
+using std::string;
+using namespace miic::computation;
+using namespace miic::structure;
+using namespace miic::utility;
+
+void shuffle_lookup(int *array, int *array2, size_t n) {
+	if (n <= 1) return;
+	for (size_t i = 0; i < n - 1; i++) {
+		size_t j = i + rand() / (RAND_MAX / (n - i) + 1);
+		int t = array[j];
+		array[j] = array[i];
+		array[i] = t;
+		array2[t] = i;
+	}
 }
 
-//void saveConfidenceVector(Environment& environment, int** inferredEdges_tab, double* confVect,  string outDir, string slash){
-//
-//
-//	stringstream ss;
-//	ss.str("");
-//	ss << outDir << slash << "confRatios.txt";
-//	string filename = ss.str();
-//
-//	if(environment.isVerbose)
-//		cout << "Saving confidence matrix\n";
-//	ofstream output;
-//	output.open(filename.c_str());
-//	output << "x" << "\t" << "y" << "\t" << "confidence_ratio" << endl;
-//	for (int i=0; i < environment.numNoMore; i++){
-//		int X = inferredEdges_tab[i][0] ;
-// 		int Y = inferredEdges_tab[i][1] ;
-//
-//		output << environment.nodes[X].name << "\t" << environment.nodes[Y].name << "\t" << confVect[i] << endl;
-//	}
-//
-//	output.close();
-//}
-
-bool SortFunctionNoMore2(const EdgeID* a, const EdgeID* b, const Environment& environment) {
-	 return (environment.edges[a->i][a->j].shared_info->Ixy_ui) > (environment.edges[b->i][b->j].shared_info->Ixy_ui);
+bool SortFunctionNoMore2(const EdgeID* a, const EdgeID* b,
+		const Environment& environment) {
+	return (environment.edges[a->i][a->j].shared_info->Ixy_ui
+			> environment.edges[b->i][b->j].shared_info->Ixy_ui);
 }
 
 class sorterNoMore2 {
-	  Environment &environment;
-		public:
-	  sorterNoMore2(Environment& env) : environment(env) {}
-	  bool operator()(EdgeID const* o1, EdgeID const* o2) const {
-			return SortFunctionNoMore2(o1, o2, environment );
-	  }
+	Environment &environment;
+public:
+	sorterNoMore2(Environment& env) : environment(env) {}
+	bool operator()(EdgeID const* o1, EdgeID const* o2) const {
+		return SortFunctionNoMore2(o1, o2, environment);
+	}
 };
 
-// class sort_indicesLookup
-// {
-//    private:
-//      int* parr;
-//    public:
-//      sort_indicesLookup(int* parr) : parr(parr) {}
-//      bool operator()(int i, int j) const { return parr[i]<parr[j]; }
-// };
-
-// void sort2arraysLookup(int len, int a[], int brr[]){
-
-//     std::sort(a, brr+len, sort_indicesLookup(a));
-
-// }
-
-vector< vector <string> > confidenceCut(Environment& environment){
-
+vector<vector<string> > miic::reconstruction::confidenceCut(
+		Environment& environment) {
 	int** safe_state;
 	int** safe_stateIdx;
 	double** safe_stateDouble;
@@ -128,7 +95,7 @@ vector< vector <string> > confidenceCut(Environment& environment){
 	float p;
 	double* safe_weights;
 	if(environment.sampleWeightsVec[0]==-1){
-		if(environment.effN != environment.numSamples){
+		if(environment.effN != (int) environment.numSamples){
 			p=environment.effN*1.0/environment.numSamples;
 			safe_weights=new double[environment.numSamples];
 		}
@@ -145,7 +112,7 @@ vector< vector <string> > confidenceCut(Environment& environment){
 		}
 		if(environment.sampleWeightsVec[0]==-1){
 			//re-init weigths
-			if(environment.effN != environment.numSamples){
+			if(environment.effN != (int) environment.numSamples){
 				safe_weights[i]=environment.sampleWeights[i];
 				environment.sampleWeights[i]=p;
 			}
@@ -179,7 +146,7 @@ vector< vector <string> > confidenceCut(Environment& environment){
 		{
 			if( nodes_toShf[col] == 1)
 			{
-				int row2=0;
+				uint row2=0;
 				shuffle_lookup(lookup, lookup2, environment.numSamples);
 				if(environment.columnAsContinuous[col] != 0){
 					for(uint i = 0; i < environment.numSamples; i++){
@@ -352,7 +319,7 @@ vector< vector <string> > confidenceCut(Environment& environment){
 			toDelete.push_back(i);
  		}
 	}
-	cout << "# -- number of edges cut: " << toDelete.size() << "\n";
+	std::cout << "# -- number of edges cut: " << toDelete.size() << "\n";
 
 	// Delete from vector
 	environment.noMoreAddress.clear();
@@ -377,7 +344,7 @@ vector< vector <string> > confidenceCut(Environment& environment){
 	for(uint i=0; i<environment.numSamples; i++)
 	{
 		if(environment.sampleWeightsVec[0]==-1){
-			if(environment.effN != environment.numSamples)
+			if(environment.effN != (int) environment.numSamples)
 				environment.sampleWeights[i]=safe_weights[i];
 		}
 
@@ -437,7 +404,7 @@ vector< vector <string> > confidenceCut(Environment& environment){
 	delete[] lookup2;
 
 	if(environment.sampleWeightsVec[0]==-1){
-		if(environment.effN != environment.numSamples){
+		if(environment.effN != (int) environment.numSamples){
 			delete[] safe_weights;
 		}
 	}
@@ -453,7 +420,7 @@ vector< vector <string> > confidenceCut(Environment& environment){
 		vector <string> v;
 		v.push_back(environment.nodes[inferredEdges_tab[i][0]].name);
 		v.push_back(environment.nodes[inferredEdges_tab[i][1]].name);
-		v.push_back(to_string(confVect[i]));
+		v.push_back(std::to_string(confVect[i]));
 		confVect1.push_back(v);
 	}
 

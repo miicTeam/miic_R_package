@@ -1,4 +1,4 @@
-#include "Info_cnt.h" // isNumberOfLevelsLessTwo
+#include "info_cnt.h"
 
 #include <stdio.h>
 #include <math.h>
@@ -6,76 +6,62 @@
 #include <limits.h>
 #include <float.h>
 #include <time.h>
-#include <string>
 #include <map>
 #include <iostream>
 #include <sstream>
 #include <tuple>
 
-#include "modules_MI.h"
-#include "computeInfo.h"
+#include "mutual_information.h"
+#include "compute_info.h"
+#include "structure.h"
 
 #define STEPMAX 50
-#define STEPMAXOUTER 50
 #define EPS 1e-5
 #define FLAG_CPLX 1
-
-// module to compute the conditional mutual information for mixed continuous and discrete variables
-
-//////////////////////////////////////////////////////////////////////////////////////////////
-
-
 //#define _MY_DEBUG_MInoU 1
 //#define _MY_DEBUG_MI 1
 //#define _MY_DEBUG_NEW_OPTFUN 1
 //#define _MY_DEBUG_NEW 1
 
-/////////////////////////////////////////////////////////////////////////////
+namespace miic { namespace computation {
 
-// template <typename T>
-// string ToString(T val)
-// {
-//     stringstream stream;
-//     stream << val;
-//     return stream.str();
-// }
+using uint = unsigned int;
+using std::vector;
+using std::min;
+using namespace miic::structure;
 
-///////////////////////////////////////////////////////////////////////////////////////////
-
-void reset_u_cutpoints(int** cut, int nbrUi, int* ptr_cnt, int* ptrVarIdx, int init_nbin, int maxbins,
-                       int lbin, int* r, int* AllLevels, int n){
-
-    for(int l=2;l<(nbrUi+2);l++){
-        if(ptr_cnt[ptrVarIdx[l]]==1){
-            for(int j=0;j<init_nbin-1;j++) {
-                cut[l][j]=j*lbin+lbin-1;
+void reset_u_cutpoints(int** cut, int nbrUi, int* ptr_cnt, int* ptrVarIdx,
+        int init_nbin, int maxbins, int lbin, int* r, int* AllLevels, int n) {
+    for (int l=2; l<nbrUi+2; l++) {
+        if (ptr_cnt[ptrVarIdx[l]] == 1) {
+            for (int j=0; j<init_nbin-1; j++) {
+                cut[l][j] = j*lbin+lbin-1;
             }
-            cut[l][init_nbin-1]=n-1;
-            for(int j=init_nbin;j<maxbins;j++) {
-                cut[l][j]=0;
+            cut[l][init_nbin-1] = n-1;
+            for (int j=init_nbin; j<maxbins; j++) {
+                cut[l][j] = 0;
             }
-            r[l]=init_nbin;
-        }else{
-            r[l]=AllLevels[ptrVarIdx[l]];
+            r[l] = init_nbin;
+        } else {
+            r[l] = AllLevels[ptrVarIdx[l]];
         }
     }
 }
 
-void reset_cutpoints(int** cut, int nbrUi, int* ptr_cnt, int* ptrVarIdx, int init_nbin, int maxbins,
-                     int lbin, int* r, int* AllLevels, int n){
-
-    for(int l=0;l<(nbrUi+2);l++){
-        if(ptr_cnt[ptrVarIdx[l]]==1){
-            for(int j=0;j<init_nbin-1;j++) {
-                cut[l][j]=j*lbin+lbin-1;
+void reset_cutpoints(int** cut, int nbrUi, int* ptr_cnt, int* ptrVarIdx,
+        int init_nbin, int maxbins, int lbin, int* r, int* AllLevels, int n) {
+    for (int l=0; l<nbrUi+2; l++) {
+        if (ptr_cnt[ptrVarIdx[l]] == 1) {
+            for (int j=0; j<init_nbin-1; j++) {
+                cut[l][j] = j*lbin+lbin-1;
             }
             cut[l][init_nbin-1]=n-1;
-            for(int j=init_nbin;j<maxbins;j++) {
-                cut[l][j]=0;
+            for (int j=init_nbin; j<maxbins; j++) {
+                cut[l][j] = 0;
             }
-            r[l]=init_nbin;
-        }else{
-            r[l]=AllLevels[ptrVarIdx[l]];
+            r[l] = init_nbin;
+        } else {
+            r[l] = AllLevels[ptrVarIdx[l]];
         }
     }
 }
@@ -87,13 +73,6 @@ void reset_cutpoints(int** cut, int nbrUi, int* ptr_cnt, int* ptrVarIdx, int ini
 //double* looklog : lookup table for the logarithms of natural numbers up to n
 //double* c2terms : precomputed vectors for the MDL complexity
 
-///////////////////////////////////////////////////////////////////////////////////////////
-
-
-//inline __attribute__((always_inline))
-void optfun_onerun_kmdl_coarse(int *sortidx_var, int *data, int nbrV, int **factors, int *r, double sc,
-                               int sc_levels1, int previous_levels, int n, int nnr, int *cut, int *r_opt,
-                               Environment& environment)
 /*  DYNAMIC PROGRAMMING OPTIMIZATION FUNCTION
  *
  *  Takes as input the factors and joint factors and optimizes a variable by maximizing a given information.
@@ -154,10 +133,11 @@ void optfun_onerun_kmdl_coarse(int *sortidx_var, int *data, int nbrV, int **fact
  *      <sc_levels1>        -> the number of levels of discretized Y
  *      <previous_levels>   -> the number of levels of discretizedd X in the previous iteration (for cost correction)
  *      <cut>               -> the vector that will contain the cutpoints for X
- *
  */
-{
-
+//inline __attribute__((always_inline))
+void optfun_onerun_kmdl_coarse(int *sortidx_var, int *data, int nbrV,
+        int **factors, int *r, double sc, int sc_levels1, int previous_levels,
+        int n, int nnr, int *cut, int *r_opt, Environment& environment) {
     int coarse=ceil(1.0*nnr/environment.maxbins);//step coarse graining
     if (coarse<1) coarse=1;
     uint np=ceil(1.0*nnr/coarse); //number of possible cuts
@@ -174,13 +154,13 @@ void optfun_onerun_kmdl_coarse(int *sortidx_var, int *data, int nbrV, int **fact
     vector <double> Ik(np); // The optimal information value found at each idx.
     double Ik_kj; // The information value for a bin fom idx k to j.
 
-    uint njforward(0),nkforward(0); // Indexes at current position of j and k
+    int njforward(0),nkforward(0); // Indexes at current position of j and k
 
     //entropy in kj interval for the <nbrV>+1 terms
     vector <double> Hk_kj(nbrV);
 
     vector < vector <uint> > counts(nbrV);
-    for(uint m=0; m<nbrV; m++){
+    for(int m=0; m<nbrV; m++){
         counts[m].resize(r[m]);
     }
 
@@ -188,19 +168,19 @@ void optfun_onerun_kmdl_coarse(int *sortidx_var, int *data, int nbrV, int **fact
     Grid2d <uint> coarse_counts_joint(np, r[0], 0);
 
     vector < vector <uint> > counts_k(nbrV);
-    for(uint m=0; m<nbrV; m++){
+    for(int m=0; m<nbrV; m++){
         counts_k[m].resize(r[m]);
     }
     uint weighted_count;
 
     vector <bool> check_repet(n);
-    for(uint i=0;i<(n-1);i++){
+    for(int i=0;i<(n-1);i++){
         check_repet[i] = (data[sortidx_var[i+1]]!=data[sortidx_var[i]]);
     }
 
     vector<uint> n_values(np);
     vector<double> sum_sample_weights(np);
-    uint ir(0); // Iterator on non repeated values
+    int ir(0); // Iterator on non repeated values
     uint level_marginal(0), level_joint(0);
     for(uint i = 0; i < np; i++){
 
@@ -258,11 +238,11 @@ void optfun_onerun_kmdl_coarse(int *sortidx_var, int *data, int nbrV, int **fact
         }
 
         Ik[j]=0;
-        for(uint m=0;m<nbrV;m++) Ik[j] += Hk_kj[m]; //herve
+        for(int m=0;m<nbrV;m++) Ik[j] += Hk_kj[m]; //herve
 
         Imax=-DBL_MAX;
 
-        for(uint m=0;m<nbrV;m++) {
+        for(int m=0;m<nbrV;m++) {
             for(int level=0;level<r[m];level++) counts_k[m][level]=counts[m][level];
         }
         ef_nk = ef_nj;
@@ -305,7 +285,7 @@ void optfun_onerun_kmdl_coarse(int *sortidx_var, int *data, int nbrV, int **fact
             }
 
             Ik_kj=0;
-            for(uint m=0;m<nbrV;m++) Ik_kj += Hk_kj[m];
+            for(int m=0;m<nbrV;m++) Ik_kj += Hk_kj[m];
             if(environment.cplx==1){
                 //Ik_kj -= log((1.0*np-1)/(previous_levels-1) - 1) + 1; // Combinatorial approximation
                 Ik_kj -= logchoose(np-1, previous_levels-1, environment.looklog, environment.lookchoose)/(previous_levels-1); // Combinatorial approximation
@@ -349,9 +329,9 @@ void optfun_onerun_kmdl_coarse(int *sortidx_var, int *data, int nbrV, int **fact
 //optimize on y I(x,y): Hy - Hxy - kmdl
 //until convergence
 
-double* compute_Ixy_alg1(int** data, int** sortidx, int* ptr_cnt, int* ptrVarIdx,  int* AllLevels,
-                         int n, int **cut, int *r, Environment& environment, bool saveIterations)
-{
+double* compute_Ixy_alg1(int** data, int** sortidx, int* ptr_cnt,
+        int* ptrVarIdx, int* AllLevels, int n, int **cut, int *r,
+        Environment& environment, bool saveIterations) {
 
     int maxbins = environment.maxbins;
     int initbins = environment.initbins;
@@ -360,7 +340,7 @@ double* compute_Ixy_alg1(int** data, int** sortidx, int* ptr_cnt, int* ptrVarIdx
     double* looklog = environment.looklog;
     int cplx = environment.cplx;
 
-    int j,l,ll;
+    int j,l;
 
     /////////////////////////////////////
 
@@ -723,25 +703,17 @@ double* compute_Ixy_alg1(int** data, int** sortidx, int* ptr_cnt, int* ptrVarIdx
     return return_res;
 }
 
-
-
-
-double* compute_Ixy_cond_u_new_alg1(int** data, int** sortidx, int* ptr_cnt, int* ptrVarIdx, int* AllLevels,
-                                    int nbrUi, int n, int **cut, int *r, int lbin, Environment& environment,
-                                    bool saveIterations)
-{
+double* compute_Ixy_cond_u_new_alg1(int** data, int** sortidx, int* ptr_cnt,
+        int* ptrVarIdx, int* AllLevels, int nbrUi, int n, int **cut, int *r,
+        int lbin, Environment& environment, bool saveIterations) {
 
     int maxbins = environment.maxbins;
     int initbins = environment.initbins;
     double* c2terms = environment.c2terms;
-    double** cterms = environment.cterms;
     double* looklog = environment.looklog;
-    double* lookH = environment.lookH;
     int cplx = environment.cplx;
-    double* sample_weights = environment.sampleWeights;
 
-
-    int j,l,ll;
+    int j,l;
     int STEPMAX1=50;
 
     /////////////////////////////////////
@@ -785,7 +757,6 @@ double* compute_Ixy_cond_u_new_alg1(int** data, int** sortidx, int* ptr_cnt, int
 
     double* MI = (double*)calloc(STEPMAX, sizeof(double));
     double* MIk = (double*)calloc(STEPMAX, sizeof(double));
-    double I_av,Ik_av;
     double* MI1 = (double*)calloc(STEPMAX1, sizeof(double));
     double* MIk1 = (double*)calloc(STEPMAX1, sizeof(double));
     double I_av1,Ik_av1;
@@ -793,7 +764,7 @@ double* compute_Ixy_cond_u_new_alg1(int** data, int** sortidx, int* ptr_cnt, int
     MIk[0]=-DBL_MAX;
 
     // Loop variables
-    int stop1,stop,i,flag,flag1;
+    int stop1, i, flag1;
     // Mutual informations for computing I(x;y|u).
     double I_x_yu;
     double I_y_xu;
@@ -1347,25 +1318,16 @@ double* compute_Ixy_cond_u_new_alg1(int** data, int** sortidx, int* ptr_cnt, int
     return return_res;
 }
 
-
-double* compute_mi_cond_alg1(int** data, int** sortidx,  int* AllLevels, int* ptr_cnt, int* ptrVarIdx, int nbrUi,
-                             int n, Environment& environment, bool saveIterations)
-{
+double* compute_mi_cond_alg1(int** data, int** sortidx, int* AllLevels,
+        int* ptr_cnt, int* ptrVarIdx, int nbrUi, int n,
+        Environment& environment, bool saveIterations) {
     int maxbins = environment.maxbins;
     int initbins = environment.initbins;
-    double* c2terms = environment.c2terms;
-    double** cterms = environment.cterms;
-    double* looklog = environment.looklog;
-    double* lookH = environment.lookH;
-    int cplx = environment.cplx;
-    double* sample_weights = environment.sampleWeights;
-    bool flag_effN = environment.numSamples != environment.effN;
 
     double* res= new double[3]();//results res[0]->I,res[1]->I-k
     double* res_temp;//=(double *)calloc(2,sizeof(double));//results res[0]->I,res[1]->I-k
 
-    int j,k,l,ll;
-    int np;    // int np=ceil(1.0*n/coarse);
+    int j, l;
 
     int *r=(int *)calloc((nbrUi+2),sizeof(int));
 
@@ -1456,39 +1418,24 @@ double* compute_mi_cond_alg1(int** data, int** sortidx,  int* AllLevels, int* pt
     }
 }
 
-
-// //////////////////////////////////////////////////////////////////////////////////////////77
 // compute Rscore and three point mutual information I(x;y;z | u)
 //input x y z u-> compute Rscore and Ixyz
-//
-//
 // Returns:
 //res[0]=Rscore
 //res[1]=N*Ixyz
 //res[2]=N*kxyz
-
-
-double* compute_Rscore_Ixyz_new_alg5(int** data, int** sortidx, int* AllLevels, int* ptr_cnt, int* ptrVarIdx,
-                                     int nbrUi, int ptrZiIdx, int n, Environment& environment, bool saveIterations)
-{
-
+double* compute_Rscore_Ixyz_new_alg5(int** data, int** sortidx, int* AllLevels,
+        int* ptr_cnt, int* ptrVarIdx, int nbrUi, int ptrZiIdx, int n,
+        Environment& environment, bool saveIterations) {
     int maxbins = environment.maxbins;
     int initbins = environment.initbins;
-    double* c2terms = environment.c2terms;
-    double** cterms = environment.cterms;
-    double* looklog = environment.looklog;
-    double* lookH = environment.lookH;
-    int cplx = environment.cplx;
-    double* sample_weights = environment.sampleWeights;
-    bool flag_effN = environment.effN != environment.numSamples;
-
 
     double Rscore;
     double nv,dpi,first,second,xz,yz;
 
-    int j,k,l,ll;
+    int j, l, ll;
 
-    double I_xy_u,I_xz_u,I_yz_u,I_xy_zu;
+    double I_xy_u, I_xy_zu;
     double Ik_xy_u,Ik_xz_u,Ik_yz_u,Ik_xy_zu;
     double I_xyz_u,Ik_xyz_u;
 
@@ -1554,204 +1501,111 @@ double* compute_Rscore_Ixyz_new_alg5(int** data, int** sortidx, int* AllLevels, 
         cut_t[l]=(int *)calloc(maxbins,sizeof(int));
     }
 
-    //if(flag_opt==0){
-    //    // For now, compute all MIs with equal freq cutpoints
+    // Optimize variables for each MI estimation for the R score
 
-    //    // Fill datafactors
-    //    for(l=0;l<(nbrUi+2);l++){
-    //        if(ptr_cnt[ptrVarIdx[l]]==1){
-    //            update_datafactors(sortidx, ptrVarIdx[l], datafactors, l, n, cut);
-    //        }else{
-    //            for(j=0;j<=n-1;j++){
-    //                datafactors[l][j]=data[ptrVarIdx[l]][j];
-    //            }
-    //        }
-    //    }
-    //    //z
-    //    l=nbrUi+2;
-    //    if(ptr_cnt[ptrZiIdx]==1){
-    //        update_datafactors(sortidx, ptrZiIdx, datafactors, l, n, cut);
-    //    }else{
-    //        for(j=0;j<=n-1;j++){
-    //            datafactors[l][j]=data[ptrZiIdx][j];
-    //        }
-    //    }
-
-    //    //I(x;y|u,z)
-    //    jointfactors_uiyx(datafactors,-1,  n, nbrUi+1, r, factors4_t, r4_t);
-    //    //compute MI and knml complexity
-    //    if(cplx == 1)
-    //        res_temp=computeMIcond_knml(factors4_t,r4_t,r,n,c2terms, looklog);
-    //    else
-    //        res_temp=computeMIcond_kmdl(factors4_t,r4_t,r,n, looklog);
-    //    I_xy_zu=res_temp[0];
-    //    Ik_xy_zu=res_temp[1];
-    //    free(res_temp);
+    // ######################
+    //I(x,y|u,z)
+    res_temp=compute_Ixy_cond_u_new_alg1(data, sortidx, ptr_cnt, ptrVarIdx, AllLevels, nbrUi+1,
+            n, cut, r, lbin, environment, saveIterations);
+    I_xy_zu=res_temp[0];
+    Ik_xy_zu=res_temp[1];
+    free(res_temp);
 
 
-    //    //I(x;y|u)
-    //    ptr_u2_t[0]=0;
-    //    ptr_u2_t[1]=1;
-    //    for(ll=0;ll<nbrUi;ll++) ptr_u2_t[ll+2]=ll+2;
+    // ######################
+    //I(x,y|u)
 
-    //    jointfactors_uyx(datafactors,ptr_u2_t, n, nbrUi, r,factors4_t, r4_t);
-
-    //    r_temp[0]=r[0];
-    //    r_temp[1]=r[1];
-    //    if(cplx == 1)
-    //        res_temp=computeMIcond_knml(factors4_t,r4_t,r_temp,n,c2terms, looklog);
-    //    else
-    //        res_temp=computeMIcond_kmdl(factors4_t,r4_t,r_temp,n, looklog);
-    //    I_xy_u=res_temp[0];
-    //    Ik_xy_u=res_temp[1];
-    //    free(res_temp);
-
-
-    //    //I(z;x|u)
-    //    ptr_u2_t[0]=nbrUi+2;
-    //    ptr_u2_t[1]=0;
-    //    for(ll=0;ll<nbrUi;ll++) ptr_u2_t[ll+2]=ll+2;
-
-    //    jointfactors_uyx(datafactors,ptr_u2_t, n, nbrUi, r, factors4_t, r4_t);
-
-    //    r_temp[0]=r[nbrUi+2];
-    //    r_temp[1]=r[0];
-    //    if(cplx == 1)
-    //        res_temp=computeMIcond_knml(factors4_t,r4_t,r_temp,n,c2terms, looklog);
-    //    else
-    //        res_temp=computeMIcond_kmdl(factors4_t,r4_t,r_temp,n, looklog);
-    //    I_xz_u=res_temp[0];
-    //    Ik_xz_u=res_temp[1];
-    //    free(res_temp);
-
-
-    //    //I(z;y|u)
-    //    ptr_u2_t[1]=1;
-    //
-    //    jointfactors_uyx(datafactors,ptr_u2_t, n, nbrUi, r, factors4_t, r4_t);
-
-    //    r_temp[0]=r[nbrUi+2];
-    //    r_temp[1]=r[1];
-    //    if(cplx == 1)
-    //        res_temp=computeMIcond_knml(factors4_t,r4_t,r_temp,n,c2terms, looklog);
-    //    else
-    //        res_temp=computeMIcond_kmdl(factors4_t,r4_t,r_temp,n, looklog);
-    //    I_yz_u=res_temp[0];
-    //    Ik_yz_u=res_temp[1];
-    //    free(res_temp);
-
-    //}
-
-    {
-        // Optimize variables for each MI estimation for the R score
-
-        // ######################
-        //I(x,y|u,z)
-        res_temp=compute_Ixy_cond_u_new_alg1(data, sortidx, ptr_cnt, ptrVarIdx, AllLevels, nbrUi+1,
-                                             n, cut, r, lbin, environment, saveIterations);
-        I_xy_zu=res_temp[0];
-        Ik_xy_zu=res_temp[1];
-        free(res_temp);
-
-
-        // ######################
-        //I(x,y|u)
-
-        for(l=0;l<(nbrUi+2);l++){
-            if(ptr_cnt[ptrVarIdx[l]]==1){
-                for(j=0;j<initbins-1;j++) {
-                    cut_t[l][j]=j*lbin+lbin-1;
-                }
-                cut_t[l][initbins-1]=n-1;
-                for(int j=initbins;j<maxbins;j++) {
-                    cut_t[l][j]=0;
-                }
-                r_t[l]=initbins;
-            }else{
-                r_t[l]=AllLevels[ptrVarIdx[l]];
+    for(l=0;l<(nbrUi+2);l++){
+        if(ptr_cnt[ptrVarIdx[l]]==1){
+            for(j=0;j<initbins-1;j++) {
+                cut_t[l][j]=j*lbin+lbin-1;
             }
-        }
-        // Do opt run on I(X;Y|U)
-        if(nbrUi>0){
-            res_temp=compute_Ixy_cond_u_new_alg1(data, sortidx, ptr_cnt, ptrVarIdx, AllLevels, nbrUi, n,
-                                                 cut_t, r_t, lbin, environment, saveIterations);
-        }
-        else{
-            res_temp=compute_Ixy_alg1(data, sortidx, ptr_cnt, ptrVarIdx, AllLevels, n, cut_t,
-                                      r_t, environment, saveIterations);
-        }
-        I_xy_u=res_temp[0];
-        Ik_xy_u=res_temp[1];
-        free(res_temp);
-
-
-        //########################
-        //I(z,x|u)
-        ptrVarIdx_t[0] = ptrVarIdx[0]; //X
-        ptrVarIdx_t[1] = ptrVarIdx[nbrUi+2]; //Z
-        for(ll=0; ll<nbrUi; ll++) ptrVarIdx_t[ll+2]=ll+2;
-        // Reset cut
-        for(l=0;l<(nbrUi+2);l++){
-            if(ptr_cnt[ptrVarIdx_t[l]]==1){
-                for(j=0;j<initbins-1;j++) {
-                    cut_t[l][j]=j*lbin+lbin-1;
-                }
-                cut_t[l][initbins-1]=n-1;
-                for(int j=initbins;j<maxbins;j++) {
-                    cut_t[l][j]=0;
-                }
-                r_t[l]=initbins;
-            }else{
-                r_t[l]=AllLevels[ptrVarIdx_t[l]];
+            cut_t[l][initbins-1]=n-1;
+            for(int j=initbins;j<maxbins;j++) {
+                cut_t[l][j]=0;
             }
+            r_t[l]=initbins;
+        }else{
+            r_t[l]=AllLevels[ptrVarIdx[l]];
         }
-        // Do opt run on I(X;Z|U)
-        if(nbrUi>0){
-            res_temp=compute_Ixy_cond_u_new_alg1(data, sortidx, ptr_cnt, ptrVarIdx_t, AllLevels, nbrUi, n,
-                                                 cut_t, r_t, lbin, environment, saveIterations);
-        }
-        else{
-            res_temp=compute_Ixy_alg1(data, sortidx, ptr_cnt, ptrVarIdx_t, AllLevels, n, cut_t,
-                                      r_t, environment, saveIterations);
-        }
-        I_xz_u=res_temp[0];
-        Ik_xz_u=res_temp[1];
-        free(res_temp);
-
-
-        //########################
-        //I(z,y|u)
-        ptrVarIdx_t[0] = ptrVarIdx[1]; //Y
-        ptrVarIdx_t[1] = ptrVarIdx[nbrUi+2]; //Z
-        for(ll=0; ll<nbrUi; ll++) ptrVarIdx_t[ll+2]=ll+2;
-        // Reset cut
-        for(l=0;l<(nbrUi+2);l++){
-            if(ptr_cnt[ptrVarIdx_t[l]]==1){
-                for(j=0;j<initbins-1;j++) {
-                    cut_t[l][j]=j*lbin+lbin-1;
-                }
-                cut_t[l][initbins-1]=n-1;
-                for(int j=initbins;j<maxbins;j++) {
-                    cut_t[l][j]=0;
-                }
-                r_t[l]=initbins;
-            }else{
-                r_t[l]=AllLevels[ptrVarIdx_t[l]];
-            }
-        }
-        // Do opt run on I(Y;Z|U)
-        if(nbrUi>0){
-            res_temp=compute_Ixy_cond_u_new_alg1(data, sortidx, ptr_cnt, ptrVarIdx_t, AllLevels, nbrUi, n,
-                                                 cut_t, r_t, lbin, environment, saveIterations);
-        }
-        else{
-            res_temp=compute_Ixy_alg1(data, sortidx, ptr_cnt, ptrVarIdx_t, AllLevels, n, cut_t,
-                                      r_t, environment, saveIterations);
-        }
-        I_yz_u=res_temp[0];
-        Ik_yz_u=res_temp[1];
-        free(res_temp);
     }
+    // Do opt run on I(X;Y|U)
+    if(nbrUi>0){
+        res_temp=compute_Ixy_cond_u_new_alg1(data, sortidx, ptr_cnt, ptrVarIdx, AllLevels, nbrUi, n,
+                cut_t, r_t, lbin, environment, saveIterations);
+    }
+    else{
+        res_temp=compute_Ixy_alg1(data, sortidx, ptr_cnt, ptrVarIdx, AllLevels, n, cut_t,
+                r_t, environment, saveIterations);
+    }
+    I_xy_u=res_temp[0];
+    Ik_xy_u=res_temp[1];
+    free(res_temp);
+
+
+    //########################
+    //I(z,x|u)
+    ptrVarIdx_t[0] = ptrVarIdx[0]; //X
+    ptrVarIdx_t[1] = ptrVarIdx[nbrUi+2]; //Z
+    for(ll=0; ll<nbrUi; ll++) ptrVarIdx_t[ll+2]=ll+2;
+    // Reset cut
+    for(l=0;l<(nbrUi+2);l++){
+        if(ptr_cnt[ptrVarIdx_t[l]]==1){
+            for(j=0;j<initbins-1;j++) {
+                cut_t[l][j]=j*lbin+lbin-1;
+            }
+            cut_t[l][initbins-1]=n-1;
+            for(int j=initbins;j<maxbins;j++) {
+                cut_t[l][j]=0;
+            }
+            r_t[l]=initbins;
+        }else{
+            r_t[l]=AllLevels[ptrVarIdx_t[l]];
+        }
+    }
+    // Do opt run on I(X;Z|U)
+    if (nbrUi > 0) {
+        res_temp=compute_Ixy_cond_u_new_alg1(data, sortidx, ptr_cnt, ptrVarIdx_t, AllLevels, nbrUi, n,
+                cut_t, r_t, lbin, environment, saveIterations);
+    } else {
+        res_temp=compute_Ixy_alg1(data, sortidx, ptr_cnt, ptrVarIdx_t, AllLevels, n, cut_t,
+                r_t, environment, saveIterations);
+    }
+    Ik_xz_u = res_temp[1];
+    free(res_temp);
+
+
+    //########################
+    //I(z,y|u)
+    ptrVarIdx_t[0] = ptrVarIdx[1]; //Y
+    ptrVarIdx_t[1] = ptrVarIdx[nbrUi+2]; //Z
+    for(ll=0; ll<nbrUi; ll++) ptrVarIdx_t[ll+2]=ll+2;
+    // Reset cut
+    for(l=0;l<(nbrUi+2);l++){
+        if(ptr_cnt[ptrVarIdx_t[l]]==1){
+            for(j=0;j<initbins-1;j++) {
+                cut_t[l][j]=j*lbin+lbin-1;
+            }
+            cut_t[l][initbins-1]=n-1;
+            for(int j=initbins;j<maxbins;j++) {
+                cut_t[l][j]=0;
+            }
+            r_t[l]=initbins;
+        }else{
+            r_t[l]=AllLevels[ptrVarIdx_t[l]];
+        }
+    }
+    // Do opt run on I(Y;Z|U)
+    if(nbrUi>0){
+        res_temp=compute_Ixy_cond_u_new_alg1(data, sortidx, ptr_cnt, ptrVarIdx_t, AllLevels, nbrUi, n,
+                cut_t, r_t, lbin, environment, saveIterations);
+    }
+    else{
+        res_temp=compute_Ixy_alg1(data, sortidx, ptr_cnt, ptrVarIdx_t, AllLevels, n, cut_t,
+                r_t, environment, saveIterations);
+    }
+    Ik_yz_u=res_temp[1];
+    free(res_temp);
 
     //compute conditional three point mutual information
      I_xyz_u  = I_xy_u  - I_xy_zu;
@@ -1823,3 +1677,5 @@ double* compute_Rscore_Ixyz_new_alg5(int** data, int** sortidx, int* AllLevels, 
 
     return res;
 }
+
+} }  // namespace miic::computation

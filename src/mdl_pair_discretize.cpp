@@ -1,4 +1,4 @@
-#include "Info_cnt.h"
+#include "info_cnt.h"
 
 #include <stdio.h>
 #include <math.h>
@@ -15,8 +15,8 @@
 #include <unistd.h>
 #include <Rcpp.h>
 
-#include "modules_MI.h"
-#include "computeInfo.h"
+#include "mutual_information.h"
+#include "compute_info.h"
 
 
 #define STEPMAX 50
@@ -24,12 +24,12 @@
 #define EPS 1e-5
 #define FLAG_CPLX 1
 
+using std::vector;
+using std::map;
 using namespace Rcpp;
+using namespace miic::computation;
 
-
-//####################################################################################################
-//# Dealing with input variables
-
+// Dealing with input variables
 void transformToFactorsContinuous(double** data, int** dataNumeric, int i, int n){
 
     std::multimap<double,int> myMap;
@@ -39,7 +39,7 @@ void transformToFactorsContinuous(double** data, int** dataNumeric, int i, int n
     // myMap["NA"] = -1;
     // myMap[""] = -1;
 
-    vector <double> clmn;
+    vector<double> clmn;
     for(int j = 0; j < n; j++){
         double entry = data[j][i];
     clmn.push_back(entry);
@@ -47,8 +47,8 @@ void transformToFactorsContinuous(double** data, int** dataNumeric, int i, int n
 
     sort(clmn.begin(), clmn.end());
 
-    for(uint j = 0; j < clmn.size(); j++){
-            myMap.insert(pair<double,int>(clmn[j],j));
+    for(size_t j = 0; j < clmn.size(); j++){
+            myMap.insert(std::pair<double,int>(clmn[j],j));
     }
     // for (std::map<double,int>::iterator it=myMap.begin(); it!=myMap.end(); ++it){
     //     cout << "(" << it->first << "," << it->second << ")\n";
@@ -76,7 +76,7 @@ void transformToFactorsContinuous(double** data, int** dataNumeric, int i, int n
  */
 void transformToFactors(double** data, int** dataNumeric, int n, int i){
      // create a dictionary to store the factors of the strings
-     map<double,int> myMap;
+	map<double,int> myMap;
 
     //clean the dictionary since it is used column by column
     myMap.clear();
@@ -111,7 +111,7 @@ void transformToFactorsContinuousIdx(int** dataNumeric, int** dataNumericIdx, in
     }
 
     int j = 0;
-    for (std::map<int,int>::iterator it=myMap.begin(); it!=myMap.end(); ++it){
+    for (map<int,int>::iterator it=myMap.begin(); it!=myMap.end(); ++it){
         dataNumericIdx[i][j] =  it->second;
         j++;
     }
@@ -122,10 +122,10 @@ extern "C" SEXP mydiscretizeMutual(SEXP RmyDist1, SEXP RmyDist2, SEXP RflatU, SE
                                    SEXP Rinitbin, SEXP Rcplx, SEXP Rcnt_vec, SEXP Rnlevels, SEXP ReffN,
                                    SEXP RsampleWeights){
 
-    std::vector<double> myDist1Vec = Rcpp::as< vector <double> >(RmyDist1);
-    std::vector<double> myDist2Vec = Rcpp::as< vector <double> >(RmyDist2);
-    std::vector<double> cnt_vec = Rcpp::as< vector <double> >(Rcnt_vec);
-    std::vector<double> nlevels = Rcpp::as< vector <double> >(Rnlevels);
+    vector<double> myDist1Vec = Rcpp::as< vector <double> >(RmyDist1);
+    vector<double> myDist2Vec = Rcpp::as< vector <double> >(RmyDist2);
+    vector<double> cnt_vec = Rcpp::as< vector <double> >(Rcnt_vec);
+    vector<double> nlevels = Rcpp::as< vector <double> >(Rnlevels);
     int maxbins = Rcpp::as<int> (RmaxBins);
     int init_bin = Rcpp::as<int> (Rinitbin);
     int cplx = Rcpp::as<int> (Rcplx);
@@ -342,14 +342,6 @@ extern "C" SEXP mydiscretizeMutual(SEXP RmyDist1, SEXP RmyDist2, SEXP RflatU, SE
         AllLevels_red[j]=nnr;
     }
 
-    //check effective number of levels variables continuous enough to be treat as continuous?
-    if(samplesNotNA != n){
-      //updateNumberofLevelsAndContinuousVariables(dataNumeric_red, AllLevels_red, cnt_red, myNbrUi, samplesNotNA);
-    }
-
-            // cout << "lev:" << cnt_red[0] << " " << cnt_red[1] << endl;
-
-
   for(int i=0; i<n; i++){
       delete [] dataNumeric[i];
   }
@@ -370,9 +362,9 @@ extern "C" SEXP mydiscretizeMutual(SEXP RmyDist1, SEXP RmyDist2, SEXP RflatU, SE
 
 
   // Declare the lookup table of the parametric complexity
-  int ncol = max(maxbins, init_bin)+1;
+  int ncol = std::max(maxbins, init_bin)+1;
   for(int j=0; j<(nbrU+2); j++){
-      if(cnt_red[j]==0) ncol = max(ncol, (AllLevels_red[j]+1));
+      if(cnt_red[j]==0) ncol = std::max(ncol, (AllLevels_red[j]+1));
   }
   ncol = 1000; // combinations of Us can exceed ncol
   double** sc_look = new double*[ncol];
@@ -396,20 +388,20 @@ extern "C" SEXP mydiscretizeMutual(SEXP RmyDist1, SEXP RmyDist2, SEXP RflatU, SE
     }
   }
 
-  ::Environment environment;
+  miic::structure::Environment environment;
 
   environment.flag_sample_weights = effN != n;
 
   environment.sampleWeightsVec = Rcpp::as< vector <double> > (RsampleWeights);
 	environment.sampleWeights = new double[n];
 	if(environment.sampleWeightsVec[0] != -1){
-		for(uint i=0; i<n; i++){
+		for(int i=0; i<n; i++){
 			environment.sampleWeights[i] = environment.sampleWeightsVec[i];
 		}
 		environment.flag_sample_weights = true;
 	}
 	else if (effN != n) {
-		for(uint i = 0; i < n; i++){
+		for(int i = 0; i < n; i++){
 			environment.sampleWeights[i] = (effN*1.0)/n;
 		}
 		environment.flag_sample_weights = true;

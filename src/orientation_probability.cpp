@@ -1,5 +1,6 @@
-#include "orientationProbability.h"
+#include "orientation_probability.h"
 
+#include <map>
 #include <iostream>
 #include <fstream>
 #include <sstream>
@@ -8,22 +9,27 @@
 #include <algorithm>
 #include <ctime>
 #include <unistd.h>
-#include <string.h>
 #include <math.h>
 
 #include "structure.h"
 #include "utilities.h"
-#include "computeEnsInformation.h"
+#include "compute_ens_information.h"
 
-#include "probaOrientation_interface.h"
+#include "proba_orientation.h"
 
-using namespace std;
+namespace miic { namespace reconstruction {
 
-void getSStructure(Environment& environment, const int posX, const int posY, const int posZ, bool isVerbose,
-				   vector< vector<int> >& allTpl, vector<double>& allI3)
-{
+using uint = unsigned int;
+using std::vector;
+using std::string;
+using namespace miic::computation;
+using namespace miic::structure;
+using namespace miic::utility;
+
+void getSStructure(Environment& environment, const int posX, const int posY,
+		const int posZ, bool isVerbose, vector< vector<int> >& allTpl,
+		vector<double>& allI3) {
 	//// To check if xk belongs to the {ui} of the base
-
 	vector<int> u(environment.edges[posX][posZ].shared_info->ui_vect_idx);
 	if(environment.edges[posX][posZ].shared_info->ui_vect_idx.size() > 0){
 		//// Remove xk from the {ui} if needed
@@ -127,7 +133,8 @@ void getSStructure(Environment& environment, const int posX, const int posY, con
 	allI3.push_back(Is);
 }
 
-vector<vector<string> > orientationProbability(Environment& environment) {
+vector<vector<string> > orientationProbability(
+		Environment& environment) {
 	// output of orientation table
 	vector< vector <string> > orientations;
 
@@ -283,7 +290,7 @@ vector<vector<string> > orientationProbability(Environment& environment) {
 		}
 
 		// set results to file
-		vector <string> vec;
+		vector<string> vec;
 
 		vec.push_back("source1");
 		vec.push_back("p1");
@@ -313,7 +320,7 @@ vector<vector<string> > orientationProbability(Environment& environment) {
 
 			vec.push_back(environment.nodes[allTpl[i][0]].name);
 
-			stringstream output;
+			std::stringstream output;
 
 			output.str("");
 	 		output << ptrRetProbValues[i + (0 * allTpl.size())];
@@ -407,3 +414,5 @@ vector<vector<string> > orientationProbability(Environment& environment) {
 
 	return orientations;
 }
+
+} }  // namespace miic::reconstruction

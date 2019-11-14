@@ -1,20 +1,22 @@
-#ifndef STRUCTURE_H
-#define STRUCTURE_H
+#ifndef MIIC_STRUCTURE_H_
+#define MIIC_STRUCTURE_H_
+
 #include <memory>
 #include <string>
 #include <vector>
-#include <map>
-#include <tuple>
 
-#include "memory.h"
+namespace miic { namespace structure {
 
-using namespace std;
-using uint=unsigned int;
+namespace structure_impl {
+
+using uint = unsigned int;
+using std::vector;
+using std::string;
 
 struct EdgeSharedInfo {
-	std::vector<int> ui_vect_idx;  // Indice of separating nodes
+	vector<int> ui_vect_idx;  // Indice of separating nodes
 	// Indice of candidate nodes contributing to the conditional independence
-	std::vector<int> zi_vect_idx;
+	vector<int> zi_vect_idx;
 	int z_name_idx      = -1;  // Index of the last best contributor
 	double Rxyz_ui      = 0;  // Score of the best contributor
 	double Ixy_ui       = 0;
@@ -50,30 +52,18 @@ struct EdgeSharedInfo {
     }
 };
 
-struct Node{
-	std::string name;
+struct Node {
+	string name;
 	int level;
 };
 
-struct ExecutionTime{
-	double startTimeInit;
-	double startTimeIter;
-	long double init;
-	long double iter;
-	long double initIter;
-	long double ort;
-	long double cut;
-	long double ort_after_cut;
-	long double total;
-};
-
-struct EdgeID{
-	int i, j;
+struct EdgeID {
+	uint i, j;
     EdgeID() = delete;
-    EdgeID(int i, int j) : i(i), j(j) {}
+    EdgeID(uint i, uint j) : i(i), j(j) {}
 };
 
-struct Edge{
+struct Edge {
 	// Edge is stored in Edge** edges
 	// Status code (suppose edges[X][Y]):
 	// 0: not connected;
@@ -84,7 +74,49 @@ struct Edge{
 	short int status;  // Current status.
 	short int status_init;  // Status after initialization.
 	short int status_prev;  // Status in the previous iteration.
-	std::shared_ptr<EdgeSharedInfo> shared_info;
+    std::shared_ptr<EdgeSharedInfo> shared_info;
+};
+
+struct MemorySpace {
+	int maxlevel;
+	int** sample;
+	int** sortedSample;
+	int** Opt_sortedSample;
+	int* orderSample;
+	int* sampleKey;
+	int* Nxyuiz;
+	int* Nyuiz;
+	int* Nuiz;
+	int* Nz;
+	int* Ny;
+	int* Nxui;
+	int* Nx;
+	int** Nxuiz;
+	int* bridge;
+	double* Pxyuiz;
+	//continuous data
+	int* samplesToEvaluate; 
+	int* samplesToEvaluateTemplate;
+
+	int** dataNumeric_red; 
+	int** dataNumericIdx_red;
+
+	int* AllLevels_red;
+	int* cnt_red;
+	int* posArray_red;
+
+};
+
+struct ExecutionTime {
+	double startTimeInit;
+	double startTimeIter;
+	long double init;
+	long double iter;
+	long double initIter;
+	long double ort;
+	long double cut;
+	long double ort_after_cut;
+	long double total;
 };
 
 // Structure for all the needed parameters (input plus state variables)
@@ -100,14 +132,14 @@ struct Environment {
 	int ** nSamples;
 	int ** iterative_cuts;
 	double* sampleWeights;
-	std::vector<double> sampleWeightsVec;
+	vector<double> sampleWeightsVec;
 	bool flag_sample_weights;
 
 	bool testDistribution;
 	int seed;
 	uint nThreads;
 	MemorySpace m;
-	std::vector<int> steps;
+	vector<int> steps;
 	MemorySpace* memoryThreads;
     // Matrix to keep the number of edges for each eta and shuffle
 	double** shuffleListNumEdges;
@@ -116,25 +148,25 @@ struct Environment {
 	double** lookchoose;
 	int* columnAsContinuous;
 	int* columnAsGaussian;
-	std::vector<int> cntVarVec;
+	vector<int> cntVarVec;
 	int* oneLineMatrix;
 
-	std::string myVersion; // -i parameter
+	string myVersion; // -i parameter
 
-	std::string outDir; // -i parameter
-	std::string inData; // -o parameter
-	std::string cplxType; // -c parameter
-	std::string blackbox_name;
-	std::string edgeFile;
-	std::string dataTypeFile;
-	//std::string sampleWeightsFile;// -w parameter
+	string outDir; // -i parameter
+	string inData; // -o parameter
+	string cplxType; // -c parameter
+	string blackbox_name;
+	string edgeFile;
+	string dataTypeFile;
+	//string sampleWeightsFile;// -w parameter
 
 	uint numNodes;
 	uint numSamples;
 	bool firstIterationDone;
 
-	std::vector<EdgeID*> searchMoreAddress;
-	std::vector<EdgeID*> noMoreAddress;
+	vector<EdgeID*> searchMoreAddress;
+	vector<EdgeID*> noMoreAddress;
 	int numSearchMore;
 	int numNoMore;
 
@@ -149,11 +181,11 @@ struct Environment {
 
 	Node* nodes;
 	Edge** edges;
-	std::vector<std::string>  vectorData;
-	std::vector< std::vector <std::string> > data;
+	vector<string> vectorData;
+	vector<vector<string> > data;
 	int** dataNumeric;
 	int** dataNumericIdx;
-	int* allLevels;
+	uint* allLevels;
 
 	double** proportions;
 
@@ -178,7 +210,7 @@ struct Environment {
 	int numberShuffles; // -s parameter
 	double confidenceThreshold; // -e parameter
 
-	uint effN; // -n parameter
+	int effN; // -n parameter
 	int minN;
 	int thresPc;
 
@@ -190,4 +222,14 @@ struct Environment {
 	double* noiseVec;
 };
 
-#endif
+}  // namespace structure_impl
+using structure_impl::EdgeSharedInfo;
+using structure_impl::Node;
+using structure_impl::EdgeID;
+using structure_impl::Edge;
+using structure_impl::ExecutionTime;
+using structure_impl::MemorySpace;
+using structure_impl::Environment;
+} }  // namespace miic::structure
+
+#endif  // MIIC_STRUCTURE_H_

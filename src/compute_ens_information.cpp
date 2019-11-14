@@ -1,29 +1,33 @@
-#include <iostream>
-#include <string>
+#include "compute_ens_information.h"
+
 #include <math.h>
 #include <vector>
-#include "structure.h"
 #include <iostream>
-#include <stdlib.h>
 #include <float.h>
-#include "Info_cnt.h"
 #include <set>
-#include "computeInfo_interface.h"
 #ifdef _OPENMP
 #include <omp.h>
 #endif
 
+#include "compute_info.h"
+#include "info_cnt.h"
+#include "structure.h"
+#include "utilities.h"
+
 //for memory space on continuous data
 #define MAX_NBRUI 10
+namespace miic { namespace computation {
 
-using namespace std;
-
-//#define _MY_DEBUG_ 1
-// #define _MY_DEBUG_NEW 1
-
+using namespace miic::structure;
+using namespace miic::utility;
+using uint = unsigned int;
+using std::cout;
+using std::endl;
+using std::vector;
 
 //for gaussian variables
-double correlations(Environment& environment, const int a, const int b, const int* subset, const int l, double ** p) {
+double correlations(Environment& environment, const int a, const int b,
+		const int* subset, const int l, double ** p) {
 	int dim = l + 2;
 
 	//initialization of p (looks like rho)
@@ -52,7 +56,6 @@ double correlations(Environment& environment, const int a, const int b, const in
 	for (int k = 1; k <= l; k++) {
 		for (int i = 0; i <= (l - k); i++) {
 			for (int j = i + 1; j < (dim - k); j++) {
-
 				p[i][j] = p[j][i] = (p[i][j] - p[i][dim - k] * p[j][dim - k]) / (sqrt((1 - pow(p[i][dim - k], 2)) * (1 - pow(p[j][dim - k], 2))));
 			}
 		}
@@ -189,7 +192,7 @@ double* computeRankAndFindMin(double* xz, double* zy, double* xyz, int length){
 		}
 
 		double myPb = first - log1p(exp(-(second-first)));
-		res[i] = min(xyz[i], myPb);
+		res[i] = std::min(xyz[i], myPb);
 	}
 	return res;
 }
@@ -235,31 +238,13 @@ double* computeSum(double* first, double* second, int length){
 /*
  * Compute the difference of two arrays
  */
-double* computeDifference(double* first, double* second, int length){
-	double * res = new double[length];
+double* computeDifference(double* first, double* second, int length) {
+	double* res = new double[length];
 	for(int pos = 0; pos < length; pos++)
 		res[pos] = first[pos] - second[pos];
 
 	return res;
 }
-
-/*
- * Get the elements from the array in position x, with a step of 3 every time, so to get information, complexity or number of samples
- */
-double* getFromArray(double* v, int position, int length){
-	double * res = new double[length/3];
-	int pos = 0;
-	int step = position;
-	while(step < length){
-		res[pos] = v[step];
-		step += 3;
-		pos++;
-	}
-	return res;
-}
-
-using namespace std;
-
 
 double* computeEnsInformationContinuous_Orientation(Environment& environment, int* myCond, int myNbrUi, int* myZi,
 													const int myVarIdxX, const int myVarIdxY,
@@ -478,11 +463,6 @@ double* computeEnsInformationContinuous_Orientation(Environment& environment, in
 		if(cnt_red[l] == 1)
 			AllLevels_red[l]=nnr;
 
-		////////////////////////////////////////////////////////
-		//if(samplesNotNA != environment.numSamples){
-		//	updateNumberofLevelsAndContinuousVariables(dataNumeric_red, AllLevels_red, cnt_red, myNbrUi, samplesNotNA);
-		//}
-
 		double* res;
 
 
@@ -543,8 +523,9 @@ double* computeEnsInformationContinuous_Orientation(Environment& environment, in
 }
 
 
-void computeContributingScores(Environment& environment, int* ziContPosIdx, int iz, int* myZi, int myNbrUi, int numSamples_nonNA,
-							   int* posArray, double* res, double* scoresZ, MemorySpace m){
+void computeContributingScores(Environment& environment, int* ziContPosIdx,
+		int iz, int* myZi, int myNbrUi, uint numSamples_nonNA, int* posArray,
+		double* res, double* scoresZ, MemorySpace m) {
 
 	int** dataNumeric_red ;//progressive data rank with repetition for same values
 	int** dataNumericIdx_red ;//index of sorted data
@@ -560,7 +541,7 @@ void computeContributingScores(Environment& environment, int* ziContPosIdx, int 
 	else
 		z=myZi[ziContPosIdx[iz]];
 
-	int samplesNotNA = 0;
+	uint samplesNotNA = 0;
 
 		////////////////////////////////////////////////////////
 		// drop out NA & count samplesNotNA
@@ -723,13 +704,16 @@ void computeContributingScores(Environment& environment, int* ziContPosIdx, int 
 
 				double** jointFreqs = getJointFreqs(environment, posArray[0], posArray[1], numSamples_nonNA);
 
-				res = getAllInfoNEW(environment.oneLineMatrix, environment.allLevels, posArray,
-				myNbrUi, zz, 1, -1, environment.numSamples, environment.effN, cplx, environment.isK23, environment.c2terms, &m,
-				environment.sampleWeights, jointFreqs, environment.testDistribution);
+				res = getAllInfoNEW(environment.oneLineMatrix,
+						environment.allLevels, posArray, myNbrUi, zz, 1, -1,
+						environment.numSamples, environment.effN, cplx,
+						environment.isK23, environment.looklog,
+						environment.c2terms, &m, environment.sampleWeights,
+						jointFreqs, environment.testDistribution);
 
 				res[0]=res[6];
 
-				for(int level0 = 0; level0 < environment.allLevels[posArray[0]]; level0++)
+				for(uint level0 = 0; level0 < environment.allLevels[posArray[0]]; level0++)
 					delete[] jointFreqs[level0];
 				delete[] jointFreqs;
 				delete [] zz;
@@ -784,10 +768,10 @@ void computeContributingScores(Environment& environment, int* ziContPosIdx, int 
 				// we do not want to add a z if x or y have only one bin
 				bool ok = true; //ok : do we compute I or return 0?
 				if(samplesNotNA < environment.numSamples){
-					set<int> s;
-					for(int i = 0; i < 2 && ok; i++){
+					std::set<int> s;
+					for(uint i = 0; i < 2 && ok; i++){
 						s.clear();
-						for(int j = 0; j < samplesNotNA; j++){
+						for(uint j = 0; j < samplesNotNA; j++){
 							s.insert(dataNumeric_red[i][j]);
 						}
 
@@ -850,8 +834,9 @@ void computeContributingScores(Environment& environment, int* ziContPosIdx, int 
 }
 
 
-double* computeEnsInformationContinuous(Environment& environment, int* myCond, int myNbrUi, int* myZi, int myNbrZi, int myZiPos,
-										const int myVarIdxX, const int myVarIdxY, const int cplx, MemorySpace& m){
+double* computeEnsInformationContinuous(Environment& environment, int* myCond,
+		int myNbrUi, int* myZi, uint myNbrZi, int myZiPos, const int myVarIdxX,
+		const int myVarIdxY, const int cplx, MemorySpace& m) {
 
 	int* posArray = new int[2 + environment.edges[myVarIdxX][myVarIdxY].shared_info->ui_vect_idx.size()];
 	posArray[0] = myVarIdxX;
@@ -885,7 +870,7 @@ double* computeEnsInformationContinuous(Environment& environment, int* myCond, i
 		////////////////////////////////////////////////////////
 		// drop out NA & count samplesNotNA
 
-		int samplesNotNA = 0;
+		uint samplesNotNA = 0;
 		bool cnt = true;
 		for(uint i = 0; i < environment.numSamples; i++){
 			m.samplesToEvaluate[i] = 1;
@@ -996,13 +981,6 @@ double* computeEnsInformationContinuous(Environment& environment, int* myCond, i
 					AllLevels_red[j]=nnr;
 			}
 
-			//check effective number of levels variables continuous enough to be treat as continuous?
-			if(samplesNotNA != environment.numSamples){
-				//updateNumberofLevelsAndContinuousVariables(dataNumeric_red, AllLevels_red, cnt_red, myNbrUi, samplesNotNA);
-			}
-
-			// cout << "lev:" << cnt_red[0] << " " << cnt_red[1] << endl;
-
 			res_new = compute_mi_cond_alg1(dataNumeric_red, dataNumericIdx_red, AllLevels_red, cnt_red, posArray_red,
 										   myNbrUi, samplesNotNA, environment);
 
@@ -1048,7 +1026,7 @@ double* computeEnsInformationContinuous(Environment& environment, int* myCond, i
 		if(allVariablesDiscrete(environment.columnAsContinuous, posArray, (myNbrUi +2))) {
 		// search for z that are discrete
 			int countZDiscrete = 0;
-			for(int iz=0;iz<myNbrZi;iz++){
+			for(uint iz=0;iz<myNbrZi;iz++){
 				z=myZi[iz];
 				if(environment.columnAsContinuous[z] == 0)
 					countZDiscrete++;
@@ -1058,7 +1036,7 @@ double* computeEnsInformationContinuous(Environment& environment, int* myCond, i
 				int* posZi = new int[countZDiscrete];
 				int* zz = new int[countZDiscrete];
 				int pos = 0;
-				for(int iz=0;iz<myNbrZi;iz++){
+				for(uint iz=0;iz<myNbrZi;iz++){
 					z=myZi[iz];
 					if(environment.columnAsContinuous[z] == 0){
 						zz[pos] = z;
@@ -1071,12 +1049,15 @@ double* computeEnsInformationContinuous(Environment& environment, int* myCond, i
 
 				double** jointFreqs = getJointFreqs(environment, posArray[0], posArray[1], numSamples_nonNA);
 
-				res = getAllInfoNEW(environment.oneLineMatrix, environment.allLevels, posArray,
-									myNbrUi, zz, countZDiscrete, -1, environment.numSamples, environment.effN, cplx,
-									environment.isK23, environment.c2terms, &m, environment.sampleWeights,
-									jointFreqs, environment.testDistribution);
+				res = getAllInfoNEW(environment.oneLineMatrix,
+						environment.allLevels, posArray, myNbrUi, zz,
+						countZDiscrete, -1, environment.numSamples,
+						environment.effN, cplx, environment.isK23,
+						environment.looklog, environment.c2terms, &m,
+						environment.sampleWeights, jointFreqs,
+						environment.testDistribution);
 
-				for(int level0 = 0; level0 < environment.allLevels[posArray[0]]; level0++)
+				for(uint level0 = 0; level0 < environment.allLevels[posArray[0]]; level0++)
 					delete[] jointFreqs[level0];
 				delete[] jointFreqs;
 				delete [] zz;
@@ -1085,7 +1066,7 @@ double* computeEnsInformationContinuous(Environment& environment, int* myCond, i
 
 				ziContPosIdx = new int [myNbrZi - countZDiscrete];
 				pos = 0;
-				for(int iz=0;iz<myNbrZi;iz++){
+				for(uint iz=0;iz<myNbrZi;iz++){
 					z=myZi[iz];
 					if(environment.columnAsContinuous[z] == 1){
 						ziContPosIdx[pos] = iz;
@@ -1105,28 +1086,26 @@ double* computeEnsInformationContinuous(Environment& environment, int* myCond, i
 		}
 
 		double* scoresZ = new double[myNbrZi];
-		bool parallelizable = environment.firstIterationDone && myNbrZi > environment.nThreads;
 		#ifdef _OPENMP
+		bool parallelizable = environment.firstIterationDone &&
+			myNbrZi > environment.nThreads;
 		//#pragma omp parallel for firstprivate(m) if(parallelizable)
 		#pragma omp parallel for if(parallelizable)
 		#endif
-		for(int iz=0; iz<myNbrZi; iz++){
-
+		for(uint iz=0; iz<myNbrZi; iz++){
 			MemorySpace privateM = m;
-
 			#ifdef _OPENMP
-				if(parallelizable) privateM = environment.memoryThreads[omp_get_thread_num()];
+				if(parallelizable)
+					privateM = environment.memoryThreads[omp_get_thread_num()];
 			#endif
-
-			int numSamples_nonNA = getNumSamples_nonNA(environment, posArray[0], posArray[1]);
+			int numSamples_nonNA = getNumSamples_nonNA(environment, posArray[0],
+					posArray[1]);
 			double* res;
-
-			computeContributingScores(environment, ziContPosIdx, iz, myZi, myNbrUi, numSamples_nonNA,
-									  posArray, res, scoresZ, privateM);
-
+			computeContributingScores(environment, ziContPosIdx, iz, myZi,
+					myNbrUi, numSamples_nonNA, posArray, res, scoresZ,privateM);
 		}//parallel for on z
 
-		for(int iz=0;iz<myNbrZi;iz++){//find optimal z
+		for(uint iz=0;iz<myNbrZi;iz++){//find optimal z
 			if(scoresZ[iz]>res_new[2]){
 				res_new[2]=scoresZ[iz];
 				if(ziContPosIdx == NULL){
@@ -1238,11 +1217,13 @@ double* computeEnsInformationNew(Environment& environment, int* myCond, int myNb
 	int numSamples_nonNA = getNumSamples_nonNA(environment, posArray[0], posArray[1]);
 	double** jointFreqs = getJointFreqs(environment, posArray[0], posArray[1], numSamples_nonNA);
 
-	double *res_new = getAllInfoNEW(environment.oneLineMatrix, environment.allLevels, posArray, myNbrUi, myZi,
-									myNbrZi, myZiPos, environment.numSamples, environment.effN, cplx, environment.isK23,
-									environment.c2terms, &m, environment.sampleWeights, jointFreqs, environment.testDistribution);
+	double* res_new = getAllInfoNEW(environment.oneLineMatrix,
+			environment.allLevels, posArray, myNbrUi, myZi, myNbrZi, myZiPos,
+			environment.numSamples, environment.effN, cplx, environment.isK23,
+			environment.looklog, environment.c2terms, &m,
+			environment.sampleWeights, jointFreqs, environment.testDistribution);
 
-	for(int level0 = 0; level0 < environment.allLevels[posArray[0]]; level0++)
+	for(uint level0 = 0; level0 < environment.allLevels[posArray[0]]; level0++)
 		delete[] jointFreqs[level0];
 	delete[] jointFreqs;
 
@@ -1348,9 +1329,11 @@ void SearchForNewContributingNodeAndItsRank(Environment& environment, const int 
 
 
 	if(environment.typeOfData == 0){
-		vect = computeEnsInformationNew(environment, ui, environment.edges[posX][posY].shared_info->ui_vect_idx.size(), zi,
-										environment.edges[posX][posY].shared_info->zi_vect_idx.size(),
-										environment.edges[posX][posY].shared_info->ui_vect_idx.size()+2,    posX, posY, argEnsInfo, m);
+		vect = computeEnsInformationNew(environment, ui,
+				environment.edges[posX][posY].shared_info->ui_vect_idx.size(), zi,
+				environment.edges[posX][posY].shared_info->zi_vect_idx.size(),
+				environment.edges[posX][posY].shared_info->ui_vect_idx.size()+2,
+				posX, posY, argEnsInfo, m);
 		if(vect[6] - environment.edges[posX][posY].shared_info->Rxyz_ui > 0 ){
 			if(environment.isVerbose){
 				cout << "\n" << posX << "    " << posY << "# -----> possible zi: " <<
@@ -1370,9 +1353,11 @@ void SearchForNewContributingNodeAndItsRank(Environment& environment, const int 
 		}
 
 	} else if(environment.typeOfData == 2 || (environment.typeOfData == 1 && environment.isAllGaussian == 0)){
-		vect = computeEnsInformationContinuous(environment, ui, environment.edges[posX][posY].shared_info->ui_vect_idx.size(), zi,
-											   environment.edges[posX][posY].shared_info->zi_vect_idx.size(),
-											   environment.edges[posX][posY].shared_info->ui_vect_idx.size()+2, posX, posY, argEnsInfo, m);
+		vect = computeEnsInformationContinuous(environment, ui,
+				environment.edges[posX][posY].shared_info->ui_vect_idx.size(), zi,
+				environment.edges[posX][posY].shared_info->zi_vect_idx.size(),
+				environment.edges[posX][posY].shared_info->ui_vect_idx.size()+2,
+				posX, posY, argEnsInfo, m);
 		if(vect[2] - environment.edges[posX][posY].shared_info->Rxyz_ui > 0 ){
 			if(environment.isVerbose){
 				cout << "\n" << posX << " " << posY << " # -----> possible zi: " <<
@@ -1397,13 +1382,10 @@ void SearchForNewContributingNodeAndItsRank(Environment& environment, const int 
 
 
 
-void SearchForNewContributingNodeAndItsRankGaussian(Environment& environment, const int posX, const int posY, MemorySpace& m) {
-
-	//// --------
-
+void SearchForNewContributingNodeAndItsRankGaussian(Environment& environment,
+		const int posX, const int posY, MemorySpace& m) {
 	if(environment.edges[posX][posY].shared_info->zi_vect_idx.size() == 0)
 	 	return;
-
 	//// If needed, remove the NA (-1) elements
 	removeifNA(environment, environment.edges[posX][posY].shared_info->zi_vect_idx,
 	    	posX, posY);
@@ -1430,8 +1412,10 @@ void SearchForNewContributingNodeAndItsRankGaussian(Environment& environment, co
 	else
 		zi = &environment.edges[posX][posY].shared_info->zi_vect_idx[0];
 
-	double* Ixy_ui_z = corrMutInfo(environment, environment.dataDouble, ui,environment.edges[posX][posY].shared_info->ui_vect_idx.size(),
-								   zi, environment.edges[posX][posY].shared_info->zi_vect_idx.size(), posX, posY, -1);
+	double* Ixy_ui_z = corrMutInfo(environment, environment.dataDouble, ui,
+			environment.edges[posX][posY].shared_info->ui_vect_idx.size(), zi,
+			environment.edges[posX][posY].shared_info->zi_vect_idx.size(),
+			posX, posY, -1);
 
 	// Get all I(xy|ui)[xyuiz]
 	//double* Ixy_ui_z = computeEnsInformation(environment, ui,environment.edges[posX][posY].shared_info->ui_vect_idx.size(), zi, environment.edges[posX][posY].shared_info->zi_vect_idx.size(), -1, posX, posY, argEnsInfo);
@@ -1446,8 +1430,10 @@ void SearchForNewContributingNodeAndItsRankGaussian(Environment& environment, co
 	}
 #endif // _MY_DEBUG_
 	//// Get all I(zy|ui)[xyuiz]
-	double* Izy_ui = corrMutInfo(environment, environment.dataDouble, ui,environment.edges[posX][posY].shared_info->ui_vect_idx.size(),
-								 zi, environment.edges[posX][posY].shared_info->zi_vect_idx.size(), posX, posY, 0);
+	double* Izy_ui = corrMutInfo(environment, environment.dataDouble, ui,
+			environment.edges[posX][posY].shared_info->ui_vect_idx.size(), zi,
+			environment.edges[posX][posY].shared_info->zi_vect_idx.size(),
+			posX, posY, 0);
 #if _MY_DEBUG_
 	if(test){
 		cout << "Izy_ui: ";
@@ -1459,8 +1445,10 @@ void SearchForNewContributingNodeAndItsRankGaussian(Environment& environment, co
 #endif // _MY_DEBUG_
 
 	// #### Get all I(xz|ui)[xyuiz]
-	double* Ixz_ui = corrMutInfo(environment, environment.dataDouble, ui,environment.edges[posX][posY].shared_info->ui_vect_idx.size(),
-								 zi, environment.edges[posX][posY].shared_info->zi_vect_idx.size(), posX, posY, 1);
+	double* Ixz_ui = corrMutInfo(environment, environment.dataDouble, ui,
+			environment.edges[posX][posY].shared_info->ui_vect_idx.size(), zi,
+			environment.edges[posX][posY].shared_info->zi_vect_idx.size(),
+			posX, posY, 1);
 #if _MY_DEBUG_
 if(test){
 		cout << "Ixz_ui: ";
@@ -1471,8 +1459,10 @@ if(test){
 	}
 #endif // _MY_DEBUG_
 	//// Get all I(xy|ui,z)[xyuiz]
-	double* Ixy_uiz = corrMutInfo(environment, environment.dataDouble, ui,environment.edges[posX][posY].shared_info->ui_vect_idx.size(),
-								  zi, environment.edges[posX][posY].shared_info->zi_vect_idx.size(), posX, posY, 2);
+	double* Ixy_uiz = corrMutInfo(environment, environment.dataDouble, ui,
+			environment.edges[posX][posY].shared_info->ui_vect_idx.size(), zi,
+			environment.edges[posX][posY].shared_info->zi_vect_idx.size(),
+			posX, posY, 2);
 #if _MY_DEBUG_
 	if(test){
 		cout << "Ixy_uiz: ";
@@ -1484,7 +1474,7 @@ if(test){
 #endif // _MY_DEBUG_
 
 	////    Compute I(xyz|ui)[xyuiz] = I(xy|ui)[xyuiz] - I(xy|ui,z)[xyuiz]
-	double* Ixyz_ui_vect =    computeDifference(Ixy_ui_z, Ixy_uiz, nbrZi);
+	double* Ixyz_ui_vect = computeDifference(Ixy_ui_z, Ixy_uiz, nbrZi);
 
 #if _MY_DEBUG_
 	if(test){
@@ -1496,7 +1486,7 @@ if(test){
 	}
 #endif // _MY_DEBUG_
 	//    --------
-	double* Ixz_ui_vect = Ixz_ui;//getFromArray(Ixz_ui,0, nbrRetValues);
+	double* Ixz_ui_vect = Ixz_ui;
 #if _MY_DEBUG_
 	if(test){
 		cout << "Ixz_ui_vect: ";
@@ -1506,7 +1496,7 @@ if(test){
 		cout << endl;
 	}
 #endif // _MY_DEBUG_
-	double* Izy_ui_vect = Izy_ui;//getFromArray(Izy_ui,0, nbrRetValues);
+	double* Izy_ui_vect = Izy_ui;
 #if _MY_DEBUG_
 	if(test){
 		cout << "Izy_ui_vect: ";
@@ -1516,7 +1506,7 @@ if(test){
 		cout << endl;
 	}
 #endif // _MY_DEBUG_
-	double* Ixy_ui_vect = Ixy_ui_z;//getFromArray(Ixy_ui_z,0, nbrRetValues);
+	double* Ixy_ui_vect = Ixy_ui_z;
 
 #if _MY_DEBUG_
 	if(test){
@@ -1527,8 +1517,6 @@ if(test){
 		cout << endl;
 	}
 #endif // _MY_DEBUG_
-
-
 	double* xz = computeDifference(Ixz_ui_vect, Ixy_ui_vect, nbrZi);
 #if _MY_DEBUG_
 	if(test){
@@ -1641,21 +1629,29 @@ double computeEnsInformationContinuous_Gaussian(Environment& environment, const 
 
 	int nbrZi = 1;
 
-	double* Ixy_ui = corrMutInfo(environment, environment.dataDouble, ui,environment.edges[posX][posY].shared_info->ui_vect_idx.size(), zi, 1, posX, posY, -1);
+	double* Ixy_ui = corrMutInfo(environment, environment.dataDouble, ui,
+			environment.edges[posX][posY].shared_info->ui_vect_idx.size(), zi,
+			1, posX, posY, -1);
 
 	//// Get all I(zy|ui)[xyuiz]
-	double* Izy_ui = corrMutInfo(environment, environment.dataDouble, ui,environment.edges[posX][posY].shared_info->ui_vect_idx.size(), zi, 1, posX, posY, 0);
+	double* Izy_ui = corrMutInfo(environment, environment.dataDouble, ui,
+			environment.edges[posX][posY].shared_info->ui_vect_idx.size(), zi,
+			1, posX, posY, 0);
 
 
 	// #### Get all I(xz|ui)[xyuiz]
-	double* Ixz_ui = corrMutInfo(environment, environment.dataDouble, ui,environment.edges[posX][posY].shared_info->ui_vect_idx.size(), zi, 1, posX, posY, 1);
+	double* Ixz_ui = corrMutInfo(environment, environment.dataDouble, ui,
+			environment.edges[posX][posY].shared_info->ui_vect_idx.size(), zi,
+			1, posX, posY, 1);
 
 	//// Get all I(xy|ui,z)[xyuiz]
-	double* Ixy_uiz = corrMutInfo(environment, environment.dataDouble, ui,environment.edges[posX][posY].shared_info->ui_vect_idx.size(), zi, 1, posX, posY, 2);
+	double* Ixy_uiz = corrMutInfo(environment, environment.dataDouble, ui,
+			environment.edges[posX][posY].shared_info->ui_vect_idx.size(), zi,
+			1, posX, posY, 2);
 
 
 	////    Compute I(xyz|ui)[xyuiz] = I(xy|ui)[xyuiz] - I(xy|ui,z)[xyuiz]
-	double* Ixyz_ui_vect =    computeDifference(Ixy_ui, Ixy_uiz, nbrZi);
+	double* Ixyz_ui_vect = computeDifference(Ixy_ui, Ixy_uiz, nbrZi);
 
 	delete [] zi;
 	delete [] Ixy_ui;
@@ -1667,3 +1663,5 @@ double computeEnsInformationContinuous_Gaussian(Environment& environment, const 
 
 	return Ixyz_ui_vect[0];
 }
+
+} } // namespace miic::computation

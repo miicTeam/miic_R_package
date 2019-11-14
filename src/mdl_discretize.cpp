@@ -9,8 +9,7 @@
 #include "utilities.h"
 
 using namespace Rcpp;
-using namespace std;
-
+using namespace miic::utility;
 
 double compute_parametric_complexity(int n, int K, double** sc_look){
 
@@ -133,7 +132,7 @@ double* compute_B(int K, int e, double* candidate_cut_points, double* myDist, in
 
 extern "C" SEXP mydiscretizeMDL(SEXP RmyDist, SEXP RmaxBins){
 
-    std::vector<double> myDistVec = Rcpp::as< vector <double> >(RmyDist);
+    std::vector<double> myDistVec = Rcpp::as<std::vector<double> >(RmyDist);
     int maxBins = Rcpp::as<int> (RmaxBins);
     double epsilon = 0.001;
     int n = myDistVec.size();
@@ -236,7 +235,7 @@ extern "C" SEXP mydiscretizeMDL(SEXP RmyDist, SEXP RmaxBins){
     //}
     //cout << "]\n";
 
-    vector<double> values(cut_points, cut_points + best_K+2);
+	std::vector<double> values(cut_points, cut_points + best_K+2);
 
     NumericMatrix Rdyntable(n_candidate_cut_points, maxBins);
     NumericMatrix Rdyntable_trace(n_candidate_cut_points, maxBins);

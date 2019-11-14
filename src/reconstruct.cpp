@@ -4,31 +4,32 @@
 #include <fstream>
 #include <sstream>
 #include <string>
-#include <sys/stat.h>
-#include <algorithm>
 #include <ctime>
 #include <unistd.h>
-#include <string.h>
 #include <Rcpp.h>
 #ifdef _OPENMP
 #include <omp.h>
 #endif
 
+#include "orientation_probability.h"
 #include "structure.h"
 #include "utilities.h"
-#include "log.h"
-#include "skeletonInitialization.h"
-#include "skeletonIteration.h"
-#include "confidenceCut.h"
-#include "orientationProbability.h"
 
-using namespace std;
-using namespace Rcpp;
+namespace miic { namespace reconstruction {
 
-bool skeletonChanged(::Environment& environment){
-	for(uint i = 0; i < environment.numNodes; i++){
-		for(uint j = 0; j < environment.numNodes; j++){
-			if(environment.edges[i][j].status != environment.edges[i][j].status_prev){
+using uint = unsigned int;
+using std::vector;
+using std::string;
+using Rcpp::List;
+using Rcpp::_;
+using namespace structure;
+using namespace utility;
+
+bool skeletonChanged(const Environment& environment) {
+	for (uint i = 0; i < environment.numNodes; i++) {
+		for (uint j = 0; j < environment.numNodes; j++) {
+			if (environment.edges[i][j].status
+					!= environment.edges[i][j].status_prev) {
 				return true;
 			}
 		}
@@ -44,17 +45,19 @@ List empty_results(){
 	return(result);
 }
 
-extern "C" SEXP reconstruct(SEXP inputDataR, SEXP typeOfDataR, SEXP cntVarR, SEXP numNodesR, SEXP nThreadsR, SEXP edgefileR, SEXP blackBoxR, SEXP effNR, SEXP cplxR,
-							SEXP etaR, SEXP hvsR, SEXP isLatentR, SEXP isTplReuseR, SEXP isK23R, SEXP isDegeneracyR, SEXP propagationR, SEXP isNoInitEtaR, SEXP confidenceShuffleR,
-							SEXP confidenceThresholdR, SEXP sampleWeightsR, SEXP consistentR, SEXP testDistR, SEXP verboseR)
-{
+extern "C" SEXP reconstruct(SEXP inputDataR, SEXP typeOfDataR, SEXP cntVarR,
+		SEXP numNodesR, SEXP nThreadsR, SEXP edgefileR, SEXP blackBoxR,
+		SEXP effNR, SEXP cplxR,	SEXP etaR, SEXP hvsR, SEXP isLatentR,
+		SEXP isTplReuseR, SEXP isK23R, SEXP isDegeneracyR, SEXP propagationR,
+		SEXP isNoInitEtaR, SEXP confidenceShuffleR,	SEXP confidenceThresholdR,
+		SEXP sampleWeightsR, SEXP consistentR, SEXP testDistR, SEXP verboseR) {
 
-	vector< vector <double> > outScore;
-	vector< vector <string> > edgesMatrix;
-	stringstream output;
+	vector<vector <double> > outScore;
+	vector<vector <string> > edgesMatrix;
+	std::stringstream output;
 
 	// define the environment
-	::Environment environment;
+	Environment environment;
 	environment.myVersion="V79";
 
 	//set test to FALSE
@@ -128,7 +131,7 @@ extern "C" SEXP reconstruct(SEXP inputDataR, SEXP typeOfDataR, SEXP cntVarR, SEX
 	setEnvironment(environment);
 	vector<string> v(Rcpp::as<vector<string> >(blackBoxR));
 	if(v.size() > 1)
-		readBlackbox1(v, environment);
+		readBlackbox(v, environment);
 
 	startTime = get_wall_time();
 
@@ -153,7 +156,7 @@ extern "C" SEXP reconstruct(SEXP inputDataR, SEXP typeOfDataR, SEXP cntVarR, SEX
 	// ----
 	long double spentTime = (get_wall_time() - startTime);
 	environment.execTime.init = spentTime;
-	if( environment.isVerbose == true ){ cout << "\n# ----> First contributing node elapsed time:" << spentTime << "sec\n\n"; }
+	if( environment.isVerbose == true ){ std::cout << "\n# ----> First contributing node elapsed time:" << spentTime << "sec\n\n"; }
 
 	// Run the skeleton iteration phase if consistency is required.
 	BCC bcc(environment);
@@ -164,20 +167,21 @@ extern "C" SEXP reconstruct(SEXP inputDataR, SEXP typeOfDataR, SEXP cntVarR, SEX
             bcc.analyse();
 		// Save the neighbours in the status_prev structure
 		// and revert to the structure at the moment of initialization
-		for(int i = 0; i < environment.numNodes; i++){
-			for(int j = 0; j < environment.numNodes; j++){
+		for (uint i = 0; i < environment.numNodes; i++) {
+			for (uint j = 0; j < environment.numNodes; j++) {
 				environment.edges[i][j].status_prev = environment.edges[i][j].status;
 				environment.edges[i][j].status = environment.edges[i][j].status_init;
 			}
         }
+		// If interrupted
+		if (!firstStepIteration(environment, bcc)) return empty_results();
 
-		if(!firstStepIteration(environment, bcc)) return(empty_results()); // If interrupted
 		if (environment.numNoMore == 0 && environment.numSearchMore == 0) {
 			if (environment.isVerbose == true)
-				cout << "# ------| Only phantom edges found.\n";
+				std::cout << "# ------| Only phantom edges found.\n";
 		} else if (environment.numSearchMore > 0) {
 			//// Search for other Contributing node(s) (possible only for the edges still in 'searchMore', ie. 2)
-			if( environment.isVerbose == true ){ cout << "\n# ---- Other Contributing node(s) ----\n\n"; }
+			if( environment.isVerbose == true ){ std::cout << "\n# ---- Other Contributing node(s) ----\n\n"; }
 			startTime = get_wall_time();
 
 			if(!skeletonIteration(environment)) return(empty_results()); // If interrupted
@@ -191,7 +195,7 @@ extern "C" SEXP reconstruct(SEXP inputDataR, SEXP typeOfDataR, SEXP cntVarR, SEX
             // Orient edges.
             orientations = orientationProbability(environment);
         }
-		cout << "Number of edges: " << environment.numNoMore << endl;
+		std::cout << "Number of edges: " << environment.numNoMore << std::endl;
 	} while (environment.consistentPhase && !cycle_tracker.hasCycle());
 
 	int union_n_edges = 0;
@@ -207,11 +211,11 @@ extern "C" SEXP reconstruct(SEXP inputDataR, SEXP typeOfDataR, SEXP cntVarR, SEX
 	startTime = get_wall_time();
 	vector< vector <string> >confVect;
 	if(environment.numberShuffles > 0){
-		cout << "Computing confidence cut with permutations..." << flush;
+		std::cout << "Computing confidence cut with permutations..." << std::flush;
 		confVect = confidenceCut(environment);
 		long double spentTime = (get_wall_time() - startTime);
 		environment.execTime.cut = spentTime;
-		cout << " done." << endl;
+		std::cout << " done." << std::endl;
 	}
 	else{
 		environment.execTime.cut = 0;
@@ -233,11 +237,11 @@ extern "C" SEXP reconstruct(SEXP inputDataR, SEXP typeOfDataR, SEXP cntVarR, SEX
                                 edge.shared_info->ui_vect_idx))
                         continue;
                     if (environment.isVerbose) {
-                        cout << environment.nodes[i].name << ",\t"
+                        std::cout << environment.nodes[i].name << ",\t"
                             << environment.nodes[j].name << "\t| "
                             << vectorToStringNodeName(environment,
                                     edge.shared_info->ui_vect_idx)
-                            << endl;
+                            << std::endl;
                     }
                     inconsistent_edges.emplace_back(i, j);
                     ++n_inconsistency;
@@ -248,9 +252,9 @@ extern "C" SEXP reconstruct(SEXP inputDataR, SEXP typeOfDataR, SEXP cntVarR, SEX
                 environment.edges[k.second][k.first].status = 1;
                 environment.edges[k.first][k.second].shared_info->setUndirected();
             }
-            cout << n_inconsistency
+            std::cout << n_inconsistency
                 << " inconsistent conditional independences"
-                << " found after orientation." << endl;
+                << " found after orientation." << std::endl;
         }
         edgesMatrix = saveEdgesListAsTable(environment);
 	}
@@ -364,3 +368,5 @@ bool CycleTracker::hasCycle() {
     }
     return false;
 }
+
+} }  // namespace miic::reconstruction

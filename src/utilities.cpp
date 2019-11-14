@@ -1,26 +1,19 @@
 #include "utilities.h"
 
 #include <fstream>
-#include <sstream>
-#include <string>
-#include <getopt.h>
-#include <cstdlib>
 #include <iostream>
-#include <map>
-#include <cassert>
-#include <math.h>
-#include <sys/stat.h>
+#include <string>
 #include <sys/time.h>
-#include <time.h>
 #include <unistd.h>
-#include <vector>
 #include <limits>
-#include <unordered_set>
+#include <map>
+#include <math.h>
+#include <vector>
 #include <Rcpp.h>
 
 #include "nanoflann.hpp"
 #include "KDTreeVectorOfVectorsAdaptor.h"
-#include "computeInfo.h"
+#include "compute_info.h"
 
 //for memory space on continuous data
 #define MAX_NBRUI 10
@@ -28,77 +21,17 @@
 #define MAGNITUDE_TIES 0.00005f
 #define KNN_K 5
 
-
-using namespace std;
+namespace miic { namespace utility {
+using uint = unsigned int;
+using std::string;
+using std::stringstream;
+using std::cout;
+using std::endl;
+using std::vector;
+using std::pair;
 using namespace nanoflann;
-
-
-
-static double igf(double S, double Z)
-{
-    if(Z < 0.0)
-    {
-	return 0.0;
-    }
-    double Sc = (1.0 / S);
-    Sc *= pow(Z, S);
-    Sc *= exp(-Z);
-
-    double Sum = 1.0;
-    double Nom = 1.0;
-    double Denom = 1.0;
-
-    for(int I = 0; I < 200; I++)
-    {
-	Nom *= Z;
-	S++;
-	Denom *= S;
-	Sum += (Nom / Denom);
-    }
-
-    return Sum * Sc;
-}
-
-double approx_gamma(double z, unsigned Nterms)
-{
-    double g = 0.577216;// Euler-Mascheroni constant
-    double retVal = z*exp(g*z);
-
-    // apply products
-    for(unsigned n=1; n<=Nterms; ++n)
-        retVal *= (1 + z/n)*exp(-z/n);
-
-    retVal = 1.0/retVal;// invert
-
-    return retVal;
-}
-
-
-double chisqr(int Dof, double Cv)
-{
-    if(Cv < 0 || Dof < 1)
-    {
-        return 0.0;
-    }
-    double K = ((double)Dof) * 0.5;
-    double X = Cv * 0.5;
-    if(Dof == 2)
-    {
-	return exp(-1.0 * X);
-    }
-
-    double PValue = igf(K, X);
-    if(std::isnan(PValue) || std::isinf(PValue) || PValue <= 1e-8)
-    {
-        return 1e-14;
-    }
-
-    PValue /= approx_gamma(K,1000);
-    //PValue /= tgamma(K);
-
-    return (1.0 - PValue);
-}
-
+using namespace miic::computation;
+using namespace miic::structure;
 
 double kl(double** freqs1, double** freqs2, int nrows, int ncols){
 
@@ -132,7 +65,6 @@ double kl(double** freqs1, double** freqs2, int nrows, int ncols){
 	return kl_div;
 }
 
-
 double kl(int** counts1, double** freqs2, int nrows, int ncols){
 
 	double** freqs1 = new double*[nrows];
@@ -159,7 +91,6 @@ double kl(int** counts1, double** freqs2, int nrows, int ncols){
 	return(kl_div);
 }
 
-
 double kl(double* freqs1, double* freqs2, int nlevels){
 
 	double kl_div=0;
@@ -170,7 +101,6 @@ double kl(double* freqs1, double* freqs2, int nlevels){
 	}
 	return(kl_div);
 }
-
 
 double kl(int* count1, int* count2, int n1, int n2, int nlevels){
 
@@ -206,7 +136,6 @@ class sort_indices
      bool operator()(int i, int j) const { return mparr[i]<mparr[j]; }
 };
 
-
 void sort2arrays(int len, int a[], int brr[], int bridge[]){
     int i;
 
@@ -241,93 +170,14 @@ double get_wall_time(){
     return (double)time.tv_sec + (double)time.tv_usec * .000001;
 }
 
-double get_cpu_time(){
-    return (double)clock() / CLOCKS_PER_SEC;
-}
-
-void updateNumberofLevelsAndContinuousVariables(int** dataNumeric_red, int* allLevels_red, int* cnt_red, int myNbrUi, int nsamplesNotNA){
-
-	for(int j = 0; j < (myNbrUi +2); j++){
-		if(cnt_red[j] == 0){
-			//update number of levels
-			std::unordered_set<int> s(dataNumeric_red[j], dataNumeric_red[j] + nsamplesNotNA);
-			//cout << "\nsize: " << allLevels_red[j] << "\t" << s.size() << endl;
-
-
-    		allLevels_red[j] =  int(s.size());
-
-
-
-		}
-		// else if(cnt_red[j] == 1){
-		// 	if(allLevels_red[j] < 0.3 * nsamplesNotNA && allLevels_red[j] < 40){
-		// 		cnt_red[j] == 0;
-		// 	}
-		// }
-	}
-}
-
-bool isNumberOfLevelsLessTwo(int** dataNumeric_red, int myNbrUi, int nsamplesNotNA, int vars){
-
-	for(int j = 0; j < (myNbrUi +vars); j++){
-		//update number of levels
-		std::unordered_set<int> s(dataNumeric_red[j], dataNumeric_red[j] + nsamplesNotNA);
-		//cout << "size: " << s.size() << "\t";
-		if(s.size()<2)
-			return true;
-
-	}
-	return false;
-}
-
-// void updateContinuousVariables(int** dataNumeric_red, int* AllLevels, int* cnt_red, int myNbrUi, int nsamplesNotNA, int vars){
-
-// 	for(int j = 0; j < (myNbrUi + vars); j++){
-// 		 if(cnt_red[j] == 1){
-// 		 	std::unordered_set<int> s(dataNumeric_red[j], dataNumeric_red[j] + nsamplesNotNA);
-// 		 	int size = s.size();
-// 			if((size < 0.3 * nsamplesNotNA && size < 40) || size < 2){
-// 				cnt_red[j] = 0;
-// 				int max = 0;
-// 				for(int i = 0 ; i < nsamplesNotNA; i++){
-// 					if(max < dataNumeric_red[j][i]){
-// 						max = dataNumeric_red[j][i];
-// 					}
-// 				}
-
-// 				AllLevels[j]=max+1;
-
-// 				cout << "nblevels: " << AllLevels[j] << " " << size << endl;
-// 			}
-// 		}
-// 	}
-// }
-
-
-bool isContinuousDiscrete(int** dataNumeric_red, int nsamplesNotNA, int pos){
-
-	int j = pos;
- 	std::unordered_set<int> s(dataNumeric_red[j], dataNumeric_red[j] + nsamplesNotNA);
- 	int size = s.size();
-	// cout << size << endl << flush;
-
-	if((size < 0.3 * nsamplesNotNA && size < 10) || size < 2){
-		// cout << "true" << flush;
-		return true;
-	}
-	// cout << "false" << flush;
-	return false;
-}
-
-
 void sort2arraysConfidence(int len, int a[], int brr[]){
 
     std::sort(brr, brr+len, sort_indices(a));
 }
 
-vector< vector <string> > getAdjMatrix(const Environment& environment){
+vector<vector<string> > getAdjMatrix(const Environment& environment) {
 	stringstream ss;
-	vector< vector <string> > adjMatrix;
+	vector<vector<string> > adjMatrix;
 	vector<string> vec;
 	for(uint i=0; i < environment.numNodes; i++){
 		vec.push_back(environment.nodes[i].name);
@@ -346,18 +196,17 @@ vector< vector <string> > getAdjMatrix(const Environment& environment){
 		}
 		adjMatrix.push_back(vec);
 	}
-
 	return adjMatrix;
 }
 
-void createMemorySpace(Environment& environment, MemorySpace& m){
-
-	if(environment.atLeastTwoDiscrete){
-
-		int maxLevel = 0;
-		for(uint i =0; i<environment.numNodes; i++)
-			if(environment.allLevels[i] > maxLevel)
+void createMemorySpace(Environment& environment, MemorySpace& m) {
+	if (environment.atLeastTwoDiscrete) {
+		uint maxLevel = 0;
+		for (uint i =0; i<environment.numNodes; i++) {
+			if (environment.columnAsContinuous[i] == 0
+					&& environment.allLevels[i] > maxLevel)
 				maxLevel = environment.allLevels[i];
+		}
 		m.maxlevel = maxLevel;
 		// cout<< "samples" << environment.numSamples << endl;
 		int nrow=environment.numSamples+1;
@@ -382,17 +231,12 @@ void createMemorySpace(Environment& environment, MemorySpace& m){
 		for(iii = 0; iii < bin_max+1; iii++)
 			m.Nxuiz[iii] = (int *)calloc(bin_max+1, sizeof(int));
 
-
 		m.orderSample = (int *)calloc((sampleSize+2), sizeof(int));
 		m.sampleKey = (int *)calloc((sampleSize+2), sizeof(int));
-
 		m.Pxyuiz = (double *)calloc((bin_max+1), sizeof(double));
-
-
 		m.Nyuiz = (int *)calloc((bin_max+1), sizeof(int));
 		m.Nuiz = (int *)calloc((bin_max+1), sizeof(int));
 		m.Nz = (int *)calloc((bin_max+1), sizeof(int));
-
 		m.Ny = (int *)calloc((bin_max+1), sizeof(int));
 		m.Nxui = (int *)calloc((bin_max+1), sizeof(int));
 		m.Nx = (int *)calloc((bin_max+1), sizeof(int));
@@ -402,8 +246,6 @@ void createMemorySpace(Environment& environment, MemorySpace& m){
 	if(environment.atLeastOneContinuous){
 		m.samplesToEvaluate = (int *) new int[environment.numSamples];
 		m.samplesToEvaluateTemplate = (int *) new int[environment.numSamples];
-
-
 		m.dataNumericIdx_red = (int **) new int*[(MAX_NBRUI +3)];
 		m.dataNumeric_red = (int **) new int*[(MAX_NBRUI +3)];
 
@@ -411,25 +253,24 @@ void createMemorySpace(Environment& environment, MemorySpace& m){
 			m.dataNumericIdx_red[j] =(int *) new int[environment.numSamples];
 			m.dataNumeric_red[j] =(int *) new int[environment.numSamples];
 		}
-
 		m.AllLevels_red =(int *) new int[(MAX_NBRUI +3)];
 		m.cnt_red = (int *) new int[(MAX_NBRUI +3)];
 		m.posArray_red = (int *) new int[(MAX_NBRUI +3)];
 	}
 }
 
-void deleteMemorySpace(Environment& environment, MemorySpace& m){
-	if(environment.atLeastTwoDiscrete){
-		int maxLevel = 0;
-		for(uint i =0; i<environment.numNodes; i++)
-			if(environment.allLevels[i] > maxLevel)
+void deleteMemorySpace(Environment& environment, MemorySpace& m) {
+	if (environment.atLeastTwoDiscrete) {
+		uint maxLevel = 0;
+		for (uint i =0; i<environment.numNodes; i++) {
+			if (environment.columnAsContinuous[i] == 0
+					&& environment.allLevels[i] > maxLevel)
 				maxLevel = environment.allLevels[i];
+		}
 
 		int nrow=environment.numSamples+1;
 		int bin_max=maxLevel;
 		int i;
-
-
 		for(i=0; i<nrow;i++)
 			free(m.sample[i]);
 		free(m.sample);
@@ -438,69 +279,52 @@ void deleteMemorySpace(Environment& environment, MemorySpace& m){
 			free(m.sortedSample[i]);
 		free(m.sortedSample);
 
-		// for(i=0; i<nrow;i++)
-		// 	free(m.Opt_sortedSample[i]);
-		// free(m.Opt_sortedSample);
-
 		for(i=0; i<bin_max+1;i++)
 			free(m.Nxuiz[i]);
 
 		for(i=0; i<bin_max+1;i++)
 			free(m.Opt_sortedSample[i]);
+
 		free(m.Opt_sortedSample);
-
 		free(m.Nxuiz);
-
-
 		free(m.orderSample);
 		free(m.sampleKey);
-
 		free(m.Pxyuiz);
 		free(m.Nyuiz);
 		free(m.Nuiz);
 		free(m.Nz);
-
 		free(m.Ny);
 		free(m.Nxui);
 		free(m.Nx);
 	}
-
-	/////////////
 	// cotinuous part
-	if(environment.atLeastOneContinuous){
+	if (environment.atLeastOneContinuous) {
 		free(m.samplesToEvaluate);
 		free(m.samplesToEvaluateTemplate);
 		free(m.AllLevels_red);
 		free(m.cnt_red);
 		free(m.posArray_red);
-
 		for(int i = 0; i < MAX_NBRUI +3; i++){
 			delete[] m.dataNumericIdx_red[i];
 			delete[] m.dataNumeric_red[i];
 		}
 		delete[] m.dataNumericIdx_red;
 		delete[] m.dataNumeric_red;
-
 	}
 }
 
 void deleteStruct(Environment& environment){
-
 	for (auto& address : environment.noMoreAddress)
 		delete address;
-
 	delete [] environment.oneLineMatrix;
 	delete [] environment.allLevels;
-	for(uint i = 0; i < environment.numSamples; i++){
+	for(uint i = 0; i < environment.numSamples; i++)
 		delete [] environment.dataNumeric[i];
-	}
 	delete [] environment.dataNumeric;
 	delete [] environment.c2terms;
 	delete [] environment.nodes;
-
-	for(uint i = 0; i < environment.numNodes; i++){
+	for (uint i = 0; i < environment.numNodes; i++)
 		delete [] environment.edges[i];
-	}
 	delete [] environment.edges;
 }
 
@@ -529,9 +353,6 @@ void computeMeansandStandardDeviations(Environment& environment) {
 	}
 }
 
-
-
-
 void computeCorrelations(Environment& environment) {
 	double covariance = 0.0;
 	for(uint i = 0; i < environment.numNodes; i++) {
@@ -554,10 +375,6 @@ void computeCorrelations(Environment& environment) {
 					//divide covariance by nCols
 					covariance /= nSamples;
 					environment.nSamples[i][j] = nSamples;
-					//covariance(i, j) / sigma(i) * sigma(j)
-					// cout << "std: " << (environment.standardDeviations[i] * environment.standardDeviations[j]) << endl << flush;
-					// cout << "covariance: " << covariance << endl << flush;
-					// cout << "environment.rho[i][j]: " << environment.rho[i][j] << endl << flush;
 					environment.rho[i][j] = covariance / (environment.standardDeviations[i] * environment.standardDeviations[j]);
 				} else {
 					environment.rho[i][j] = 1;
@@ -576,7 +393,7 @@ bool isOnlyDouble(const char* str) {
     return true;
 }
 
-bool comparatorPairs ( const pair<double,int>& l, const pair<double,int>& r) {
+bool comparatorPairs (const pair<double,int>& l, const pair<double,int>& r) {
 	return l.first < r.first; }
 
 bool SortFunctionNoMore1(const EdgeID* a, const EdgeID* b, const Environment& environment) {
@@ -629,11 +446,9 @@ class sorter {
 	  }
 };
 
-
-
 void readTime(Environment& environment, string name){
 	const char * c = name.c_str();
-	ifstream input (c);
+	std::ifstream input(c);
 	string lineData;
 	string s;
 	int row = 0;
@@ -641,7 +456,7 @@ void readTime(Environment& environment, string name){
 	while(getline(input, lineData))
 	{
 		if(row == 1){
-		istringstream f(lineData);
+			std::istringstream f(lineData);
 			while (getline(f, s, '\t')) {
 				if(col == 0)
 					environment.execTime.init = atof(s.c_str());
@@ -664,14 +479,10 @@ void readTime(Environment& environment, string name){
 	}
 }
 
-
-/*
- * Save the adjacency matrix
- */
 void saveAdjMatrix(const Environment& environment, const string filename){
 	if(environment.isVerbose)
 		cout << "Saving adjacency matrix\n";
-	ofstream output;
+	std::ofstream output;
 	output.open(filename.c_str());
 	for(uint i=0; i < environment.numNodes; i++){
 		output << environment.nodes[i].name;
@@ -697,7 +508,7 @@ void saveAdjMatrix(const Environment& environment, const string filename){
 void saveAdjMatrixState(const Environment& environment, const string filename){
 	if(environment.isVerbose)
 		cout << "Saving adjacency matrix\n";
-	ofstream output;
+	std::ofstream output;
 	output.open(filename.c_str());
 	output << "\t";
 	for(uint i=0; i < environment.numNodes; i++){
@@ -736,9 +547,6 @@ void saveAdjMatrixState(const Environment& environment, const string filename){
 	}
 }
 
-/*
- * Transform a vector to a string
- */
 string vectorToStringNodeName(const Environment& environment, const vector<int>& vec){
 	stringstream ss;
 	int length = vec.size();
@@ -768,7 +576,7 @@ string vectorToString(const vector<int>& vec){
   	return ss.str();
 }
 
-string arrayToString1(const double* int_array, const int length){
+string arrayToString(const double* int_array, const int length){
 	stringstream ss;
 	if(length > 0){
 	  	for (int temp = 0; temp < length; temp++){
@@ -790,7 +598,7 @@ string zNameToString(const Environment& environment, vector<int> vec, int pos){
 	return ss.str();
 }
 
-bool readBlackbox1(vector<string> v, Environment& environment){
+bool readBlackbox(vector<string> v, Environment& environment){
 	string s1, s2;
 	int posX, posY;
 	for(uint pos = 0; pos < v.size(); pos++){
@@ -897,13 +705,10 @@ vector< vector <string> > saveEdgesListAsTable(Environment& environment){
 	return data;
 }
 
-/*
- * Save the runtime file
- */
 void saveExecTime(const Environment& environment, const string filename){
 	if(environment.isVerbose)
 		cout << "Saving execution time\n";
-	ofstream output;
+	std::ofstream output;
 	output.open(filename.c_str());
 
 	output << "init" <<	"\t" << "iter" << "\t" << "initIter" << "\t" << "ort" << "\t" << "cut" << "\t" << "ort_after_cut" << "\t" << "total" "\n";
@@ -912,7 +717,7 @@ void saveExecTime(const Environment& environment, const string filename){
 }
 
 bool existsTest(const string& name) {
-	  ifstream f(name.c_str());
+	std::ifstream f(name.c_str());
 	if (f.good()) {
 		f.close();
 		return true;
@@ -945,7 +750,7 @@ bool checkNA(int** data, int numRows, int numColumns){
 	return false;
 }
 
-string printNodesName(Environment& environment){
+string printNodesName(const Environment& environment){
 	string s = "";
 	for(uint i = 0; i < environment.numNodes; i++){
 		cout << environment.nodes[i].name;
@@ -956,10 +761,7 @@ string printNodesName(Environment& environment){
 	return s;
 }
 
-/*
- * Print input data, as strings or factors
- */
-void printMatrix(Environment& environment, string type){
+void printMatrix(const Environment& environment, string type) {
 	if(type.compare("string") == 0){
 		cout << "Data matrix of strings\n";
 		printNodesName(environment);
@@ -981,21 +783,15 @@ void printMatrix(Environment& environment, string type){
 	}
 }
 
-/*
- * Initialize all the elements of the array to the given value
- */
-bool setArrayValuesInt(int* array, int length, int value){
+// Initialize all the elements of the array to the given value
+bool setArrayValuesInt(int* array, int length, int value) {
 	for(int i = 0; i < length; i++){
 			array[i] = value;
 		}
 		return true;
 }
 
-/*
- * Check if a value is of type integer
- */
-bool isInteger(const string &s)
-{
+bool isInteger(const string &s) {
    if(s.empty() || ((!isdigit(s[0])) && (s[0] != '-') && (s[0] != '+'))) return false ;
 
    char * p ;
@@ -1004,13 +800,7 @@ bool isInteger(const string &s)
    return (*p == 0) ;
 }
 
-
-
 bool readData(Environment& environment, bool& isNA){
-/*
- * Read data matrix from file
- */
-
  	vector <string> vec;
 	environment.nodes = new Node[environment.numNodes];
 
@@ -1044,10 +834,6 @@ bool readData(Environment& environment, bool& isNA){
 	return true;
 }
 
-
-/*
- * Remove all the lines that contain only NA
- */
 bool removeRowsAllNA(Environment& environment){
 	if(environment.isVerbose)
 		cout << "# Removing NA rows\n";
@@ -1097,15 +883,12 @@ bool removeRowsAllNA(Environment& environment){
 	return true;
 }
 
-/*
- * Transforms the string into factors
- */
 void transformToFactors(Environment& environment, int i){
 	if(environment.isVerbose)
 		cout << "# Transforming matrix to factors\n";
 
 	 // create a dictionary to store the factors of the strings
- 	map<string,int> myMap;
+	std::map<string,int> myMap;
 
 	//clean the dictionary since it is used column by column
 	myMap.clear();
@@ -1114,7 +897,7 @@ void transformToFactors(Environment& environment, int i){
 	int factor = 0;
 
  	for(uint j = 0; j < environment.numSamples; j++){
-		map<string,int>::iterator it = myMap.find(environment.data[j][i]);
+		std::map<string,int>::iterator it = myMap.find(environment.data[j][i]);
 		if ( it != myMap.end() ){
 			environment.dataNumeric[j][i] = it->second;
 		}
@@ -1135,7 +918,6 @@ void copyValue(Environment& environment, int i){
 	}
 }
 
-
 void transformToFactorsContinuous(Environment& environment, int i){
 	if(environment.isVerbose)
 		cout << "# Transforming matrix to factors continuous\n";
@@ -1144,8 +926,6 @@ void transformToFactorsContinuous(Environment& environment, int i){
 
 	//clean the dictionary since it is used column by column
 	myMap.clear();
-	// myMap["NA"] = -1;
-	// myMap[""] = -1;
 
 	vector <double> clmn;
 	for(uint j = 0; j < environment.numSamples; j++){
@@ -1159,10 +939,6 @@ void transformToFactorsContinuous(Environment& environment, int i){
 	for(uint j = 0; j < clmn.size(); j++){
 			myMap.insert(pair<double,int>(clmn[j],j));
 	}
-	// for (std::map<double,int>::iterator it=myMap.begin(); it!=myMap.end(); ++it){
-	// 	cout << "(" << it->first << "," << it->second << ")\n";
-	// }
-
 
  	for(uint j = 0; j < environment.numSamples; j++){
  		string entry = environment.data[j][i];
@@ -1178,22 +954,17 @@ void transformToFactorsContinuous(Environment& environment, int i){
 			        break;
 			    }
 			}
-
-
-			// cout << myMap.size()<<" ";
-			// cout << environment.dataNumeric[j][i] << " ";
 		} else {
 			environment.dataNumeric[j][i] = -1;
 		}
 	}
 }
 
-
 void transformToFactorsContinuousIdx(Environment& environment, int i){
 	if(environment.isVerbose)
 		cout << "# Transforming matrix to factors continuous\n";
 
-	map<int,int> myMap;
+	std::map<int,int> myMap;
 
 	//clean the dictionary since it is used column by column
 	myMap.clear();
@@ -1212,27 +983,19 @@ void transformToFactorsContinuousIdx(Environment& environment, int i){
 
 }
 
-
-/*
- * Set the number of levels for each node (the maximum level of each column)
- */
+// Set the number of levels for each node (the maximum level of each column)
 void setNumberLevels(Environment& environment){
+ 	environment.allLevels = new uint[environment.numNodes];
 	int max;
- 	environment.allLevels = new int[environment.numNodes];
-
 	for(uint i = 0; i < environment.numNodes;i++){
 		max = 0;
 	 	for(uint j = 0; j < environment.numSamples; j++){
 	 		if(environment.dataNumeric[j][i] > max)
 	 			max = environment.dataNumeric[j][i];
 	 	}
-
-
 	 	environment.allLevels[i] = max+1;
-	 	//cout << environment.nodes[i].name << " has "  << environment.allLevels[i] << " levels\n";
 	 }
 }
-
 
 void setProportions(Environment& environment){
 	environment.proportions = new double*[environment.numNodes];
@@ -1241,7 +1004,7 @@ void setProportions(Environment& environment){
 		count = 0;
 		if(environment.columnAsContinuous[i]==0){
 			environment.proportions[i] = new double[environment.allLevels[i]];
-			for(int j = 0; j < environment.allLevels[i]; j++){
+			for(uint j = 0; j < environment.allLevels[i]; j++){
 				environment.proportions[i][j] = 0;
 			}
 			for(uint j = 0; j < environment.numSamples; j++){
@@ -1251,20 +1014,12 @@ void setProportions(Environment& environment){
 				}
 			}
 
-			for(int j = 0; j < environment.allLevels[i]; j++){
+			for(uint j = 0; j < environment.allLevels[i]; j++){
 				environment.proportions[i][j] /= double(count);
 			}
-
-
-
-			// for(int j = 0; j < environment.allLevels[i]; j++){
-			// 	cout << j << " :" << environment.proportions[i][j]  << "\t";
-			// }
 		}
-		// cout << "\n";
 	}
 }
-
 
 int getNumSamples_nonNA(Environment& environment, int i, int j){
 	bool sampleOk;
@@ -1284,7 +1039,6 @@ int getNumSamples_nonNA(Environment& environment, int i, int j){
 	}
 	return(numSamples_nonNA);
 }
-
 
 void getJointSpace(Environment& environment, int i, int j, vector<vector<double>> &jointSpace, int* curr_samplesToEvaluate)
 {
@@ -1309,13 +1063,12 @@ void getJointSpace(Environment& environment, int i, int j, vector<vector<double>
 	}
 }
 
-
 double** getJointFreqs(Environment& environment, int i, int j, int numSamples_nonNA)
 {
 	double** jointFreqs = new double*[environment.allLevels[i]];
-	for(int k = 0; k < environment.allLevels[i]; k++){
+	for(uint k = 0; k < environment.allLevels[i]; k++){
 		jointFreqs[k] = new double[environment.allLevels[j]];
-		for(int l = 0; l < environment.allLevels[j]; l++){
+		for(uint l = 0; l < environment.allLevels[j]; l++){
 			jointFreqs[k][l] = 0;
 		}
 	}
@@ -1333,13 +1086,12 @@ double** getJointFreqs(Environment& environment, int i, int j, int numSamples_no
 		}
 	}
 
-	for(int k = 0; k < environment.allLevels[i]; k++)
-		for(int l = 0; l < environment.allLevels[j]; l++)
+	for(uint k = 0; k < environment.allLevels[i]; k++)
+		for(uint l = 0; l < environment.allLevels[j]; l++)
 			jointFreqs[k][l] /= numSamples_nonNA;
 
 	return(jointFreqs);
 }
-
 
 void getJointMixed(Environment& environment, int i, int j, int* mixedDiscrete, double* mixedContinuous,
 				   int* curr_samplesToEvaluate)
@@ -1369,41 +1121,34 @@ void getJointMixed(Environment& environment, int i, int j, int* mixedDiscrete, d
 	}
 }
 
-
-/*
- * Parse the command line inserted by the user
- */
 bool parseCommandLine(Environment& environment, int argc, char** argv) {
 	int c;
-	string s;
-	// set the default values if not the test case
-	//if(!environment.myTest){
-		environment.inData = "";
-		environment.outDir = "";
-		environment.blackbox_name = "";
-		environment.edgeFile = "";
-		environment.effN = -1;
-		environment.cplx = 1;
-		environment.isVerbose = false;
-		environment.numberShuffles = 0;
-		environment.isLatent = false;
-		environment.isLatentOnlyOrientation = false;
-		environment.isTplReuse = true;
-		environment.isK23 = true;
-		environment.isDegeneracy = false;
-		environment.isNoInitEta = false;
-		environment.isPropagation = true;
-		environment.halfVStructures = 0;
-		environment.typeOfData = 0;
-		environment.isAllGaussian = 0;
-		environment.atLeastTwoGaussian = 0;
-		environment.atLeastTwoDiscrete = 0;
-		environment.atLeastOneContinuous = 0;
-		environment.nThreads = 0;
-		environment.testDistribution = true;
-		environment.consistentPhase = 0;
+	environment.inData = "";
+	environment.outDir = "";
+	environment.blackbox_name = "";
+	environment.edgeFile = "";
+	environment.effN = -1;
+	environment.cplx = 1;
+	environment.isVerbose = false;
+	environment.numberShuffles = 0;
+	environment.isLatent = false;
+	environment.isLatentOnlyOrientation = false;
+	environment.isTplReuse = true;
+	environment.isK23 = true;
+	environment.isDegeneracy = false;
+	environment.isNoInitEta = false;
+	environment.isPropagation = true;
+	environment.halfVStructures = 0;
+	environment.typeOfData = 0;
+	environment.isAllGaussian = 0;
+	environment.atLeastTwoGaussian = 0;
+	environment.atLeastTwoDiscrete = 0;
+	environment.atLeastOneContinuous = 0;
+	environment.nThreads = 0;
+	environment.testDistribution = true;
+	environment.consistentPhase = 0;
 
-	// Parse the command line
+	string s;
 	while ((c = getopt (argc, argv, "j:i:o:b:d:c:e:s:r:q:k:n:p:a:h:m:t:u:z:x:l:gfv?")) != -1){
 		switch (c){
 			case 'i':{
@@ -1481,7 +1226,7 @@ bool parseCommandLine(Environment& environment, int argc, char** argv) {
 			case 'c':{
 				environment.cplxType.append(optarg);
 
-				if(environment.cplxType.compare("mdl")!=0 & environment.cplxType.compare("nml")!=0){
+				if(environment.cplxType.compare("mdl")!=0 && environment.cplxType.compare("nml")!=0){
 					cout << "[ERR] Wrong complexity check option!\n";
 					exit(1);
 				} else if(environment.cplxType.compare("mdl") == 0){
@@ -1614,15 +1359,10 @@ bool parseCommandLine(Environment& environment, int argc, char** argv) {
 		environment.steps.push_back(1);
 		environment.steps.push_back(2);
 	}
-
-
-
 	return true;
 }
 
-// Print the most important variables of the environment.
-void printEnvironment(Environment& environment, Log* pLog){
-	// Recall the main parameters
+void printEnvironment(const Environment& environment){
 	stringstream s;
 	s << "# --------\n# Inputs:\n# ----\n"
 		<< "# Input data file --> " << environment.inData << "\n"
@@ -1643,13 +1383,11 @@ void printEnvironment(Environment& environment, Log* pLog){
 		<< "# No Init Eta --> " << environment.isNoInitEta << "\n"
 		<< "# VERSION --> " << environment.myVersion << "\n"
 		<< "# --------\n";
-
 		cout << s.str();
 }
 
 void readFileType(Environment& environment){
-
-	int numberGaussian = 0;
+	uint numberGaussian = 0;
 	for(uint pos=0; pos<environment.numNodes; pos++)
 	{
 		environment.columnAsContinuous[pos] = environment.cntVarVec[pos];
@@ -1677,7 +1415,7 @@ void readFileType(Environment& environment){
 			for(uint j = 0; j < environment.numNodes; j++){
 				if((environment.columnAsContinuous[j] == 1) || (environment.columnAsContinuous[j] == 1)){
 					if((environment.data[i][j].compare("NA")  == 0) || (environment.data[i][j].compare("") == 0) ) {
-						environment.dataDouble[i][j] = numeric_limits<double>::quiet_NaN();
+						environment.dataDouble[i][j] = std::numeric_limits<double>::quiet_NaN();
 					} else {
 						environment.dataDouble[i][j] = atof(environment.data[i][j].c_str());
 					}
@@ -1717,7 +1455,8 @@ void setEnvironment(Environment& environment){
 	}
 
 	// Set the effN if not already done
-	if((environment.effN == -1) || (environment.effN > environment.numSamples))
+	if (environment.effN == -1
+			|| environment.effN > (int) environment.numSamples)
 		environment.effN = environment.numSamples;
 
 	environment.sampleWeights = new double[environment.numSamples];
@@ -1729,7 +1468,7 @@ void setEnvironment(Environment& environment){
 	}
 	else {
 		for(uint i = 0; i < environment.numSamples; i++){
-			if(environment.effN == environment.numSamples)
+			if(environment.effN == (int) environment.numSamples)
 				environment.sampleWeights[i] = 1;
 			else
 				environment.sampleWeights[i] = (environment.effN*1.0)/environment.numSamples;
@@ -1797,7 +1536,7 @@ void setEnvironment(Environment& environment){
 		environment.c2terms[i] = -1;
 	}
 
-	environment.initbins = min(30, int(0.5+cbrt(environment.numSamples)));
+	environment.initbins = std::min(30, int(0.5+cbrt(environment.numSamples)));
 
 	// for mixed
 	//if(environment.atLeastOneContinuous){
@@ -1842,11 +1581,11 @@ void setEnvironment(Environment& environment){
 		}
 	}
 
-	//// Set the number of digits for the precision while using round( ..., digits = ... )
-	//// Make sure the min levels for the data is 0
+	// Set the number of digits for the precision while using round( ..., digits = ... )
+	// Make sure the min levels for the data is 0
 	environment.minN = 1;
 
-	//// Set the probability threshold for the rank
+	// Set the probability threshold for the rank
 	environment.thresPc = 0;	// if the contribution probability is the min value
 
 	// Stats test correction
@@ -1882,8 +1621,6 @@ void setEnvironment(Environment& environment){
 		environment.noiseVec[i] = std::rand()/((RAND_MAX + 1u)/MAGNITUDE_TIES) - MAGNITUDE_TIES/2;
 	}
 
-
-	////////////////////////////////////////////////////////////////////////////
 	// for continuous gaussian
 	if( environment.atLeastTwoGaussian == 1 ){
 		// set correlation part
@@ -1911,16 +1648,13 @@ void setEnvironment(Environment& environment){
 			environment.means[i] = 0.0;
 			environment.standardDeviations[i] = 0.0;
 		}
-
 		//compute the means and standard deviations
 		computeMeansandStandardDeviations(environment);
-
-
 		//compute the correlations coefficients
 		computeCorrelations(environment);
 
-
-		environment.pMatrix = new double*[environment.numNodes]; //alloc the rho for correlations() (save time)
+		// Alloc the rho for correlations() (save time)
+		environment.pMatrix = new double*[environment.numNodes];
 
 		for(uint i = 0; i < environment.numNodes; i++) {
 			environment.pMatrix[i] = new double[environment.numNodes];
@@ -1929,19 +1663,13 @@ void setEnvironment(Environment& environment){
 }
 
 void readFilesAndFillStructures(vector<string> edgesVectorOneLine, Environment& environment){
-	//fill nodes
 	setEnvironment(environment);
-
-	//create the one line matrix
 	environment.oneLineMatrix = new int[environment.numSamples*environment.numNodes];
 	for(uint i = 0; i < environment.numSamples;i++){
 		for(uint j = 0; j < environment.numNodes;j++){
-			// cout << j * environment.numSamples + i << " ";
 			environment.oneLineMatrix[j * environment.numSamples + i] = environment.dataNumeric[i][j];
 		}
 	}
-
-	//create edges
 	environment.edges = new Edge*[environment.numNodes];
 
 	for(uint i = 0; i < environment.numNodes; i++)
@@ -2051,85 +1779,10 @@ void readFilesAndFillStructures(vector<string> edgesVectorOneLine, Environment& 
 				environment.edges[posX][posY].shared_info->Nxy_ui = atof(s.c_str());
 			}
 		}
-
-
 	}
-
 	environment.numNoMore = environment.noMoreAddress.size();
-
 	std::sort(environment.noMoreAddress.begin(), environment.noMoreAddress.end(), sorterNoMore(environment));
 }
-
-bool readBlackbox(Environment& environment, string slash){
-	std::stringstream ss;
-	ss.str("");
-	ss << environment.blackbox_name;
-	string filename = ss.str();
-
-	const char * c = filename.c_str();
-	ifstream input (c);
-	string lineData;
-	string s;
-	string s1;
-	string s2;
-	int col;
-	int posX;
-	int posY;
-
-	while(getline(input, lineData)){
-		col = 0;
-		posX = -1;
-		posY = -1;
-		istringstream f(lineData);
-		while (getline(f, s, '\t')) {
-			if(col == 0){
-				s1 = s;
-				for(uint i = 0; i < environment.numNodes;i++){
-					if(environment.nodes[i].name.compare(s) == 0)
-						posX=i;
-				}
-
-			}
-			else if(col == 1){
-				s2 = s;
-				for(uint i = 0; i < environment.numNodes;i++){
-					if(environment.nodes[i].name.compare(s) == 0)
-						posY=i;
-				}
-			}
-			col++;
-		}
-		if(posX != -1 && posY != -1){
-			environment.edges[posX][posY].status = 0;
-			environment.edges[posY][posX].status = 0;
-		}
-		else
-			cout << "[WARNING] Edge " << s1 << "-" << s2 << " is not an edge of the network\n";
-	}
-
-
-
-	return true;
-}
-
-
-string getSlash(){
-	#ifdef __unix__
-	#elif defined(_WIN32) || defined(WIN32)
-		#define OS_Windows
-	#endif
-
-	string slash;
-	#ifdef OS_Windows
-	 /* Windows code */
-		slash = "\\";
-	#else
-	 /* GNU/Linux code */
-		slash = "/";
-	#endif
-	return slash;
-}
-
 
 static void chkIntFn(void *dummy) {
 	R_CheckUserInterrupt();
@@ -2140,8 +1793,9 @@ bool checkInterrupt(bool check /*=true*/) {
 	else return false;
 }
 
-int printProgress (double percentage, double startTime, string outdir, int prg_numSearchMore)
-{
+int printProgress(double percentage, double startTime, string outdir,
+		int prg_numSearchMore) {
+
 	int pbwidth(40);
 	string pbstr = string(pbwidth, '|');
 	if(std::isnan(percentage) || std::isinf(percentage)) return 0;
@@ -2163,22 +1817,22 @@ int printProgress (double percentage, double startTime, string outdir, int prg_n
 	    printf ("\r\t %3d%% [%.*s%*s] est. remaining time : %10s", val, lpad, pbstr.c_str(), rpad, "", sremaining_time.str().c_str());
 	    fflush (stdout);
 	}
-
 	return val;
 }
 
+// Compute the distance to the kth nearest neigbhour of the given point in the
+// given space. The point object is the coordinates of the point with has as
+// many dimensions as the space.
+//
+// Args
+// 	-point		: a ndims-dimensional vector containing the coordinates of the given point.
+// 	-kdTree		:
+// 	-k			: the rank of the nearest neigbhour's distance to return
+using my_kd_tree_t = KDTreeVectorOfVectorsAdaptor<
+	vector<vector<double> >, double>;
+double compute_k_nearest_distance(vector<double> point,
+		my_kd_tree_t::index_t* index, int k) {
 
-double compute_k_nearest_distance(vector<double> point, KDTreeVectorOfVectorsAdaptor<std::vector<std::vector<double> >, double>::index_t* index,
-                                  int k)
-/* Compute the distance to the kth nearest neigbhour of the given point in the given space.
- * The point object is the coordinates of the point with has as many dimensions as the space.
- *
- * Args
- * 	-point		: a ndims-dimensional vector containing the coordinates of the given point.
- * 	-kdTree		:
- * 	-k			: the rank of the nearest neigbhour's distance to return
- */
-{
     vector<size_t>   ret_indexes(k);
     vector<double> out_dists_sqr(k);
     KNNResultSet<double> resultSet(k);
@@ -2189,15 +1843,14 @@ double compute_k_nearest_distance(vector<double> point, KDTreeVectorOfVectorsAda
 	return(sqrt(out_dists_sqr[k-1]));
 }
 
+// Computes the Kullback-Leibler divergence between two joint (2D) distributions of real values based
+// on the KNN estimation (F. Perez-Cruz 2004).
+//
+// <space 1> is the subsampling of <space 2> after removing NAs.
+double compute_kl_divergence_continuous(vector<vector<double> > space1,
+		vector<vector<double>> space2, int n1, int n2, int ndims, int k,
+		bool* flag_break_ties, int* map_samples, double* noiseVec) {
 
-double compute_kl_divergence_continuous(vector<vector<double>> space1, vector<vector<double>> space2, int n1, int n2, int ndims, int k,
-										bool* flag_break_ties, int* map_samples, double* noiseVec)
-/* Computes the Kullback-Leibler divergence between two joint (2D) distributions of real values based
- * on the KNN estimation (F. Perez-Cruz 2004).
- *
- * <space 1> is the subsampling of <space 2> after removing NAs.
- */
-{
 	double D;
 	double sumlog = 0;
 	double noise;
@@ -2215,17 +1868,12 @@ double compute_kl_divergence_continuous(vector<vector<double>> space1, vector<ve
 			}
 		}
 	}
-
     // construct a kd-tree index:
     // Dimensionality set at run-time (default: L2)
-    // ------------------------------------------------------------
-    typedef KDTreeVectorOfVectorsAdaptor< vector<vector<double> > , double >  my_kd_tree_t;
-
     my_kd_tree_t mat_index1(ndims, space1, 10);
     mat_index1.index->buildIndex();
     my_kd_tree_t mat_index2(ndims, space2, 10);
     mat_index2.index->buildIndex();
-
 
 	for(int i=0; i<n1; i++){
         vector<double> point(ndims);
@@ -2242,26 +1890,24 @@ double compute_kl_divergence_continuous(vector<vector<double>> space1, vector<ve
 }
 
 
-double compute_kl_divergence(int* posArray, Environment& environment, int samplesNotNA, int** dataNumeric_red,
-							 int* AllLevels_red, int* samplesToEvaluate)
-/*
- *
- */
-{
-	int current_samplesNotNA = getNumSamples_nonNA(environment, posArray[0], posArray[1]);
+double compute_kl_divergence(int* posArray, Environment& environment,
+		int samplesNotNA, int** dataNumeric_red, int* AllLevels_red,
+		int* samplesToEvaluate) {
+
+	int current_samplesNotNA = getNumSamples_nonNA( environment, posArray[0], posArray[1]);
 	double kldiv=0;
 	// 1 - XY discrete
-	if(environment.columnAsContinuous[posArray[0]] == 0 && environment.columnAsContinuous[posArray[1]] == 0){
+	if (environment.columnAsContinuous[posArray[0]] == 0
+			&& environment.columnAsContinuous[posArray[1]] == 0) {
 		//XY discrete
-
 		//Retrieve marginal distibutions with the current conditioning Us
 		int current_samplesNotNA = getNumSamples_nonNA(environment, posArray[0], posArray[1]);
 		double** jointFreqs = getJointFreqs(environment, posArray[0], posArray[1], current_samplesNotNA);
 
 		double** freqs2 = new double*[environment.allLevels[posArray[0]]];
-		for(int j = 0; j < environment.allLevels[posArray[0]]; j++ ){
+		for(uint j = 0; j < environment.allLevels[posArray[0]]; j++ ){
 			freqs2[j] = new double[environment.allLevels[posArray[1]]];
-			for(int k=0; k<environment.allLevels[posArray[1]]; k++){
+			for(uint k=0; k<environment.allLevels[posArray[1]]; k++){
 				freqs2[j][k] = 0;
 			}
 		}
@@ -2270,8 +1916,8 @@ double compute_kl_divergence(int* posArray, Environment& environment, int sample
 		for(int k = 0; k < samplesNotNA; k++){
 			freqs2[dataNumeric_red[0][k]][dataNumeric_red[1][k]]++;
 		}
-		for(int j = 0; j < environment.allLevels[posArray[0]]; j++ ){
-			for(int k=0; k<environment.allLevels[posArray[1]]; k++){
+		for(uint j = 0; j < environment.allLevels[posArray[0]]; j++ ){
+			for(uint k=0; k<environment.allLevels[posArray[1]]; k++){
 				freqs2[j][k] = 1.0*freqs2[j][k] / samplesNotNA;
 			}
 		}
@@ -2279,16 +1925,15 @@ double compute_kl_divergence(int* posArray, Environment& environment, int sample
 		kldiv = samplesNotNA*kl(freqs2, jointFreqs,
 								environment.allLevels[posArray[0]], environment.allLevels[posArray[1]]);
 
-		for(int j = 0; j < environment.allLevels[posArray[0]]; j++ ){
+		for(uint j = 0; j < environment.allLevels[posArray[0]]; j++ ){
 			delete [] freqs2[j];
 			delete [] jointFreqs[j];
 		}
 		delete [] freqs2;
 		delete [] jointFreqs;
-	}
-	// 2 - XY continuous
-	else if(environment.columnAsContinuous[posArray[0]] == 1 &&  environment.columnAsContinuous[posArray[1]] == 1){
-
+	} else if (environment.columnAsContinuous[posArray[0]] == 1
+			&& environment.columnAsContinuous[posArray[1]] == 1) {
+		// 2 - XY continuous
 		//Retrieve marginal distibutions with the current conditioning Us
 		vector<vector<double>> joint_base(current_samplesNotNA, vector<double>(2));
 		int* curr_samplesToEvaluate = new int[environment.numSamples];
@@ -2305,7 +1950,6 @@ double compute_kl_divergence(int* posArray, Environment& environment, int sample
 				i_map++;
 			}
 		}
-
 		vector<vector<double>> joint_nonNA(samplesNotNA, vector<double>(2));
 		int i_nonNA = 0;
 		for(uint i=0; i<environment.numSamples; i++){
@@ -2322,18 +1966,15 @@ double compute_kl_divergence(int* posArray, Environment& environment, int sample
 								 (AllLevels_red[k]!= current_samplesNotNA);
 		}
 
-		kldiv = samplesNotNA * compute_kl_divergence_continuous(joint_nonNA, joint_base,
-																samplesNotNA, current_samplesNotNA,
-													 			2, KNN_K, flag_break_ties,
-																map_samples, environment.noiseVec);
+		kldiv = samplesNotNA * compute_kl_divergence_continuous(joint_nonNA,
+				joint_base, samplesNotNA, current_samplesNotNA, 2, KNN_K,
+				flag_break_ties, map_samples, environment.noiseVec);
 
 		delete[] curr_samplesToEvaluate;
 		delete[] map_samples;
 		delete[] flag_break_ties;
-	}
-
-	// 3 - One discrete and one continuous
-	else{
+	} else {
+		// 3 - One discrete and one continuous
 		int discrete_pos; int continuous_pos; int discrete_pos_binary; int continuous_pos_binary;
 		if(environment.columnAsContinuous[posArray[0]] == 0){
 			discrete_pos = posArray[0]; continuous_pos = posArray[1];
@@ -2405,10 +2046,11 @@ double compute_kl_divergence(int* posArray, Environment& environment, int sample
 							  (AllLevels_red[continuous_pos_binary] != current_samplesNotNA);
 
 			if(count_nonNA[level] > KNN_K){
-				kldiv += fmax(0, count_nonNA[level] * compute_kl_divergence_continuous(continuous_nonNA, continuous_base,
-																			   		   count_nonNA[level], count_base[level],
-																			   		   1, KNN_K, flag_break_ties,
-																					   map_level, environment.noiseVec));
+				kldiv += fmax(0,
+						count_nonNA[level] * compute_kl_divergence_continuous(
+							continuous_nonNA, continuous_base,
+							count_nonNA[level], count_base[level], 1, KNN_K,
+							flag_break_ties, map_level, environment.noiseVec));
 			}
 			delete[] map_level;
 		} //level loop
@@ -2426,12 +2068,13 @@ double compute_kl_divergence(int* posArray, Environment& environment, int sample
 	return(kldiv);
 }
 
-int sign(double val){
-
+int sign(double val) {
 	if(val < 0)
 		return -1;
-	else if(val > 0)
+	else if (val > 0)
 		return 1;
 	else
 		return 0;
 }
+
+} }  // namespace miic::utility

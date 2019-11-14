@@ -7,27 +7,19 @@
 #include <sstream>
 
 #include <sys/stat.h>
-
-
 #include <Rcpp.h>
 
 
-#define BUFFSIZE 10000  // max length of the header input file
 #define FIRSTLINE 0  // keep at 0
 #define FIRSTCOLUMN 0  // 1=first column corresponds to sample name/number
 using namespace std;
 using namespace Rcpp;
 using uint=unsigned int;
 
-/////////////////////////////////////////////////////////////////////////////////////
-//  ------------------           FUNCTIONS                 ---------------------
-/////////////////////////////////////////////////////////////////////////////////////
-
-
 /**
 *  Transform data to factors
 */
-void transformToFactors(int numSamples, std::vector< std::vector <std::string> > data, double** dataNumeric, int i ){
+void transformToFactors(uint numSamples, std::vector< std::vector <std::string> > data, double** dataNumeric, int i ){
 
 
 	 // create a dictionary to store the factors of the strings
@@ -64,7 +56,7 @@ int removeRowsAllNA(int numSamples, uint numNodes, std::vector< std::vector <std
 	int* indexNA = new int[numSamples];
 	setArrayValuesInt1(indexNA, numSamples, -1);
 	int pos = 0;
-	for(uint i = 0; i < numSamples; i++){
+	for(int i = 0; i < numSamples; i++){
 		bool isNA = true;
 		for(uint j = 0; j < numNodes && isNA; j++){
 			if((data[i][j].compare("NA")  != 0) && (data[i][j].compare("") != 0)){
@@ -78,11 +70,11 @@ int removeRowsAllNA(int numSamples, uint numNodes, std::vector< std::vector <std
 	}
 
 	// if there are rows of NA value
-	if(pos != 0){		
+	if(pos != 0){
 		//correct variable numSamples
 		// save the values
 		pos = 0;
-		for(uint i = 0; i < numSamples; i++){
+		for(int i = 0; i < numSamples; i++){
 			if(indexNA[i] != -1){
 				for(uint j = 0; j < numNodes; j++){
 					data[pos][j] = data[indexNA[i]][j];
@@ -110,7 +102,7 @@ double** reading_input(int& row_num,  int col_num, std::vector<std::string> vect
 	vector <string> vec;
 
 	//convert input data
-	for(int i = 0; i < vectorData.size(); i++){
+	for(int i = 0; i < (int) vectorData.size(); i++){
 		if(i >= col_num){
 			if(i % col_num == 0){
 				if(i != col_num){
@@ -133,7 +125,7 @@ double** reading_input(int& row_num,  int col_num, std::vector<std::string> vect
 		}
 	}
 
-	
+
 	if(isNA){
 		//// Remove the lines that are all 'NA'
 		row_num = removeRowsAllNA(row_num, col_num, state);
@@ -145,7 +137,7 @@ double** reading_input(int& row_num,  int col_num, std::vector<std::string> vect
 	}
 
 	for(int i = 0; i < col_num; i++){
-		transformToFactors(row_num, state, dataNumeric,  i);		
+		transformToFactors(row_num, state, dataNumeric,  i);
 	}
 
 	return dataNumeric;
@@ -161,7 +153,7 @@ int crosscorrelation(const int row_num, const int col_num, double **configuratio
   double sumk, sumi, norm;
   //int c_max = 5000;  // c_max < sample_num !!! t3
   //int c_max = 100;  // c_max < sample_num !!! test_file!
-  
+
   double* Corr = new double[c_max];
   double* meanconf= new double[col_num];
 
@@ -180,18 +172,18 @@ int crosscorrelation(const int row_num, const int col_num, double **configuratio
   for (c=start; c<c_max; c++) {  // c=0 : a configuration is equal to itself
     sumi=0;
     for(i=shift+FIRSTLINE; i<row_num-c; i++) {
-      sumk=0;  
+      sumk=0;
       for(k=FIRSTCOLUMN; k<col_num; k++) {
 	sumk=sumk+(configuration[i][k]-meanconf[k])*(configuration[i+c][k]-meanconf[k]);
       }
       sumk=sumk/(col_num-FIRSTCOLUMN);
       //sumi=sumi+sumk*sumk;  // squared correlations
-      sumi=sumi+sumk;  
+      sumi=sumi+sumk;
 
-    } 
+    }
     sumi=sumi/(row_num-c-shift-FIRSTLINE);
     if(c==start) norm=sumi;
-    Corr[c]=sumi/norm;  
+    Corr[c]=sumi/norm;
 
     correlationV.push_back(Corr[c]);
   }
@@ -230,7 +222,7 @@ extern "C" SEXP evaluateEffn(SEXP inputDataR, SEXP variable_numR, SEXP sample_nu
 
 	if(Neff > sample_num)
 		Neff = sample_num;
-  
+
 
   // structure the output
     List result = List::create(

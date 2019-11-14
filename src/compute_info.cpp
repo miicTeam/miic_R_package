@@ -1,26 +1,12 @@
+#include "compute_info.h"
 
-
-//#define _MY_DEBUG_ 1
-//#define _MY_DEBUG_NEW 1
-#include <math.h>
-#include <string.h>
-
-#include <stdio.h>
-#include <stdlib.h>
-#include "memory.h"
-#include "computeInfo.h"
-
-#include <numeric>
-#include <iostream>
-#include <vector>
-#include <algorithm>
-#include <iterator>
-#include "utilities.h"
 #include <set>
 #include <math.h>
 
-using namespace std;
+#include "structure.h"
+#include "utilities.h"
 
+#define N_COL_NML 1000
 #define LARGE 1E+300
 
 //structures for threads
@@ -30,12 +16,93 @@ using namespace std;
 //                      z_top          & nSample[z_top]*I(xy|{ui}z) & k_xy_uiz
 //                      R_top          & nSample[z_top]*I(xyz|{ui}) & k_xyz_ui
 
+namespace miic { namespace computation {
 
+using uint = unsigned int;
+using namespace miic::structure;
+using namespace miic::utility;
 
+double lnfactorial(int n, double* looklog) {
+	double z = 0;
+	if (n == 0) {
+		z = 1;
+	} else {
+		for (int y=2; y<=n; y++)
+			z += looklog[y];
+	}
+	return z;
+}
 
-double* getAllInfoNEW( int* ptrAllData, int* ptrAllLevels, int* ptrVarIdx, int nbrUi, int* ptrZiIdx, int nbrZi, int ziPos, int sampleSize,
-	int sampleSizeEff, int modCplx, int k23, double* c2terms, MemorySpace* memory, double* weights, double** freqs1, bool testDistribution)
-{
+double logchoose(int n, int k, double* looklog) {
+	if (n==k || k==0) return 0;
+
+	return (lnfactorial(n, looklog) - lnfactorial(k, looklog)
+			- lnfactorial(n-k, looklog));
+}
+
+double logchoose(int n, int k, double* looklog, double** lookchoose) {
+	if (n==k || k==0) return 0;
+
+	if (k < N_COL_NML) {
+		double val = lookchoose[k][n];
+		if (val >= 0) return val;
+	}
+
+	double res = logchoose(n, k, looklog);
+	if (k < N_COL_NML)
+		lookchoose[k][n] = res;
+
+	return res;
+}
+
+double computeLogC(int N, int r, double* looklog, double* c2terms) {
+	double C2 = 0;
+	if (c2terms[N] != -1)
+		C2 = c2terms[N];
+	else {
+		if (N <= 1000) {
+			for (int h = 0; h <= N; h++) {
+				C2 += exp(logchoose(N, h, looklog)
+						+ log(pow(h / ((double)N), h))
+						+ log(pow((N - h) / ((double)N), (N-h)))
+						);
+			}
+		} else {
+			C2 = sqrt(N*M_PI_2) * exp(sqrt(8 / (9*N*M_PI))
+					+ (3*M_PI-16) / (36*N*M_PI));
+		}
+		c2terms[N] = C2;
+	}
+
+	double D = C2;
+	double logC = log(D);
+	if (r > 2) {
+    	for (int rr = 3; rr <= r; rr++)	{
+		  D = 1 + N / (1.0*(rr - 2)*D);
+		  logC += log(D);
+		}
+  	}
+	return logC;
+}
+
+double computeLogC(int N, int r, double* looklog, double** cterms) {
+	if (r < N_COL_NML) {
+		double val = cterms[r][N];
+		if (val >= 0) return val;
+	}
+
+	double logC = computeLogC(N, r, looklog, cterms[2]);
+	if (r < N_COL_NML)
+		cterms[r][N]=logC;
+
+	return logC;
+}
+
+double* getAllInfoNEW( int* ptrAllData, uint* ptrAllLevels, int* ptrVarIdx,
+		int nbrUi, int* ptrZiIdx, int nbrZi, int ziPos, int sampleSize,
+		int sampleSizeEff, int modCplx, int k23, double* looklog,
+		double* c2terms, MemorySpace* memory, double* weights, double** freqs1,
+		bool testDistribution) {
 
 	int randomrescaling=1;
 	float r,rr;
@@ -592,8 +659,9 @@ double* getAllInfoNEW( int* ptrAllData, int* ptrAllLevels, int* ptrVarIdx, int n
 					  info_ui_y  += NlogN;
 
 					  if(modCplx != MDL){
-					    if(Nyui>Ntot) printf("# ==$$$===> Ntot=%d Nyui=%d \n",Ntot,Nyui);
-					    logC_yui_x += compute_LogC_C2(Nyui,dBin[0][0],c2terms);
+					    if(Nyui>Ntot)
+							printf("# ==$$$===> Ntot=%d Nyui=%d \n",Ntot,Nyui);
+					    logC_yui_x += computeLogC(Nyui, dBin[0][0], looklog, c2terms);
 					  }
 					}
 					Lyui = sortedSample[k][2];
@@ -609,7 +677,7 @@ double* getAllInfoNEW( int* ptrAllData, int* ptrAllLevels, int* ptrVarIdx, int n
 								info_ui_x  += NlogN;
 								if(modCplx != MDL){
 								    if(Nxuij>Ntot) printf("# ==$$$===> Ntot=%d Nxuij=%d \n",Ntot,Nxuij);
-								    logC_xui_y += compute_LogC_C2(Nxuij,dBin[0][1],c2terms);
+								    logC_xui_y += computeLogC(Nxuij, dBin[0][1], looklog, c2terms);
 								}
 
 								Nxuis += Nxuij;
@@ -623,8 +691,8 @@ double* getAllInfoNEW( int* ptrAllData, int* ptrAllLevels, int* ptrVarIdx, int n
 						  info_ui_x  -= NlogN;
 						  if(modCplx != MDL){
 						    if(Nui>Ntot) printf("# ==$$$===> Ntot=%d Nui=%d \n",Ntot,Nui);
-						    logC_ui_x += compute_LogC_C2(Nui,dBin[0][0],c2terms);
-						    logC_ui_y += compute_LogC_C2(Nui,dBin[0][1],c2terms);
+						    logC_ui_x += computeLogC(Nui, dBin[0][0], looklog, c2terms);
+						    logC_ui_y += computeLogC(Nui, dBin[0][1], looklog, c2terms);
 						  }
 						}
 						Lui = sortedSample[k][3];
@@ -883,7 +951,7 @@ double* getAllInfoNEW( int* ptrAllData, int* ptrAllLevels, int* ptrVarIdx, int n
 
 				if(testDistribution){
 					int** counts2 = (int **)calloc(ptrAllLevels[ptrVarIdx[0]], sizeof(int*));
-			    	for( j = 0; j < ptrAllLevels[ptrVarIdx[0]]; j++ )
+			    	for (uint j=0; j<ptrAllLevels[ptrVarIdx[0]]; j++)
 			    		counts2[j] = (int *)calloc(ptrAllLevels[ptrVarIdx[1]], sizeof(int));
 
 			    	// fill table
@@ -906,16 +974,13 @@ double* getAllInfoNEW( int* ptrAllData, int* ptrAllLevels, int* ptrVarIdx, int n
 					if(kldiv < 1)
 						isGoodCandidate = false;
 
-					for( j = 0; j < ptrAllLevels[ptrVarIdx[0]]; j++ )
+					for(uint j=0; j<ptrAllLevels[ptrVarIdx[0]]; j++)
 						delete [] counts2[j];
 					delete [] counts2;
 				}
 			}
 
-			if(isGoodCandidate){
-
-
-
+			if (isGoodCandidate) {
 				#if _MY_DEBUG_NEW
 					  printf("\n# =====> test before z 2 nSample[zi=%d]=%d nSample0=%d \n",zi,nSample[zi],nSample0);
 				#endif // _MY_DEBUG_NEW
@@ -1114,8 +1179,8 @@ double* getAllInfoNEW( int* ptrAllData, int* ptrAllLevels, int* ptrVarIdx, int n
 									info_yui_z -= NlogN;//
 									info_ui_y  += NlogN;//
 									if(modCplx != MDL){
-									    logC_yui_x += compute_LogC_C2(Nyui,dBin[0][0],c2terms);
-									    logC_yui_z += compute_LogC_C2(Nyui,dBin[0][z],c2terms);
+									    logC_yui_x += computeLogC(Nyui, dBin[0][0], looklog, c2terms);
+									    logC_yui_z += computeLogC(Nyui, dBin[0][z], looklog, c2terms);
 									}
 
 									for( l = 0; l < dBin[0][z]; l++ ){
@@ -1126,7 +1191,7 @@ double* getAllInfoNEW( int* ptrAllData, int* ptrAllLevels, int* ptrVarIdx, int n
 										info_uiz_y += NlogN;//
 										info_yuiz_x -= NlogN;//
 										if(modCplx != MDL){
-										    logC_yuiz_x += compute_LogC_C2(Nyuizl,dBin[0][0],c2terms);
+										    logC_yuiz_x += computeLogC(Nyuizl, dBin[0][0], looklog, c2terms);
 										}
 										Nyuizs += Nyuizl;
 										Nyuiz[l]=0;//
@@ -1146,9 +1211,9 @@ double* getAllInfoNEW( int* ptrAllData, int* ptrAllLevels, int* ptrVarIdx, int n
 										info_ui_y  -= NlogN;//
 										info_ui_z  -= NlogN;//
 										if(modCplx != MDL){
-											logC_ui_x += compute_LogC_C2(Nui,dBin[0][0], c2terms);//
-											logC_ui_y += compute_LogC_C2(Nui,dBin[0][1], c2terms);//
-											logC_ui_z += compute_LogC_C2(Nui,dBin[0][z], c2terms);//
+											logC_ui_x += computeLogC(Nui, dBin[0][0], looklog, c2terms);
+											logC_ui_y += computeLogC(Nui, dBin[0][1], looklog, c2terms);
+											logC_ui_z += computeLogC(Nui, dBin[0][z], looklog, c2terms);
 										}
 										Nuis += Nui;
 										Nui = 0;   //3
@@ -1161,8 +1226,8 @@ double* getAllInfoNEW( int* ptrAllData, int* ptrAllLevels, int* ptrVarIdx, int n
 												info_uiz_x -= NlogN;//
 												info_uiz_y -= NlogN;//
 												if(modCplx != MDL){
-												  logC_uiz_x += compute_LogC_C2(Nuizl,dBin[0][0], c2terms);//
-												  logC_uiz_y += compute_LogC_C2(Nuizl,dBin[0][1], c2terms);//
+												  logC_uiz_x += computeLogC(Nuizl, dBin[0][0], looklog, c2terms);
+												  logC_uiz_y += computeLogC(Nuizl, dBin[0][1], looklog, c2terms);
 												}
 												Nuizs += Nuizl;
 												Nuiz[l]=0;//
@@ -1179,8 +1244,8 @@ double* getAllInfoNEW( int* ptrAllData, int* ptrAllLevels, int* ptrVarIdx, int n
 												info_xui_z -= NlogN;//
 												info_ui_x  += NlogN;//
 												if(modCplx != MDL){
-												  logC_xui_y += compute_LogC_C2(Nxuij,dBin[0][1], c2terms);//
-												  logC_xui_z += compute_LogC_C2(Nxuij,dBin[0][z], c2terms);//
+												  logC_xui_y += computeLogC(Nxuij, dBin[0][1], looklog, c2terms);
+												  logC_xui_z += computeLogC(Nxuij, dBin[0][z], looklog, c2terms);
 												}
 												Nxuis += Nxuij;
 												Nxui[j]=0;//
@@ -1193,7 +1258,7 @@ double* getAllInfoNEW( int* ptrAllData, int* ptrAllLevels, int* ptrVarIdx, int n
 														info_uiz_x += NlogN;//
 														info_xuiz_y -= NlogN;//
 														if(modCplx != MDL){
-														  logC_xuiz_y += compute_LogC_C2(Nxuizjl,dBin[0][1], c2terms);//
+														  logC_xuiz_y += computeLogC(Nxuizjl, dBin[0][1], looklog, c2terms);
 														}
 														Nxuizs += Nxuizjl;
 														Nxuiz[j][l]=0;//
@@ -1513,3 +1578,5 @@ double* getAllInfoNEW( int* ptrAllData, int* ptrAllLevels, int* ptrVarIdx, int n
 	return( ptrRetValues );
 
 }
+
+} }  // namespace miic::computation
