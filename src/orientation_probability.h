@@ -6,10 +6,13 @@
 
 #include "structure.h"
 
-namespace miic { namespace reconstruction {
+namespace miic {
+namespace reconstruction {
 
-std::vector<std::vector<std::string> > orientationProbability(structure::Environment&);
+std::vector<std::vector<std::string> > orientationProbability(
+    structure::Environment&);
 
-} }  // namespace miic::reconstruction
+}  // namespace reconstruction
+}  // namespace miic
 
 #endif  // MIIC_ORIENTATION_PROBABILITY_H_
