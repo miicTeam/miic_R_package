@@ -1,245 +1,235 @@
-#include "memory.h"
-#ifndef STRUCTURE_H
-#define STRUCTURE_H
+#ifndef MIIC_STRUCTURE_H_
+#define MIIC_STRUCTURE_H_
+
+#include <memory>
 #include <string>
 #include <vector>
-#include <map>
-#include <tuple>
 
-using namespace std;
-using uint=unsigned int;
+namespace miic {
+namespace structure {
 
-struct StructWithOrtToPropagate{
-	int name;
-	int idxStruct;
-	int vStruct;
-	int idxEdge;
-	int dir;
+namespace structure_impl {
+
+using uint = unsigned int;
+using std::string;
+using std::vector;
+
+struct EdgeSharedInfo {
+  vector<int> ui_vect_idx;  // Indice of separating nodes
+  // Indice of candidate nodes contributing to the conditional independence
+  vector<int> zi_vect_idx;
+  int z_name_idx = -1;  // Index of the last best contributor
+  double Rxyz_ui = 0;   // Score of the best contributor
+  double Ixy_ui = 0;
+  double cplx = 0;
+  int Nxy_ui = -1;
+  short int connected = 1;  // 1 or 0. An edge is by default connceted.
+  double mutInfo = 0;       // Mutual information without conditioning
+  double cplx_noU = 0;      // Complexity without conditioning
+  int Nxy = -1;             // Count of joint factors without NA
+
+  EdgeSharedInfo() = default;
+  // Remove knowledge about all contributing nodes.
+  void reset() {
+    zi_vect_idx.clear();
+    ui_vect_idx.clear();
+    z_name_idx = -1;
+    Rxyz_ui = 0;
+    Ixy_ui = mutInfo;
+    cplx = cplx_noU;
+    Nxy_ui = Nxy;
+    connected = 1;
+  }
+
+  void setUndirected() {
+    ui_vect_idx.clear();
+    z_name_idx = -1;
+    Rxyz_ui = 0;
+    Ixy_ui = mutInfo;
+    cplx = cplx_noU;
+    Nxy_ui = Nxy;
+    connected = 1;
+  }
 };
 
-struct Struct{
-	int xi;
-	int xk;
-	int xj;
-
-	int originalPositionStruct;
-
-	double rv;
-	int sv;
-	double Ibase;
-	double Istruct;
-
-	short int d1;
-	short int d2;
-	short int isOut;
-	short int orgOut;
-	short int orgD1;
-	short int orgD2;
+struct Node {
+  string name;
+  int level;
 };
 
-struct EdgeStructure {
-	int z_name_idx; // index of the last best contributor
-	std::vector<int> ui_vect_idx; // index of ui
-	std::vector<int> zi_vect_idx; // index of ui
-	double Rxyz_ui; // score of the best contributor
-
-	double Ixy_ui;
-	double cplx;
-	int Nxy_ui;
-	short int status;
-	// Keeping track of jointCounts (discrete) and jointSpace(continuous) for KL divergence when
-	//adding Us to the conditioning set.
-	double mutInfo;  // mutual information without conditioning
-	double cplx_noU;  // complexity without conditioning
-	int Nxy;  // count of joint factors without NA
-
-	std::vector<int> indexStruct; // memorize the corresponding structure in the structures list in the environment by its index
-	std::vector<int> edgesInSpeTpl_list; // memorize the index of open structures
-
-	EdgeStructure():
-		z_name_idx(-1),
-		ui_vect_idx(std::vector<int>()),
-		zi_vect_idx(std::vector<int>()),
-		Rxyz_ui(0.0),
-
-		Ixy_ui(0.0),
-		cplx(0.0),
-		Nxy_ui(-1),
-		status(-1),
-		mutInfo(0.0),
-		cplx_noU(0.0),
-		Nxy(-1),
-
-		indexStruct(std::vector<int>()),
-		edgesInSpeTpl_list(std::vector<int>())
-	{}
-
-    void reset() {
-        z_name_idx = -1;
-        zi_vect_idx.clear();
-        ui_vect_idx.clear();
-        Rxyz_ui = 0;
-        status = -1;
-        Ixy_ui = mutInfo;
-        cplx = cplx_noU;
-        Nxy_ui = Nxy;
-        indexStruct.clear();
-        edgesInSpeTpl_list.clear();
-    }
-
-    void setUndirected () {
-        z_name_idx = -1;
-        ui_vect_idx.clear();
-        Rxyz_ui = 0;
-        status = 3;
-        Ixy_ui = mutInfo;
-        cplx = cplx_noU;
-        Nxy_ui = Nxy;
-    }
+struct EdgeID {
+  uint i, j;
+  EdgeID() = delete;
+  EdgeID(uint i, uint j) : i(i), j(j) {}
 };
 
-struct Node{
-	std::string name;
-	int level;
+struct Edge {
+  // Edge is stored in Edge** edges
+  // Status code (suppose edges[X][Y]):
+  // 0: not connected;
+  // 1: connected and undirected;
+  // 2: connected directed X -> Y;
+  // -2: connected directed X <- Y;
+  // 6: connected bidirected X <-> Y;
+  short int status;       // Current status.
+  short int status_init;  // Status after initialization.
+  short int status_prev;  // Status in the previous iteration.
+  std::shared_ptr<EdgeSharedInfo> shared_info;
 };
 
-struct ExecutionTime{
-	double startTimeInit;
-	double startTimeIter;
-	long double init;
-	long double iter;
-	long double initIter;
-	long double ort;
-	long double cut;
-	long double ort_after_cut;
-	long double total;
+struct MemorySpace {
+  int maxlevel;
+  int** sample;
+  int** sortedSample;
+  int** Opt_sortedSample;
+  int* orderSample;
+  int* sampleKey;
+  int* Nxyuiz;
+  int* Nyuiz;
+  int* Nuiz;
+  int* Nz;
+  int* Ny;
+  int* Nxui;
+  int* Nx;
+  int** Nxuiz;
+  int* bridge;
+  double* Pxyuiz;
+  // continuous data
+  int* samplesToEvaluate;
+  int* samplesToEvaluateTemplate;
+
+  int** dataNumeric_red;
+  int** dataNumericIdx_red;
+
+  int* AllLevels_red;
+  int* cnt_red;
+  int* posArray_red;
 };
 
-struct XJAddress{
-	int i;
-	int j;
-
-    XJAddress() = default;
-    XJAddress(int i, int j) : i(i), j(j) {}
+struct ExecutionTime {
+  double startTimeInit;
+  double startTimeIter;
+  long double init;
+  long double iter;
+  long double initIter;
+  long double ort;
+  long double cut;
+  long double ort_after_cut;
+  long double total;
 };
 
-struct Edge{
-	short int isConnected;
-	short int isConnectedAfterInitialization;
-	short int areNeighboursAfterIteration;
-	EdgeStructure* edgeStructure;
-};
-
-//
- /* Structure for all the needed parameters (input plus state variables)
- */
+// Structure for all the needed parameters (input plus state variables)
 struct Environment {
-	ExecutionTime execTime;
-	int consistentPhase;
-	// for gaussian case
-	double** rho;
-	double* standardDeviations;
-	double* means;
-	double** dataDouble;
-	double ** pMatrix;
-	int ** nSamples;
-	int ** iterative_cuts;
-	double* sampleWeights;
-	std::vector<double> sampleWeightsVec;
-	bool flag_sample_weights;
+  ExecutionTime execTime;
+  int consistentPhase;
+  // for gaussian case
+  double** rho;
+  double* standardDeviations;
+  double* means;
+  double** dataDouble;
+  double** pMatrix;
+  int** nSamples;
+  int** iterative_cuts;
+  double* sampleWeights;
+  vector<double> sampleWeightsVec;
+  bool flag_sample_weights;
 
+  bool testDistribution;
+  int seed;
+  uint nThreads;
+  MemorySpace m;
+  vector<int> steps;
+  MemorySpace* memoryThreads;
+  // Matrix to keep the number of edges for each eta and shuffle
+  double** shuffleListNumEdges;
+  double* c2terms;
+  double** cterms;
+  double** lookchoose;
+  int* columnAsContinuous;
+  int* columnAsGaussian;
+  vector<int> cntVarVec;
+  int* oneLineMatrix;
 
-	bool testDistribution;
-	int seed;
-	uint nThreads;
-	MemorySpace m;
-	std::vector<int> steps;
-	MemorySpace* memoryThreads;
-	double** shuffleListNumEdges; // matrix to keep the number of edges for each eta and shuffle
-	double* c2terms;
-	double** cterms;
-	double** lookchoose;
-	int* columnAsContinuous;
-	int* columnAsGaussian;
-	std::vector<int> cntVarVec;
-	int* oneLineMatrix;
+  string myVersion;  // -i parameter
 
-	std::string myVersion; // -i parameter
+  string outDir;    // -i parameter
+  string inData;    // -o parameter
+  string cplxType;  // -c parameter
+  string blackbox_name;
+  string edgeFile;
+  string dataTypeFile;
+  // string sampleWeightsFile;// -w parameter
 
-	std::string outDir; // -i parameter
-	std::string inData; // -o parameter
-	std::string cplxType; // -c parameter
-	std::string blackbox_name;
-	std::string edgeFile;
-	std::string dataTypeFile;
-	//std::string sampleWeightsFile;// -w parameter
+  uint numNodes;
+  uint numSamples;
+  bool firstIterationDone;
 
-	uint numNodes;
-	uint numSamples;
-	bool firstIterationDone;
+  vector<EdgeID*> searchMoreAddress;
+  vector<EdgeID*> noMoreAddress;
+  int numSearchMore;
+  int numNoMore;
 
-	std::vector<XJAddress*> searchMoreAddress;
-	std::vector<XJAddress*> noMoreAddress;
-	int numSearchMore;
-	int numNoMore;
+  int typeOfData;
+  int isAllGaussian;
+  int atLeastTwoGaussian;
+  int atLeastOneContinuous;
+  int atLeastTwoDiscrete;
 
-	int typeOfData;
-	int isAllGaussian;
-	int atLeastTwoGaussian;
-	int atLeastOneContinuous;
-	int atLeastTwoDiscrete;
+  // Keep a trace of the number of edges for every state
+  int phantomEdgenNum;
 
-	// keep a trace of the number of edges for every state
-	int phantomEdgenNum;
+  Node* nodes;
+  Edge** edges;
+  vector<string> vectorData;
+  vector<vector<string> > data;
+  int** dataNumeric;
+  int** dataNumericIdx;
+  uint* allLevels;
 
-	Node* nodes;
-	Edge** edges;
-	std::vector<std::string>  vectorData;
-	std::vector< std::vector <std::string> > data;
-	//std::string** data;
-	int** dataNumeric;
-	int** dataNumericIdx;
-	int* allLevels;
+  double** proportions;
 
-	double** proportions;
+  int** cut;
 
-	int** cut;
+  double logEta;
 
-	double logEta;
-	double l;
+  bool myTest;
+  bool isDegeneracy;             // -d parameter
+  bool isVerbose;                // -v parameter
+  bool isLatent;                 // -l parameter
+  bool isLatentOnlyOrientation;  // -l parameter
+  bool isNoInitEta;              // -f parameter
+  bool propag;
+  bool isK23;  // -k parameter
+  bool isPropagation;
 
-	bool myTest;
-	bool isDegeneracy; // -d parameter
-	bool isVerbose; // -v parameter
-	bool isLatent; // -l parameter
-	bool isLatentOnlyOrientation; // -l parameter
-	bool isNoInitEta; // -f parameter
-	bool propag;
-	bool isK23; // -k parameter
-	bool isPropagation;
+  int isTplReuse;  // -r parameter
+  int cplx;
+  int halfVStructures;
 
-	int isTplReuse; // -r parameter
-	int cplx;
-	int halfVStructures;
+  int numberShuffles;          // -s parameter
+  double confidenceThreshold;  // -e parameter
 
-	int numberShuffles; // -s parameter
-	double confidenceThreshold; // -e parameter
+  int effN;  // -n parameter
+  int minN;
+  int thresPc;
 
-	uint effN; // -n parameter
-	int minN;
-	//int nDg;
-	int thresPc;
+  int maxbins;
+  int initbins;
+  double* looklog;
+  double* lookH;
 
-	int maxbins;
-	int initbins;
-	double* looklog;
-	double* lookH;
-
-	double* noiseVec;
-
-	int iCountStruct;
-	std::vector<Struct*> globalListOfStruct;
-	std::vector<int> vstructWithContradiction;
+  double* noiseVec;
 };
 
-#endif
+}  // namespace structure_impl
+using structure_impl::Edge;
+using structure_impl::EdgeID;
+using structure_impl::EdgeSharedInfo;
+using structure_impl::Environment;
+using structure_impl::ExecutionTime;
+using structure_impl::MemorySpace;
+using structure_impl::Node;
+}  // namespace structure
+}  // namespace miic
+
+#endif  // MIIC_STRUCTURE_H_
