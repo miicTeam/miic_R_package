@@ -30,12 +30,12 @@
 #' hist(myDist, breaks=MDL_disc$cutpoints)
 #'}
 
-discretizeMDL <- function(myDist = NULL, maxbins=20)
-{
+discretizeMDL <- function(myDist = NULL, maxbins = 20) {
   result = list()
   #### Check the input arguments
-  if( is.null( myDist ) )
-  { stop("The input data file is required") }
+  if (is.null(myDist)) {
+    stop("The input data file is required")
+  }
   if (base::requireNamespace("Rcpp", quietly = TRUE)) {
     result <- .Call('mydiscretizeMDL', myDist, maxbins, PACKAGE = "miic")
   }

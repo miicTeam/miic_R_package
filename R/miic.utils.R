@@ -1,167 +1,188 @@
-isContinuous <- function(tmpArray){
-	nbLevels = unique(tmpArray)
+isContinuous <- function(tmpArray) {
+  nbLevels = unique(tmpArray)
 	nbSamples = length(tmpArray)
-	if(length(nbLevels) >= 0.8 * nbSamples | length(nbLevels) >= 100 ){ print(paste("VARIABLE CONTINUOUS LIKE:", length(nbLevels), "different levels"));return(1) }
-	else{ return(0) }
+	if (length(nbLevels) >= 0.8 * nbSamples | length(nbLevels) >= 100 ) {
+	  print(paste("VARIABLE CONTINUOUS LIKE:", length(nbLevels),
+	              "different levels"))
+	  return(1)
+	}	else {
+	  return(0)
+  }
 }
 
-checkInput <- function(dataFile, method){
+checkInput <- function(dataFile, method) {
 	errCode = "0"
 	isCnt_test = 0
 	isContinuousArg = 0
 
 	str = unlist(paste(as.character(dataFile), collapse=""))
-	str_names = unlist(strsplit(str,"\n"))[1]
-	if(grepl("#", str) | grepl("&", str) | grepl("'", str)){
+	str_names = unlist(strsplit(str, "\n"))[1]
+	if (grepl("#", str) | grepl("&", str) | grepl("'", str)) {
 		errCode = "111"
-	}
-	else
-	{
-  		isCnt_test = 0#sum(apply( dataFile,2,isContinuous ))
+	} else {
+		isCnt_test = 0#sum(apply( dataFile, 2, isContinuous ))
 
-		if (method == "miic" & length(unique(dataFile[1,])) != ncol(dataFile)) { errCode = "117"}
-		else if (method == "miic" & isCnt_test > 0.1*ncol(dataFile) & isContinuousArg == 0) { errCode = "118" }
-		else {
-			if (method == "miic" & isCnt_test > 0 & isContinuousArg == 0) {  errCode = "018" }
+		if (method == "miic" & length(unique(dataFile[1, ])) != ncol(dataFile)) {
+		  errCode = "117"
+		} else if (method == "miic" &
+		           isCnt_test > 0.1 * ncol(dataFile) &
+		           isContinuousArg == 0) {
+		  errCode = "118"
+		} else {
+			if (method == "miic" & isCnt_test > 0 & isContinuousArg == 0) {
+			  errCode = "018"
+		  }
 		}
 	}
-
 	return(errCode)
 }
 
 
-checkTrueEdges <- function(edgesFile){
+checkTrueEdges <- function(edgesFile) {
 	errCode = "0"
 	str =  unlist(paste(as.character(edgesFile), collapse=""))
-	if(grepl("#", str) | grepl("&", str) | grepl("'", str)){
+	if (grepl("#", str) | grepl("&", str) | grepl("'", str)) {
 		errCode = "121"
+	} else {
+		if (ncol(edgesFile) != 2 & ncol(edgesFile) != 3) {
+		  errCode = "023"
+	  }
 	}
-	else{
-		if(ncol(edgesFile) != 2 & ncol(edgesFile) != 3){errCode = "023"}
-	}
-
 	return(errCode)
 }
 
-checkLayout <- function(layoutFile){
+checkLayout <- function(layoutFile) {
 	errCode = "0"
 
 	str = unlist(paste(as.character(layoutFile), collapse=""))
-	if(grepl("#", str) | grepl("&", str) | grepl("'", str)){
+	if (grepl("#", str) | grepl("&", str) | grepl("'", str)) {
 		errCode = "131"
-	}
-	else{
-		if( ncol(layoutFile) != 2 & ncol(layoutFile) != 3  ){errCode = "033"}
-		else {
-				if(ncol(layoutFile) == 2){
-				  if(!is.numeric(layoutFile[,1]) | !is.numeric(layoutFile[,2]) ){errCode = "034"}
-				} else if(ncol(layoutFile) == 3 & (!is.numeric(layoutFile[,2]) | !is.numeric(layoutFile[,3]) ) ) {errCode = "038"}
+	} else {
+		if ( ncol(layoutFile) != 2 & ncol(layoutFile) != 3  ) {
+		  errCode = "033"
+		} else {
+			if (ncol(layoutFile) == 2) {
+			  if (!is.numeric(layoutFile[, 1]) | !is.numeric(layoutFile[, 2]))
+			    errCode = "034"
+			} else if (ncol(layoutFile) == 3) {
+			  if (!is.numeric(layoutFile[, 2]) | !is.numeric(layoutFile[, 3]))
+			    errCode = "038"
+		  }
 		}
-
 	}
-
 	return(errCode)
 }
 
-checkStateOrder <- function(stateOrderFile,dataFile){
+checkStateOrder <- function(stateOrderFile, dataFile) {
 	errCode = "0"
 
 	str = unlist(paste(as.character(stateOrderFile), collapse=""))
-	str_names = unlist(strsplit(str,"\n"))[1]
-	if(grepl("#", str) | grepl("&", str) | grepl("'", str)){
+	str_names = unlist(strsplit(str, "\n"))[1]
+	if (grepl("#", str) | grepl("&", str) | grepl("'", str)) {
 		errCode = "141"
-	} else{
-		rownames(stateOrderFile) = stateOrderFile[,"var_names"]
+	} else {
+		rownames(stateOrderFile) = stateOrderFile[, "var_names"]
 		myVariables = rownames(stateOrderFile)
 
-		if( ncol(stateOrderFile) != 2  & ncol(stateOrderFile) != 3){errCode = "043"}
+		if ( ncol(stateOrderFile) != 2  & ncol(stateOrderFile) != 3)
+		  errCode = "043"
 	}
-
 	return(errCode)
 }
 
-
-errorCodeToString <- function(error_code){
+errorCodeToString <- function(error_code) {
 	errorList1 = list(
-				'0' = "Warning:",
-				'1' = "Fatal error:"
-			);
-
+	  '0' = "Warning:",
+		'1' = "Fatal error:"
+	)
 	errorList2 = list(
-				'0' = 'Unknown Error',
-				'1' = "input data frame",
-				'2' = "trueEdge data frame",
-				'3' = "layout data frame",
-				'4' = "cathegory order data frame"
-			);
+		'0' = 'Unknown Error',
+		'1' = "input data frame",
+		'2' = "trueEdge data frame",
+		'3' = "layout data frame",
+		'4' = "cathegory order data frame"
+	)
 
 	errorList3 = list(
 		'0' = "does not exist",
-		'1' = "is not readable, check the file format. Special characters like #, &, ' are not allowed.",
+		'1' = paste("is not readable, check the file format. Special characters ",
+		            "like #, &, ' are not allowed."),
 		'2' = "should not have rownames",
 		'3' = "should have exactly two columns",
 		'4' = "should be numerical",
 		'5' = "should not have column names",
 		'6' = "problem as states in stateOrderFile are not consistent with dataset",
 		'7' = "has duplicated column names",
-		'8' = "contains one or several variables with too many different levels (might be continuous data)",
+		'8' = paste("contains one or several variables with too many different ",
+		            " levels (might be continuous data)"),
 		'9' = 'occured.'
-	);
+	)
 	error_string = unlist(strsplit(error_code, ""))
-	return(paste(errorList1[[error_string[1]]], errorList2[[error_string[2]]], errorList3[[error_string[3]]], sep = " "))
+	return(paste(errorList1[[error_string[1]]], errorList2[[error_string[2]]],
+	             errorList3[[error_string[3]]], sep = " "))
 }
 
-isCausal <- function(summary, probability){
-  v_structs = probability[which(probability$NI3 < 0),]
+isCausal <- function(summary, probability) {
+  v_structs = probability[which(probability$NI3 < 0), ]
   # for each edge
   isCausalVec = c()
-  for(i in 1:nrow(summary)){
+  for (i in 1:nrow(summary)) {
     isCausal = "N"
-    if(summary$type=="P"){
-      if(summary$infOrt[i] == 6){
+    if (summary$type == "P") {
+      if (summary$infOrt[i] == 6) {
         isCausal = "Y"
       } else{
-        if(summary$infOrt[i] != 1){
-          if(summary$infOrt[i] == 2){
+        if (summary$infOrt[i] != 1) {
+          if (summary$infOrt[i] == 2) {
             from = as.character(summary$x[i])
             to = as.character(summary$y[i])
           }
-          if(summary$infOrt[i] == -2){
+          if (summary$infOrt[i] == -2) {
             from = as.character(summary$y[i])
             to = as.character(summary$x[i])
           }
 
           # test if the edge is involved in a v-struct
-          v_structsTo = v_structs[which(v_structs$target == to & (v_structs$source1 == from | v_structs$source2 == from)),]
-          if(nrow(v_structsTo) > 0){
+          v_structsTo = v_structs[which(v_structs$target == to &
+                                        (v_structs$source1 == from |
+                                         v_structs$source2 == from)), ]
+          if (nrow(v_structsTo) > 0) {
             #list all non v-structures involving the node from and of the form   A -> from -> to
-            non_v_structsFrom = probability[which(probability$NI3 > 0 & probability$target == from & (probability$source1 == to | probability$source2 == to)),]
-            if(nrow(non_v_structsFrom) > 0){
-              for(j in 1:nrow(non_v_structsFrom)){
+            non_v_structsFrom = probability[which(probability$NI3 > 0 &
+                                                  probability$target == from &
+                                                  (probability$source1 == to |
+                                                   probability$source2 == to)), ]
+            if (nrow(non_v_structsFrom) > 0) {
+              for(j in 1:nrow(non_v_structsFrom)) {
                 # check if  A -> from
                 A = as.character(non_v_structsFrom$source1[j])
-                if(length(A)>0){
-                  if(A == to){
+                if (length(A)>0) {
+                  if (A == to) {
                     A = as.character(non_v_structsFrom$source2[j])
                   }
                 }
                 isAtowardsFrom = FALSE
-                ort = as.integer(summary$infOrt[which(summary$x==A & summary$y==from)])
-                if(length(ort) > 0){
-                    if(ort == 2 || ort == 6){
+                ort = as.integer(summary$infOrt[which(summary$x == A &
+                                                      summary$y == from)])
+                if (length(ort) > 0) {
+                    if (ort == 2 || ort == 6) {
                       isAtowardsFrom = TRUE
                     }
                 }
-                if(length(ort) == 0){
-                  ort = as.integer(summary$infOrt[which(summary$y==A & summary$x==from)])
-                  if(ort == -2 || ort == 6){
+                if (length(ort) == 0) {
+                  ort = as.integer(summary$infOrt[which(summary$y == A &
+                                                        summary$x == from)])
+                  if (ort == -2 || ort == 6) {
                     isAtowardsFrom = TRUE
                   }
                 }
-                if(isAtowardsFrom){
+                if (isAtowardsFrom) {
                   # test if the edge A->from is involved in a v-strucr with no error
-                  v_structsNoError = v_structs[which(as.integer(v_structs$Error) == 0 & v_structs$target == from & (v_structs$source1 == A | v_structs$source2 == A)),]
-                  if(nrow(v_structsNoError) > 0){
+                  v_structsNoError = v_structs[which(as.integer(v_structs$Error) == 0 &
+                                                     v_structs$target == from &
+                                                     (v_structs$source1 == A |
+                                                      v_structs$source2 == A)), ]
+                  if (nrow(v_structsNoError) > 0) {
                     isCausal = "Y"
                   }
                 }
@@ -171,7 +192,7 @@ isCausal <- function(summary, probability){
         }
       }
     }
-    isCausalVec = c(isCausalVec,isCausal)
+    isCausalVec = c(isCausalVec, isCausal)
   }
   return(isCausalVec)
 }

@@ -245,147 +245,174 @@
 #' miic.write.network.cytoscape(g = miic.res, file = file.path(tempdir(),"temp"))
 #'}
 
-miic <- function(inputData, categoryOrder= NULL, trueEdges = NULL, blackBox = NULL, nThreads=1,
-                 cplx = c("nml", "mdl"), orientation = TRUE, propagation = TRUE, latent = c("no", "yes", "ort"),
-                 neff = -1, edges=NULL, confidenceShuffle = 0, confidenceThreshold = 0,
-                 confList = NULL, sampleWeights = NULL, testMAR = TRUE, consistent = c("no", "orientation", "skeleton"),
-                 verbose = FALSE)
-{
+miic <- function(inputData, categoryOrder = NULL, trueEdges = NULL,
+                 blackBox = NULL, nThreads = 1, cplx = c("nml", "mdl"),
+                 orientation = TRUE, propagation = TRUE,
+                 latent = c("no", "yes", "ort"), neff = -1, edges = NULL,
+                 confidenceShuffle = 0, confidenceThreshold = 0,
+                 confList = NULL, sampleWeights = NULL, testMAR = TRUE,
+                 consistent = c("no", "orientation", "skeleton"),
+                 verbose = FALSE) {
   res = NULL
   skeleton = TRUE
 
   #### Check the input arguments
-  if( is.null( inputData ) )
-  { stop("The input data file is required") }
-
-  if( !is.data.frame(inputData))
-  { stop("The input data is not a dataframe") }
-
-  effnAnalysis = miic.evaluate.effn(inputData, plot=F)
-  if(effnAnalysis$neff < 0.5 * nrow(inputData) ){
-    if(effnAnalysis$exponential_decay){
-        warning(paste("Your samples in the datasets seem to be correlated! We suggest to re run the method specifying",
-          effnAnalysis$neff, " in the neff parameter. See the autocorrelation plot for more details."))
-      } else {
-        warning("Your samples in the datasets seem to be correlated but the correlation decay is not exponential. Are your samples correlated in some way? See the autocorrelation plot for more details.")
-      }
+  if (is.null(inputData)) {
+    stop("The input data file is required")
   }
 
-  # if(!is.null(trueEdges)){
-  #   if(length(which(!c(as.vector(trueEdges[,1]), as.vector(trueEdges[,2])) %in% colnames(inputData))) > 0){
+  if (!is.data.frame(inputData)) {
+    stop("The input data is not a dataframe")
+  }
+
+  effnAnalysis = miic.evaluate.effn(inputData, plot = F)
+  if (effnAnalysis$neff < 0.5 * nrow(inputData)) {
+    if (effnAnalysis$exponential_decay) {
+      warning(paste("Your samples in the datasets seem to be correlated! We ",
+                    "suggest to re run the method specifying ",
+                    effnAnalysis$neff, " in the neff parameter. See the ",
+                    "autocorrelation plot for more details."))
+    } else {
+      warning(paste("Your samples in the datasets seem to be correlated but ",
+                    "the correlation decay is not exponential. Are your ",
+                    "samples correlated in some way? See the autocorrelation ",
+                    "plot for more details."))
+    }
+  }
+
+  # if (!is.null(trueEdges)) {
+  #   if (length(which(!c(as.vector(trueEdges[,1]), as.vector(trueEdges[,2])) %in% colnames(inputData))) > 0){
   #     stop("True edges file does not correspond to the input data matrix. Please check node names.")
   #   }
   # }
 
-  cplx = tryCatch({
+  cplx = tryCatch(
+    {
       match.arg(cplx)
-  }, error = function(e) {
-      if(grepl("object .* not found", e$message)){
+    }, error = function(e) {
+      if (grepl("object .* not found", e$message)) {
         message(e, "")
         return("")
-       }
+      }
       return(toString(cplx))
-  })
+    }
+  )
   cplx = match.arg(cplx)
 
-  latent = tryCatch({
+  latent = tryCatch(
+    {
       match.arg(latent)
-  }, error = function(e) {
-      if(grepl("object .* not found", e$message)){
+    }, error = function(e) {
+      if (grepl("object .* not found", e$message)) {
         message(e, "")
         return("")
-       }
+      }
       return(toString(latent))
-  })
+    }
+  )
   latent = match.arg(latent)
 
-  consistent = tryCatch({
+  consistent = tryCatch(
+    {
       match.arg(consistent)
-  }, error = function(e) {
-      if(grepl("object .* not found", e$message)){
+    }, error = function(e) {
+      if (grepl("object .* not found", e$message)) {
         message(e, "")
         return("")
-       }
+      }
       return(toString(consistent))
-  })
+    }
+  )
   consistent = match.arg(consistent)
 
 
-  if(neff > nrow(inputData))
-  { stop("The number of effective samples cannot be greater than the number of samples.") }
-
+  if (neff > nrow(inputData)) {
+    stop(paste("The number of effective samples cannot be greater than the",
+               "number of samples."))
+  }
   #edges
-  if(!is.null(edges)){
+  if (!is.null(edges)) {
     skeleton = FALSE
-    if(length(colnames(edges)) != 10)
-      stop("The edges data frame is not correct. The required data frame is the $edges output of the miic method")
+    if (length(colnames(edges)) != 10)
+      stop(paste("The edges data frame is not correct. The required data ",
+                 "frame is the $edges output of the miic method"))
   }
 
   #propagation
-  if(propagation != TRUE && propagation != FALSE)
+  if (propagation != TRUE && propagation != FALSE)
     stop("The propagation type is not correct. Allowed types are TRUE or FALSE")
 
   #orientation
-  if(orientation != TRUE && orientation != FALSE)
+  if (orientation != TRUE && orientation != FALSE)
     stop("The orientation type is not correct. Allowed types are TRUE or FALSE")
 
-  if(verbose)
+  if (verbose)
     cat("START miic...\n")
 
   # continuous or discrete?
   cntVar = sapply(inputData, is.numeric)
-  for(col in colnames(inputData)){
+  for (col in colnames(inputData)) {
     unique_values = length(unique(inputData[[col]][!is.na(inputData[[col]])]))
-    if(cntVar[[col]] && (unique_values <= 40) && (nrow(inputData) > 40 )){
-      if(cntVar[[col]] && (unique_values <= 2) && (nrow(inputData) > 40 )){
-        stop(paste0("Numerical variable ", col, " only has ", unique_values, " non-NA unique values. Is this a factor ?"))
+    if (cntVar[[col]] && (unique_values <= 40) && (nrow(inputData) > 40 )) {
+      if (cntVar[[col]] && (unique_values <= 2) && (nrow(inputData) > 40 )) {
+        stop(paste0("Numerical variable ", col, " only has ", unique_values,
+                    " non-NA unique values. Is this a factor ?"))
       }
-      warning(paste0("Numerical variable ", col, " is treated as continuous but only has ", unique_values, " unique values."))
+      warning(paste0("Numerical variable ", col,
+                     " is treated as continuous but only has ", unique_values,
+                     " unique values."))
     }
-    if((!cntVar[[col]]) && (unique_values >= 40) && (nrow(inputData) > 40 )){
-      warning(paste0(col, " is treated as discrete but has many levels (", unique_values, ")."))
+    if ((!cntVar[[col]]) && (unique_values >= 40) && (nrow(inputData) > 40)) {
+      warning(paste0(col, " is treated as discrete but has many levels (",
+                     unique_values, ")."))
     }
   }
   typeOfData = 0 # Assume all discrete
-  if(any(cntVar)){
+  if (any(cntVar)) {
     typeOfData = 2 # Mixed if any are continuous
-    if(all(cntVar)){
+    if (all(cntVar)) {
       typeOfData = 1 # All continuous
     }
   }
 
   err_code = checkInput(inputData, "miic")
-  if(err_code != "0"){
+  if (err_code != "0") {
     print(errorCodeToString(err_code))
   } else {
-    if(verbose)
+    if (verbose)
       cat("\t# -> START reconstruction...\n")
-
-    res <- miic.reconstruct(inputData = inputData, stateOrder= categoryOrder, nThreads= nThreads, cplx = cplx, latent = latent,
-                            effN = neff, blackBox = blackBox, confidenceShuffle = confidenceShuffle, edges = edges, orientation = orientation, propagation = propagation,
-                            confidenceThreshold= confidenceThreshold, verbose= verbose, cntVar = cntVar, typeOfData = typeOfData,
-                            sampleWeights = sampleWeights, testMAR = testMAR, consistent = consistent)
-    if(res$interrupted){
+    res <- miic.reconstruct(inputData = inputData, stateOrder = categoryOrder,
+                            nThreads = nThreads, cplx = cplx, latent = latent,
+                            effN = neff, blackBox = blackBox,
+                            confidenceShuffle = confidenceShuffle,
+                            edges = edges, orientation = orientation,
+                            propagation = propagation,
+                            confidenceThreshold = confidenceThreshold,
+                            verbose = verbose, cntVar = cntVar,
+                            typeOfData = typeOfData,
+                            sampleWeights = sampleWeights, testMAR = testMAR,
+                            consistent = consistent)
+    if (res$interrupted) {
       stop("Interupted by user")
     }
     time = res$time
-    if(verbose)
+    if (verbose)
       cat("\t# -> END reconstruction...\n\t# --------\n")
 
-    #if( confidenceShuffle < 0 | confidenceThreshold < 0 ){
+    #if (confidenceShuffle < 0 | confidenceThreshold < 0) {
     #  cat("Warning! ConfidenceShuffle and confidenceThreshold must be greater than 0, the confidence cut step will not be performed.")
     #  confidenceShuffle =0
     #}
 
-    timeOrt=0 #TODO: wrong time
-    timeInitIterOrt = time["initIter"]+timeOrt
+    timeOrt = 0 #TODO: wrong time
+    timeInitIterOrt = time["initIter"] + timeOrt
 
     # Summarize the results
     # --------
 
-    if( !is.null(trueEdges ) ){
+    if (!is.null(trueEdges)) {
       err_code = checkTrueEdges(trueEdges)
-      if(err_code != "0"){
+      if (err_code != "0") {
         print(errorCodeToString(err_code))
         print("WARNING: True edges file will be ignored!")
         trueEdges = NULL
@@ -393,9 +420,9 @@ miic <- function(inputData, categoryOrder= NULL, trueEdges = NULL, blackBox = NU
     }
 
     #STATE ORDER FILE
-    if(  !is.null( categoryOrder ) ){
+    if (!is.null( categoryOrder)) {
       err_code = checkStateOrder(categoryOrder, inputData)
-      if(err_code != "0"){
+      if (err_code != "0") {
         print(errorCodeToString(err_code))
         print("WARNING: Cathegory order file will be ignored!")
         categoryOrder = NULL
@@ -406,15 +433,17 @@ miic <- function(inputData, categoryOrder= NULL, trueEdges = NULL, blackBox = NU
 
     ptm <- proc.time()
     resGmSummary <- gmSummary(inputData = inputData, edges = res$edges,
-                              adjMatrix= res$adjMatrix, trueEdges = trueEdges, stateOrder = categoryOrder, verbose = verbose)
+                              adjMatrix = res$adjMatrix, trueEdges = trueEdges,
+                              stateOrder = categoryOrder, verbose = verbose)
 
     timeInitIterOrt = timeOrt + time[4]
-    timeSum=(proc.time() - ptm)["elapsed"]
-    timeTotal = timeInitIterOrt+timeSum
+    timeSum = (proc.time() - ptm)["elapsed"]
+    timeTotal = timeInitIterOrt + timeSum
     timeVec = c(time, timeOrt, timeInitIterOrt, timeSum, timeTotal)
-    timeVec[which(timeVec==0)]=NA
+    timeVec[which(timeVec == 0)] = NA
     res$time = stats::setNames(timeVec,
-                c("initialization", "iteration", "confidenceCut", "skeleton", "orientation", "skeleton+Orientation", "summary", "total"))
+                c("initialization", "iteration", "confidenceCut", "skeleton",
+                  "orientation", "skeleton+Orientation", "summary", "total"))
 
     res$all.edges.summary <- resGmSummary$all.edges.summary
     res$retained.edges.summary <- resGmSummary$retained.edges.summary
@@ -422,39 +451,44 @@ miic <- function(inputData, categoryOrder= NULL, trueEdges = NULL, blackBox = NU
 
     rm(resGmSummary)
 
-    if( confidenceShuffle > 0 & confidenceThreshold > 0 )
-    {
+    if (confidenceShuffle > 0 & confidenceThreshold > 0) {
       # Insert the confidence ratio
       tmp_sum = res$all.edges.summary
-      conf_col = rep(1, nrow( tmp_sum ) )
+      conf_col = rep(1, nrow(tmp_sum))
       isCut = rep(NA, nrow(tmp_sum))
-      tmp_sum = cbind(tmp_sum,conf_col,isCut)
+      tmp_sum = cbind(tmp_sum, conf_col, isCut)
 
-      tmp_sum = cbind(tmp_sum,conf_col)
+      tmp_sum = cbind(tmp_sum, conf_col)
 
       tmp_pval = res$confData
-      for(r in 1:nrow(tmp_pval))
-      {
-        tmp_sum[which(tmp_sum[,"x"] == tmp_pval[r,"x"] & tmp_sum[,"y"] == tmp_pval[r,"y"]),'confidence_ratio'] =tmp_pval[r,"confidence_ratio"]
-        if(tmp_pval[r,"confidence_ratio"] < confidenceThreshold){
-          tmp_sum[which(tmp_sum[,"x"]==tmp_pval[r,"x"] & tmp_sum[,"y"]==tmp_pval[r,"y"]),'isCut']='N'
-        }
-        else{
-          tmp_sum[which(tmp_sum[,"x"]==tmp_pval[r,"x"] & tmp_sum[,"y"]==tmp_pval[r,"y"]),'isCut']='Y'
+      for (r in 1:nrow(tmp_pval)) {
+        indexes = which(tmp_sum[, "x"] == tmp_pval[r, "x"] &
+                        tmp_sum[, "y"] == tmp_pval[r, "y"])
+        tmp_sum[indexes, 'confidence_ratio'] = tmp_pval[r, "confidence_ratio"]
+        if (tmp_pval[r, "confidence_ratio"] < confidenceThreshold) {
+          indexes = which(tmp_sum[, "x"] == tmp_pval[r, "x"] &
+                          tmp_sum[, "y"] == tmp_pval[r, "y"])
+          tmp_sum[indexes, 'isCut'] = 'N'
+        } else {
+          indexes = which(tmp_sum[, "x"] == tmp_pval[r, "x"] &
+                          tmp_sum[, "y"] == tmp_pval[r, "y"])
+          tmp_sum[indexes, 'isCut'] = 'Y'
         }
       }
-      tmp_sum = tmp_sum[,c('x','y','type','ai','info','cplx','Nxy_ai','log_confidence','confidence_ratio','infOrt','trueOrt', 'isOrt', 'isOrtOk', 'sign','partial_correlation', 'isCut')]
+      tmp_sum = tmp_sum[, c('x', 'y', 'type', 'ai', 'info', 'cplx', 'Nxy_ai',
+                            'log_confidence', 'confidence_ratio', 'infOrt',
+                            'trueOrt', 'isOrt', 'isOrtOk', 'sign',
+                            'partial_correlation', 'isCut')]
 
-      res$all.edges.summary= tmp_sum
-
-      res$retained.edges.summary= tmp_sum[which(tmp_sum$type %in% c("P","TP","FP")),]
+      res$all.edges.summary = tmp_sum
+      indexes = which(tmp_sum$type %in% c("P", "TP", "FP"))
+      res$retained.edges.summary = tmp_sum[indexes, ]
     }
-    if(verbose)
+    if (verbose)
       cat("END miic")
   }
 
   #print(res$orientations.prob)
   #res$all.edges.summary$isCausal = isCausal(res$all.edges.summary, res$orientations.prob)
-
   res
 }
