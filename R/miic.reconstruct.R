@@ -123,25 +123,21 @@ miic.reconstruct <- function(inputData = NULL, cntVar = NULL, blackBox = NULL,
 
   #create the data frame of the structures after orientation
   orientations_prob = res$orientations.prob
-  if (length(orientations_prob) > 0) {
-    unlisted_orients_prob = unlist(orientations_prob)
+  
+  if(length(res$orientations.prob) > 0) {
     a = length(orientations_prob[[1]])
-    b = length(unlisted_orients_prob)
-
-    
-    tmp <- unlisted_orients_prob[1:a]
-    res1 <- unlisted_orients_prob[a + 1:b]
-    orientation_matrix = matrix(res1, nrow=length(res$orientations.prob) - 1,
-                                byrow = T)
-    orientations_prob <- data.frame(orientation_matrix, stringsAsFactors=FALSE)
+    b = length(unlist(orientations_prob))
+    tmp <- unlist(res$orientations.prob)[1:a]
+    res1 <- unlist(res$orientations.prob)[(a + 1):b]
+    orientations_prob <- data.frame(matrix(res1,
+                                           nrow=length(orientations_prob) - 1,
+                                           byrow=T),
+                                    stringsAsFactors = FALSE)
     colnames(orientations_prob) <-tmp
-
-    orientations_prob[, c(2:3)] = sapply(orientations_prob[, c(2:3)],
-                                         as.numeric)
-    orientations_prob[, c(5:6)] = sapply(orientations_prob[, c(5:6)],
-                                         as.numeric)
-    orientations_prob[, c(8:9)] = sapply(orientations_prob[, c(8:9)],
-                                         as.numeric)
+    
+    orientations_prob[,c(2:3)] = sapply(orientations_prob[,c(2:3)], as.numeric)
+    orientations_prob[,c(5:6)] = sapply(orientations_prob[,c(5:6)], as.numeric)
+    orientations_prob[,c(8:9)] = sapply(orientations_prob[,c(8:9)], as.numeric)
   }
   # update the returned matrix
   res$orientations.prob <- orientations_prob

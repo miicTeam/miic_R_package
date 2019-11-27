@@ -268,12 +268,12 @@ miic <- function(inputData, categoryOrder = NULL, trueEdges = NULL,
   effnAnalysis = miic.evaluate.effn(inputData, plot = F)
   if (effnAnalysis$neff < 0.5 * nrow(inputData)) {
     if (effnAnalysis$exponential_decay) {
-      warning(paste("Your samples in the datasets seem to be correlated! We ",
+      warning(paste0("Your samples in the datasets seem to be correlated! We ",
                     "suggest to re run the method specifying ",
                     effnAnalysis$neff, " in the neff parameter. See the ",
                     "autocorrelation plot for more details."))
     } else {
-      warning(paste("Your samples in the datasets seem to be correlated but ",
+      warning(paste0("Your samples in the datasets seem to be correlated but ",
                     "the correlation decay is not exponential. Are your ",
                     "samples correlated in some way? See the autocorrelation ",
                     "plot for more details."))
@@ -327,14 +327,14 @@ miic <- function(inputData, categoryOrder = NULL, trueEdges = NULL,
 
 
   if (neff > nrow(inputData)) {
-    stop(paste("The number of effective samples cannot be greater than the",
+    stop(paste0("The number of effective samples cannot be greater than the ",
                "number of samples."))
   }
   #edges
   if (!is.null(edges)) {
     skeleton = FALSE
     if (length(colnames(edges)) != 10)
-      stop(paste("The edges data frame is not correct. The required data ",
+      stop(paste0("The edges data frame is not correct. The required data ",
                  "frame is the $edges output of the miic method"))
   }
 
