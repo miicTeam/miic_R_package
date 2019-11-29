@@ -5,12 +5,10 @@
 #' @export
 #' @useDynLib miic
 
-miic.write.style.cytoscape <- function(file)
-{
-  if(missing(file)){
+miic.write.style.cytoscape <- function(file) {
+  if (missing(file)) {
     cat("The file path is necessary")
-  }
-  else {
+  } else {
     str= "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>
     <vizmap documentVersion=\"3.0\" id=\"VizMap-2017_02_27-15_04\">
       <visualStyle name=\"miic_style\">
