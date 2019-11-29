@@ -201,16 +201,9 @@ discretizeMutual <- function(X,
   }
 
   if (length(which(NArows)) > 0) {
-    warning(
-      paste0(
-        "Found ",
-        length(which(NArows)),
-        " NAs in at least one of",
-        " the inputs. Running on ",
-        length(which(!NArows)),
-        " samples."
-      )
-    )
+    warning(paste0("Found ", length(which(NArows)),
+            " rows with NAs in at least one of the inputs. Running on ",
+            length(which(!NArows)), " samples."))
     X = X[!NArows]
     Y = Y[!NArows]
   }

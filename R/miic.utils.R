@@ -129,87 +129,12 @@ errorCodeToString <- function(error_code) {
                errorList3[[error_string[3]]], sep = " "))
 }
 
-isCausal <- function(summary, probability) {
-  v_structs = probability[which(probability$NI3 < 0), ]
-  # for each edge
-  isCausalVec = c()
-  for (i in 1:nrow(summary)) {
-    isCausal = "N"
-    if (summary$type == "P") {
-      if (summary$infOrt[i] == 6) {
-        isCausal = "Y"
-      } else{
-        if (summary$infOrt[i] != 1) {
-          if (summary$infOrt[i] == 2) {
-            from = as.character(summary$x[i])
-            to = as.character(summary$y[i])
-          }
-          if (summary$infOrt[i] == -2) {
-            from = as.character(summary$y[i])
-            to = as.character(summary$x[i])
-          }
+fromStringToNumberArrowType <- function(val){
+    ret = 0
+    if(val == "arrow")
+        ret = 6
+    else if(val == "T")
+        ret = 15
 
-          # test if the edge is involved in a v-struct
-          v_structsTo = v_structs[which(
-            v_structs$target == to &
-              (v_structs$source1 == from |
-                 v_structs$source2 == from)
-          ), ]
-          if (nrow(v_structsTo) > 0) {
-            #list all non v-structures involving the node from and of the form   A -> from -> to
-            non_v_structsFrom = probability[which(
-              probability$NI3 > 0 &
-                probability$target == from &
-                (
-                  probability$source1 == to |
-                    probability$source2 == to
-                )
-            ), ]
-            if (nrow(non_v_structsFrom) > 0) {
-              for (j in 1:nrow(non_v_structsFrom)) {
-                # check if  A -> from
-                A = as.character(non_v_structsFrom$source1[j])
-                if (length(A) > 0) {
-                  if (A == to) {
-                    A = as.character(non_v_structsFrom$source2[j])
-                  }
-                }
-                isAtowardsFrom = FALSE
-                ort = as.integer(summary$infOrt[which(summary$x == A &
-                                                        summary$y == from)])
-                if (length(ort) > 0) {
-                  if (ort == 2 || ort == 6) {
-                    isAtowardsFrom = TRUE
-                  }
-                }
-                if (length(ort) == 0) {
-                  ort = as.integer(summary$infOrt[which(summary$y == A &
-                                                          summary$x == from)])
-                  if (ort == -2 || ort == 6) {
-                    isAtowardsFrom = TRUE
-                  }
-                }
-                if (isAtowardsFrom) {
-                  # test if the edge A->from is involved in a v-strucr with no error
-                  v_structsNoError = v_structs[which(
-                    as.integer(v_structs$Error) == 0 &
-                      v_structs$target == from &
-                      (
-                        v_structs$source1 == A |
-                          v_structs$source2 == A
-                      )
-                  ), ]
-                  if (nrow(v_structsNoError) > 0) {
-                    isCausal = "Y"
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-    isCausalVec = c(isCausalVec, isCausal)
-  }
-  return(isCausalVec)
+    return(ret)
 }

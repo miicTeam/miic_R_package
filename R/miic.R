@@ -483,15 +483,15 @@ miic <- function(inputData,
     # Call the function
 
     ptm <- proc.time()
-    resGmSummary <-
-      gmSummary(
-        inputData = inputData,
-        edges = res$edges,
-        adjMatrix = res$adjMatrix,
-        trueEdges = trueEdges,
-        stateOrder = categoryOrder,
-        verbose = verbose
-      )
+    resGmSummary <- summarizeResults(
+      observations = inputData,
+      edges = res$edges,
+      true_edges = trueEdges,
+      state_order = categoryOrder,
+      adj_matrix= res$adjMatrix,
+      orientation_probabilities = res$orientations.prob,
+      verbose = verbose
+    )
 
     timeInitIterOrt = timeOrt + time[4]
     timeSum = (proc.time() - ptm)["elapsed"]
@@ -512,10 +512,7 @@ miic <- function(inputData,
       )
     )
 
-    res$all.edges.summary <- resGmSummary$all.edges.summary
-    res$retained.edges.summary <-
-      resGmSummary$retained.edges.summary
-    res$statistics = resGmSummary$statistics
+    res$all.edges.summary <- resGmSummary
 
     rm(resGmSummary)
 
