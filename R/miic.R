@@ -127,41 +127,41 @@
 #'  \item{all.edges.summary:}{ a data frame with information about the relationship between
 #'  each pair of variables
 #'  \itemize{
-  #'  \item \emph{x:} X node
-  #'  \item \emph{y:} Y node
-  #'  \item \emph{type:} contains 'N' if the edge has
-  #'  been removed or 'P' for retained edges. If a true edges file is given,
-  #'  'P' becomes 'TP' (True Positive) or 'FP' (False Positive), while
-  #'  'N' becomes 'TN' (True Negative) or 'FN' (False Negative).
-  #'  \item \emph{ai:} the contributing nodes found by the method which participate in
-  #'  the mutual information between \emph{x} and \emph{y}, and possibly separate them.
-  #'  \item \emph{info:} provides the final mutual information times \emph{Nxy_ai} for
-  #'  the pair (\emph{x}, \emph{y}) when conditioned on the collected nodes \emph{ai}.
-  #'  \item \emph{cplx:} gives the computed complexity between the (\emph{x}, \emph{y})
-  #'  variables taking into account the contributing nodes \emph{ai}.
-  #'  \item \emph{Nxy_ai:} gives the number of samples on which the information and the
-  #'  complexity have been computed. If the input dataset has no missing value, the
-  #'  number of samples is the same for all pairs and corresponds to the total
-  #'  number of samples.
-  #'  \item \emph{log_confidence:} represents the \emph{info} - \emph{cplx} value.
-  #'  It is a way to quantify the strength of the edge (\emph{x}, \emph{y}).
-  #'  \item \emph{confidenceRatio:} this column is present if the confidence cut
-  #'  is > 0 and it represents the ratio between the probability to reject
-  #'  the edge (\emph{x}, \emph{y}) in the dataset versus the mean probability
-  #'  to do the same in multiple (user defined) number of randomized datasets.
-  #'  \item \emph{infOrt:} the orientation of the edge (\emph{x}, \emph{y}). It is
-  #'  the same value as in the adjacency matrix at row \emph{x} and column \emph{y}.
-  #'  \item \emph{trueOrt:} the orientation of the edge (\emph{x}, \emph{y}) present
-  #'  in the true edges file (if true edges file is provided).
-  #'  \item \emph{isOrtOk:} information about the consistency of the inferred graph’s
-  #'  orientations with a reference graph is given (i.e. if true edges file is provided).
-  #'  Y: the orientation is consistent; N: the orientation is not consistent with
-  #'  the PAG derived from the given true graph.
-  #'  \item \emph{sign:} the sign of the partial correlation between variables
-  #'  \emph{x} and \emph{y}, conditioned on the contributing nodes \emph{ai}.
-  #'  \item \emph{partial_correlation:} value of the partial correlation for the
-  #'  edge (\emph{x}, \emph{y}) conditioned on the contributing nodes \emph{ai}.
-  #'  }
+#'  \item \emph{x:} X node
+#'  \item \emph{y:} Y node
+#'  \item \emph{type:} contains 'N' if the edge has
+#'  been removed or 'P' for retained edges. If a true edges file is given,
+#'  'P' becomes 'TP' (True Positive) or 'FP' (False Positive), while
+#'  'N' becomes 'TN' (True Negative) or 'FN' (False Negative).
+#'  \item \emph{ai:} the contributing nodes found by the method which participate in
+#'  the mutual information between \emph{x} and \emph{y}, and possibly separate them.
+#'  \item \emph{info:} provides the final mutual information times \emph{Nxy_ai} for
+#'  the pair (\emph{x}, \emph{y}) when conditioned on the collected nodes \emph{ai}.
+#'  \item \emph{cplx:} gives the computed complexity between the (\emph{x}, \emph{y})
+#'  variables taking into account the contributing nodes \emph{ai}.
+#'  \item \emph{Nxy_ai:} gives the number of samples on which the information and the
+#'  complexity have been computed. If the input dataset has no missing value, the
+#'  number of samples is the same for all pairs and corresponds to the total
+#'  number of samples.
+#'  \item \emph{log_confidence:} represents the \emph{info} - \emph{cplx} value.
+#'  It is a way to quantify the strength of the edge (\emph{x}, \emph{y}).
+#'  \item \emph{confidenceRatio:} this column is present if the confidence cut
+#'  is > 0 and it represents the ratio between the probability to reject
+#'  the edge (\emph{x}, \emph{y}) in the dataset versus the mean probability
+#'  to do the same in multiple (user defined) number of randomized datasets.
+#'  \item \emph{infOrt:} the orientation of the edge (\emph{x}, \emph{y}). It is
+#'  the same value as in the adjacency matrix at row \emph{x} and column \emph{y}.
+#'  \item \emph{trueOrt:} the orientation of the edge (\emph{x}, \emph{y}) present
+#'  in the true edges file (if true edges file is provided).
+#'  \item \emph{isOrtOk:} information about the consistency of the inferred graph’s
+#'  orientations with a reference graph is given (i.e. if true edges file is provided).
+#'  Y: the orientation is consistent; N: the orientation is not consistent with
+#'  the PAG derived from the given true graph.
+#'  \item \emph{sign:} the sign of the partial correlation between variables
+#'  \emph{x} and \emph{y}, conditioned on the contributing nodes \emph{ai}.
+#'  \item \emph{partial_correlation:} value of the partial correlation for the
+#'  edge (\emph{x}, \emph{y}) conditioned on the contributing nodes \emph{ai}.
+#'  }
 #'  }
 #'
 #'  \item{retained.edges.summary:} {a data frame in the format of all.edges.summary containing only the inferred edges.}
@@ -187,13 +187,13 @@
 #'  the column the target node. Since miic can reconstruct mixed networks
 #'  (including directed, undirected and bidirected edges), we will have a
 #'  different digit for each case:
-  #'  \itemize{
-    #'  \item 1: (\emph{x}, \emph{y}) edge is undirected
-    #'  \item 2: (\emph{x}, \emph{y}) edge is directed as \emph{x} -> \emph{y}
-    #'  \item -2: (\emph{x}, \emph{y}) edge is directed as \emph{x} <- \emph{y}
-    #'  \item 6: (\emph{x}, \emph{y}) edge is bidirected
-  #'  }
-  #'}
+#'  \itemize{
+#'  \item 1: (\emph{x}, \emph{y}) edge is undirected
+#'  \item 2: (\emph{x}, \emph{y}) edge is directed as \emph{x} -> \emph{y}
+#'  \item -2: (\emph{x}, \emph{y}) edge is directed as \emph{x} <- \emph{y}
+#'  \item 6: (\emph{x}, \emph{y}) edge is bidirected
+#'  }
+#'}
 #' @export
 #' @useDynLib miic
 #'
@@ -245,12 +245,22 @@
 #' miic.write.network.cytoscape(g = miic.res, file = file.path(tempdir(),"temp"))
 #'}
 
-miic <- function(inputData, categoryOrder = NULL, trueEdges = NULL,
-                 blackBox = NULL, nThreads = 1, cplx = c("nml", "mdl"),
-                 orientation = TRUE, propagation = TRUE,
-                 latent = c("no", "yes", "ort"), neff = -1, edges = NULL,
-                 confidenceShuffle = 0, confidenceThreshold = 0,
-                 confList = NULL, sampleWeights = NULL, testMAR = TRUE,
+miic <- function(inputData,
+                 categoryOrder = NULL,
+                 trueEdges = NULL,
+                 blackBox = NULL,
+                 nThreads = 1,
+                 cplx = c("nml", "mdl"),
+                 orientation = TRUE,
+                 propagation = TRUE,
+                 latent = c("no", "yes", "ort"),
+                 neff = -1,
+                 edges = NULL,
+                 confidenceShuffle = 0,
+                 confidenceThreshold = 0,
+                 confList = NULL,
+                 sampleWeights = NULL,
+                 testMAR = TRUE,
                  consistent = c("no", "orientation", "skeleton"),
                  verbose = FALSE) {
   res = NULL
@@ -268,15 +278,24 @@ miic <- function(inputData, categoryOrder = NULL, trueEdges = NULL,
   effnAnalysis = miic.evaluate.effn(inputData, plot = F)
   if (effnAnalysis$neff < 0.5 * nrow(inputData)) {
     if (effnAnalysis$exponential_decay) {
-      warning(paste0("Your samples in the datasets seem to be correlated! We ",
-                    "suggest to re run the method specifying ",
-                    effnAnalysis$neff, " in the neff parameter. See the ",
-                    "autocorrelation plot for more details."))
+      warning(
+        paste0(
+          "Your samples in the datasets seem to be correlated! We ",
+          "suggest to re run the method specifying ",
+          effnAnalysis$neff,
+          " in the neff parameter. See the ",
+          "autocorrelation plot for more details."
+        )
+      )
     } else {
-      warning(paste0("Your samples in the datasets seem to be correlated but ",
-                    "the correlation decay is not exponential. Are your ",
-                    "samples correlated in some way? See the autocorrelation ",
-                    "plot for more details."))
+      warning(
+        paste0(
+          "Your samples in the datasets seem to be correlated but ",
+          "the correlation decay is not exponential. Are your ",
+          "samples correlated in some way? See the autocorrelation ",
+          "plot for more details."
+        )
+      )
     }
   }
 
@@ -286,56 +305,58 @@ miic <- function(inputData, categoryOrder = NULL, trueEdges = NULL,
   #   }
   # }
 
-  cplx = tryCatch(
-    {
-      match.arg(cplx)
-    }, error = function(e) {
-      if (grepl("object .* not found", e$message)) {
-        message(e, "")
-        return("")
-      }
-      return(toString(cplx))
+  cplx = tryCatch({
+    match.arg(cplx)
+  }, error = function(e) {
+    if (grepl("object .* not found", e$message)) {
+      message(e, "")
+      return("")
     }
-  )
+    return(toString(cplx))
+  })
   cplx = match.arg(cplx)
 
-  latent = tryCatch(
-    {
-      match.arg(latent)
-    }, error = function(e) {
-      if (grepl("object .* not found", e$message)) {
-        message(e, "")
-        return("")
-      }
-      return(toString(latent))
+  latent = tryCatch({
+    match.arg(latent)
+  }, error = function(e) {
+    if (grepl("object .* not found", e$message)) {
+      message(e, "")
+      return("")
     }
-  )
+    return(toString(latent))
+  })
   latent = match.arg(latent)
 
-  consistent = tryCatch(
-    {
-      match.arg(consistent)
-    }, error = function(e) {
-      if (grepl("object .* not found", e$message)) {
-        message(e, "")
-        return("")
-      }
-      return(toString(consistent))
+  consistent = tryCatch({
+    match.arg(consistent)
+  }, error = function(e) {
+    if (grepl("object .* not found", e$message)) {
+      message(e, "")
+      return("")
     }
-  )
+    return(toString(consistent))
+  })
   consistent = match.arg(consistent)
 
 
   if (neff > nrow(inputData)) {
-    stop(paste0("The number of effective samples cannot be greater than the ",
-               "number of samples."))
+    stop(
+      paste0(
+        "The number of effective samples cannot be greater than the ",
+        "number of samples."
+      )
+    )
   }
   #edges
   if (!is.null(edges)) {
     skeleton = FALSE
     if (length(colnames(edges)) != 10)
-      stop(paste0("The edges data frame is not correct. The required data ",
-                 "frame is the $edges output of the miic method"))
+      stop(
+        paste0(
+          "The edges data frame is not correct. The required data ",
+          "frame is the $edges output of the miic method"
+        )
+      )
   }
 
   #propagation
@@ -353,18 +374,38 @@ miic <- function(inputData, categoryOrder = NULL, trueEdges = NULL,
   cntVar = sapply(inputData, is.numeric)
   for (col in colnames(inputData)) {
     unique_values = length(unique(inputData[[col]][!is.na(inputData[[col]])]))
-    if (cntVar[[col]] && (unique_values <= 40) && (nrow(inputData) > 40 )) {
-      if (cntVar[[col]] && (unique_values <= 2) && (nrow(inputData) > 40 )) {
-        stop(paste0("Numerical variable ", col, " only has ", unique_values,
-                    " non-NA unique values. Is this a factor ?"))
+    if (cntVar[[col]] &&
+        (unique_values <= 40) && (nrow(inputData) > 40)) {
+      if (cntVar[[col]] &&
+          (unique_values <= 2) && (nrow(inputData) > 40)) {
+        stop(
+          paste0(
+            "Numerical variable ",
+            col,
+            " only has ",
+            unique_values,
+            " non-NA unique values. Is this a factor ?"
+          )
+        )
       }
-      warning(paste0("Numerical variable ", col,
-                     " is treated as continuous but only has ", unique_values,
-                     " unique values."))
+      warning(
+        paste0(
+          "Numerical variable ",
+          col,
+          " is treated as continuous but only has ",
+          unique_values,
+          " unique values."
+        )
+      )
     }
-    if ((!cntVar[[col]]) && (unique_values >= 40) && (nrow(inputData) > 40)) {
-      warning(paste0(col, " is treated as discrete but has many levels (",
-                     unique_values, ")."))
+    if ((!cntVar[[col]]) &&
+        (unique_values >= 40) && (nrow(inputData) > 40)) {
+      warning(paste0(
+        col,
+        " is treated as discrete but has many levels (",
+        unique_values,
+        ")."
+      ))
     }
   }
   typeOfData = 0 # Assume all discrete
@@ -381,17 +422,27 @@ miic <- function(inputData, categoryOrder = NULL, trueEdges = NULL,
   } else {
     if (verbose)
       cat("\t# -> START reconstruction...\n")
-    res <- miic.reconstruct(inputData = inputData, stateOrder = categoryOrder,
-                            nThreads = nThreads, cplx = cplx, latent = latent,
-                            effN = neff, blackBox = blackBox,
-                            confidenceShuffle = confidenceShuffle,
-                            edges = edges, orientation = orientation,
-                            propagation = propagation,
-                            confidenceThreshold = confidenceThreshold,
-                            verbose = verbose, cntVar = cntVar,
-                            typeOfData = typeOfData,
-                            sampleWeights = sampleWeights, testMAR = testMAR,
-                            consistent = consistent)
+    res <-
+      miic.reconstruct(
+        inputData = inputData,
+        stateOrder = categoryOrder,
+        nThreads = nThreads,
+        cplx = cplx,
+        latent = latent,
+        effN = neff,
+        blackBox = blackBox,
+        confidenceShuffle = confidenceShuffle,
+        edges = edges,
+        orientation = orientation,
+        propagation = propagation,
+        confidenceThreshold = confidenceThreshold,
+        verbose = verbose,
+        cntVar = cntVar,
+        typeOfData = typeOfData,
+        sampleWeights = sampleWeights,
+        testMAR = testMAR,
+        consistent = consistent
+      )
     if (res$interrupted) {
       stop("Interupted by user")
     }
@@ -420,7 +471,7 @@ miic <- function(inputData, categoryOrder = NULL, trueEdges = NULL,
     }
 
     #STATE ORDER FILE
-    if (!is.null( categoryOrder)) {
+    if (!is.null(categoryOrder)) {
       err_code = checkStateOrder(categoryOrder, inputData)
       if (err_code != "0") {
         print(errorCodeToString(err_code))
@@ -432,21 +483,38 @@ miic <- function(inputData, categoryOrder = NULL, trueEdges = NULL,
     # Call the function
 
     ptm <- proc.time()
-    resGmSummary <- gmSummary(inputData = inputData, edges = res$edges,
-                              adjMatrix = res$adjMatrix, trueEdges = trueEdges,
-                              stateOrder = categoryOrder, verbose = verbose)
+    resGmSummary <-
+      gmSummary(
+        inputData = inputData,
+        edges = res$edges,
+        adjMatrix = res$adjMatrix,
+        trueEdges = trueEdges,
+        stateOrder = categoryOrder,
+        verbose = verbose
+      )
 
     timeInitIterOrt = timeOrt + time[4]
     timeSum = (proc.time() - ptm)["elapsed"]
     timeTotal = timeInitIterOrt + timeSum
     timeVec = c(time, timeOrt, timeInitIterOrt, timeSum, timeTotal)
     timeVec[which(timeVec == 0)] = NA
-    res$time = stats::setNames(timeVec,
-                c("initialization", "iteration", "confidenceCut", "skeleton",
-                  "orientation", "skeleton+Orientation", "summary", "total"))
+    res$time = stats::setNames(
+      timeVec,
+      c(
+        "initialization",
+        "iteration",
+        "confidenceCut",
+        "skeleton",
+        "orientation",
+        "skeleton+Orientation",
+        "summary",
+        "total"
+      )
+    )
 
     res$all.edges.summary <- resGmSummary$all.edges.summary
-    res$retained.edges.summary <- resGmSummary$retained.edges.summary
+    res$retained.edges.summary <-
+      resGmSummary$retained.edges.summary
     res$statistics = resGmSummary$statistics
 
     rm(resGmSummary)
@@ -463,22 +531,36 @@ miic <- function(inputData, categoryOrder = NULL, trueEdges = NULL,
       tmp_pval = res$confData
       for (r in 1:nrow(tmp_pval)) {
         indexes = which(tmp_sum[, "x"] == tmp_pval[r, "x"] &
-                        tmp_sum[, "y"] == tmp_pval[r, "y"])
+                          tmp_sum[, "y"] == tmp_pval[r, "y"])
         tmp_sum[indexes, 'confidence_ratio'] = tmp_pval[r, "confidence_ratio"]
         if (tmp_pval[r, "confidence_ratio"] < confidenceThreshold) {
           indexes = which(tmp_sum[, "x"] == tmp_pval[r, "x"] &
-                          tmp_sum[, "y"] == tmp_pval[r, "y"])
+                            tmp_sum[, "y"] == tmp_pval[r, "y"])
           tmp_sum[indexes, 'isCut'] = 'N'
         } else {
           indexes = which(tmp_sum[, "x"] == tmp_pval[r, "x"] &
-                          tmp_sum[, "y"] == tmp_pval[r, "y"])
+                            tmp_sum[, "y"] == tmp_pval[r, "y"])
           tmp_sum[indexes, 'isCut'] = 'Y'
         }
       }
-      tmp_sum = tmp_sum[, c('x', 'y', 'type', 'ai', 'info', 'cplx', 'Nxy_ai',
-                            'log_confidence', 'confidence_ratio', 'infOrt',
-                            'trueOrt', 'isOrt', 'isOrtOk', 'sign',
-                            'partial_correlation', 'isCut')]
+      tmp_sum = tmp_sum[, c(
+        'x',
+        'y',
+        'type',
+        'ai',
+        'info',
+        'cplx',
+        'Nxy_ai',
+        'log_confidence',
+        'confidence_ratio',
+        'infOrt',
+        'trueOrt',
+        'isOrt',
+        'isOrtOk',
+        'sign',
+        'partial_correlation',
+        'isCut'
+      )]
 
       res$all.edges.summary = tmp_sum
       indexes = which(tmp_sum$type %in% c("P", "TP", "FP"))

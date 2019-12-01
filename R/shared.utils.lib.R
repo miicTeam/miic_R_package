@@ -5,8 +5,6 @@
 #### Bin : 1 0 1 1 0 0
 #### Str : "101100"
 binVectToStr <- function(myEns, myGv) {
-	myBinVect = (myGv$allProperties %in% myEns)
+  myBinVect = (myGv$allProperties %in% myEns)
   return(paste(as.numeric(myBinVect), collapse = ''))
 }
-
-

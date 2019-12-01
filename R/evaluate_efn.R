@@ -18,10 +18,16 @@ miic.evaluate.effn <- function(inputData = NULL, plot = T) {
     stop("The input data file is required")
   }
   inData <- c(colnames(inputData),
-              as.vector(as.character(t(as.matrix(inputData)))))
+              as.vector(as.character(t(
+                as.matrix(inputData)
+              ))))
   if (base::requireNamespace("Rcpp", quietly = TRUE)) {
-    result <- .Call('evaluateEffn', inData, ncol(inputData), nrow(inputData),
-                    PACKAGE = "miic")
+    result <-
+      .Call('evaluateEffn',
+            inData,
+            ncol(inputData),
+            nrow(inputData),
+            PACKAGE = "miic")
   }
   if (length(which(result$correlation > 0)) == length(result$correlation)) {
     fit1 <- MASS::fitdistr(result$correlation, "exponential")
@@ -33,15 +39,20 @@ miic.evaluate.effn <- function(inputData = NULL, plot = T) {
     }
 
     if (plot) {
-      graphics::par(mar = rep(1.5, 4), oma = c(3, 3, 3, 1), las = 1)
+      graphics::par(mar = rep(1.5, 4),
+                    oma = c(3, 3, 3, 1),
+                    las = 1)
 
       graphics::plot(0:(length(result$correlation) - 1),
-                     result$correlation, type = "l", log = "y")
+                     result$correlation,
+                     type = "l",
+                     log = "y")
       graphics::title("Autocorrelation between n distant samples",
-                      ylab = "Autocorrelation with lag", xlab = "n")
+                      ylab = "Autocorrelation with lag",
+                      xlab = "n")
     }
   } else {
     result$exponential_decay = FALSE
   }
-   result
+  result
 }

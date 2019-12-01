@@ -158,6 +158,6 @@ miic.write.style.cytoscape <- function(file) {
       </visualStyle>
   </vizmap>"
 
-  write(x = str, file = paste(file, ".xml", sep=""))
+    write(x = str, file = paste(file, ".xml", sep=""))
   }
 }
