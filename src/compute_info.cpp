@@ -88,8 +88,31 @@ double computeLogC(int N, int r, double* looklog, double** cterms) {
     double val = cterms[r][N];
     if (val >= 0) return val;
   }
+  double* c2terms = cterms[2];
+  double C2 = 0;
+  if (c2terms[N] != -1)
+    C2 = c2terms[N];
+  else {
+    if (N <= 1000) {
+      for (int h = 0; h <= N; h++) {
+        C2 += exp(logchoose(N, h, looklog) + log(pow(h / ((double)N), h)) +
+                  log(pow((N - h) / ((double)N), (N - h))));
+      }
+    } else {
+      C2 = sqrt(N * M_PI_2) *
+           exp(sqrt(8 / (9 * N * M_PI)) + (3 * M_PI - 16) / (36 * N * M_PI));
+    }
+    C2 = log(C2);
+  }
 
-  double logC = computeLogC(N, r, looklog, cterms[2]);
+  double D = exp(C2);
+  double logC = C2;
+  if (r > 2) {
+    for (int rr = 3; rr <= r; rr++) {
+      D = 1 + N / (1.0 * (rr - 2) * D);
+      logC += log(D);
+    }
+  }
   if (r < N_COL_NML) cterms[r][N] = logC;
 
   return logC;
