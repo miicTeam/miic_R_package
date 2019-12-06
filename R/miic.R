@@ -193,7 +193,7 @@
 #'  \item -2: (\emph{x}, \emph{y}) edge is directed as \emph{x} <- \emph{y}
 #'  \item 6: (\emph{x}, \emph{y}) edge is bidirected
 #'  }
-#'}
+#' }
 #' @export
 #' @useDynLib miic
 #'
@@ -204,47 +204,53 @@
 #' data(hematoData)
 #'
 #' # execute MIIC (reconstruct graph)
-#' miic.res = miic(inputData = hematoData, latent = TRUE,
-#' confidenceShuffle = 10, confidenceThreshold = 0.001)
+#' miic.res <- miic(
+#'   inputData = hematoData, latent = TRUE,
+#'   confidenceShuffle = 10, confidenceThreshold = 0.001
+#' )
 #'
 #' # plot graph
 #' miic.plot(miic.res)
-#'\dontrun{
+#' \dontrun{
 #'
 #' # write graph to graphml format. Note that to correctly visualize
 #' # the network we created the miic style for Cytoscape (http://www.cytoscape.org/).
 #'
-#' miic.write.network.cytoscape(g = miic.res, file = file.path(tempdir(),"temp"))
+#' miic.write.network.cytoscape(g = miic.res, file = file.path(tempdir(), "temp"))
 #'
 #' # EXAMPLE CANCER
 #' data(cosmicCancer)
 #' data(cosmicCancer_stateOrder)
 #' # execute MIIC (reconstruct graph)
-#' miic.res = miic(inputData = cosmicCancer, categoryOrder = cosmicCancer_stateOrder, latent = TRUE,
-#' confidenceShuffle = 100, confidenceThreshold = 0.001)
+#' miic.res <- miic(
+#'   inputData = cosmicCancer, categoryOrder = cosmicCancer_stateOrder, latent = TRUE,
+#'   confidenceShuffle = 100, confidenceThreshold = 0.001
+#' )
 #'
 #' # plot graph
-#' miic.plot(miic.res, igraphLayout=igraph::layout_on_grid)
+#' miic.plot(miic.res, igraphLayout = igraph::layout_on_grid)
 #'
 #' # write graph to graphml format. Note that to correctly visualize
 #' # the network we created the miic style for Cytoscape (http://www.cytoscape.org/).
-#' miic.write.network.cytoscape(g = miic.res, file = file.path(tempdir(),"temp"))
+#' miic.write.network.cytoscape(g = miic.res, file = file.path(tempdir(), "temp"))
 #'
 #' # EXAMPLE OHNOLOGS
 #' data(ohno)
 #' data(ohno_stateOrder)
 #' # execute MIIC (reconstruct graph)
-#' miic.res = miic(inputData = ohno, latent = TRUE, categoryOrder = ohno_stateOrder,
-#' confidenceShuffle = 100, confidenceThreshold = 0.001)
+#' miic.res <- miic(
+#'   inputData = ohno, latent = TRUE, categoryOrder = ohno_stateOrder,
+#'   confidenceShuffle = 100, confidenceThreshold = 0.001
+#' )
 #'
 #' # plot graph
 #' miic.plot(miic.res)
 #'
 #' # write graph to graphml format. Note that to correctly visualize
 #' # the network we created the miic style for Cytoscape (http://www.cytoscape.org/).
-#' miic.write.network.cytoscape(g = miic.res, file = file.path(tempdir(),"temp"))
-#'}
-
+#' miic.write.network.cytoscape(g = miic.res, file = file.path(tempdir(), "temp"))
+#' }
+#'
 miic <- function(inputData,
                  categoryOrder = NULL,
                  trueEdges = NULL,
@@ -263,8 +269,8 @@ miic <- function(inputData,
                  testMAR = TRUE,
                  consistent = c("no", "orientation", "skeleton"),
                  verbose = FALSE) {
-  res = NULL
-  skeleton = TRUE
+  res <- NULL
+  skeleton <- TRUE
 
   #### Check the input arguments
   if (is.null(inputData)) {
@@ -275,7 +281,7 @@ miic <- function(inputData,
     stop("The input data is not a dataframe")
   }
 
-  effnAnalysis = miic.evaluate.effn(inputData, plot = F)
+  effnAnalysis <- miic.evaluate.effn(inputData, plot = F)
   if (effnAnalysis$neff < 0.5 * nrow(inputData)) {
     if (effnAnalysis$exponential_decay) {
       warning(
@@ -305,38 +311,47 @@ miic <- function(inputData,
   #   }
   # }
 
-  cplx = tryCatch({
-    match.arg(cplx)
-  }, error = function(e) {
-    if (grepl("object .* not found", e$message)) {
-      message(e, "")
-      return("")
+  cplx <- tryCatch(
+    {
+      match.arg(cplx)
+    },
+    error = function(e) {
+      if (grepl("object .* not found", e$message)) {
+        message(e, "")
+        return("")
+      }
+      return(toString(cplx))
     }
-    return(toString(cplx))
-  })
-  cplx = match.arg(cplx)
+  )
+  cplx <- match.arg(cplx)
 
-  latent = tryCatch({
-    match.arg(latent)
-  }, error = function(e) {
-    if (grepl("object .* not found", e$message)) {
-      message(e, "")
-      return("")
+  latent <- tryCatch(
+    {
+      match.arg(latent)
+    },
+    error = function(e) {
+      if (grepl("object .* not found", e$message)) {
+        message(e, "")
+        return("")
+      }
+      return(toString(latent))
     }
-    return(toString(latent))
-  })
-  latent = match.arg(latent)
+  )
+  latent <- match.arg(latent)
 
-  consistent = tryCatch({
-    match.arg(consistent)
-  }, error = function(e) {
-    if (grepl("object .* not found", e$message)) {
-      message(e, "")
-      return("")
+  consistent <- tryCatch(
+    {
+      match.arg(consistent)
+    },
+    error = function(e) {
+      if (grepl("object .* not found", e$message)) {
+        message(e, "")
+        return("")
+      }
+      return(toString(consistent))
     }
-    return(toString(consistent))
-  })
-  consistent = match.arg(consistent)
+  )
+  consistent <- match.arg(consistent)
 
 
   if (neff > nrow(inputData)) {
@@ -347,37 +362,41 @@ miic <- function(inputData,
       )
     )
   }
-  #edges
+  # edges
   if (!is.null(edges)) {
-    skeleton = FALSE
-    if (length(colnames(edges)) != 10)
+    skeleton <- FALSE
+    if (length(colnames(edges)) != 10) {
       stop(
         paste0(
           "The edges data frame is not correct. The required data ",
           "frame is the $edges output of the miic method"
         )
       )
+    }
   }
 
-  #propagation
-  if (propagation != TRUE && propagation != FALSE)
+  # propagation
+  if (propagation != TRUE && propagation != FALSE) {
     stop("The propagation type is not correct. Allowed types are TRUE or FALSE")
+  }
 
-  #orientation
-  if (orientation != TRUE && orientation != FALSE)
+  # orientation
+  if (orientation != TRUE && orientation != FALSE) {
     stop("The orientation type is not correct. Allowed types are TRUE or FALSE")
+  }
 
-  if (verbose)
+  if (verbose) {
     cat("START miic...\n")
+  }
 
   # continuous or discrete?
-  cntVar = sapply(inputData, is.numeric)
+  cntVar <- sapply(inputData, is.numeric)
   for (col in colnames(inputData)) {
-    unique_values = length(unique(inputData[[col]][!is.na(inputData[[col]])]))
+    unique_values <- length(unique(inputData[[col]][!is.na(inputData[[col]])]))
     if (cntVar[[col]] &&
-        (unique_values <= 40) && (nrow(inputData) > 40)) {
+      (unique_values <= 40) && (nrow(inputData) > 40)) {
       if (cntVar[[col]] &&
-          (unique_values <= 2) && (nrow(inputData) > 40)) {
+        (unique_values <= 2) && (nrow(inputData) > 40)) {
         stop(
           paste0(
             "Numerical variable ",
@@ -399,7 +418,7 @@ miic <- function(inputData,
       )
     }
     if ((!cntVar[[col]]) &&
-        (unique_values >= 40) && (nrow(inputData) > 40)) {
+      (unique_values >= 40) && (nrow(inputData) > 40)) {
       warning(paste0(
         col,
         " is treated as discrete but has many levels (",
@@ -408,20 +427,21 @@ miic <- function(inputData,
       ))
     }
   }
-  typeOfData = 0 # Assume all discrete
+  typeOfData <- 0 # Assume all discrete
   if (any(cntVar)) {
-    typeOfData = 2 # Mixed if any are continuous
+    typeOfData <- 2 # Mixed if any are continuous
     if (all(cntVar)) {
-      typeOfData = 1 # All continuous
+      typeOfData <- 1 # All continuous
     }
   }
 
-  err_code = checkInput(inputData, "miic")
+  err_code <- checkInput(inputData, "miic")
   if (err_code != "0") {
     print(errorCodeToString(err_code))
   } else {
-    if (verbose)
+    if (verbose) {
       cat("\t# -> START reconstruction...\n")
+    }
     res <-
       miic.reconstruct(
         inputData = inputData,
@@ -446,37 +466,38 @@ miic <- function(inputData,
     if (res$interrupted) {
       stop("Interupted by user")
     }
-    time = res$time
-    if (verbose)
+    time <- res$time
+    if (verbose) {
       cat("\t# -> END reconstruction...\n\t# --------\n")
+    }
 
-    #if (confidenceShuffle < 0 | confidenceThreshold < 0) {
+    # if (confidenceShuffle < 0 | confidenceThreshold < 0) {
     #  cat("Warning! ConfidenceShuffle and confidenceThreshold must be greater than 0, the confidence cut step will not be performed.")
     #  confidenceShuffle =0
-    #}
+    # }
 
-    timeOrt = 0 #TODO: wrong time
-    timeInitIterOrt = time["initIter"] + timeOrt
+    timeOrt <- 0 # TODO: wrong time
+    timeInitIterOrt <- time["initIter"] + timeOrt
 
     # Summarize the results
     # --------
 
     if (!is.null(trueEdges)) {
-      err_code = checkTrueEdges(trueEdges)
+      err_code <- checkTrueEdges(trueEdges)
       if (err_code != "0") {
         print(errorCodeToString(err_code))
         print("WARNING: True edges file will be ignored!")
-        trueEdges = NULL
+        trueEdges <- NULL
       }
     }
 
-    #STATE ORDER FILE
+    # STATE ORDER FILE
     if (!is.null(categoryOrder)) {
-      err_code = checkStateOrder(categoryOrder, inputData)
+      err_code <- checkStateOrder(categoryOrder, inputData)
       if (err_code != "0") {
         print(errorCodeToString(err_code))
         print("WARNING: Cathegory order file will be ignored!")
-        categoryOrder = NULL
+        categoryOrder <- NULL
       }
     }
 
@@ -488,17 +509,17 @@ miic <- function(inputData,
       edges = res$edges,
       true_edges = trueEdges,
       state_order = categoryOrder,
-      adj_matrix= res$adjMatrix,
+      adj_matrix = res$adjMatrix,
       orientation_probabilities = res$orientations.prob,
       verbose = verbose
     )
 
-    timeInitIterOrt = timeOrt + time[4]
-    timeSum = (proc.time() - ptm)["elapsed"]
-    timeTotal = timeInitIterOrt + timeSum
-    timeVec = c(time, timeOrt, timeInitIterOrt, timeSum, timeTotal)
-    timeVec[which(timeVec == 0)] = NA
-    res$time = stats::setNames(
+    timeInitIterOrt <- timeOrt + time[4]
+    timeSum <- (proc.time() - ptm)["elapsed"]
+    timeTotal <- timeInitIterOrt + timeSum
+    timeVec <- c(time, timeOrt, timeInitIterOrt, timeSum, timeTotal)
+    timeVec[which(timeVec == 0)] <- NA
+    res$time <- stats::setNames(
       timeVec,
       c(
         "initialization",
@@ -518,56 +539,57 @@ miic <- function(inputData,
 
     if (confidenceShuffle > 0 & confidenceThreshold > 0) {
       # Insert the confidence ratio
-      tmp_sum = res$all.edges.summary
-      conf_col = rep(1, nrow(tmp_sum))
-      isCut = rep(NA, nrow(tmp_sum))
-      tmp_sum = cbind(tmp_sum, conf_col, isCut)
+      tmp_sum <- res$all.edges.summary
+      conf_col <- rep(1, nrow(tmp_sum))
+      isCut <- rep(NA, nrow(tmp_sum))
+      tmp_sum <- cbind(tmp_sum, conf_col, isCut)
 
-      tmp_sum = cbind(tmp_sum, conf_col)
+      tmp_sum <- cbind(tmp_sum, conf_col)
 
-      tmp_pval = res$confData
+      tmp_pval <- res$confData
       for (r in 1:nrow(tmp_pval)) {
-        indexes = which(tmp_sum[, "x"] == tmp_pval[r, "x"] &
-                          tmp_sum[, "y"] == tmp_pval[r, "y"])
-        tmp_sum[indexes, 'confidence_ratio'] = tmp_pval[r, "confidence_ratio"]
+        indexes <- which(tmp_sum[, "x"] == tmp_pval[r, "x"] &
+          tmp_sum[, "y"] == tmp_pval[r, "y"])
+        tmp_sum[indexes, "confidence_ratio"] <- tmp_pval[r, "confidence_ratio"]
         if (tmp_pval[r, "confidence_ratio"] < confidenceThreshold) {
-          indexes = which(tmp_sum[, "x"] == tmp_pval[r, "x"] &
-                            tmp_sum[, "y"] == tmp_pval[r, "y"])
-          tmp_sum[indexes, 'isCut'] = 'N'
+          indexes <- which(tmp_sum[, "x"] == tmp_pval[r, "x"] &
+            tmp_sum[, "y"] == tmp_pval[r, "y"])
+          tmp_sum[indexes, "isCut"] <- "N"
         } else {
-          indexes = which(tmp_sum[, "x"] == tmp_pval[r, "x"] &
-                            tmp_sum[, "y"] == tmp_pval[r, "y"])
-          tmp_sum[indexes, 'isCut'] = 'Y'
+          indexes <- which(tmp_sum[, "x"] == tmp_pval[r, "x"] &
+            tmp_sum[, "y"] == tmp_pval[r, "y"])
+          tmp_sum[indexes, "isCut"] <- "Y"
         }
       }
-      tmp_sum = tmp_sum[, c(
-        'x',
-        'y',
-        'type',
-        'ai',
-        'info',
-        'cplx',
-        'Nxy_ai',
-        'log_confidence',
-        'confidence_ratio',
-        'infOrt',
-        'trueOrt',
-        'isOrt',
-        'isOrtOk',
-        'sign',
-        'partial_correlation',
-        'isCut'
+      tmp_sum <- tmp_sum[, c(
+        "x",
+        "y",
+        "type",
+        "ai",
+        "info",
+        "cplx",
+        "Nxy_ai",
+        "log_confidence",
+        "confidence_ratio",
+        "infOrt",
+        "trueOrt",
+        "isOrt",
+        "isOrtOk",
+        "sign",
+        "partial_correlation",
+        "isCut"
       )]
 
-      res$all.edges.summary = tmp_sum
-      indexes = which(tmp_sum$type %in% c("P", "TP", "FP"))
-      res$retained.edges.summary = tmp_sum[indexes, ]
+      res$all.edges.summary <- tmp_sum
+      indexes <- which(tmp_sum$type %in% c("P", "TP", "FP"))
+      res$retained.edges.summary <- tmp_sum[indexes, ]
     }
-    if (verbose)
+    if (verbose) {
       cat("END miic")
+    }
   }
 
-  #print(res$orientations.prob)
-  #res$all.edges.summary$isCausal = isCausal(res$all.edges.summary, res$orientations.prob)
+  # print(res$orientations.prob)
+  # res$all.edges.summary$isCausal = isCausal(res$all.edges.summary, res$orientations.prob)
   res
 }
