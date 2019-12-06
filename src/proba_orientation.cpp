@@ -14,7 +14,8 @@
 using namespace std;
 
 //#define M_PI		3.14159265358979323846	/* pi */
-#define eps 0.000000000001
+#define eps 1.0e-12
+#define eps_diff 1.0e-12
 #define _MY_PRINT_ 0
 
 static double dmaxarg1, dmaxarg2;
@@ -27,12 +28,17 @@ static double dminarg1, dminarg2;
   (dminarg1 = (a), dminarg2 = (b), \
       (dminarg1) < (dminarg2) ? (dminarg1) : (dminarg2))
 
-class sort_indices_3points {
-  double* mparr;
+struct TripletComparator
+{
+    const double* scores;
 
- public:
-  sort_indices_3points(double* parr) : mparr(parr) {}
-  bool operator()(int i, int j) const { return mparr[i] < mparr[j]; }
+    TripletComparator(const double* val_vec):
+        scores(val_vec) {}
+
+    bool operator()(int i1, int i2)
+    {
+        return scores[i1] < scores[i2];
+    }
 };
 
 double logF2(double scoreTpl, double I3) {
@@ -50,9 +56,11 @@ int miic::reconstruction::OrientTpl_LV_Deg_Propag(int NbTpl, int* Tpl,
   int i, j, n1, n2, n3, TRUE = 1, FALSE = 0, *orderTpl, maxTpl, ok, count = 0;
   double maxscoreTpl;
   double p, pp, p1, p2, p3, p4, *ProbArrowhead2, *scoreTpl, *scoresN;
+  double logpp,*logscoreTpl;
 
   ProbArrowhead2 = new double[4 * NbTpl];
   scoreTpl = new double[NbTpl];
+  logscoreTpl = new double[NbTpl];
   orderTpl = new int[NbTpl];
   scoresN = new double[NbTpl];
 
@@ -64,8 +72,9 @@ int miic::reconstruction::OrientTpl_LV_Deg_Propag(int NbTpl, int* Tpl,
   for (i = 0; i < NbTpl; i++) {
     if (I3[i] < 0) {       // Tpl negative
       if (deg == FALSE) {  // no degenerescence
-        scoreTpl[i] =
-            (1 + exp(I3[i])) / (1 + 3 * exp(I3[i]));  // update 20150228
+			  //scoreTpl[i]=(1+exp(I3[i]))/(1+3*exp(I3[i])); //update 20150228
+			  logscoreTpl[i]=log1p(exp(I3[i])) -log1p(3*exp(I3[i]));
+			  scoreTpl[i]=expm1(logscoreTpl[i])+1;
         scoresN[i] = -(I3[i]);
       } else {  // degenerescence
         scoreTpl[i] = (3 - 2 * exp(I3[i])) /
@@ -81,6 +90,7 @@ int miic::reconstruction::OrientTpl_LV_Deg_Propag(int NbTpl, int* Tpl,
       }
 
     } else {  // Tpl positive
+      logscoreTpl[i]=log(0.5);
       scoreTpl[i] = 0.5;
       scoresN[i] = 0;
     }
@@ -111,17 +121,9 @@ int miic::reconstruction::OrientTpl_LV_Deg_Propag(int NbTpl, int* Tpl,
   for (i = 0; i < NbTpl; i++) {
     orderTpl[i] = i;
   }
-  std::sort(orderTpl, orderTpl + NbTpl, sort_indices_3points(scoreTpl));
-  double max = -10000;
-  int maxpos = 0;
-  for (i = 0; i < NbTpl; i++) {
-    if (scoreTpl[i] > max) {
-      maxpos = i;
-      max = scoreTpl[i];
-    }
-  }
+  std::sort(orderTpl, orderTpl + NbTpl, TripletComparator(logscoreTpl));
 
-  maxTpl = maxpos;
+  maxTpl=orderTpl[NbTpl-1];
   maxscoreTpl = scoreTpl[maxTpl];
 
 #if _MY_PRINT_
@@ -148,6 +150,7 @@ int miic::reconstruction::OrientTpl_LV_Deg_Propag(int NbTpl, int* Tpl,
     p4 = 0.5;
 
     i = maxTpl;
+    logscoreTpl[i]=-__DBL_MAX__;
     scoreTpl[i] = -1;
     scoresN[i] = -1;
 
@@ -166,10 +169,10 @@ int miic::reconstruction::OrientTpl_LV_Deg_Propag(int NbTpl, int* Tpl,
         1 - ProbArrowhead2[1 * NbTpl + i]);  // change 20151031
     // if arrowhead/tail on 1 (x 0-*1 z 2-3 y) is not already established
     // (through an earlier propagation)
-    if ((ProbArrowhead[1 * NbTpl + i] < (p - eps)) &&
-        (ProbArrowhead[1 * NbTpl + i] > (1 - p + eps)) &&
-        (HALFVSTRUCT == TRUE || I3[i] > 0 ||
-            ProbArrowhead[2 * NbTpl + i] > (0.5 - eps))) {  // change 20151024
+    if((ProbArrowhead[1 * NbTpl + i] < (p - eps)) &&
+			 (ProbArrowhead[1 * NbTpl + i] > (1 - p + eps)) &&
+  		 (HALFVSTRUCT == TRUE || I3[i] > 0 ||
+            ProbArrowhead[2 * NbTpl + i] > (0.5 - eps)) ) {  // change 20151024
       // establish arrowhead/tail final proba on 1 (x 0-*1 z 2-3 y)
       ProbArrowhead[1 * NbTpl + i] = ProbArrowhead2[1 * NbTpl + i];
 
@@ -237,6 +240,7 @@ int miic::reconstruction::OrientTpl_LV_Deg_Propag(int NbTpl, int* Tpl,
           if (((p2 > (0.5 + eps)) || (p2 < (0.5 - eps))) &&
               ((ProbArrowhead[2 * NbTpl + i] > (0.5 + eps)) ||
                   (ProbArrowhead[2 * NbTpl + i] < (0.5 - eps)))) {
+            logscoreTpl[i] = -__DBL_MAX__;
             scoreTpl[i] = -1;  // remove tpl from the list of yet-unused Tpl
             scoresN[i] = -1;
             ok = FALSE;
@@ -260,6 +264,7 @@ int miic::reconstruction::OrientTpl_LV_Deg_Propag(int NbTpl, int* Tpl,
           if (((p1 > (0.5 + eps)) || (p1 < (0.5 - eps))) &&
               ((ProbArrowhead[2 * NbTpl + i] > (0.5 + eps)) ||
                   (ProbArrowhead[2 * NbTpl + i] < (0.5 - eps)))) {
+            logscoreTpl[i]=-__DBL_MAX__;
             scoreTpl[i] = -1;  // remove tpl from the list of yet-unused Tpl
             scoresN[i] = -1;
             ok = FALSE;
@@ -282,6 +287,7 @@ int miic::reconstruction::OrientTpl_LV_Deg_Propag(int NbTpl, int* Tpl,
           if (((p2 > (0.5 + eps)) || (p2 < (0.5 - eps))) &&
               ((ProbArrowhead[1 * NbTpl + i] > (0.5 + eps)) ||
                   (ProbArrowhead[1 * NbTpl + i] < (0.5 - eps)))) {
+            logscoreTpl[i]=-__DBL_MAX__;
             scoreTpl[i] = -1;  // remove tpl from the list of yet-unused Tpl
             scoresN[i] = -1;
             ok = FALSE;
@@ -304,6 +310,7 @@ int miic::reconstruction::OrientTpl_LV_Deg_Propag(int NbTpl, int* Tpl,
           if (((p1 > (0.5 + eps)) || (p1 < (0.5 - eps))) &&
               ((ProbArrowhead[1 * NbTpl + i] > (0.5 + eps)) ||
                   (ProbArrowhead[1 * NbTpl + i] < (0.5 - eps)))) {
+            logscoreTpl[i]=-__DBL_MAX__;
             scoreTpl[i] = -1;  // remove tpl from the list of yet-unused Tpl
             scoresN[i] = -1;
             ok = FALSE;
@@ -334,15 +341,18 @@ int miic::reconstruction::OrientTpl_LV_Deg_Propag(int NbTpl, int* Tpl,
             scoreTpl[i] =
                 DMAX(scoreTpl[i], DMIN(ProbArrowhead2[2 * NbTpl + i],
                                       1 - ProbArrowhead2[1 * NbTpl + i]));
+            logscoreTpl[i]=log1p(scoreTpl[i]-1);
             scoresN[i] = logF2(scoreTpl[i], I3[i]);
 
             p = ProbArrowhead[1 * NbTpl + i];
-            pp = 0.5 + p * (1.0 / (1 + exp(-I3[i])) - 0.5);  // update 20150228
+            logpp = log1p(p - 1) - log1p(exp(-I3[i]));   // only p*(1.0/(1+exp(-I3[i])) term
+						pp = expm1(logpp) + 1;
             // change 20151031
             // 2->3  condition of propagation (p > pp > 0.5) and no
             // previously higher putative propagation
             if (p > (0.5 + eps) && pp > (0.5 + eps) &&
                 (ProbArrowhead2[2 * NbTpl + i] > (1 - pp + eps))) {
+              logscoreTpl[i]=logpp;
               scoreTpl[i] = pp;
               scoresN[i] = logF2(scoreTpl[i], I3[i]);
 
@@ -352,10 +362,12 @@ int miic::reconstruction::OrientTpl_LV_Deg_Propag(int NbTpl, int* Tpl,
             } else {  // other direction? 2->1
               p = ProbArrowhead[2 * NbTpl + i];
               // update 20150228
-              pp = 0.5 + p * (1.0 / (1 + exp(-I3[i])) - 0.5);
+              logpp = log1p(p - 1) - log1p(exp(-I3[i]));   // only p*(1.0/(1+exp(-I3[i])) term
+              pp = expm1(logpp) + 1;
               // change 20151031
               if (p > (0.5 + eps) && pp > (0.5 + eps) &&
                   (ProbArrowhead2[1 * NbTpl + i] > (1 - pp + eps))) {
+                logscoreTpl[i] = logpp;
                 scoreTpl[i] = pp;
                 scoresN[i] = logF2(scoreTpl[i], I3[i]);
                 ProbArrowhead2[1 * NbTpl + i] = 1 - pp;
@@ -367,13 +379,15 @@ int miic::reconstruction::OrientTpl_LV_Deg_Propag(int NbTpl, int* Tpl,
             }
           } else if (I3[i] < 0) {
             if (fabs(ProbArrowhead2[1 * NbTpl + i] -
-                     ProbArrowhead2[2 * NbTpl + i]) > eps) {
+                     ProbArrowhead2[2 * NbTpl + i]) > eps_diff) {
               scoreTpl[i] = DMIN(
                   ProbArrowhead2[1 * NbTpl + i], ProbArrowhead2[2 * NbTpl + i]);
+              logscoreTpl[i] = log1p(scoreTpl[i] - 1);
               scoresN[i] = logF2(scoreTpl[i], I3[i]);
             }
             p = ProbArrowhead[1 * NbTpl + i];
-            pp = 0.5 + p * (1.0 / (1 + exp(I3[i])) - 0.5);
+            logpp = log1p(p - 1) - log1p(exp(I3[i]));   // only p*(1.0/(1+exp(I3[i])) term
+						pp = expm1(logpp) + 1;
 
             if (pp > (0.5 + eps) &&
                 (ProbArrowhead2[2 * NbTpl + i] < (pp - eps))) {
@@ -381,6 +395,7 @@ int miic::reconstruction::OrientTpl_LV_Deg_Propag(int NbTpl, int* Tpl,
               // higher putative propagation
 
               // update score which has decreased due to < 0 propagation!
+              logscoreTpl[i] = logpp;
               scoreTpl[i] = pp;
               scoresN[i] = logF2(scoreTpl[i], I3[i]);
 
@@ -392,11 +407,13 @@ int miic::reconstruction::OrientTpl_LV_Deg_Propag(int NbTpl, int* Tpl,
                     1 - ProbArrowhead2[2 * NbTpl + i];
             } else {
               p = ProbArrowhead[2 * NbTpl + i];
-              pp = 0.5 + p * (1.0 / (1 + exp(I3[i])) - 0.5);
+              logpp = log1p(p - 1) - log1p(exp(I3[i]));   // only p*(1.0/(1+exp(I3[i])) term
+							pp = expm1(logpp) + 1;
               // change 20151031
               if (pp > (0.5 + eps) &&
                   (ProbArrowhead2[1 * NbTpl + i] < (pp - eps))) {
                 // update score which has decreased due to < 0 propagation!
+                logscoreTpl[i] = logpp;
                 scoreTpl[i] = pp;
                 scoresN[i] = logF2(scoreTpl[i], I3[i]);
                 ProbArrowhead2[1 * NbTpl + i] = pp;
@@ -434,6 +451,7 @@ int miic::reconstruction::OrientTpl_LV_Deg_Propag(int NbTpl, int* Tpl,
           if (((p3 > (0.5 + eps)) || (p3 < (0.5 - eps))) &&
               ((ProbArrowhead[2 * NbTpl + i] > (0.5 + eps)) ||
                   (ProbArrowhead[2 * NbTpl + i] < (0.5 - eps)))) {
+            logscoreTpl[i] = -__DBL_MAX__;
             scoreTpl[i] = -1;  // remove tpl from the list of yet-unused Tpl
             scoresN[i] = -1;
             ok = FALSE;
@@ -456,6 +474,7 @@ int miic::reconstruction::OrientTpl_LV_Deg_Propag(int NbTpl, int* Tpl,
           if (((p4 > (0.5 + eps)) || (p4 < (0.5 - eps))) &&
               ((ProbArrowhead[2 * NbTpl + i] > (0.5 + eps)) ||
                   (ProbArrowhead[2 * NbTpl + i] < (0.5 - eps)))) {
+            logscoreTpl[i] = -__DBL_MAX__;
             scoreTpl[i] = -1;  // remove tpl from the list of yet-unused Tpl
             scoresN[i] = -1;
             ok = FALSE;
@@ -477,6 +496,7 @@ int miic::reconstruction::OrientTpl_LV_Deg_Propag(int NbTpl, int* Tpl,
           if (((p3 > (0.5 + eps)) || (p3 < (0.5 - eps))) &&
               ((ProbArrowhead[1 * NbTpl + i] > (0.5 + eps)) ||
                   (ProbArrowhead[1 * NbTpl + i] < (0.5 - eps)))) {
+            logscoreTpl[i] = -__DBL_MAX__;
             scoreTpl[i] = -1;  // remove tpl from the list of yet-unused Tpl
             scoresN[i] = -1;
             ok = FALSE;
@@ -499,6 +519,7 @@ int miic::reconstruction::OrientTpl_LV_Deg_Propag(int NbTpl, int* Tpl,
           if (((p4 > (0.5 + eps)) || (p4 < (0.5 - eps))) &&
               ((ProbArrowhead[1 * NbTpl + i] > (0.5 + eps)) ||
                   (ProbArrowhead[1 * NbTpl + i] < (0.5 - eps)))) {
+            logscoreTpl[i] = -__DBL_MAX__;
             scoreTpl[i] = -1;  // remove tpl from the list of yet-unused Tpl
             scoresN[i] = -1;
             ok = FALSE;
@@ -528,15 +549,18 @@ int miic::reconstruction::OrientTpl_LV_Deg_Propag(int NbTpl, int* Tpl,
             scoreTpl[i] =
                 DMAX(scoreTpl[i], DMIN(ProbArrowhead2[2 * NbTpl + i],
                                       1 - ProbArrowhead2[1 * NbTpl + i]));
+            logscoreTpl[i] = log1p(scoreTpl[i] - 1);
             scoresN[i] = logF2(scoreTpl[i], I3[i]);
 
             p = ProbArrowhead[1 * NbTpl + i];
-            pp = 0.5 + p * (1.0 / (1 + exp(-I3[i])) - 0.5);  // update 20150228
+            logpp = log1p(p - 1) - log1p(exp(-I3[i]));   // only p*(1.0/(1+exp(-I3[i])) term
+						pp = expm1(logpp) + 1;
             // change 20151031
             if (p > (0.5 + eps) && pp > (0.5 + eps) &&
                 (ProbArrowhead2[2 * NbTpl + i] > (1 - pp + eps))) {
               // 2->3  condition of propagation (p > pp > 0.5) and no previously
               // higher putative propagation
+              logscoreTpl[i] = logpp;
               scoreTpl[i] = pp;
               scoresN[i] = logF2(scoreTpl[i], I3[i]);
               ProbArrowhead2[2 * NbTpl + i] = 1 - pp;
@@ -545,12 +569,14 @@ int miic::reconstruction::OrientTpl_LV_Deg_Propag(int NbTpl, int* Tpl,
                 ProbArrowhead2[3 * NbTpl + i] = pp;  // change 20151031
             } else {  // other direction? 2->1
               p = ProbArrowhead[2 * NbTpl + i];
-              pp = 0.5 + p * (1.0 / (1 + exp(-I3[i])) - 0.5);
+              logpp = log1p(p - 1) - log1p(exp(-I3[i]));   // only p*(1.0/(1+exp(-I3[i])) term
+							pp = expm1(logpp) + 1;
               // change 20151031
               if (p > (0.5 + eps) && pp > (0.5 + eps) &&
                   (ProbArrowhead2[1 * NbTpl + i] > (1 - pp + eps))) {
                 // 2->1   condition of propagation (p > pp > 0.5) and no
                 // previously higher putative propagation
+                logscoreTpl[i] = logpp;
                 scoreTpl[i] = pp;
                 scoresN[i] = logF2(scoreTpl[i], I3[i]);
                 ProbArrowhead2[1 * NbTpl + i] = 1 - pp;
@@ -562,18 +588,21 @@ int miic::reconstruction::OrientTpl_LV_Deg_Propag(int NbTpl, int* Tpl,
           } else if (I3[i] < 0) {
             // define score in case of no true propagation below
             if (fabs(ProbArrowhead2[1 * NbTpl + i] -
-                     ProbArrowhead2[2 * NbTpl + i]) > eps) {  // modif 20150228
+                     ProbArrowhead2[2 * NbTpl + i]) > eps_diff) {  // modif 20150228
               scoreTpl[i] = DMIN(
                   ProbArrowhead2[1 * NbTpl + i], ProbArrowhead2[2 * NbTpl + i]);
+              logscoreTpl[i] = log1p(scoreTpl[i] - 1);
               scoresN[i] = logF2(scoreTpl[i], I3[i]);
             }
             p = ProbArrowhead[1 * NbTpl + i];
-            pp = 0.5 + p * (1.0 / (1 + exp(I3[i])) - 0.5);
+            logpp = log1p(p - 1) - log1p(exp(-I3[i]));   // only p*(1.0/(1+exp(-I3[i])) term
+						pp = expm1(logpp) + 1;
             // change 20151031
             if (pp > (0.5 + eps) &&
                 (ProbArrowhead2[2 * NbTpl + i] < (pp - eps))) {
               // 2->3 condition of propagation (p > pp > 0.5) and no previously
               // higher putative propagation
+              logscoreTpl[i] = logpp;
               scoreTpl[i] = pp;  // update score which has decreased due to < 0
                                  // propagation!
               scoresN[i] = logF2(scoreTpl[i], I3[i]);
@@ -584,11 +613,13 @@ int miic::reconstruction::OrientTpl_LV_Deg_Propag(int NbTpl, int* Tpl,
                     1 - ProbArrowhead2[2 * NbTpl + i];  // change 20151031
             } else {
               p = ProbArrowhead[2 * NbTpl + i];
-              pp = 0.5 + p * (1.0 / (1 + exp(I3[i])) - 0.5);
+              logpp = log1p(p - 1) - log1p(exp(I3[i]));   // only p*(1.0/(1+exp(I3[i])) term
+							pp = expm1(logpp) + 1;
               // change 20151031
               if (pp > (0.5 + eps) &&
                   (ProbArrowhead2[1 * NbTpl + i] < (pp - eps))) {
                 // 2->1
+                logscoreTpl[i] = logpp;
                 scoreTpl[i] = pp;  // update score which has decreased due to <0
                                    // propagation!
                 scoresN[i] = logF2(scoreTpl[i], I3[i]);
@@ -609,21 +640,9 @@ int miic::reconstruction::OrientTpl_LV_Deg_Propag(int NbTpl, int* Tpl,
 #endif  // _MY_PRINT_
 
     //  Order Tpl in increasing ScoreTpl of scoresN
-    std::sort(orderTpl, orderTpl + NbTpl, sort_indices_3points(scoreTpl));
+    std::sort(orderTpl, orderTpl + NbTpl, TripletComparator(scoreTpl));
 
-    for (i = 0; i < NbTpl; i++) {
-      orderTpl[i] = i;
-    }
-
-    double max = -10000;
-    int maxpos = 0;
-    for (i = 0; i < NbTpl; i++) {
-      if (scoreTpl[i] > max) {
-        maxpos = i;
-        max = scoreTpl[i];
-      }
-    }
-    maxTpl = maxpos;
+    maxTpl = orderTpl[NbTpl-1];
     maxscoreTpl = scoreTpl[maxTpl];
 #if _MY_PRINT_
     for (i = 0; i < NbTpl; i++) {
