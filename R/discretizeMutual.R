@@ -396,7 +396,7 @@ axisprint <- function(x) {
 }
 
 theme_side_hist <- function() {
-  theme_classic() % + replace%
+  theme_classic() %+replace%
     theme(
       title = element_text(
         family = "",
@@ -517,7 +517,7 @@ jointplot_hist <- function(X, Y, result, nameDist1, nameDist2,
       alpha = .5,
       fill = "#c1c6ee"
     ) +
-    theme_side_hist() % + replace% theme(plot.margin = margin(
+    theme_side_hist() %+replace% theme(plot.margin = margin(
       5.5, 5.5, -25, 5.5,
       "pt"
     )) +
@@ -541,7 +541,7 @@ jointplot_hist <- function(X, Y, result, nameDist1, nameDist2,
       alpha = .5,
       fill = "#c1c6ee"
     ) +
-    theme_side_hist() % + replace% theme(plot.margin = margin(5.5, 5.5, 5.5, -30, "pt")) +
+    theme_side_hist() %+replace% theme(plot.margin = margin(5.5, 5.5, 5.5, -30, "pt")) +
     scale_y_continuous(expand = c(0, 0)) +
     ylab("Y") +
     coord_flip()
