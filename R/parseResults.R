@@ -316,7 +316,7 @@ is_causal <- function(summary, probas) {
     # If there is another V-structure pointing to the source node, which
     # is not an error.
     if (any(probas[v_structs, "target"] == source) &&
-      na.omit(error_matrix[vstruct_matrix == source]) == 0) {
+      length(na.omit(error_matrix[vstruct_matrix == source])) == 0) {
       is_causal_results[i] <- "Y"
     }
   }
