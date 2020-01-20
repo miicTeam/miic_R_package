@@ -28,7 +28,7 @@ double* compute_Rscore_Ixyz_new_alg5(int** data, int** sortidx, int* AllLevels,
     int* ptr_cnt, int* ptrVarIdx, int nbrUi, int ptrZiIdx, int n,
     structure::Environment& environment, bool saveIterations = false);
 
-void optfun_onerun_kmdl_coarse(int* sortidx_var, int* data, int nbrV,
+std::vector<double> optfun_onerun_kmdl_coarse(int* sortidx_var, int* data, int nbrV,
     int** factors, int* r, double sc, int sc_levels1, int previous_levels,
     int n, int nnr, int* cut, int* r_opt, structure::Environment& environment);
 

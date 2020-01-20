@@ -223,7 +223,7 @@
 #' data(cosmicCancer_stateOrder)
 #' # execute MIIC (reconstruct graph)
 #' miic.res <- miic(
-#'   inputData = cosmicCancer, categoryOrder = cosmicCancer_stateOrder, latent = TRUE,
+#'   inputData = cosmicCancer, categoryOrder = cosmicCancer_stateOrder, latent = "yes",
 #'   confidenceShuffle = 100, confidenceThreshold = 0.001
 #' )
 #'
@@ -239,7 +239,7 @@
 #' data(ohno_stateOrder)
 #' # execute MIIC (reconstruct graph)
 #' miic.res <- miic(
-#'   inputData = ohno, latent = TRUE, categoryOrder = ohno_stateOrder,
+#'   inputData = ohno, latent = "yes", categoryOrder = ohno_stateOrder,
 #'   confidenceShuffle = 100, confidenceThreshold = 0.001
 #' )
 #'
