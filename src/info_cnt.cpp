@@ -776,10 +776,10 @@ double* compute_Ixy_cond_u_new_alg1(int** data, int** sortidx, int* ptr_cnt,
   double Ik_x_u;
   double Ik_y_u;
   double cond_Ik;
-  std::vector<double> I_x_yu_part;
-  std::vector<double> I_y_xu_part;
-  std::vector<double> I_x_u_part;
-  std::vector<double> I_y_u_part;
+  std::vector<double> I_x_yu_part(2, -1);
+  std::vector<double> I_y_xu_part(2, -1);
+  std::vector<double> I_x_u_part(2, -1);
+  std::vector<double> I_y_u_part(2, -1);
   double cond_I_bis;
   double cond_Ik_bis;
 
@@ -897,6 +897,8 @@ double* compute_Ixy_cond_u_new_alg1(int** data, int** sortidx, int* ptr_cnt,
   int sc_levels_y;  // Number of levels of the second variable
   flag1 = 0;
   int max_U_counter = 3;
+  int last_optimized_U = -1;
+  bool all_Us_discrete = true;
   int np;  // number of possible cuts for combinatorial term
   for (stop1 = 1; stop1 < STEPMAX1; stop1++) {
     // optimize I(y;xu) over x and u
@@ -904,6 +906,7 @@ double* compute_Ixy_cond_u_new_alg1(int** data, int** sortidx, int* ptr_cnt,
     while (U_counter < max_U_counter) {
       for (l = 0; l < nbrUi; l++) {
         if (ptr_cnt[ptrVarIdx[l + 2]] == 1) {
+          all_Us_discrete = false;
           // opt u
           // I(y;xu)
           jointfactors_uiyx(
@@ -927,13 +930,18 @@ double* compute_Ixy_cond_u_new_alg1(int** data, int** sortidx, int* ptr_cnt,
               data[ptrVarIdx[l + 2]], 2, factors1, rt1, sc, sc_levels1,
               sc_levels2, n, AllLevels[ptrVarIdx[l + 2]], cut[l + 2],
               &(r[l + 2]), environment);  // 2 factors
+          last_optimized_U = l;
         }
       }  // for all Uis
       for (int ll = 0; ll < nbrUi; ll++) {
-        if (ptr_cnt[ptrVarIdx[ll + 2]] == 1)
+        if (ptr_cnt[ptrVarIdx[ll + 2]] == 1) {
+          np = min(AllLevels[ptrVarIdx[ll+2]], maxbins);
           update_datafactors(
               sortidx, ptrVarIdx[ll + 2], datafactors, ll + 2, n, cut);
-        r_old[ll + 2] = r[ll + 2];
+          if(ll != last_optimized_U) I_y_xu_part[1] -= logchoose(np - 1,
+            r_old[ll+2] - 1, looklog, lookchoose) / n;
+          r_old[ll + 2] = r[ll + 2];
+        }
       }
       U_counter++;
       if (nbrUi == 1) U_counter = max_U_counter;
@@ -951,12 +959,17 @@ double* compute_Ixy_cond_u_new_alg1(int** data, int** sortidx, int* ptr_cnt,
           r_temp, n, looklog, 0);
     I_y_xu = res_temp[0];  // Before optimization on X.
     Ik_y_xu = res_temp[1];
+    if(all_Us_discrete){
+      I_y_xu_part[0] = res_temp[0];
+      I_y_xu_part[1] = res_temp[1];
+    }
     free(res_temp);
     if ((ptr_cnt[ptrVarIdx[0]] == 1) && (r_old[0] > 1)) {
       np = min(AllLevels[ptrVarIdx[0]], maxbins);
       if (r_old[0] < np) {
         Ik_y_xu -= logchoose(np - 1, r_old[0] - 1, looklog, lookchoose) / n;
-        I_y_xu_part[1] -= logchoose(np - 1, r_old[0] - 1, looklog, lookchoose) / n;
+        I_y_xu_part[1] -= logchoose(np - 1, r_old[0] - 1, looklog,
+                                    lookchoose) / n;
       }
     }
 
@@ -1027,10 +1040,14 @@ double* compute_Ixy_cond_u_new_alg1(int** data, int** sortidx, int* ptr_cnt,
         }
       }  // for all Uis
       for (int ll = 0; ll < nbrUi; ll++) {
-        if (ptr_cnt[ptrVarIdx[ll + 2]] == 1)
+        if (ptr_cnt[ptrVarIdx[ll + 2]] == 1){
+          np = min(AllLevels[ptrVarIdx[ll+2]], maxbins);
           update_datafactors(
               sortidx, ptrVarIdx[ll + 2], datafactors, ll + 2, n, cut);
-        r_old[ll + 2] = r[ll + 2];
+          if(ll != last_optimized_U) I_x_yu_part[1] -= logchoose(np - 1,
+            r_old[ll+2] - 1, looklog, lookchoose) / n;
+          r_old[ll + 2] = r[ll + 2];
+        }
       }
       U_counter++;
       if (nbrUi == 1) U_counter = max_U_counter;
@@ -1048,12 +1065,17 @@ double* compute_Ixy_cond_u_new_alg1(int** data, int** sortidx, int* ptr_cnt,
           r_temp, n, looklog, 0);
     I_x_yu = res_temp[0];  // Before updating Y (and X).
     Ik_x_yu = res_temp[1];
+    if(all_Us_discrete){
+      I_x_yu_part[0] = res_temp[0];
+      I_x_yu_part[1] = res_temp[1];
+    }
     free(res_temp);
     if ((ptr_cnt[ptrVarIdx[1]] == 1) && (r_old[1] > 1)) {
       np = min(AllLevels[ptrVarIdx[1]], maxbins);
       if (r_old[1] < np) {
         Ik_x_yu -= logchoose(np - 1, r_old[1] - 1, looklog, lookchoose) / n;
-        I_x_yu_part[1] -= logchoose(np - 1, r_old[1] - 1, looklog, lookchoose) / n;
+        I_x_yu_part[1] -= logchoose(np - 1, r_old[1] - 1, looklog,
+                                    lookchoose) / n;
       }
     }
 
@@ -1113,10 +1135,14 @@ double* compute_Ixy_cond_u_new_alg1(int** data, int** sortidx, int* ptr_cnt,
         }
       }  // for all Uis
       for (int ll = 0; ll < nbrUi; ll++) {
-        if (ptr_cnt[ptrVarIdx[ll + 2]] == 1)
+        if (ptr_cnt[ptrVarIdx[ll + 2]] == 1) {
+          np = min(AllLevels[ptrVarIdx[ll+2]], maxbins);
           update_datafactors(
               sortidx, ptrVarIdx[ll + 2], datafactors, ll + 2, n, cut);
-        r_old[ll + 2] = r[ll + 2];
+          if(ll != last_optimized_U) I_x_u_part[1] -= logchoose(np - 1,
+            r_old[ll+2] - 1, looklog, lookchoose) / n;
+          r_old[ll + 2] = r[ll + 2];
+        }
       }
       U_counter++;
       if (nbrUi == 1) U_counter = max_U_counter;
@@ -1134,6 +1160,10 @@ double* compute_Ixy_cond_u_new_alg1(int** data, int** sortidx, int* ptr_cnt,
           r_temp, n, looklog, 0);
     I_x_u = res_temp[0];  // After optimization on U.
     Ik_x_u = res_temp[1];
+    if(all_Us_discrete){
+      I_x_u_part[0] = res_temp[0];
+      I_x_u_part[1] = res_temp[1];
+    }
     free(res_temp);
     // Reset cutpoints on U
     reset_u_cutpoints(cut, nbrUi, ptr_cnt, ptrVarIdx, initbins, maxbins, lbin,
@@ -1172,10 +1202,14 @@ double* compute_Ixy_cond_u_new_alg1(int** data, int** sortidx, int* ptr_cnt,
         }
       }  // for all Uis
       for (int ll = 0; ll < nbrUi; ll++) {
-        if (ptr_cnt[ptrVarIdx[ll + 2]] == 1)
+        if (ptr_cnt[ptrVarIdx[ll + 2]] == 1){
+          np = min(AllLevels[ptrVarIdx[ll+2]], maxbins);
           update_datafactors(
               sortidx, ptrVarIdx[ll + 2], datafactors, ll + 2, n, cut);
-        r_old[ll + 2] = r[ll + 2];
+          if(ll != last_optimized_U) I_y_u_part[1] -= logchoose(np - 1,
+            r_old[ll+2] - 1, looklog, lookchoose) / n;
+            r_old[ll + 2] = r[ll + 2];
+        }
       }
       U_counter++;
       if (nbrUi == 1) U_counter = max_U_counter;
@@ -1193,6 +1227,10 @@ double* compute_Ixy_cond_u_new_alg1(int** data, int** sortidx, int* ptr_cnt,
           r_temp, n, looklog, 0);
     I_y_u = res_temp[0];  // After optimization on U.
     Ik_y_u = res_temp[1];
+    if(all_Us_discrete){
+      I_y_u_part[0] = res_temp[0];
+      I_y_u_part[1] = res_temp[1];
+    }
     free(res_temp);
     // Reset cutpoints on U
     reset_u_cutpoints(cut, nbrUi, ptr_cnt, ptrVarIdx, initbins, maxbins, lbin,
@@ -1287,7 +1325,6 @@ double* compute_Ixy_cond_u_new_alg1(int** data, int** sortidx, int* ptr_cnt,
   free(MIk);
   free(MI1);
   free(MIk1);
-    //cond_Ik_bis = 0.5 * (I_x_yu_part[1] - I_x_u_part[1] + I_y_xu_part[1] - I_y_u_part[1])/n;
 
   return return_res;
 }

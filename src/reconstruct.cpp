@@ -118,6 +118,7 @@ extern "C" SEXP reconstruct(SEXP inputDataR, SEXP typeOfDataR, SEXP cntVarR,
   environment.isAllGaussian = false;
 
   // set the environment
+  srand(0);
   setEnvironment(environment);
   vector<string> v(Rcpp::as<vector<string> >(blackBoxR));
   if (v.size() > 1) readBlackbox(v, environment);
@@ -148,6 +149,7 @@ extern "C" SEXP reconstruct(SEXP inputDataR, SEXP typeOfDataR, SEXP cntVarR,
   // Run the skeleton iteration phase if consistency is required.
   BCC bcc(environment);
   auto cycle_tracker = CycleTracker(environment);
+  vector<vector<string> > confVect;
   vector<vector<string> > orientations;
   do {
     if (environment.consistentPhase) bcc.analyse();
@@ -181,6 +183,18 @@ extern "C" SEXP reconstruct(SEXP inputDataR, SEXP typeOfDataR, SEXP cntVarR,
       environment.execTime.initIter =
           environment.execTime.init + environment.execTime.iter;
     }
+
+    startTime = get_wall_time();
+    if (environment.numberShuffles > 0) {
+      std::cout << "Computing confidence cut with permutations..." << std::flush;
+      confVect = confidenceCut(environment);
+      long double spentTime = (get_wall_time() - startTime);
+      environment.execTime.cut = spentTime;
+      std::cout << " done." << std::endl;
+    } else {
+      environment.execTime.cut = 0;
+    }
+
     // Oriente edges for non-consistent/orientation consistent algorithm
     if (environment.numNoMore > 0 && environment.consistentPhase <= 1) {
       orientations = orientationProbability(environment);
@@ -197,18 +211,6 @@ extern "C" SEXP reconstruct(SEXP inputDataR, SEXP typeOfDataR, SEXP cntVarR,
     }
   }
   environment.numNoMore = union_n_edges;
-
-  startTime = get_wall_time();
-  vector<vector<string> > confVect;
-  if (environment.numberShuffles > 0) {
-    std::cout << "Computing confidence cut with permutations..." << std::flush;
-    confVect = confidenceCut(environment);
-    long double spentTime = (get_wall_time() - startTime);
-    environment.execTime.cut = spentTime;
-    std::cout << " done." << std::endl;
-  } else {
-    environment.execTime.cut = 0;
-  }
 
   if (environment.numNoMore > 0) {
     // skeleton consistent algorithm

@@ -534,60 +534,64 @@ miic <- function(inputData,
     )
 
     res$all.edges.summary <- resGmSummary
+    print(nrow(res$confData))
+    print(nrow(res$all.edges.summary[res$all.edges.summary$type=='P',]))
 
     rm(resGmSummary)
 
-    if (confidenceShuffle > 0 & confidenceThreshold > 0) {
-      # Insert the confidence ratio
-      tmp_sum <- res$all.edges.summary
-      conf_col <- rep(1, nrow(tmp_sum))
-      isCut <- rep(NA, nrow(tmp_sum))
-      tmp_sum <- cbind(tmp_sum, conf_col, isCut)
+    #if (confidenceShuffle > 0 & confidenceThreshold > 0) {
+    #  # Insert the confidence ratio
+    #  tmp_sum <- res$all.edges.summary
+    #  conf_col <- rep(1, nrow(tmp_sum))
+    #  isCut <- rep(NA, nrow(tmp_sum))
+    #  tmp_sum <- cbind(tmp_sum, conf_col, isCut)
 
-      tmp_sum <- cbind(tmp_sum, conf_col)
+    #  tmp_sum <- cbind(tmp_sum, conf_col)
 
-      tmp_pval <- res$confData
-      for (r in 1:nrow(tmp_pval)) {
-        indexes <- which(tmp_sum[, "x"] == tmp_pval[r, "x"] &
-          tmp_sum[, "y"] == tmp_pval[r, "y"])
-        tmp_sum[indexes, "confidence_ratio"] <- tmp_pval[r, "confidence_ratio"]
-        if (tmp_pval[r, "confidence_ratio"] < confidenceThreshold) {
-          indexes <- which(tmp_sum[, "x"] == tmp_pval[r, "x"] &
-            tmp_sum[, "y"] == tmp_pval[r, "y"])
-          tmp_sum[indexes, "isCut"] <- "N"
-        } else {
-          indexes <- which(tmp_sum[, "x"] == tmp_pval[r, "x"] &
-            tmp_sum[, "y"] == tmp_pval[r, "y"])
-          tmp_sum[indexes, "isCut"] <- "Y"
-        }
-      }
-      tmp_sum <- tmp_sum[, c(
-        "x",
-        "y",
-        "type",
-        "ai",
-        "info",
-        "cplx",
-        "Nxy_ai",
-        "log_confidence",
-        "confidence_ratio",
-        "infOrt",
-        "trueOrt",
-        "isOrt",
-        "isOrtOk",
-        "sign",
-        "partial_correlation",
-        "isCut"
-      )]
+    #  tmp_pval <- res$confData
+    #  for (r in 1:nrow(tmp_pval)) {
+    #    indexes <- which(tmp_sum[, "x"] == tmp_pval[r, "x"] &
+    #      tmp_sum[, "y"] == tmp_pval[r, "y"])
+    #    tmp_sum[indexes, "confidence_ratio"] <- tmp_pval[r, "confidence_ratio"]
+    #    if (tmp_pval[r, "confidence_ratio"] < confidenceThreshold) {
+    #      indexes <- which(tmp_sum[, "x"] == tmp_pval[r, "x"] &
+    #        tmp_sum[, "y"] == tmp_pval[r, "y"])
+    #      tmp_sum[indexes, "isCut"] <- "N"
+    #    } else {
+    #      indexes <- which(tmp_sum[, "x"] == tmp_pval[r, "x"] &
+    #        tmp_sum[, "y"] == tmp_pval[r, "y"])
+    #      tmp_sum[indexes, "isCut"] <- "Y"
+    #    }
+    #  }
+    #  tmp_sum <- tmp_sum[, c(
+    #    "x",
+    #    "y",
+    #    "type",
+    #    "ai",
+    #    "info",
+    #    "cplx",
+    #    "Nxy_ai",
+    #    "log_confidence",
+    #    "confidence_ratio",
+    #    "infOrt",
+    #    "trueOrt",
+    #    "isOrt",
+    #    "isOrtOk",
+    #    "sign",
+    #    "partial_correlation",
+    #    "isCut"
+    #  )]
 
-      res$all.edges.summary <- tmp_sum
-      indexes <- which(tmp_sum$type %in% c("P", "TP", "FP"))
-      res$retained.edges.summary <- tmp_sum[indexes, ]
-    }
-    if (verbose) {
-      cat("END miic")
-    }
+    #  res$all.edges.summary <- tmp_sum
+    #  indexes <- which(tmp_sum$type %in% c("P", "TP", "FP"))
+    #  res$retained.edges.summary <- tmp_sum[indexes, ]
+    #}
+    #if (verbose) {
+    #  cat("END miic")
+    #}
   }
+
+  print(nrow(res$all.edges.summary[res$all.edges.summary$type=='P',]))
 
   # print(res$orientations.prob)
   # res$all.edges.summary$isCausal = isCausal(res$all.edges.summary, res$orientations.prob)

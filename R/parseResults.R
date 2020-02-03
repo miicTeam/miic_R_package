@@ -210,22 +210,30 @@ compute_partial_correlation <- function(summary, observations, state_order) {
     stringsAsFactors = FALSE
   )
 
-  if (!is.null(state_order) &&
-    "levels_increasing_order" %in% colnames(state_order)) {
-    for (j in 1:ncol(observations)) {
+    
+
+  for (j in 1:ncol(observations)) {
+    col <- colnames(observations)[j]
+    # If the variable is described in the state order file, transform to a
+    # factor with the right category order.
+    if (!is.null(state_order) &&
+      state_order[j, "var_type"] == 0 &&
+      "levels_increasing_order" %in% colnames(state_order) &&
+      !is.na(state_order[state_order$var_names == col, "levels_increasing_order"])) {
       rownames(state_order) <- state_order$var_names
-      col <- colnames(observations)[j]
-      if (state_order[j, "var_type"] == 0 &&
-        !is.na(state_order[j, "levels_increasing_order"])) {
-        # Convert ordered categorical features to integers
-        observations[, col] <- factor(observations[, col])
-        ordered_levels <- unlist(strsplit(
-          state_order[j, "levels_increasing_order"], ","
-        ))
-        # levels(observations[,col]) = ordered_levels
-        observations[, col] <- ordered(observations[, col], ordered_levels)
-        observations[, col] <- as.numeric(observations[, col])
-      }
+      # Convert ordered categorical features to integers
+      observations[, col] <- factor(observations[, col])
+      ordered_levels <- unlist(strsplit(
+        state_order[state_order$var_names == col, "levels_increasing_order"], ","
+      ))
+      # levels(observations[,col]) = ordered_levels
+      observations[, col] <- ordered(observations[, col], ordered_levels)
+      observations[, col] <- as.numeric(observations[, col])
+    } else if (is.factor(observations[,col]) && 
+      (all(!is.na(as.numeric(levels(observations[,col])))))) {
+      # If the variable is not described but numerical, assume its order from
+      # the numerical categories.
+      observations[, col] <- as.numeric(observations[, col])
     }
   }
 
@@ -241,7 +249,7 @@ compute_partial_correlation <- function(summary, observations, state_order) {
       ai <- unlist(strsplit(ai, ","))
     }
 
-    if (!all(apply(observations[, c(x, y, ai)], 2, is.numeric))) next
+    if (!all(sapply(observations[, c(x, y, ai)], is.numeric))) next
 
     non_na_rows <- apply(observations, 1, function(row, columns) {
       !any(is.na(row[columns]))
@@ -250,12 +258,14 @@ compute_partial_correlation <- function(summary, observations, state_order) {
     if (!is.null(ai)) {
       ai <- unlist(strsplit(ai, ",")) # Character vector
 
-      edge_res <- ppcor::pcor.test(observations[, x], observations[, y],
-        observations[, ai],
+      edge_res <- ppcor::pcor.test(observations[non_na_rows, x],
+        observations[non_na_rows, y],
+        observations[non_na_rows, ai],
         method = "spearman"
       )
     } else {
-      edge_res <- cor.test(observations[, x], observations[, y],
+      edge_res <- cor.test(observations[non_na_rows, x],
+        observations[non_na_rows, y],
         method = "spearman"
       )
     }
@@ -278,13 +288,14 @@ is_causal <- function(summary, probas) {
   if (length(which(v_structs)) == 0) {
     return(is_causal_results)
   }
+  probas_V_structs = probas[v_structs,]
 
   vstruct_matrix <- matrix_from_3_columns(
-    probas[v_structs, ], "source1",
+    probas_V_structs, "source1",
     "source2", "target"
   )
   error_matrix <- matrix_from_3_columns(
-    probas[v_structs, ], "source1",
+    probas_V_structs, "source1",
     "source2", "Error"
   )
 
@@ -308,15 +319,14 @@ is_causal <- function(summary, probas) {
       target <- row$x
     }
 
-    if (!any(probas[v_structs, "target"] == source)) {
+    if (!any(probas_V_structs[, "target"] == source)) {
       # Propagated orientation
       next
     }
 
     # If there is another V-structure pointing to the source node, which
     # is not an error.
-    if (any(probas[v_structs, "target"] == source) &&
-      length(na.omit(error_matrix[vstruct_matrix == source])) == 0) {
+    if (any(error_matrix[vstruct_matrix == source] == 0)) {
       is_causal_results[i] <- "Y"
     }
   }
