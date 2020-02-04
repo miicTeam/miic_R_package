@@ -92,8 +92,8 @@ miic.reconstruct <- function(inputData = NULL,
 
   # if(shuffle == 0) {
   # create the data frame of the edges
-  tmp <- unlist(res$edges)[1:10]
-  res1 <- unlist(res$edges)[11:length(unlist(res$edges))]
+  tmp <- unlist(res$edges)[1:11]
+  res1 <- unlist(res$edges)[12:length(unlist(res$edges))]
   df <-
     data.frame(matrix(res1, nrow = length(res$edges) - 1, byrow = T),
       stringsAsFactors = FALSE

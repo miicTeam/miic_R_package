@@ -636,6 +636,7 @@ vector<vector<string>> saveEdgesListAsTable(Environment& environment) {
   row.push_back("z.name");
   row.push_back("ai.vect");
   row.push_back("zi.vect");
+  row.push_back("Ixy");
   row.push_back("Ixy_ai");
   row.push_back("cplx");
   row.push_back("Rxyz_ai");
@@ -667,6 +668,11 @@ vector<vector<string>> saveEdgesListAsTable(Environment& environment) {
     row.push_back(vectorToStringNodeName(
         environment, environment.edges[allEdges[i]->i][allEdges[i]->j]
                          .shared_info->zi_vect_idx));
+
+    output.str("");
+    output << environment.edges[allEdges[i]->i][allEdges[i]->j]
+                  .shared_info->mutInfo;
+    row.push_back(output.str());
 
     output.str("");
     output << environment.edges[allEdges[i]->i][allEdges[i]->j]

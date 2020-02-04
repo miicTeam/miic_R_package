@@ -96,7 +96,8 @@ summarizeResults <- function(observations = NULL, edges = NULL,
   summary$ai <- fill_summary_column(summary, edges, "x", "y", "ai.vect")
 
   # info and info_cond contain the (conditional) mutual information values
-  summary$info <- fill_summary_column(summary, edges, "x", "y", "Ixy_ai")
+  summary$info <- fill_summary_column(summary, edges, "x", "y", "Ixy")
+  summary$info_cond <- fill_summary_column(summary, edges, "x", "y", "Ixy_ai")
 
   # cplx is the NML complexity (used for independence testing)
   summary$cplx <- fill_summary_column(summary, edges, "x", "y", "cplx")
