@@ -690,6 +690,14 @@ double* getAllInfoNEW(int* ptrAllData, uint* ptrAllLevels, int* ptrVarIdx,
     logC3xy_ui = 0.5 * (logC_xui_y + logC_yui_x);
     logC2xy_ui = 0.5 * (logC_ui_y + logC_ui_x);
 
+    // forbid negative 2-point Ik // change 20200206
+    //if(info3xy_ui - logC3xy_ui - info2xy_ui + logC2xy_ui<0) { 
+    //  info3xy_ui=0;
+    //  logC3xy_ui=0;
+    //  info2xy_ui=0;
+    //  logC2xy_ui=0;
+    //}
+
     if (nbrUi == 0)
       testinfo_xy_ui =
           info3xy_ui - info2xy_ui - logC3xy_ui + logC2xy_ui;  // change 20160221
@@ -1233,6 +1241,14 @@ double* getAllInfoNEW(int* ptrAllData, uint* ptrAllLevels, int* ptrVarIdx,
             logC3xy_ui = 0.5 * (logC_xui_y + logC_yui_x);
             logC2xy_ui = 0.5 * (logC_ui_y + logC_ui_x);
 
+            // forbid negative 2-point Ik // change 20200206
+            //if(info3xy_ui - logC3xy_ui - info2xy_ui + logC2xy_ui<0) { 
+            //  info3xy_ui=0;
+            //  logC3xy_ui=0;
+            //  info2xy_ui=0;
+            //  logC2xy_ui=0;
+            //}
+
             // logC2xy_ui;
             if (nbrUi == 0)
               testinfo_xy_ui = info3xy_ui - info2xy_ui - logC3xy_ui +
@@ -1255,6 +1271,14 @@ double* getAllInfoNEW(int* ptrAllData, uint* ptrAllLevels, int* ptrVarIdx,
             logC3yz_ui = 0.5 * (logC_uiz_y + logC_yui_z);
             logC2yz_ui = 0.5 * (logC_ui_y + logC_ui_z);
 
+            // forbid negative 2-point Ik // change 20200206
+            //if(info3yz_ui - logC3yz_ui - info2yz_ui + logC2yz_ui<0) { 
+            //  info3yz_ui=0;
+            //  logC3yz_ui=0;
+            //  info2yz_ui=0;
+            //  logC2yz_ui=0;
+            //}
+
             // logC2yz_ui;
             if (nbrUi == 0)
               testinfo_yz_ui = info3yz_ui - info2yz_ui - logC3yz_ui +
@@ -1275,6 +1299,14 @@ double* getAllInfoNEW(int* ptrAllData, uint* ptrAllLevels, int* ptrVarIdx,
             }
             logC3xz_ui = 0.5 * (logC_uiz_x + logC_xui_z);
             logC2xz_ui = 0.5 * (logC_ui_x + logC_ui_z);
+
+            // forbid negative 2-point Ik // change 20200206
+            //if(info3xz_ui - logC3xz_ui - info2xz_ui + logC2xz_ui<0) { 
+            //  info3xz_ui=0;
+            //  logC3xz_ui=0;
+            //  info2xz_ui=0;
+            //  logC2xz_ui=0;
+            //}
 
             // logC2xz_ui;
             if (nbrUi == 0)
@@ -1299,6 +1331,14 @@ double* getAllInfoNEW(int* ptrAllData, uint* ptrAllLevels, int* ptrVarIdx,
             }
             logC3xy_uiz = 0.5 * (logC_xuiz_y + logC_yuiz_x);
             logC2xy_uiz = 0.5 * (logC_uiz_y + logC_uiz_x);
+
+            // forbid negative 2-point Ik // change 20200206
+            //if(info3xy_uiz - logC3xy_uiz - info2xy_uiz + logC2xy_uiz<0) { 
+            //  info3xy_uiz=0;
+            //  logC3xy_uiz=0;
+            //  info2xy_uiz=0;
+            //  logC2xy_uiz=0;
+            //}
 
             testinfo_xy_uiz =
                 info3xy_uiz - logC3xy_uiz + info2xy_uiz - logC2xy_uiz;

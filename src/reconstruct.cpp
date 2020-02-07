@@ -194,6 +194,8 @@ extern "C" SEXP reconstruct(SEXP inputDataR, SEXP typeOfDataR, SEXP cntVarR,
     } else {
       environment.execTime.cut = 0;
     }
+    // Do not test distributions for missing at random for orientation
+    environment.testDistribution = false;
 
     // Oriente edges for non-consistent/orientation consistent algorithm
     if (environment.numNoMore > 0 && environment.consistentPhase <= 1) {

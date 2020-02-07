@@ -71,6 +71,7 @@ void getSStructure(Environment& environment, const int posX, const int posY,
       if (environment.isDegeneracy) {
         Cs += log(3);
       }
+      // to fit eq(20) and eq(22) in BMC Bioinfo 2016
       Is = Is + Cs;
     }
   } else if (environment.typeOfData == 2 ||
@@ -84,6 +85,7 @@ void getSStructure(Environment& environment, const int posX, const int posY,
       if (environment.isDegeneracy) {
         Cs += log(3);
       }
+      // I(x;y;z|ui) - cplx(x;y;z|ui)
       Is = Is - Cs;
     }
   } else {

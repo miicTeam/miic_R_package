@@ -106,7 +106,7 @@ summarizeResults <- function(observations = NULL, edges = NULL,
   summary$Nxy_ai <- fill_summary_column(summary, edges, "x", "y", "Nxy_ai")
 
   # log_confidence is the difference between MI and cplx
-  summary$log_confidence <- summary$info - summary$cplx
+  summary$log_confidence <- summary$info_cond - summary$cplx
 
   # infOrt is the inferred edge orientation
   summary$infOrt <- apply(summary, 1, function(row, adj_matrix) {
