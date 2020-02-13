@@ -31,6 +31,9 @@ void jointfactors_u(int **datafactors, int *ptrIdx, int n, int Mui, int *r,
 double *computeMIcond_knml(int **, int *, int *, int, double *, double *);
 double *computeMI_knml(int *xfactors, int *ufactors, int *uxfactors, int *rux,
     int n, double *c2terms, double *looklog, int flag = 0);
+double *computeMI_knml(int *xfactors, int *ufactors, int *uxfactors, int *rux,
+    int n, int n_eff, double *c2terms, double *looklog,
+    std::vector<double> sample_weights, int flag = 0);
 // compute I with MDL COMPLEXITY
 double *computeMIcond_kmdl(
     int **uiyxfactors, int *ruiyx, int *r, int n, double *looklog);

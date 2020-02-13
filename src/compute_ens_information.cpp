@@ -323,6 +323,8 @@ double* computeEnsInformationContinuous_Orientation(Environment& environment,
     // all *_red variables are passed to the optimization routine
     int** dataNumeric_red;
     int** dataNumericIdx_red;
+    vector<double> sample_weights_red(samplesNotNA);
+    bool flag_sample_weights(false);
     int* AllLevels_red;
     int* cnt_red;
     int* posArray_red;
@@ -365,6 +367,10 @@ double* computeEnsInformationContinuous_Orientation(Environment& environment,
       for (uint i = 0; i < environment.numSamples; i++) {
         if (m.samplesToEvaluate[i] == 1) {
           dataNumeric_red[j][k1] = environment.dataNumeric[i][posArray[j]];
+          if(j==0){
+            sample_weights_red[k1] = environment.sampleWeights[i];
+            if(sample_weights_red[k1] != 1.0) flag_sample_weights = true;
+          }
           k1++;
         }
         if (cnt_red[j] == 1) {
@@ -427,7 +433,7 @@ double* computeEnsInformationContinuous_Orientation(Environment& environment,
 
     res = compute_Rscore_Ixyz_new_alg5(dataNumeric_red, dataNumericIdx_red,
         AllLevels_red, cnt_red, posArray_red, myNbrUi, myNbrUi + 2,
-        samplesNotNA, environment);
+        samplesNotNA, sample_weights_red, flag_sample_weights, environment);
 
     res_new[0] = (double)samplesNotNA;
     res_new[1] = res[1];  // I(x;y;z|u)
@@ -541,6 +547,8 @@ void computeContributingScores(Environment& environment, int* ziContPosIdx,
   } else {
     // allocate data reducted *_red
     // all *_red variables are passed to the optimization routine
+    vector<double> sample_weights_red(samplesNotNA);
+    bool flag_sample_weights(false);
     if (myNbrUi <= MAX_NBRUI) {
       dataNumeric_red = m.dataNumeric_red;
       dataNumericIdx_red = m.dataNumericIdx_red;
@@ -579,6 +587,10 @@ void computeContributingScores(Environment& environment, int* ziContPosIdx,
       for (uint i = 0; i < environment.numSamples; i++) {
         if (m.samplesToEvaluate[i] == 1) {
           dataNumeric_red[j][k1] = environment.dataNumeric[i][posArray[j]];
+          if(j==0){
+            sample_weights_red[k1] = environment.sampleWeights[i];
+            if(sample_weights_red[k1] != 1.0) flag_sample_weights = true;
+          }
           k1++;
         }
         if (cnt_red[j] == 1) {
@@ -698,7 +710,7 @@ void computeContributingScores(Environment& environment, int* ziContPosIdx,
       if (ok) {
         res = compute_Rscore_Ixyz_new_alg5(dataNumeric_red, dataNumericIdx_red,
             AllLevels_red, cnt_red, posArray_red, myNbrUi, myNbrUi + 2,
-            samplesNotNA, environment);
+            samplesNotNA, sample_weights_red, flag_sample_weights, environment);
       } else {
         res = new double[3]();  // results res[0]->I,res[1]->I-k
       }
@@ -785,6 +797,8 @@ double* computeEnsInformationContinuous(Environment& environment, int* myCond,
     } else {
       // allocate data reducted *_red
       // all *_red variables are passed to the optimization routine
+      vector<double> sample_weights_red(samplesNotNA);
+      bool flag_sample_weights(false);
       if (myNbrUi <= MAX_NBRUI) {  // using memory space
 
         dataNumeric_red = m.dataNumeric_red;
@@ -822,6 +836,10 @@ double* computeEnsInformationContinuous(Environment& environment, int* myCond,
         for (uint i = 0; i < environment.numSamples; i++) {
           if (m.samplesToEvaluate[i] == 1) {
             dataNumeric_red[j][k1] = environment.dataNumeric[i][posArray[j]];
+            if(j==0) {
+              sample_weights_red[k1] = environment.sampleWeights[i];
+              if(sample_weights_red[k1] != 1.0) flag_sample_weights = true;
+            }
             k1++;
           }
           if (cnt_red[j] == 1) {
@@ -846,7 +864,7 @@ double* computeEnsInformationContinuous(Environment& environment, int* myCond,
 
       res_new = compute_mi_cond_alg1(dataNumeric_red, dataNumericIdx_red,
           AllLevels_red, cnt_red, posArray_red, myNbrUi, samplesNotNA,
-          environment);
+          sample_weights_red, flag_sample_weights, environment);
 
       res_new[1] = res_new[1] * res_new[0];  // Ixy|u
       res_new[2] = res_new[2] * res_new[0];  // cplx

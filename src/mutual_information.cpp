@@ -673,6 +673,61 @@ double *computeMIcond_knml(int **uiyxfactors, int *ruiyx, int *r, int n,
 
 // rux -> 0:x,1;u,2:ux
 double *computeMI_knml(int *xfactors, int *ufactors, int *uxfactors, int *rux,
+    int n, int n_eff, double *c2terms, double *looklog,
+    std::vector<double> sample_weights, int flag) {
+  double *I = (double *)calloc(2, sizeof(double));
+
+  int j, x, u, ux;
+
+  double Hux = 0, Hu = 0, Hx = 0, SC = 0;
+
+  double *nx = (double *)calloc(rux[0], sizeof(double));
+  double *nu = (double *)calloc(rux[1], sizeof(double));
+  double *nux = (double *)calloc(rux[2], sizeof(double));
+
+  for (j = 0; j < n; j++) {
+    nx[xfactors[j]] += sample_weights[j];
+    nu[ufactors[j]] += sample_weights[j];
+    nux[uxfactors[j]] += sample_weights[j];
+  }
+
+  for (x = 0; x < rux[0]; x++) {
+    if (nx[x] > 0) {
+      Hx -= nx[x] * log(nx[x]);
+      if (flag == 0 || flag == 2)
+        SC += computeLogC(fmax(1,int(nx[x]+0.5)), rux[1], looklog, c2terms);
+    }
+  }
+  for (u = 0; u < rux[1]; u++) {
+    if (nu[u] > 0){
+      Hu -= nu[u] * log(nu[u]);
+      if (flag == 0 || flag == 1)
+        SC += computeLogC(fmax(1,int(nu[u]+0.5)), rux[0], looklog, c2terms);
+    }
+  }
+
+  for (ux = 0; ux < rux[2]; ux++) {
+    if (nux[ux] > 0) Hux -= nux[ux] * log(nux[ux]);
+  }
+
+  if (flag == 0) SC -= computeLogC(n_eff, rux[0], looklog, c2terms);
+  if (flag == 0) SC -= computeLogC(n_eff, rux[1], looklog, c2terms);
+
+  I[0] = log(n_eff) + (Hu + Hx - Hux) / n_eff;
+
+  if (flag == 0)
+    I[1] = I[0] - 0.5 * SC / n_eff;
+  else
+    I[1] = I[0] - SC / n_eff;
+
+  free(nx);
+  free(nu);
+  free(nux);
+
+  return I;
+}
+
+double *computeMI_knml(int *xfactors, int *ufactors, int *uxfactors, int *rux,
     int n, double *c2terms, double *looklog, int flag) {
   double *I = (double *)calloc(2, sizeof(double));
 

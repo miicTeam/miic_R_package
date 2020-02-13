@@ -1460,7 +1460,6 @@ void setEnvironment(Environment& environment) {
   environment.atLeastTwoGaussian = 0;
   environment.atLeastTwoDiscrete = 0;
   environment.atLeastOneContinuous = 0;
-  environment.flag_sample_weights = false;
 
   bool isNA = false;
 
@@ -1488,7 +1487,6 @@ void setEnvironment(Environment& environment) {
     for (uint i = 0; i < environment.numSamples; i++) {
       environment.sampleWeights[i] = environment.sampleWeightsVec[i];
     }
-    environment.flag_sample_weights = true;
   } else {
     for (uint i = 0; i < environment.numSamples; i++) {
       if (environment.effN == (int)environment.numSamples)
@@ -1497,7 +1495,6 @@ void setEnvironment(Environment& environment) {
         environment.sampleWeights[i] =
             (environment.effN * 1.0) / environment.numSamples;
     }
-    environment.flag_sample_weights = true;
   }
 
   int count = 0;

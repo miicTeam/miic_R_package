@@ -211,6 +211,66 @@ extern "C" SEXP mydiscretizeMutual(SEXP RmyDist1, SEXP RmyDist2, SEXP RflatU,
     }
   }
 
+  // Declare the lookup table of the parametric complexity
+  int ncol = std::max(maxbins, init_bin) + 1;
+  for (int j = 0; j < (nbrU + 2); j++) {
+    if (ptr_cnt[j] == 0) ncol = std::max(ncol, (AllLevels[j] + 1));
+  }
+  ncol = 1000;  // combinations of Us can exceed ncol
+  double** sc_look = new double*[ncol];
+  for (int K = 0; K < (ncol); K++) {
+    sc_look[K] = new double[n + 1];
+    for (int i = 0; i < (n + 1); i++) {
+      if (K == 1)
+        sc_look[K][i] = 0;
+      else if (i == 0)
+        sc_look[K][i] = 0;
+      else
+        sc_look[K][i] = -1;
+    }
+  }
+  for (int i = 0; i < n; i++) {
+    computeLogC(i, 2, looklog, sc_look);  // Initialize the c2 terms
+  }
+
+  double** lookchoose = new double*[ncol];
+  for (int K = 0; K < (ncol); K++) {
+    lookchoose[K] = new double[n + 1];
+    for (int i = 0; i < (n + 1); i++) {
+      lookchoose[K][i] = -1;
+    }
+  }
+
+  miic::structure::Environment environment;
+
+
+  environment.sampleWeightsVec = Rcpp::as<vector<double> >(RsampleWeights);
+  environment.sampleWeights = new double[n];
+  if (environment.sampleWeightsVec[0] != -1) {
+    for (uint i = 0; i < n; i++) {
+      environment.sampleWeights[i] = environment.sampleWeightsVec[i];
+    }
+  } else {
+    for (uint i = 0; i < n; i++) {
+      if (effN == n)
+        environment.sampleWeights[i] = 1;
+      else
+        environment.sampleWeights[i] =
+            (effN * 1.0) / n;
+    }
+  }
+
+  environment.maxbins = maxbins;
+  environment.initbins = init_bin;
+  environment.lookH = lookH;
+  environment.looklog = looklog;
+  environment.cterms = sc_look;
+  environment.c2terms = c2terms;
+  environment.lookchoose = lookchoose;
+  environment.cplx = cplx;
+  environment.effN = effN;
+  environment.numSamples = n;
+
   // Declare tables_red
   int* posArray = new int[nbrU + 2];
   for (i = 0; i < (nbrU + 2); i++) {
@@ -226,31 +286,35 @@ extern "C" SEXP mydiscretizeMutual(SEXP RmyDist1, SEXP RmyDist2, SEXP RflatU,
 
   int samplesNotNA = 0;
   int* samplesToEvaluate = new int[n];
-  int* samplesToEvaluateTamplate = new int[n];
-  bool cnt = true;
+  int* samplesToEvaluateTemplate = new int[n];
+  bool is_sample_NA = false;
   for (int i = 0; i < n; i++) {
-    samplesToEvaluate[i] = 1;
-    if (i != 0)
-      samplesToEvaluateTamplate[i] = samplesToEvaluateTamplate[i - 1];
-    else
-      samplesToEvaluateTamplate[i] = 0;
 
-    cnt = true;
-    for (int j = 0; (j < nbrU + 2) && (cnt); j++) {
+    is_sample_NA = false;
+    if (i != 0)
+      samplesToEvaluateTemplate[i] = samplesToEvaluateTemplate[i - 1];
+    else
+      samplesToEvaluateTemplate[i] = 0;
+
+    for (int j = 0; (j < nbrU + 2) && (!is_sample_NA); j++) {
       if (dataNumeric[i][posArray[j]] == -1) {
-        cnt = false;
-        break;
+        is_sample_NA = true;
       }
     }
-    if (cnt == false) {
+    if(is_sample_NA){
       samplesToEvaluate[i] = 0;
-      samplesToEvaluateTamplate[i]++;
-    } else
+      samplesToEvaluateTemplate[i]++;
+    }
+    else{
+      samplesToEvaluate[i] = 1;
       samplesNotNA++;
+    }
   }
   // allocate data reducted *_red
   // all *_red variables are passed to the optimization routine
   // not using memory space
+  vector<double> sample_weights_red(samplesNotNA);
+  bool flag_sample_weights(false);
   dataNumericIdx_red = new int*[nbrU + 2];
   dataNumeric_red = new int*[nbrU + 2];
   for (int j = 0; j < (nbrU + 2); j++) {
@@ -281,12 +345,16 @@ extern "C" SEXP mydiscretizeMutual(SEXP RmyDist1, SEXP RmyDist2, SEXP RflatU,
     for (int i = 0; i < n; i++) {
       if (samplesToEvaluate[i] == 1) {
         dataNumeric_red[j][k1] = dataNumeric[i][posArray[j]];
+        if(j==0) {
+          sample_weights_red[k1] = environment.sampleWeights[i];
+          if(sample_weights_red[k1] != 1.0) flag_sample_weights = true;
+        }
         k1++;
       }
       if (cnt_red[j] == 1) {
         si = dataNumericIdx[posArray[j]][i];
         if (samplesToEvaluate[si] == 1) {
-          dataNumericIdx_red[j][k2] = si - samplesToEvaluateTamplate[si];
+          dataNumericIdx_red[j][k2] = si - samplesToEvaluateTemplate[si];
           k2++;
           // check whether is a different values or repeated
           if (dataNumeric[si][posArray[j]] != prev_val) {
@@ -300,6 +368,16 @@ extern "C" SEXP mydiscretizeMutual(SEXP RmyDist1, SEXP RmyDist2, SEXP RflatU,
     if (cnt_red[j] == 1) AllLevels_red[j] = nnr;
   }
 
+  int** iterative_cuts = (int**)calloc(STEPMAX + 1, sizeof(int*));
+  for (int i = 0; i < STEPMAX + 1; i++) {
+    iterative_cuts[i] = (int*)calloc(maxbins * (2 + nbrU), sizeof(int));
+  }
+  environment.iterative_cuts = iterative_cuts;
+
+  double* res = compute_mi_cond_alg1(dataNumeric_red, dataNumericIdx_red,
+      AllLevels_red, cnt_red, posArray_red, nbrUi, n, sample_weights_red,
+      flag_sample_weights, environment, true);
+
   for (int i = 0; i < n; i++) {
     delete[] dataNumeric[i];
   }
@@ -310,80 +388,12 @@ extern "C" SEXP mydiscretizeMutual(SEXP RmyDist1, SEXP RmyDist2, SEXP RflatU,
   }
   delete[] dataNumericIdx;
 
-  delete[] samplesToEvaluateTamplate;
+  delete[] samplesToEvaluateTemplate;
   delete[] samplesToEvaluate;
 
   delete[] AllLevels;
   delete[] ptr_cnt;
   delete[] posArray;
-
-  // Declare the lookup table of the parametric complexity
-  int ncol = std::max(maxbins, init_bin) + 1;
-  for (int j = 0; j < (nbrU + 2); j++) {
-    if (cnt_red[j] == 0) ncol = std::max(ncol, (AllLevels_red[j] + 1));
-  }
-  ncol = 1000;  // combinations of Us can exceed ncol
-  double** sc_look = new double*[ncol];
-  for (int K = 0; K < (ncol); K++) {
-    sc_look[K] = new double[n + 1];
-    for (int i = 0; i < (n + 1); i++) {
-      if (K == 1)
-        sc_look[K][i] = 0;
-      else if (i == 0)
-        sc_look[K][i] = 0;
-      else
-        sc_look[K][i] = -1;
-    }
-  }
-  for (int i = 0; i < n; i++) {
-    computeLogC(i, 2, looklog, sc_look);  // Initialize the c2 terms
-  }
-
-  double** lookchoose = new double*[ncol];
-  for (int K = 0; K < (ncol); K++) {
-    lookchoose[K] = new double[n + 1];
-    for (int i = 0; i < (n + 1); i++) {
-      lookchoose[K][i] = -1;
-    }
-  }
-
-  miic::structure::Environment environment;
-
-  environment.flag_sample_weights = effN != n;
-
-  environment.sampleWeightsVec = Rcpp::as<vector<double> >(RsampleWeights);
-  environment.sampleWeights = new double[n];
-  if (environment.sampleWeightsVec[0] != -1) {
-    for (int i = 0; i < n; i++) {
-      environment.sampleWeights[i] = environment.sampleWeightsVec[i];
-    }
-    environment.flag_sample_weights = true;
-  } else if (effN != n) {
-    for (int i = 0; i < n; i++) {
-      environment.sampleWeights[i] = (effN * 1.0) / n;
-    }
-    environment.flag_sample_weights = true;
-  }
-
-  environment.maxbins = maxbins;
-  environment.initbins = init_bin;
-  environment.lookH = lookH;
-  environment.looklog = looklog;
-  environment.cterms = sc_look;
-  environment.c2terms = c2terms;
-  environment.lookchoose = lookchoose;
-  environment.cplx = cplx;
-  environment.effN = effN;
-  environment.numSamples = n;
-
-  int** iterative_cuts = (int**)calloc(STEPMAX + 1, sizeof(int*));
-  for (int i = 0; i < STEPMAX + 1; i++) {
-    iterative_cuts[i] = (int*)calloc(maxbins * (2 + nbrU), sizeof(int));
-  }
-  environment.iterative_cuts = iterative_cuts;
-
-  double* res = compute_mi_cond_alg1(dataNumeric_red, dataNumericIdx_red,
-      AllLevels_red, cnt_red, posArray_red, nbrUi, n, environment, true);
 
   int niterations = 0;
   double max_res_ef;
