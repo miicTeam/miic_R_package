@@ -471,17 +471,6 @@ miic <- function(inputData,
       cat("\t# -> END reconstruction...\n\t# --------\n")
     }
 
-    # if (confidenceShuffle < 0 | confidenceThreshold < 0) {
-    #  cat("Warning! ConfidenceShuffle and confidenceThreshold must be greater than 0, the confidence cut step will not be performed.")
-    #  confidenceShuffle =0
-    # }
-
-    timeOrt <- 0 # TODO: wrong time
-    timeInitIterOrt <- time["initIter"] + timeOrt
-
-    # Summarize the results
-    # --------
-
     if (!is.null(trueEdges)) {
       err_code <- checkTrueEdges(trueEdges)
       if (err_code != "0") {
@@ -501,10 +490,9 @@ miic <- function(inputData,
       }
     }
 
-    # Call the function
-
-    ptm <- proc.time()
-    resGmSummary <- summarizeResults(
+    # Summarize the results
+    # --------
+    res$all.edges.summary <- summarizeResults(
       observations = inputData,
       edges = res$edges,
       true_edges = trueEdges,
@@ -513,87 +501,7 @@ miic <- function(inputData,
       orientation_probabilities = res$orientations.prob,
       verbose = verbose
     )
-
-    timeInitIterOrt <- timeOrt + time[4]
-    timeSum <- (proc.time() - ptm)["elapsed"]
-    timeTotal <- timeInitIterOrt + timeSum
-    timeVec <- c(time, timeOrt, timeInitIterOrt, timeSum, timeTotal)
-    timeVec[which(timeVec == 0)] <- NA
-    res$time <- stats::setNames(
-      timeVec,
-      c(
-        "initialization",
-        "iteration",
-        "confidenceCut",
-        "skeleton",
-        "orientation",
-        "skeleton+Orientation",
-        "summary",
-        "total"
-      )
-    )
-
-    res$all.edges.summary <- resGmSummary
-    print(nrow(res$confData))
-    print(nrow(res$all.edges.summary[res$all.edges.summary$type=='P',]))
-
-    rm(resGmSummary)
-
-    #if (confidenceShuffle > 0 & confidenceThreshold > 0) {
-    #  # Insert the confidence ratio
-    #  tmp_sum <- res$all.edges.summary
-    #  conf_col <- rep(1, nrow(tmp_sum))
-    #  isCut <- rep(NA, nrow(tmp_sum))
-    #  tmp_sum <- cbind(tmp_sum, conf_col, isCut)
-
-    #  tmp_sum <- cbind(tmp_sum, conf_col)
-
-    #  tmp_pval <- res$confData
-    #  for (r in 1:nrow(tmp_pval)) {
-    #    indexes <- which(tmp_sum[, "x"] == tmp_pval[r, "x"] &
-    #      tmp_sum[, "y"] == tmp_pval[r, "y"])
-    #    tmp_sum[indexes, "confidence_ratio"] <- tmp_pval[r, "confidence_ratio"]
-    #    if (tmp_pval[r, "confidence_ratio"] < confidenceThreshold) {
-    #      indexes <- which(tmp_sum[, "x"] == tmp_pval[r, "x"] &
-    #        tmp_sum[, "y"] == tmp_pval[r, "y"])
-    #      tmp_sum[indexes, "isCut"] <- "N"
-    #    } else {
-    #      indexes <- which(tmp_sum[, "x"] == tmp_pval[r, "x"] &
-    #        tmp_sum[, "y"] == tmp_pval[r, "y"])
-    #      tmp_sum[indexes, "isCut"] <- "Y"
-    #    }
-    #  }
-    #  tmp_sum <- tmp_sum[, c(
-    #    "x",
-    #    "y",
-    #    "type",
-    #    "ai",
-    #    "info",
-    #    "cplx",
-    #    "Nxy_ai",
-    #    "log_confidence",
-    #    "confidence_ratio",
-    #    "infOrt",
-    #    "trueOrt",
-    #    "isOrt",
-    #    "isOrtOk",
-    #    "sign",
-    #    "partial_correlation",
-    #    "isCut"
-    #  )]
-
-    #  res$all.edges.summary <- tmp_sum
-    #  indexes <- which(tmp_sum$type %in% c("P", "TP", "FP"))
-    #  res$retained.edges.summary <- tmp_sum[indexes, ]
-    #}
-    #if (verbose) {
-    #  cat("END miic")
-    #}
   }
 
-  print(nrow(res$all.edges.summary[res$all.edges.summary$type=='P',]))
-
-  # print(res$orientations.prob)
-  # res$all.edges.summary$isCausal = isCausal(res$all.edges.summary, res$orientations.prob)
   res
 }

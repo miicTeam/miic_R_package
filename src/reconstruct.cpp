@@ -49,9 +49,9 @@ List empty_results() {
 extern "C" SEXP reconstruct(SEXP inputDataR, SEXP typeOfDataR, SEXP cntVarR,
     SEXP numNodesR, SEXP nThreadsR, SEXP edgefileR, SEXP blackBoxR, SEXP effNR,
     SEXP cplxR, SEXP etaR, SEXP hvsR, SEXP isLatentR, SEXP isTplReuseR,
-    SEXP isK23R, SEXP isDegeneracyR, SEXP propagationR, SEXP isNoInitEtaR,
-    SEXP confidenceShuffleR, SEXP confidenceThresholdR, SEXP sampleWeightsR,
-    SEXP consistentR, SEXP testDistR, SEXP verboseR) {
+    SEXP isK23R, SEXP isDegeneracyR, SEXP orientationR, SEXP propagationR,
+    SEXP isNoInitEtaR, SEXP confidenceShuffleR, SEXP confidenceThresholdR,
+    SEXP sampleWeightsR, SEXP consistentR, SEXP testDistR, SEXP verboseR) {
   vector<vector<double> > outScore;
   vector<vector<string> > edgesMatrix;
   std::stringstream output;
@@ -96,6 +96,7 @@ extern "C" SEXP reconstruct(SEXP inputDataR, SEXP typeOfDataR, SEXP cntVarR,
   environment.isTplReuse = Rcpp::as<bool>(isTplReuseR);
   environment.isK23 = Rcpp::as<bool>(isK23R);
   environment.isDegeneracy = Rcpp::as<bool>(isDegeneracyR);
+  bool orientation_phase = Rcpp::as<bool>(orientationR);
   environment.isPropagation = Rcpp::as<bool>(propagationR);
   environment.isNoInitEta = Rcpp::as<bool>(isNoInitEtaR);
 
@@ -198,7 +199,8 @@ extern "C" SEXP reconstruct(SEXP inputDataR, SEXP typeOfDataR, SEXP cntVarR,
     environment.testDistribution = false;
 
     // Oriente edges for non-consistent/orientation consistent algorithm
-    if (environment.numNoMore > 0 && environment.consistentPhase <= 1) {
+    if (orientation_phase && environment.numNoMore > 0 &&
+        environment.consistentPhase <= 1) {
       orientations = orientationProbability(environment);
     }
     std::cout << "Number of edges: " << environment.numNoMore << std::endl;

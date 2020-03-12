@@ -75,6 +75,7 @@ miic.reconstruct <- function(inputData = NULL,
       isTplReuse,
       isK23,
       isDegeneracy,
+      orientation,
       propagation,
       isNoInitEta,
       confidenceShuffle,
@@ -122,24 +123,6 @@ miic.reconstruct <- function(inputData = NULL,
   row.names(df) <- tmp
   # update the returned adj matrix
   res$adjMatrix <- df
-  # } else {
-  #   # create the data frame of the adj matrix
-  #   tmp <- unlist(res$edges.shuffle)[1:3]
-  #   res1 <- unlist(res$edges.shuffle)[(length(res$edges.shuffle[[1]])+1):length(unlist(res$edges.shuffle))]
-  #   df <- data.frame(matrix(res1, nrow=length(res$edges.shuffle)-1, byrow=T),stringsAsFactors=FALSE)
-  #   colnames(df) <-tmp
-
-  #   # update the returned adj matrix
-  #   res$edges.shuffle <- df
-
-  #   tmp <- unlist(res$edges.mean)[1:2]
-  #   res1 <- unlist(res$edges.mean)[(length(res$edges.mean[[1]])+1):length(unlist(res$edges.mean))]
-  #   df <- data.frame(matrix(res1, nrow=length(res$edges.mean)-1, byrow=T),stringsAsFactors=FALSE)
-  #   colnames(df) <-tmp
-
-  #   # update the returned adj matrix
-  #   res$edges.mean <- df
-  # }
 
   if (confidenceShuffle > 0) {
     # create the data frame for the confidence file

@@ -10,8 +10,9 @@ summarizeResults <- function(observations = NULL, edges = NULL,
   summarized_edges <- matrix(ncol = 2)
 
   # List of edges found by miic
-  adj_matrix[ lower.tri(adj_matrix, diag = TRUE) ] <- 0
-  predicted_edges <- which(adj_matrix != 0, arr.ind = T, useNames = F)
+  half_adj_matrix = adj_matrix
+  half_adj_matrix[ lower.tri(adj_matrix, diag = TRUE) ] <- 0
+  predicted_edges <- which(half_adj_matrix != 0, arr.ind = T, useNames = F)
   predicted_edges <- apply(predicted_edges, 2, function(x) {
     colnames(adj_matrix)[x]
   })
@@ -57,9 +58,8 @@ summarizeResults <- function(observations = NULL, edges = NULL,
     stringsAsFactors = FALSE
   )
 
-
-  summary$x <- summarized_edges[, 1]
-  summary$y <- summarized_edges[, 2]
+  # Edge ordering (A<-B or B->A) is given by lexicographical sort
+  summary[,c('x','y')] = t(apply(summarized_edges[,c(1,2)], 1, function(row){sort(row)}))
 
   # Edge 'type' correponds to the miic prediction : P(ositive) or N(egative)
   # for respectively presence or absence of an edge, without considering
@@ -146,7 +146,9 @@ summarizeResults <- function(observations = NULL, edges = NULL,
   # isCausal considers whether the source node of an oriented edge is also
   # at the tip of a V-structure. If so, then the source node has a stronger
   # indication of being causal.
-  if (nrow(orientation_probabilities) > 0) {
+  summary$isCausal <- "NA"
+  if ((!is.null(nrow(orientation_probabilities))) &&
+      nrow(orientation_probabilities) > 0 ) {
     summary$isCausal <- is_causal(summary, orientation_probabilities)
   }
 
@@ -163,29 +165,11 @@ summarizeResults <- function(observations = NULL, edges = NULL,
   return(summary)
 }
 
-matrix_from_3_columns_igraph <- function(matrix, rows, columns, values) {
+matrix_from_3_columns <- function(matrix, rows, columns, values) {
   g <- igraph::graph.data.frame(matrix[, c(rows, columns, values)],
     directed = FALSE
   )
   igraph::get.adjacency(g, attr = values, sparse = FALSE)
-}
-
-
-matrix_from_3_columns <- function(matrix, rows, columns, values) {
-  return(matrix_from_3_columns_igraph(matrix, rows, columns, values))
-
-  wide_matrix <- reshape(matrix[, c(rows, columns, values)],
-    direction = "wide", timevar = columns, idvar = rows
-  )
-  # Reassign rows to row names in new matrix
-  rownames(wide_matrix) <- wide_matrix[, rows]
-  # Tidy column names so that they match columns
-  colnames(wide_matrix) <- substr(
-    colnames(wide_matrix), nchar(values) + 2,
-    max(nchar(colnames(wide_matrix))) + 1
-  )
-
-  return(wide_matrix[, 2:ncol(wide_matrix)])
 }
 
 fill_summary_column <- function(summary, matrix, rows, columns, values) {
@@ -211,8 +195,6 @@ compute_partial_correlation <- function(summary, observations, state_order) {
     stringsAsFactors = FALSE
   )
 
-    
-
   for (j in 1:ncol(observations)) {
     col <- colnames(observations)[j]
     # If the variable is described in the state order file, transform to a
@@ -231,17 +213,17 @@ compute_partial_correlation <- function(summary, observations, state_order) {
       observations[, col] <- ordered(observations[, col], ordered_levels)
       observations[, col] <- as.numeric(observations[, col])
     } else if (is.factor(observations[,col]) && 
-      (all(!is.na(as.numeric(levels(observations[,col])))))) {
+      suppressWarnings(all(!is.na(as.numeric(levels(observations[,col])))))) {
       # If the variable is not described but numerical, assume its order from
       # the numerical categories.
       observations[, col] <- as.numeric(observations[, col])
     }
   }
 
-  for (i in 1:nrow(summary)) {
+  for (i in which(summary$type=="P")) {
     x <- summary[i, "x"]
     y <- summary[i, "y"]
-    ppcor_results[i, ] <- c(NA, NA)
+    ppcor_results[i, ] <- c("NA", NA)
 
     ai <- ai_matrix[x, y] # String with Ais separated by comma, or NA
     if (is.na(ai)) {

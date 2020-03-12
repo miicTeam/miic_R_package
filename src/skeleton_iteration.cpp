@@ -199,6 +199,10 @@ bool firstStepIteration(Environment& environment, BCC& bcc) {
             environment.execTime.startTimeInit, environment.outDir,
             prg_numSearchMore);
     }
+    // Print finished progress bar
+    prg_numSearchMore = printProgress(
+        1.0, environment.execTime.startTimeInit, environment.outDir,
+        prg_numSearchMore);
 
     if (interrupt) return false;
 

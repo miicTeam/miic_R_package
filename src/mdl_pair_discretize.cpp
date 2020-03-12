@@ -27,6 +27,7 @@ using std::map;
 using std::vector;
 using namespace Rcpp;
 using namespace miic::computation;
+using uint = unsigned int;
 
 // Dealing with input variables
 void transformToFactorsContinuous(
