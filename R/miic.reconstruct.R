@@ -149,7 +149,7 @@ miic.reconstruct <- function(inputData = NULL,
 
   res$time <- stats::setNames(
     as.numeric(time),
-    c("init", "iter", "initIter", "cut")
+    c("init", "iter", "cut", "skeleton")
   )
 
   # create the data frame of the structures after orientation

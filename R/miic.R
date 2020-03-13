@@ -79,7 +79,7 @@
 #'
 #' @param edges [a data frame] The miic$edges object returned by an execution
 #' of the miic function. It represents the result of the skeleton step. If this
-#' object is provided, the skelethon step will not be done, and the required
+#' object is provided, the skeleton step will not be done, and the required
 #' orientation will be performed using this edges data frame.
 #'
 #' @param confidenceShuffle [a positive integer] The number of shufflings of
