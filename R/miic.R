@@ -435,6 +435,16 @@ miic <- function(inputData,
     }
   }
 
+    # STATE ORDER FILE
+    if (!is.null(categoryOrder)) {
+      err_code <- checkStateOrder(categoryOrder, inputData)
+      if (err_code != "0") {
+        print(errorCodeToString(err_code))
+        print("WARNING: Cathegory order file will be ignored!")
+        categoryOrder <- NULL
+      }
+    }
+
   err_code <- checkInput(inputData, "miic")
   if (err_code != "0") {
     print(errorCodeToString(err_code))
@@ -477,16 +487,6 @@ miic <- function(inputData,
         print(errorCodeToString(err_code))
         print("WARNING: True edges file will be ignored!")
         trueEdges <- NULL
-      }
-    }
-
-    # STATE ORDER FILE
-    if (!is.null(categoryOrder)) {
-      err_code <- checkStateOrder(categoryOrder, inputData)
-      if (err_code != "0") {
-        print(errorCodeToString(err_code))
-        print("WARNING: Cathegory order file will be ignored!")
-        categoryOrder <- NULL
       }
     }
 

@@ -91,9 +91,6 @@ checkStateOrder <- function(stateOrderFile, dataFile) {
     rownames(stateOrderFile) <- stateOrderFile[, "var_names"]
     myVariables <- rownames(stateOrderFile)
 
-    if (ncol(stateOrderFile) != 2 & ncol(stateOrderFile) != 3) {
-      errCode <- "043"
-    }
   }
   return(errCode)
 }
@@ -118,7 +115,7 @@ errorCodeToString <- function(error_code) {
       "like #, &, ' are not allowed."
     ),
     "2" = "should not have rownames",
-    "3" = "should have exactly two columns",
+    "3" = "should have two or three columns",
     "4" = "should be numerical",
     "5" = "should not have column names",
     "6" = "problem as states in stateOrderFile are not consistent with dataset",
