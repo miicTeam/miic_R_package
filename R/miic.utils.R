@@ -105,7 +105,7 @@ errorCodeToString <- function(error_code) {
     "1" = "input data frame",
     "2" = "trueEdge data frame",
     "3" = "layout data frame",
-    "4" = "cathegory order data frame"
+    "4" = "category order data frame"
   )
 
   errorList3 <- list(

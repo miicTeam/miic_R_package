@@ -44,7 +44,7 @@ NULL
 #'
 #' The dataset contains 807 samples without predisposing Brca1/2 germline mutations
 #' and includes 204 somatic mutations (from whole exome sequencing) and expression
-#'  level information for 91 genes, cathegory order file.
+#'  level information for 91 genes, category order file.
 #'
 #' @docType data
 #' @name cosmicCancer_stateOrder
@@ -90,7 +90,7 @@ NULL
 #' 20,415 protein-coding genes in the human genome from Ensembl (v70) and information on the
 #' retention of duplicates originating either from the two whole genome duplications at
 #' the onset of vertebrates (‘ohnolog’) or from subsequent small scale duplications (‘SSD’)
-#' as well as copy number variants (‘CNV’), cathegory order.
+#' as well as copy number variants (‘CNV’), category order.
 #'
 #' @docType data
 #' @usage data(ohno_stateOrder)

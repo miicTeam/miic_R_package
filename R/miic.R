@@ -440,7 +440,7 @@ miic <- function(inputData,
       err_code <- checkStateOrder(categoryOrder, inputData)
       if (err_code != "0") {
         print(errorCodeToString(err_code))
-        print("WARNING: Cathegory order file will be ignored!")
+        print("WARNING: Category order file will be ignored!")
         categoryOrder <- NULL
       }
     }
