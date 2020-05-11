@@ -22,6 +22,8 @@
 #define MAGNITUDE_TIES 0.00005f
 #define KNN_K 5
 
+#define _DEBUG 0
+
 namespace miic {
 namespace utility {
 
@@ -777,6 +779,127 @@ string printNodesName(const Environment& environment) {
   return s;
 }
 
+//--------------------------------------------------------------------------------
+// printEdges
+//--------------------------------------------------------------------------------
+// Description: print the list of edges in environment.edges 
+// (only half of them as the matrix is symetrical)
+//
+// Params: 
+// - Environment&: the environment structure
+// - filter_status: boolean. Optional, true by default. 
+//   When true, displays only edges with status != 0.
+//   When false, displays all edges.
+//
+// Returns: None
+//--------------------------------------------------------------------------------
+void printEdges (Environment& environment, bool filter_status) 
+  {
+  if (filter_status)
+    cout << "List of edges in environment.edges (half list filtered on status != 0):\n";
+  else
+    cout << "List of edges in environment.edges (half list):\n";
+    
+  cout << "node\tnode\tstat\tstat\tstat\tconnect.  Nxy      mutInfo      cplx_noU   Nxy_ui cplx Ixy_ui Rxyz_ui z_name_idx zi_vect_idx  ui_vect_idx" << endl;
+  cout << "  1 \t  2 \t    \tinit\tprev\t        nb joint mutual info   Complexity                      Score  Index last candid.nodes  Indice of" << endl;
+  cout << "    \t    \t    \t   \t    \t         factors    without       without                       best     best     contributing  separating" << endl;
+  cout << "    \t    \t    \t   \t    \t          not NA  conditioning conditioning                    contrib  contrib   cond. indep.   nodes" << endl;
+
+  for (uint i = 0; i < environment.numNodes; i++) 
+    {
+    for (uint j = i+1; j < environment.numNodes; j++) 
+      {
+      const Edge& one_edge = environment.edges[i][j];
+      std::shared_ptr<EdgeSharedInfo> shared_info_ptr = one_edge.shared_info;
+      
+      if ( (!filter_status) || (environment.edges[i][j].status) )
+        {
+        cout << environment.nodes[i].name << "\t"
+             << environment.nodes[j].name << "\t"
+             << environment.edges[i][j].status << "\t"
+             << environment.edges[i][j].status_init << "\t"
+             << environment.edges[i][j].status_prev << "\t";
+          
+        if (shared_info_ptr != NULL)
+          cout << environment.edges[i][j].shared_info->connected << "\t"
+               << environment.edges[i][j].shared_info->Nxy << "\t"
+               << environment.edges[i][j].shared_info->mutInfo << "\t"
+               << environment.edges[i][j].shared_info->cplx_noU << "\t"
+               << environment.edges[i][j].shared_info->Nxy_ui << "\t"
+               << environment.edges[i][j].shared_info->cplx << "\t"
+               << environment.edges[i][j].shared_info->Ixy_ui << "\t"
+               << environment.edges[i][j].shared_info->Rxyz_ui << "\t"
+               << environment.edges[i][j].shared_info->z_name_idx << "\t"
+               << vectorToStringNodeName (environment, environment.edges[i][j].shared_info->zi_vect_idx) << "\t"
+               << vectorToStringNodeName (environment, environment.edges[i][j].shared_info->ui_vect_idx) << "\t";
+        cout << endl; 
+        }
+      }
+    }
+  }
+
+//--------------------------------------------------------------------------------
+// printNoMoreAdress
+//--------------------------------------------------------------------------------
+// Desciption: print the list of edges in environment.noMoreAdress
+//
+// Params: 
+// - Environment&: the environment structure
+//
+// Returns: None
+//--------------------------------------------------------------------------------
+void printNoMoreAdress (Environment& environment) 
+  {
+  cout << "List of edges in environment.noMoreAdress:\n";
+  cout << "Node 1 idx + (name) - Node 2 idx + (name)" << endl;
+  
+  for (int edge_idx=0; edge_idx < environment.noMoreAddress.size(); edge_idx++)
+    {
+    int posX = environment.noMoreAddress[edge_idx]->i;
+    int posY = environment.noMoreAddress[edge_idx]->j;
+    cout << posX << " (" << environment.nodes[posX].name << ") - "
+         << posY << " (" << environment.nodes[posY].name << ")" << endl;
+    }
+  cout << endl;
+  }
+
+//--------------------------------------------------------------------------------
+// printAdjacencyMatrix
+//--------------------------------------------------------------------------------
+// Desciption: print an adjacency matrix from the list of edges environment.edges
+//
+// Params: 
+// - Environment&: the environment structure
+// - status_field: string. Optional, "status" by default.
+//   Control what information is used to print the adjacency matrix.
+//   Possible values are "status", "status_init" and "status_prev"  
+//
+// Returns: None
+//--------------------------------------------------------------------------------
+void printAdjacencyMatrix (Environment& environment, std::string status_field) 
+  {
+  cout << "Adjacency matrix using environment.edges on col " << status_field << endl;
+  
+  for (uint i = 0; i < environment.numNodes; i++) 
+    cout <<  "\t" << environment.nodes[i].name;
+  cout << endl;
+  for (uint i = 0; i < environment.numNodes; i++) 
+    {
+    cout << environment.nodes[i].name;
+    for (uint j = 0; j < environment.numNodes; j++) 
+      {
+      if (status_field == "status_init")      
+        cout << "\t" << environment.edges[i][j].status_init;
+      else if (status_field == "status_prev")      
+        cout << "\t" << environment.edges[i][j].status_prev;
+      else
+        cout << "\t" << environment.edges[i][j].status;
+      }
+    cout << endl;
+    }
+  }
+
+
 void printMatrix(const Environment& environment, string type) {
   if (type.compare("string") == 0) {
     cout << "Data matrix of strings\n";
@@ -1149,244 +1272,252 @@ void getJointMixed(Environment& environment, int i, int j, int* mixedDiscrete,
   }
 }
 
-bool parseCommandLine(Environment& environment, int argc, char** argv) {
-  int c;
-  environment.inData = "";
-  environment.outDir = "";
-  environment.blackbox_name = "";
-  environment.edgeFile = "";
-  environment.effN = -1;
-  environment.cplx = 1;
-  environment.isVerbose = false;
-  environment.numberShuffles = 0;
-  environment.isLatent = false;
-  environment.isLatentOnlyOrientation = false;
-  environment.isTplReuse = true;
-  environment.isK23 = true;
-  environment.isDegeneracy = false;
-  environment.isNoInitEta = false;
-  environment.isPropagation = true;
-  environment.halfVStructures = 0;
-  environment.typeOfData = 0;
-  environment.isAllGaussian = 0;
-  environment.atLeastTwoGaussian = 0;
-  environment.atLeastTwoDiscrete = 0;
-  environment.atLeastOneContinuous = 0;
-  environment.nThreads = 0;
-  environment.testDistribution = true;
-  environment.consistentPhase = 0;
-
-  string s;
-  while ((c = getopt(argc, argv,
-              "j:i:o:b:d:c:e:s:r:q:k:n:p:a:h:m:t:u:z:x:l:gfv?")) != -1) {
-    switch (c) {
-      case 'i': {
-        environment.inData.append(optarg);
-        break;
-      }
-      case 'o': {
-        environment.outDir.append(optarg);
-        break;
-      }
-      case 'x': {
-        environment.seed = 0;
-        s = optarg;
-        if (!isInteger(s)) {
-          cout << "[ERR] Seed should be an integer!\n";
-        } else
-          environment.seed = atoi(optarg);
-        break;
-      }
-      case 'b': {
-        environment.blackbox_name.append(optarg);
-        break;
-      }
-      case 'd': {
-        s = optarg;
-        stringstream ss(s);  // Turn the string into a stream.
-        string tok;
-        char delimiter = ',';
-        while (getline(ss, tok, delimiter)) {
-          int ival = atoi(tok.c_str());
-          environment.steps.push_back(ival);
-        }
-        break;
-      }
-      case 'n': {
-        s = optarg;
-        if (!isInteger(s) && atoi(optarg) > 1) {
-          cout << "[ERR] EffeN should be a positive integer!\n";
-        } else
-          environment.effN = atoi(optarg);
-        break;
-      }
-      case 'h': {
-        environment.isAllGaussian = atoi(optarg);
-        break;
-      }
-      case 't': {
-        s = optarg;
-        if (!isInteger(s)) {
-          cout << "[ERR] Type of data should be an integer!\n";
-        } else {
-          if (atoi(optarg) == 0 || atoi(optarg) == 1 || atoi(optarg) == 2)
-            environment.typeOfData = atoi(optarg);
-          else
-            exit(1);
-        }
-        break;
-      }
-      case 'u': {
-        s = optarg;
-        environment.dataTypeFile.append(optarg);
-        break;
-      }
-      case 'm': {
-        environment.edgeFile.append(optarg);
-        break;
-      }
-      case 'z': {
-        environment.nThreads = atoi(optarg);
-        break;
-      }
-      case 'c': {
-        environment.cplxType.append(optarg);
-
-        if (environment.cplxType.compare("mdl") != 0 &&
-            environment.cplxType.compare("nml") != 0) {
-          cout << "[ERR] Wrong complexity check option!\n";
-          exit(1);
-        } else if (environment.cplxType.compare("mdl") == 0) {
-          environment.cplx = 0;
-        }
-        break;
-      }
-      case 'e': {
-        s = optarg;
-        if (!isOnlyDouble(optarg)) {
-          cout << "[ERR] Confidence cut should be a double!\n";
-          exit(1);
-        }
-
-        environment.confidenceThreshold = atof(optarg);
-        break;
-      }
-      case 's': {
-        s = optarg;
-        if (!isInteger(s)) {
-          cout << "[ERR] Shuffle should be an integer!\n";
-          exit(1);
-        } else
-          environment.numberShuffles = atoi(optarg);
-        break;
-      }
-      case 'r': {
-        s = optarg;
-        if (s.compare("1") != 0 && s.compare("0") != 0) {
-          cout << "[ERR] Wrong reuse/not reuse tpl argument!\n";
-          return false;
-        } else if (s.compare("0") == 0)
-          environment.isTplReuse = false;
-        break;
-      }
-      case 'k': {
-        s = optarg;
-        if (s.compare("1") != 0 && s.compare("0") != 0) {
-          cout << "[ERR] Case k: Wrong k23 argument!\n";
-          exit(1);
-        } else if (s.compare("0") == 0)
-          environment.isK23 = false;
-        break;
-      }
-      case 'p': {
-        s = optarg;
-        if (s.compare("0") != 0) {
-          cout << "[ERR] Case p: Wrong propagation argument!*" << s << "*\n";
-          exit(1);
-        } else if (s.compare("0") == 0)
-          environment.isPropagation = false;
-        break;
-      }
-      case 'j': {
-        s = optarg;
-        if (s.compare("1") != 0 && s.compare("0") != 0) {
-          cout << "[ERR] Case j: Wrong consistent argument!*" << s << "*\n";
-          exit(1);
-        } else if (s.compare("1") == 0)
-          environment.consistentPhase = true;
-        break;
-      }
-      case 'a': {
-        s = optarg;
-        if (s.compare("0") != 0 && s.compare("1") != 0) {
-          cout << "[ERR] Case a: Wrong half V-structures argument!*" << s
-               << "*\n";
-          exit(1);
-        } else
-          environment.halfVStructures = atoi(optarg);
-        break;
-      }
-      case 'l': {
-        s = optarg;
-        if (s.compare("0") != 0 && s.compare("1") != 0 && s.compare("2") != 0) {
-          cout << "[ERR] Wrong latent argument!*" << s << "*\n";
-          exit(1);
-        } else {
-          if (s.compare("1") == 0) {
-            environment.isLatent = true;
-          }
-          if (s.compare("2") == 0) {
-            environment.isLatentOnlyOrientation = true;
-          }
-        }
-        break;
-      }
-      case 'g': {
-        environment.isDegeneracy = true;
-        break;
-      }
-      case 'f': {
-        environment.isNoInitEta = true;
-        break;
-      }
-      case 'v': {
-        environment.isVerbose = true;
-        break;
-      }
-
-      case '?': {
-        if (optopt == 'c')
-          fprintf(stderr, "Option -%c requires an argument.\n", optopt);
-        else if (isprint(optopt))
-          fprintf(stderr, "Unknown option `-%c'.\n", optopt);
-        else
-          fprintf(stderr, "Unknown option character `\\x%x'.\n", optopt);
-        exit(1);
-      }
-    }
-  }
-
-  if (!environment.inData.compare("")) {
-    cout << "The input data file is required (-i)\n";
-    exit(1);
-  }
-
-  if (!existsTest(environment.inData)) {
-    cout << "The input file does not exist\n";
-    exit(1);
-  }
-
-  if (!environment.outDir.compare("")) {
-    cout << "The output dir path is required (-o)\n";
-    exit(1);
-  }
-
-  if (environment.steps.empty()) {
-    environment.steps.push_back(1);
-    environment.steps.push_back(2);
-  }
-  return true;
-}
+//////////////////////////////////////////////////////////////////////////////////
+// FRS 6 may 2010 parseCommandLine is not used anymore
+//////////////////////////////////////////////////////////////////////////////////
+// 
+// bool parseCommandLine(Environment& environment, int argc, char** argv) {
+//   int c;
+//   environment.inData = "";
+//   environment.outDir = "";
+//   environment.blackbox_name = "";
+//   environment.edgeFile = "";
+//   environment.effN = -1;
+//   environment.cplx = 1;
+//   environment.isVerbose = false;
+//   environment.numberShuffles = 0;
+//   environment.isLatent = false;
+//   environment.isLatentOnlyOrientation = false;
+//   environment.isTplReuse = true;
+//   environment.isK23 = true;
+//   environment.isDegeneracy = false;
+//   environment.isNoInitEta = false;
+//   environment.isPropagation = true;
+//   environment.halfVStructures = 0;
+//   environment.typeOfData = 0;
+//   environment.isAllGaussian = 0;
+//   environment.atLeastTwoGaussian = 0;
+//   environment.atLeastTwoDiscrete = 0;
+//   environment.atLeastOneContinuous = 0;
+//   environment.nThreads = 0;
+//   environment.testDistribution = true;
+//   environment.consistentPhase = 0;
+// 
+//   string s;
+//   while ((c = getopt(argc, argv,
+//               "j:i:o:b:d:c:e:s:r:q:k:n:p:a:h:m:t:u:z:x:l:gfv?")) != -1) {
+//     switch (c) {
+//       case 'i': {
+//         environment.inData.append(optarg);
+//         break;
+//       }
+//       case 'o': {
+//         environment.outDir.append(optarg);
+//         break;
+//       }
+//       case 'x': {
+//         environment.seed = 0;
+//         s = optarg;
+//         if (!isInteger(s)) {
+//           cout << "[ERR] Seed should be an integer!\n";
+//         } else
+//           environment.seed = atoi(optarg);
+//         break;
+//       }
+//       case 'b': {
+//         environment.blackbox_name.append(optarg);
+//         break;
+//       }
+//       case 'd': {
+//         s = optarg;
+//         stringstream ss(s);  // Turn the string into a stream.
+//         string tok;
+//         char delimiter = ',';
+//         while (getline(ss, tok, delimiter)) {
+//           int ival = atoi(tok.c_str());
+//           environment.steps.push_back(ival);
+//         }
+//         break;
+//       }
+//       case 'n': {
+//         s = optarg;
+//         if (!isInteger(s) && atoi(optarg) > 1) {
+//           cout << "[ERR] EffeN should be a positive integer!\n";
+//         } else
+//           environment.effN = atoi(optarg);
+//         break;
+//       }
+//       case 'h': {
+//         environment.isAllGaussian = atoi(optarg);
+//         break;
+//       }
+//       case 't': {
+//         s = optarg;
+//         if (!isInteger(s)) {
+//           cout << "[ERR] Type of data should be an integer!\n";
+//         } else {
+//           if (atoi(optarg) == 0 || atoi(optarg) == 1 || atoi(optarg) == 2)
+//             environment.typeOfData = atoi(optarg);
+//           else
+//             exit(1);
+//         }
+//         break;
+//       }
+//       case 'u': {
+//         s = optarg;
+//         environment.dataTypeFile.append(optarg);
+//         break;
+//       }
+//       case 'm': {
+//         environment.edgeFile.append(optarg);
+//         break;
+//       }
+//       case 'z': {
+//         environment.nThreads = atoi(optarg);
+//         break;
+//       }
+//       case 'c': {
+//         environment.cplxType.append(optarg);
+// 
+//         if (environment.cplxType.compare("mdl") != 0 &&
+//             environment.cplxType.compare("nml") != 0) {
+//           cout << "[ERR] Wrong complexity check option!\n";
+//           exit(1);
+//         } else if (environment.cplxType.compare("mdl") == 0) {
+//           environment.cplx = 0;
+//         }
+//         break;
+//       }
+//       case 'e': {
+//         s = optarg;
+//         if (!isOnlyDouble(optarg)) {
+//           cout << "[ERR] Confidence cut should be a double!\n";
+//           exit(1);
+//         }
+// 
+//         environment.confidenceThreshold = atof(optarg);
+//         break;
+//       }
+//       case 's': {
+//         s = optarg;
+//         if (!isInteger(s)) {
+//           cout << "[ERR] Shuffle should be an integer!\n";
+//           exit(1);
+//         } else
+//           environment.numberShuffles = atoi(optarg);
+//         break;
+//       }
+//       case 'r': {
+//         s = optarg;
+//         if (s.compare("1") != 0 && s.compare("0") != 0) {
+//           cout << "[ERR] Wrong reuse/not reuse tpl argument!\n";
+//           return false;
+//         } else if (s.compare("0") == 0)
+//           environment.isTplReuse = false;
+//         break;
+//       }
+//       case 'k': {
+//         s = optarg;
+//         if (s.compare("1") != 0 && s.compare("0") != 0) {
+//           cout << "[ERR] Case k: Wrong k23 argument!\n";
+//           exit(1);
+//         } else if (s.compare("0") == 0)
+//           environment.isK23 = false;
+//         break;
+//       }
+//       case 'p': {
+//         s = optarg;
+//         if (s.compare("0") != 0) {
+//           cout << "[ERR] Case p: Wrong propagation argument!*" << s << "*\n";
+//           exit(1);
+//         } else if (s.compare("0") == 0)
+//           environment.isPropagation = false;
+//         break;
+//       }
+//       case 'j': {
+//         s = optarg;
+//         if (s.compare("1") != 0 && s.compare("0") != 0) {
+//           cout << "[ERR] Case j: Wrong consistent argument!*" << s << "*\n";
+//           exit(1);
+//         } else if (s.compare("1") == 0)
+//           environment.consistentPhase = true;
+//         break;
+//       }
+//       case 'a': {
+//         s = optarg;
+//         if (s.compare("0") != 0 && s.compare("1") != 0) {
+//           cout << "[ERR] Case a: Wrong half V-structures argument!*" << s
+//                << "*\n";
+//           exit(1);
+//         } else
+//           environment.halfVStructures = atoi(optarg);
+//         break;
+//       }
+//       case 'l': {
+//         s = optarg;
+//         if (s.compare("0") != 0 && s.compare("1") != 0 && s.compare("2") != 0) {
+//           cout << "[ERR] Wrong latent argument!*" << s << "*\n";
+//           exit(1);
+//         } else {
+//           if (s.compare("1") == 0) {
+//             environment.isLatent = true;
+//           }
+//           if (s.compare("2") == 0) {
+//             environment.isLatentOnlyOrientation = true;
+//           }
+//         }
+//         break;
+//       }
+//       case 'g': {
+//         environment.isDegeneracy = true;
+//         break;
+//       }
+//       case 'f': {
+//         environment.isNoInitEta = true;
+//         break;
+//       }
+//       case 'v': {
+//         environment.isVerbose = true;
+//         break;
+//       }
+// 
+//       case '?': {
+//         if (optopt == 'c')
+//           fprintf(stderr, "Option -%c requires an argument.\n", optopt);
+//         else if (isprint(optopt))
+//           fprintf(stderr, "Unknown option `-%c'.\n", optopt);
+//         else
+//           fprintf(stderr, "Unknown option character `\\x%x'.\n", optopt);
+//         exit(1);
+//       }
+//     }
+//   }
+// 
+//   if (!environment.inData.compare("")) {
+//     cout << "The input data file is required (-i)\n";
+//     exit(1);
+//   }
+// 
+//   if (!existsTest(environment.inData)) {
+//     cout << "The input file does not exist\n";
+//     exit(1);
+//   }
+// 
+//   if (!environment.outDir.compare("")) {
+//     cout << "The output dir path is required (-o)\n";
+//     exit(1);
+//   }
+// 
+//   if (environment.steps.empty()) {
+//     environment.steps.push_back(1);
+//     environment.steps.push_back(2);
+//   }
+//   return true;
+// }
+//
+//////////////////////////////////////////////////////////////////////////////////
+// FRS 6 may 2010 END parseCommandLine is not used anymore
+//////////////////////////////////////////////////////////////////////////////////
 
 void printEnvironment(const Environment& environment) {
   stringstream s;
@@ -1407,6 +1538,7 @@ void printEnvironment(const Environment& environment) {
     << "# half V structures --> " << environment.halfVStructures << "\n"
     << "# Degeneracy --> " << environment.isDegeneracy << "\n"
     << "# No Init Eta --> " << environment.isNoInitEta << "\n"
+    << "# Tau --> " << environment.tau << "\n"
     << "# VERSION --> " << environment.myVersion << "\n"
     << "# --------\n";
   cout << s.str();
@@ -1647,7 +1779,35 @@ void setEnvironment(Environment& environment) {
     environment.edges[i][i].status = 0;
     environment.edges[i][i].status_prev = 0;
   }
+  //
+  // For temporal miic, only edges with a node of the last timestep are kept
+  //
+  if (environment.tau > 0)
+    {
+    for (uint i = 0; i < environment.numNodes; i++) 
+      {
+      bool first_node_not_lag0 = (environment.nodes[i].name.substr
+        (environment.nodes[i].name.length() - 5, 5) != "_lag0");
+      
+      for (uint j = 0; j < environment.numNodes; j++) 
+        {
+        bool second_node_not_lag0 = (environment.nodes[j].name.substr
+          (environment.nodes[j].name.length() - 5, 5) != "_lag0");
+        
+        if (first_node_not_lag0 && second_node_not_lag0)
+          {
+          environment.edges[i][j].status = 0;
+          environment.edges[i][j].status_prev = 0;
+          }
+        }
+      }
 
+#if _DEBUG
+    std::cout << "\nsetEnvironment:after status init\n\n";
+    printAdjacencyMatrix (environment);
+#endif
+    }
+  
   environment.noiseVec = new double[2 * environment.numSamples];
   for (uint i = 0; i < 2 * environment.numSamples; i++) {
     environment.noiseVec[i] =
@@ -1695,125 +1855,132 @@ void setEnvironment(Environment& environment) {
   }
 }
 
-void readFilesAndFillStructures(
-    vector<string> edgesVectorOneLine, Environment& environment) {
-  setEnvironment(environment);
-  environment.oneLineMatrix =
-      new int[environment.numSamples * environment.numNodes];
-  for (uint i = 0; i < environment.numSamples; i++) {
-    for (uint j = 0; j < environment.numNodes; j++) {
-      environment.oneLineMatrix[j * environment.numSamples + i] =
-          environment.dataNumeric[i][j];
-    }
-  }
-  environment.edges = new Edge*[environment.numNodes];
-
-  for (uint i = 0; i < environment.numNodes; i++)
-    environment.edges[i] = new Edge[environment.numNodes];
-
-  for (uint i = 0; i < environment.numNodes; i++) {
-    environment.edges[i][i].status = 0;
-    environment.edges[i][i].status_init = 0;
-  }
-
-  for (uint i = 0; i < environment.numNodes - 1; i++) {
-    for (uint j = i + 1; j < environment.numNodes; j++) {
-      environment.edges[i][j].shared_info = std::make_shared<EdgeSharedInfo>();
-      environment.edges[j][i].shared_info = environment.edges[i][j].shared_info;
-    }
-  }
-
-  string lineData;
-  string s;
-  int posX = -1;
-  int posY = -1;
-  int numCols = 10;
-
-  vector<vector<string>> vec;
-  vector<string> v;
-
-  for (uint i = 0; i < edgesVectorOneLine.size(); i++) {
-    v.push_back(edgesVectorOneLine[i]);
-    if ((i + 1) % numCols == 0 && i != 0) {
-      vec.push_back(v);
-      v.clear();
-    }
-  }
-
-  for (uint row = 0; row < vec.size(); row++) {
-    v = vec[row];
-    for (uint col = 0; col < v.size(); col++) {
-      string s = vec[row][col];
-
-      if (col == 0) {
-        for (uint i = 0; i < environment.numNodes; i++)
-          if (environment.nodes[i].name.compare(s) == 0) posX = i;
-
-      } else if (col == 1) {
-        for (uint i = 0; i < environment.numNodes; i++)
-          if (environment.nodes[i].name.compare(s) == 0) posY = i;
-      } else if (col == 2) {
-      } else if (col == 3) {
-        if (s.compare("NA") != 0) {
-          stringstream ss(s);  // Turn the string into a stream.
-          string tok;
-          char delimiter = ',';
-          while (getline(ss, tok, delimiter)) {
-            int ival;
-            for (uint i = 0; i < environment.numNodes; i++) {
-              if (environment.nodes[i].name.compare(tok) == 0) {
-                ival = i;
-                break;
-              }
-            }
-            environment.edges[posX][posY].shared_info->ui_vect_idx.push_back(
-                ival);
-          }
-        }
-      } else if (col == 4) {
-        if (s.compare("NA") != 0) {
-          stringstream ss(s);  // Turn the string into a stream.
-          string tok;
-          char delimiter = ',';
-          while (getline(ss, tok, delimiter)) {
-            int ival;
-            for (uint i = 0; i < environment.numNodes; i++) {
-              if (environment.nodes[i].name.compare(tok) == 0) {
-                ival = i;
-                break;
-              }
-            }
-            environment.edges[posX][posY].shared_info->zi_vect_idx.push_back(
-                ival);
-          }
-        }
-      } else if (col == 5) {
-        environment.edges[posX][posY].shared_info->Ixy_ui = atof(s.c_str());
-      } else if (col == 6) {
-        environment.edges[posX][posY].shared_info->cplx = atof(s.c_str());
-      } else if (col == 7) {
-        environment.edges[posX][posY].shared_info->Rxyz_ui = atof(s.c_str());
-      } else if (col == 8) {
-        int state = atoi(s.c_str());
-        environment.edges[posX][posY].shared_info->connected = state;
-        if (state == 1) {
-          environment.edges[posX][posY].status = 1;
-          environment.edges[posY][posX].status = 1;
-          // add the edge to Nomore
-          environment.noMoreAddress.emplace_back(new EdgeID(posX, posY));
-        } else {
-          environment.edges[posX][posY].status = 0;
-          environment.edges[posY][posX].status = 0;
-        }
-      } else if (col == 9) {
-        environment.edges[posX][posY].shared_info->Nxy_ui = atof(s.c_str());
-      }
-    }
-  }
-  environment.numNoMore = environment.noMoreAddress.size();
-  std::sort(environment.noMoreAddress.begin(), environment.noMoreAddress.end(),
-      sorterNoMore(environment));
-}
+//////////////////////////////////////////////////////////////////////////////////
+// FRS 6 may 2010 readFilesAndFillStructures is not used anymore
+//////////////////////////////////////////////////////////////////////////////////
+// 
+// void readFilesAndFillStructures(
+//     vector<string> edgesVectorOneLine, Environment& environment) {
+//   setEnvironment(environment);
+//   environment.oneLineMatrix =
+//       new int[environment.numSamples * environment.numNodes];
+//   for (uint i = 0; i < environment.numSamples; i++) {
+//     for (uint j = 0; j < environment.numNodes; j++) {
+//       environment.oneLineMatrix[j * environment.numSamples + i] =
+//           environment.dataNumeric[i][j];
+//     }
+//   }
+//   environment.edges = new Edge*[environment.numNodes];
+// 
+//   for (uint i = 0; i < environment.numNodes; i++)
+//     environment.edges[i] = new Edge[environment.numNodes];
+// 
+//   for (uint i = 0; i < environment.numNodes; i++) {
+//     environment.edges[i][i].status = 0;
+//     environment.edges[i][i].status_init = 0;
+//   }
+// 
+//   for (uint i = 0; i < environment.numNodes - 1; i++) {
+//     for (uint j = i + 1; j < environment.numNodes; j++) {
+//       environment.edges[i][j].shared_info = std::make_shared<EdgeSharedInfo>();
+//       environment.edges[j][i].shared_info = environment.edges[i][j].shared_info;
+//     }
+//   }
+// 
+//   string lineData;
+//   string s;
+//   int posX = -1;
+//   int posY = -1;
+//   int numCols = 10;
+// 
+//   vector<vector<string>> vec;
+//   vector<string> v;
+// 
+//   for (uint i = 0; i < edgesVectorOneLine.size(); i++) {
+//     v.push_back(edgesVectorOneLine[i]);
+//     if ((i + 1) % numCols == 0 && i != 0) {
+//       vec.push_back(v);
+//       v.clear();
+//     }
+//   }
+// 
+//   for (uint row = 0; row < vec.size(); row++) {
+//     v = vec[row];
+//     for (uint col = 0; col < v.size(); col++) {
+//       string s = vec[row][col];
+// 
+//       if (col == 0) {
+//         for (uint i = 0; i < environment.numNodes; i++)
+//           if (environment.nodes[i].name.compare(s) == 0) posX = i;
+// 
+//       } else if (col == 1) {
+//         for (uint i = 0; i < environment.numNodes; i++)
+//           if (environment.nodes[i].name.compare(s) == 0) posY = i;
+//       } else if (col == 2) {
+//       } else if (col == 3) {
+//         if (s.compare("NA") != 0) {
+//           stringstream ss(s);  // Turn the string into a stream.
+//           string tok;
+//           char delimiter = ',';
+//           while (getline(ss, tok, delimiter)) {
+//             int ival;
+//             for (uint i = 0; i < environment.numNodes; i++) {
+//               if (environment.nodes[i].name.compare(tok) == 0) {
+//                 ival = i;
+//                 break;
+//               }
+//             }
+//             environment.edges[posX][posY].shared_info->ui_vect_idx.push_back(
+//                 ival);
+//           }
+//         }
+//       } else if (col == 4) {
+//         if (s.compare("NA") != 0) {
+//           stringstream ss(s);  // Turn the string into a stream.
+//           string tok;
+//           char delimiter = ',';
+//           while (getline(ss, tok, delimiter)) {
+//             int ival;
+//             for (uint i = 0; i < environment.numNodes; i++) {
+//               if (environment.nodes[i].name.compare(tok) == 0) {
+//                 ival = i;
+//                 break;
+//               }
+//             }
+//             environment.edges[posX][posY].shared_info->zi_vect_idx.push_back(
+//                 ival);
+//           }
+//         }
+//       } else if (col == 5) {
+//         environment.edges[posX][posY].shared_info->Ixy_ui = atof(s.c_str());
+//       } else if (col == 6) {
+//         environment.edges[posX][posY].shared_info->cplx = atof(s.c_str());
+//       } else if (col == 7) {
+//         environment.edges[posX][posY].shared_info->Rxyz_ui = atof(s.c_str());
+//       } else if (col == 8) {
+//         int state = atoi(s.c_str());
+//         environment.edges[posX][posY].shared_info->connected = state;
+//         if (state == 1) {
+//           environment.edges[posX][posY].status = 1;
+//           environment.edges[posY][posX].status = 1;
+//           // add the edge to Nomore
+//           environment.noMoreAddress.emplace_back(new EdgeID(posX, posY));
+//         } else {
+//           environment.edges[posX][posY].status = 0;
+//           environment.edges[posY][posX].status = 0;
+//         }
+//       } else if (col == 9) {
+//         environment.edges[posX][posY].shared_info->Nxy_ui = atof(s.c_str());
+//       }
+//     }
+//   }
+//   environment.numNoMore = environment.noMoreAddress.size();
+//   std::sort(environment.noMoreAddress.begin(), environment.noMoreAddress.end(),
+//       sorterNoMore(environment));
+// }
+//////////////////////////////////////////////////////////////////////////////////
+// FRS 6 may 2010 END readFilesAndFillStructures is not used anymore
+//////////////////////////////////////////////////////////////////////////////////
 
 static void chkIntFn(void* dummy) { R_CheckUserInterrupt(); }
 

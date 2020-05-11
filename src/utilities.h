@@ -10,9 +10,13 @@ void createMemorySpace(structure::Environment&, structure::MemorySpace&);
 void deleteMemorySpace(structure::Environment&, structure::MemorySpace&);
 void deleteStruct(structure::Environment&);
 std::string printNodesName(const structure::Environment&);
+void printEdges (structure::Environment&, bool filter_status=true);
+void printNoMoreAdress (structure::Environment&);
+void printAdjacencyMatrix (structure::Environment&, std::string status_field="status"); 
 void printMatrix(const structure::Environment&, std::string);
 void readData(structure::Environment&);
-bool parseCommandLine(structure::Environment&, int, char**);
+// FRS 6 may 2020 parseCommandLine is not used anymore
+// bool parseCommandLine(structure::Environment&, int, char**);
 void printEnvironment(const structure::Environment&);
 void setEnvironment(structure::Environment&);
 int** copyMatrix(int**, int, int);
@@ -29,8 +33,9 @@ std::string vectorToString(const std::vector<int>&);
 std::string vectorToStringNodeName(
     const structure::Environment&, const std::vector<int>&);
 void readTime(structure::Environment&, std::string);
-void readFilesAndFillStructures(
-    std::vector<std::string> edgesVectorOneLine, structure::Environment&);
+// FRS 6 may 2020 readFilesAndFillStructures is not used anymore
+// void readFilesAndFillStructures(
+//    std::vector<std::string> edgesVectorOneLine, structure::Environment&);
 bool readBlackbox(std::vector<std::string>, structure::Environment&);
 std::vector<std::vector<std::string> > getAdjMatrix(
     const structure::Environment&);
