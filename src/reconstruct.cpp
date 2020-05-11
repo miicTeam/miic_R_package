@@ -17,6 +17,8 @@
 #include "structure.h"
 #include "utilities.h"
 
+#define _DEBUG 0
+
 namespace miic {
 namespace reconstruction {
 
@@ -51,7 +53,7 @@ extern "C" SEXP reconstruct(SEXP inputDataR, SEXP typeOfDataR, SEXP cntVarR,
     SEXP cplxR, SEXP etaR, SEXP hvsR, SEXP isLatentR, SEXP isTplReuseR,
     SEXP isK23R, SEXP isDegeneracyR, SEXP orientationR, SEXP propagationR,
     SEXP isNoInitEtaR, SEXP confidenceShuffleR, SEXP confidenceThresholdR,
-    SEXP sampleWeightsR, SEXP consistentR, SEXP testDistR, SEXP verboseR) {
+    SEXP sampleWeightsR, SEXP consistentR, SEXP testDistR, SEXP tauR, SEXP verboseR) {
   vector<vector<double> > outScore;
   vector<vector<string> > edgesMatrix;
   std::stringstream output;
@@ -61,6 +63,7 @@ extern "C" SEXP reconstruct(SEXP inputDataR, SEXP typeOfDataR, SEXP cntVarR,
 
   environment.myTest = false;
 
+  environment.tau = Rcpp::as<int>(tauR);
   environment.numNodes = Rcpp::as<int>(numNodesR);
   environment.nThreads = Rcpp::as<int>(nThreadsR);
 #ifdef _OPENMP
@@ -162,6 +165,12 @@ extern "C" SEXP reconstruct(SEXP inputDataR, SEXP typeOfDataR, SEXP cntVarR,
         environment.edges[i][j].status = environment.edges[i][j].status_init;
       }
     }
+    
+#if _DEBUG
+    std::cout << "\nreconstruct:after status init\n\n";
+    printAdjacencyMatrix (environment);
+#endif
+    
     // If interrupted
     if (!firstStepIteration(environment, bcc)) return empty_results();
 
@@ -195,6 +204,7 @@ extern "C" SEXP reconstruct(SEXP inputDataR, SEXP typeOfDataR, SEXP cntVarR,
     } else {
       environment.execTime.cut = 0;
     }
+    
     // Do not test distributions for missing at random for orientation
     environment.testDistribution = false;
 
