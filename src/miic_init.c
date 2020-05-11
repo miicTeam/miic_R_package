@@ -11,13 +11,13 @@ extern SEXP mydiscretizeMutual(
 extern SEXP evaluateEffn(SEXP, SEXP, SEXP);
 extern SEXP reconstruct(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP,
     SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP,
-    SEXP, SEXP, SEXP);
+    SEXP, SEXP, SEXP, SEXP);
 
 static const R_CallMethodDef CallEntries[] = {
     {"mydiscretizeMDL", (DL_FUNC)&mydiscretizeMDL, 2},
     {"mydiscretizeMutual", (DL_FUNC)&mydiscretizeMutual, 11},
     {"evaluateEffn", (DL_FUNC)&evaluateEffn, 3},
-    {"reconstruct", (DL_FUNC)&reconstruct, 24}, {NULL, NULL, 0}};
+    {"reconstruct", (DL_FUNC)&reconstruct, 25}, {NULL, NULL, 0}};
 
 void R_init_miic(DllInfo *dll) {
   R_registerRoutines(dll, NULL, CallEntries, NULL, NULL);
