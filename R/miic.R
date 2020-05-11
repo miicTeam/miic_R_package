@@ -5,11 +5,18 @@
 #' from indirect effects amongst correlated variables, including cause-effect
 #' relationships and the effect of unobserved latent causes.
 #'
-#' @details Starting from a complete graph, the method iteratively removes
-#' dispensable edges, by uncovering significant information contributions from
-#' indirect paths, and assesses edge-specific confidences from randomization of
-#' available data. The remaining edges are then oriented based on the signature
-#' of causality in observational data.
+#' @details In non temporal cases, starting from a complete graph, the method 
+#' iteratively removes dispensable edges, by uncovering significant information 
+#' contributions from indirect paths, and assesses edge-specific confidences 
+#' from randomization of available data. The remaining edges are then oriented 
+#' based on the signature of causality in observational data.
+#' 
+#' For temporal graphs, miic reorganizes the dataset using the max lag parameter
+#' (tau) to transform every timestep of the data into a lagged sample. 
+#' A lagged graph is created with only edges having at least one of the two nodes 
+#' on the the last timestep. Then, miic standard algorithm is applied to remove 
+#' dispensable edges. The remaining edges are then oriented by using the
+#' temporality and the signature of causality in observational data.
 #'
 #' @references
 #' \itemize{
@@ -17,11 +24,18 @@
 #' }
 #'
 #' @param inputData [a data frame]
-#' A data frame that contains the observational data. Each
-#' column corresponds to one variable and each row is a sample that gives the
-#' values for all the observed variables. The column names correspond to the
-#' names of the observed variables. Numeric columns will be treated as continuous
-#' values, factors and character as categorical.
+#' For non temporal graphs, a data frame that contains the observational data. 
+#' Each column corresponds to one variable and each row is a sample that gives 
+#' the values for all the observed variables. The column names correspond to 
+#' the names of the observed variables. Numeric columns will be treated as 
+#' continuous values, factors and character as categorical.
+#' 
+#' For temporal graphs, inputData can be either a dataframe,a 2D or 3D array.
+#' When inputData is a dataframe, each column corresponds to one variable
+#' and each row is a timestep. When inputData is an array, the dimension
+#' is [nb nodes, nb timesteps] for 2D and [nb samples, nb nodes, nb timesteps]
+#' when 3D. As for the non temporal case, numeric columns will be treated as 
+#' continuous values, factors and character as categorical.
 #'
 #' @param blackBox [a data frame]
 #' An optional data frame containing the
@@ -116,6 +130,11 @@
 #' orient edges and discard inconsistent orientations to ensure consistency of
 #' the network.
 #'
+#' @param tau [an integer]
+#' Max lag used for temporal series. If tau is supplied (integer >= 1), 
+#' miic switches to temporal mode: it contructs a lagged graph over tau periods of time,
+#' and looks both for temporal and contemporaneous edges
+#' 
 #' @param verbose [a boolean value] If TRUE, debugging output is printed.
 #'
 #' @param nThreads [a positive integer]
@@ -268,6 +287,7 @@ miic <- function(inputData,
                  sampleWeights = NULL,
                  testMAR = TRUE,
                  consistent = c("no", "orientation", "skeleton"),
+                 tau = -1,
                  verbose = FALSE) {
   res <- NULL
   skeleton <- TRUE
@@ -276,10 +296,36 @@ miic <- function(inputData,
   if (is.null(inputData)) {
     stop("The input data file is required")
   }
-
-  if (!is.data.frame(inputData)) {
-    stop("The input data is not a dataframe")
-  }
+  #
+  # Check if we use normal or temporal version of miic
+  #
+  if (tau > 0)
+    {
+    #
+    # If we use temporal version of miic, convert history into lagged nodes and samples
+    #
+    print ("Using temporal version of miic")
+    if ( (!is.data.frame(inputData)) & (!is.array(inputData)) )
+      {
+      stop("The input data is not a datafraeme or an array")
+      }
+    if (is.data.frame(inputData)) 
+      {
+      inputData <- as.matrix (t(inputData), dim=c( ncol(inputData), nrow(inputData) ),
+                              dimnames=list ( colnames(inputData), rownames(inputData) ) )
+      }
+    inputData <- tmiic.transform_data_for_miic (inputData, tau)
+    }
+  else
+    {
+    #
+    # Normal (non temporal) version of miic
+    #
+    if (!is.data.frame(inputData)) 
+      {
+      stop("The input data is not a dataframe")
+      }
+    }
 
   effnAnalysis <- miic.evaluate.effn(inputData, plot = F)
   if (effnAnalysis$neff < 0.5 * nrow(inputData)) {
@@ -471,7 +517,8 @@ miic <- function(inputData,
         typeOfData = typeOfData,
         sampleWeights = sampleWeights,
         testMAR = testMAR,
-        consistent = consistent
+        consistent = consistent,
+        tau = tau
       )
     if (res$interrupted) {
       stop("Interupted by user")
