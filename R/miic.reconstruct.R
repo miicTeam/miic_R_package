@@ -20,12 +20,13 @@ miic.reconstruct <- function(inputData = NULL,
                                "no",
                                "orientation",
                                "skeleton"
-                             )) {
+                             ),
+                             tau = -1) {
   isTplReuse <- TRUE
   isK23 <- TRUE
   isDegeneracy <- FALSE
   isNoInitEta <- FALSE
-
+  
   numNodes <- length(inputData)
 
   inData <- c(
@@ -83,6 +84,7 @@ miic.reconstruct <- function(inputData = NULL,
       sampleWeights,
       consistent,
       testMAR,
+      tau,
       verbose,
       PACKAGE = "miic"
     )
