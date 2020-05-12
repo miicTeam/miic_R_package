@@ -14,20 +14,30 @@
 #' @param igraphLayout [an igraph layout object]
 #' When set it is used to plot the network. See the igraph manual for more information.
 #'  Default: \emph{layout_with_kk}
-#' @param verbose [a boolean value] If TRUE, debugging output is printed.
+#' @param title [a string] Optional, the title of the plot. NULL by default.
+#' @param curve_edges [a boolean value] Optional, FALSE by default. If TRUE, edges are curved. 
+#' @param verbose [a boolean value] Optional, FALSE by default. If TRUE, debugging output is printed.
+#' @param call_from_tmiic [a boolean value] Optional, FALSE by default.
+#' Used to avoid graphical layout mess when plotting from tmiic. if TRUE, does not change the graphic
+#' layout parameters and does not display the confidence/correlation legend on the right side.
+#'
 #' @export
 #' @useDynLib miic
+library(igraph)
 
 miic.plot <-
   function(g,
            method = "log_confidence",
            igraphLayout = NULL,
            userLayout = NULL,
-           verbose = F) {
+           title=NULL, 
+           curve_edges = FALSE,
+           verbose = F,
+           call_from_tmiic = FALSE) {
     if (is.null(g$all.edges.summary)) {
       stop("The learnt graphical model summary does not exist")
     }
-
+    
     if (verbose) {
       if (is.null(userLayout)) {
         cat("\t# --W--> No file path for the nodes user layout given.\n")
@@ -79,43 +89,64 @@ miic.plot <-
         myLayout <- igraphLayout
       }
     }
-
+  
     if (method == "pcor") {
       if (!is.na(g$retained.edges.summary$partial_correlation[1])) {
         myColors <- pCor.edgeCol(mySummary, myVariables)
         # create the graph object
         myGraph <- modif.Graph(mySummary, myVariables, myColors)
-        # plot the Partial Correlation Graph
-        graphics::layout(t(1:2), widths = c(5, 1))
-        # Set margins and turn all axis labels horizontally (with `las=1`)
-        graphics::par(
-          mar = rep(.5, 4),
-          oma = c(3, 3, 3, 1),
-          las = 1
-        )
-        graphics::plot(myGraph, layout = myLayout)
-        blue.gradient <- grDevices::rainbow(100, start = 3 / 6, end = 4 / 6)
-        red.gradient <- grDevices::rainbow(100, start = 0, end = 0.16)
-        leg_colors <- c(red.gradient, blue.gradient)
-        legend_image <-
-          grDevices::as.raster(matrix(leg_colors, ncol = 1))
-        graphics::plot(
-          c(0, 5),
-          c(-1, 1),
-          type = "n",
-          axes = F,
-          xlab = "",
-          ylab = "",
-          main = "Partial correlation",
-          cex.main = 0.7
-        )
-        graphics::text(
-          x = 1.5,
-          y = seq(-1, 1, l = 5),
-          labels = seq(-1, 1, l = 5),
-          cex = 0.7
-        )
-        graphics::rasterImage(legend_image, 2.5, -1, 3.5, 1)
+
+        if (!call_from_tmiic)
+          {
+          # plot the Partial Correlation Graph
+          graphics::layout(t(1:2), widths = c(5, 1))
+          # Set margins and turn all axis labels horizontally (with `las=1`)
+          graphics::par(
+            mar = rep(.5, 4),
+            oma = c(3, 3, 3, 1),
+            las = 1
+          )
+          }
+        
+        if (curve_edges)
+          {
+          curves <- miic.autocurve.edges (myGraph, flag_curve_all=TRUE)
+          graphics::plot(myGraph, edge.curved=curves, layout = myLayout)
+          }
+        else
+          {
+          graphics::plot(myGraph, layout = myLayout)
+          }
+        if (! is.null(title) )
+          {
+          title(paste ("\n", title, sep="") )
+          }
+        
+        if (!call_from_tmiic)
+          {
+          blue.gradient <- grDevices::rainbow(100, start = 3 / 6, end = 4 / 6)
+          red.gradient <- grDevices::rainbow(100, start = 0, end = 0.16)
+          leg_colors <- c(red.gradient, blue.gradient)
+          legend_image <-
+            grDevices::as.raster(matrix(leg_colors, ncol = 1))
+          graphics::plot(
+            c(0, 5),
+            c(-1, 1),
+            type = "n",
+            axes = F,
+            xlab = "",
+            ylab = "",
+            main = "Partial correlation",
+            cex.main = 0.7
+          )
+          graphics::text(
+            x = 1.5,
+            y = seq(-1, 1, l = 5),
+            labels = seq(-1, 1, l = 5),
+            cex = 0.7
+          )
+          graphics::rasterImage(legend_image, 2.5, -1, 3.5, 1)
+          }
       } else {
         print(
           paste(
@@ -128,43 +159,44 @@ miic.plot <-
     } else if (method == "log_confidence") {
       myColors <- conf.edgeCol(mySummary, myVariables)
       myGraph <- modif.Graph(mySummary, myVariables, myColors)
-      graphics::layout(t(1:3), widths = c(5, 1, 1))
 
-      # Set margins and turn all axis labels horizontally (with `las=1`)
-      graphics::par(
-        mar = c(.5, .1, .5, .1),
-        oma = c(3, 3, 3, 1),
-        las = 1
-      )
-      graphics::plot(myGraph, layout = myLayout)
-      blue.gradient <- grDevices::rainbow(100, start = 3 / 6, end = 4 / 6)
-      red.gradient <- grDevices::rainbow(100, start = 0, end = 0.16)
-      # Legend
-      # Positive correlations
-
-      legend_image <-
-        grDevices::as.raster(matrix(red.gradient, ncol = 1))
-      graphics::plot(
-        c(0, 4),
-        c(0.2, 0.8),
-        type = "n",
-        axes = F,
-        xlab = "",
-        ylab = ""
-      )
-      graphics::par(adj = 1)
-
-
-      if (!is.na(g$retained.edges.summary$partial_correlation[1])) {
-        leg_colors <- c(red.gradient, blue.gradient)
-
-        graphics::title("Confidence\npcor+",
-          cex.main = 1,
-          line = -4
+      if (!call_from_tmiic)
+        {
+        graphics::layout(t(1:3), widths = c(5, 1, 1))
+        # Set margins and turn all axis labels horizontally (with `las=1`)
+        graphics::par(
+          mar = c(.5, .1, .5, .1),
+          oma = c(3, 3, 3, 1),
+          las = 1
         )
-        graphics::rasterImage(legend_image, 3.3, 0.25, 3.8, 0.75)
+        }
+      if (curve_edges)
+        {
+        curves <- miic.autocurve.edges (myGraph, flag_curve_all=TRUE)
+        if (call_from_tmiic)
+          graphics::plot(myGraph, edge.curved=curves, layout = myLayout,
+                         vertex.label.dist=1, vertex.label.degree=pi/2)
+        else
+          graphics::plot(myGraph, edge.curved=curves, layout = myLayout)
+        }
+      else
+        {
+        graphics::plot(myGraph, layout = myLayout)
+        }
+      if (! is.null(title) )
+        {
+        title( paste("\n", title, sep="") )
+        }
+
+      if (!call_from_tmiic)
+        {
+        blue.gradient <- grDevices::rainbow(100, start = 3 / 6, end = 4 / 6)
+        red.gradient <- grDevices::rainbow(100, start = 0, end = 0.16)
+        # Legend
+        # Positive correlations
+  
         legend_image <-
-          grDevices::as.raster(matrix(rev(blue.gradient), ncol = 1))
+          grDevices::as.raster(matrix(red.gradient, ncol = 1))
         graphics::plot(
           c(0, 4),
           c(0.2, 0.8),
@@ -173,46 +205,71 @@ miic.plot <-
           xlab = "",
           ylab = ""
         )
-        graphics::par(adj = 0.5)
-        graphics::title("(NI' = -log Pxy)\npcor-",
-          cex.main = 1,
-          line = -4
-        )
-        graphics::text(
-          x = rep(.5, 3),
-          y = c(0.26, 0.5, 0.74),
-          labels = c("< 1", "50", "> 100"),
-          cex = 1
-        )
-        graphics::rasterImage(legend_image, 1.5, 0.25, 2, 0.75)
-      } else {
-        leg_colors <- c(red.gradient)
-        graphics::title("Confidence   \n(NI' = -log Pxy)",
-          cex.main = 1,
-          line = -3
-        )
-        graphics::rasterImage(legend_image, 2.5, 0.25, 3, 0.75)
-        graphics::plot(
-          c(0, 4),
-          c(0.2, 0.8),
-          type = "n",
-          axes = F,
-          xlab = "",
-          ylab = ""
-        )
-        graphics::par(adj = 0.3)
-        graphics::text(
-          x = rep(.5, 3),
-          y = c(0.26, 0.5, 0.74),
-          labels = c("< 1", "50", "> 100"),
-          cex = 1
-        )
-        # graphics::rasterImage(legend_image, 1.5, 0.25, 2, 0.75)
+        graphics::par(adj = 1)
+        }
+      
+      if ( !is.null(g$retained) )
+        {
+        if (!is.na(g$retained.edges.summary$partial_correlation[1])) {
+          leg_colors <- c(red.gradient, blue.gradient)
 
-        # legend_image <- grDevices::as.raster(matrix(leg_colors, ncol=1))
-        # graphics::plot(c(0,5),c(0,1),type = 'n', axes = F,xlab = '', ylab = '', main = "Confidence (NI' = -log Pxy)", cex.main = 0.7)
-        # graphics::text(x=1.5, y = seq(0,1,l=5), labels = seq(0,1,l=5), cex = 0.7)
-        # graphics::rasterImage(legend_image, 3.3, 0, 3.8, 1)
+          graphics::title("Confidence\npcor+",
+            cex.main = 1,
+            line = -4
+          )
+          graphics::rasterImage(legend_image, 3.3, 0.25, 3.8, 0.75)
+          legend_image <-
+            grDevices::as.raster(matrix(rev(blue.gradient), ncol = 1))
+          graphics::plot(
+            c(0, 4),
+            c(0.2, 0.8),
+            type = "n",
+            axes = F,
+            xlab = "",
+            ylab = ""
+          )
+          graphics::par(adj = 0.5)
+          graphics::title("(NI' = -log Pxy)\npcor-",
+            cex.main = 1,
+            line = -4
+          )
+          graphics::text(
+            x = rep(.5, 3),
+            y = c(0.26, 0.5, 0.74),
+            labels = c("< 1", "50", "> 100"),
+            cex = 1
+          )
+          graphics::rasterImage(legend_image, 1.5, 0.25, 2, 0.75)
+        }
+        else {
+          leg_colors <- c(red.gradient)
+          graphics::title("Confidence   \n(NI' = -log Pxy)",
+            cex.main = 1,
+            line = -3
+          )
+          graphics::rasterImage(legend_image, 2.5, 0.25, 3, 0.75)
+          graphics::plot(
+            c(0, 4),
+            c(0.2, 0.8),
+            type = "n",
+            axes = F,
+            xlab = "",
+            ylab = ""
+          )
+          graphics::par(adj = 0.3)
+          graphics::text(
+            x = rep(.5, 3),
+            y = c(0.26, 0.5, 0.74),
+            labels = c("< 1", "50", "> 100"),
+            cex = 1
+          )
+          # graphics::rasterImage(legend_image, 1.5, 0.25, 2, 0.75)
+  
+          # legend_image <- grDevices::as.raster(matrix(leg_colors, ncol=1))
+          # graphics::plot(c(0,5),c(0,1),type = 'n', axes = F,xlab = '', ylab = '', main = "Confidence (NI' = -log Pxy)", cex.main = 0.7)
+          # graphics::text(x=1.5, y = seq(0,1,l=5), labels = seq(0,1,l=5), cex = 0.7)
+          # graphics::rasterImage(legend_image, 3.3, 0, 3.8, 1)
+        }
       }
     } else {
       stop("incorrect method argument: must be \"log_confidence\" or \"pcor\" ")
@@ -220,4 +277,55 @@ miic.plot <-
     if (verbose) {
       cat("\t# --------\n# -> END Plot...\n")
     }
+  }
+
+#--------------------------------------------------------------------------------
+# miic.autocurve.edges
+#--------------------------------------------------------------------------------
+#' miic.autocurve.edges
+#'
+#' Utility funcion to plot curved edges for miic
+#' 
+#' @description This functions generates curved edges in the igraph draw.
+#'
+#' @param graph [a miic graph object]
+#' The graph object returned by the miic execution.
+#' @param start [an integer]
+#' The strengh of the curvature ?
+#' @param flag_curve_all [a boolean]
+#' Optional, flag controling if all or only mutual edges are curved. FALSE by default
+#--------------------------------------------------------------------------------
+miic.autocurve.edges <-function (graph, start = 0.5, flag_curve_all=FALSE)
+  {
+  cm <- count.multiple (graph)
+  mut <-is.mutual (graph)  #are connections mutual?
+  el <- apply(get.edgelist(graph, names = FALSE), 1, paste, collapse = ":")
+  ord <- order(el)
+  res <- numeric(length(ord))
+  p <- 1
+  while (p <= length(res)) 
+    {
+    m <- cm[ord[p]]
+    mut.obs <-mut[ord[p]] #are the connections mutual for this point?
+    idx <- p:(p + m - 1)
+    if (flag_curve_all)
+      {
+      r <- seq(-start, start, length = m)
+      }
+    else
+      {
+      if (m == 1 & mut.obs==FALSE) 
+        {
+        #no mutual conn = no curve
+        r <- 0
+        }
+      else
+        {
+        r <- seq(-start, start, length = m)
+        }
+      }
+    res[ord[idx]] <- r
+    p <- p + m
+    }
+  res
   }
