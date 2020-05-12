@@ -120,6 +120,8 @@ struct ExecutionTime {
 
 // Structure for all the needed parameters (input plus state variables)
 struct Environment {
+  // for temporal miic : contains the max lag used for the reconstruction of the lagged network
+  signed int tau = -1; 
   ExecutionTime execTime;
   int consistentPhase;
   // for gaussian case
