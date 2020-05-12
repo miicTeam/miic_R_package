@@ -3,6 +3,7 @@
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <regex>
 #include <time.h>
 #include <unistd.h>
 
@@ -17,6 +18,7 @@ using namespace std;
 #define eps 1.0e-12
 #define eps_diff 1.0e-12
 #define _MY_PRINT_ 0
+#define _DEBUG 0
 
 static double dmaxarg1, dmaxarg2;
 #define DMAX(a, b)                 \
@@ -704,8 +706,8 @@ int miic::reconstruction::OrientTpl_LV_Deg_Propag(int NbTpl, int* Tpl,
   return 0;
 }
 
-double* miic::reconstruction::getOrientTplLVDegPropag(int nbrTpl,
-    int* ptrAllTpl, double* ptrAllI3, int LV, int isDeg, int isPropag,
+double* miic::reconstruction::getOrientTplLVDegPropag(structure::Environment& environment, 
+    int nbrTpl, int* ptrAllTpl, double* ptrAllI3, int LV, int isDeg, int isPropag,
     int halfVStructures) {
   int nbrRetProbaValues = -1;  // Nbr proba to return
   double*
@@ -717,12 +719,93 @@ double* miic::reconstruction::getOrientTplLVDegPropag(int nbrTpl,
                          // ProbArrowhead < 0.5: an arrow tail  (-)
   nbrRetProbaValues = (4 * nbrTpl);
   ptrRetProbValues = new double[nbrRetProbaValues];
-  // Initialise the arrowhead probabilities to 0.5
-  for (int i = 0; i < nbrTpl; i++) {
-    for (int j = 0; j < 4; j++) {
-      ptrRetProbValues[i + j * nbrTpl] = 0.5;
+  
+  if (environment.tau > 0)
+    {
+    // For tmiic, we force the orientation using time when possible
+    //
+#if _DEBUG
+    printf("\nTmiic Orientation Init (P>0.5: arrow-head; P<0.5: arrow-tail) :\n");
+#endif
+    //
+    // When orientation can be deduced from time, The probabilitiy for the tail end 
+    // depends on latent variable discovery: 0 if not actived, 0.5 when actived
+    //
+    double proba_tail = 0;
+    if (LV)
+      proba_tail = 0.5;
+    //
+    // Initialise the arrowhead probabilities using time
+    //
+    for (int i = 0; i < nbrTpl; i++) 
+      {
+      // CAUTION : in ptrAllTpl, nodes indices start from 1 => needs to remove 1
+      //
+      int node0_idx  = ptrAllTpl[0 * nbrTpl + i] - 1;
+      int node1_idx  = ptrAllTpl[1 * nbrTpl + i] - 1;
+      int node2_idx  = ptrAllTpl[2 * nbrTpl + i] - 1;
+      
+      string node0_name  = environment.nodes[node0_idx].name;
+      string node1_name  = environment.nodes[node1_idx].name;
+      string node2_name  = environment.nodes[node2_idx].name;
+      
+      regex lag_expr(".*lag");
+      int node0_lag = stoi (regex_replace(node0_name, lag_expr, "") );
+      int node1_lag = stoi (regex_replace(node1_name, lag_expr, "") );
+      int node2_lag = stoi (regex_replace(node2_name, lag_expr, "") );
+      
+      if (node0_lag < node1_lag)
+        {
+        ptrRetProbValues[i + 0 * nbrTpl] = 1;
+        ptrRetProbValues[i + 1 * nbrTpl] = proba_tail;
+        }
+      else if (node0_lag > node1_lag)
+        {
+        ptrRetProbValues[i + 0 * nbrTpl] = proba_tail;
+        ptrRetProbValues[i + 1 * nbrTpl] = 1;
+        }
+      else
+        {
+        ptrRetProbValues[i + 0 * nbrTpl] = 0.5;
+        ptrRetProbValues[i + 1 * nbrTpl] = 0.5;
+        }
+      
+      if (node1_lag < node2_lag)
+        {
+        ptrRetProbValues[i + 2 * nbrTpl] = 1;
+        ptrRetProbValues[i + 3 * nbrTpl] = proba_tail;
+        }
+      else if (node1_lag > node2_lag)
+        {
+        ptrRetProbValues[i + 2 * nbrTpl] = proba_tail;
+        ptrRetProbValues[i + 3 * nbrTpl] = 1;
+        }
+      else
+        {
+        ptrRetProbValues[i + 2 * nbrTpl] = 0.5;
+        ptrRetProbValues[i + 3 * nbrTpl] = 0.5;
+        }
+      
+#if _DEBUG
+      std::cout << "!!! Tpl init " << node0_idx << "=" << node0_name << ", lag=" << node0_lag;
+      std::cout << " (" << ptrRetProbValues[0 * nbrTpl + i] << "-" << ptrRetProbValues[1 * nbrTpl + i] << ") "; 
+      std::cout << node1_idx<< "=" << node1_name << ", lag=" << node1_lag;;
+      std::cout << " (" << ptrRetProbValues[2 * nbrTpl + i] << "-" << ptrRetProbValues[3 * nbrTpl + i] << ") "; 
+      std::cout << node2_idx << "=" << node2_name << ", lag=" << node2_lag;;
+      std::cout << " -- I3=" << ptrAllI3[i] << "\n";
+#endif
+      }    
     }
-  }
+  else
+    {
+    // Initialise the arrowhead probabilities to 0.5
+    for (int i = 0; i < nbrTpl; i++) {
+      for (int j = 0; j < 4; j++) {
+        ptrRetProbValues[i + j * nbrTpl] = 0.5;
+      }
+    }
+    }
+    
   // Iteratively converge towards partially oriented graphs including possible
   // latent variables and Propagation/Non-Propagation rules.
   OrientTpl_LV_Deg_Propag(nbrTpl, ptrAllTpl, ptrAllI3, ptrRetProbValues, LV,
