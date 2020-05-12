@@ -253,7 +253,7 @@ bool firstStepIteration(Environment& environment, BCC& bcc) {
 bool skeletonIteration(Environment& environment) {
   int iIteration_count = 0;
   int max = 0;
-
+  
   if (environment.isVerbose)
     cout << "Number of numSearchMore: " << environment.numSearchMore << endl;
 
@@ -276,7 +276,8 @@ bool skeletonIteration(Environment& environment) {
     int posY = environment.searchMoreAddress[max]->j;
 
     if (environment.isVerbose)
-      cout << "Pos x : " << posX << " , pos y: " << posY << endl;
+      cout << "Pos x : " << posX << " " << environment.nodes[posX].name 
+           << " , pos y: " << posY << " " << environment.nodes[posY].name << endl;
 
     auto topEdgeElt = environment.edges[posX][posY].shared_info;
 
@@ -365,7 +366,7 @@ bool skeletonIteration(Environment& environment) {
     }
     if (topEdgeElt->Ixy_ui - topEdgeElt_kxy_ui - environment.logEta <= 0) {
       if (environment.isVerbose) {
-        cout << "# PHANTOM" << environment.nodes[posX].name << ","
+        cout << "# PHANTOM " << environment.nodes[posX].name << ","
              << environment.nodes[posY].name << "\n";
       }
 
@@ -459,6 +460,7 @@ bool skeletonIteration(Environment& environment) {
   cout << "\n";
   std::sort(environment.noMoreAddress.begin(), environment.noMoreAddress.end(),
       sorterNoMore(environment));
+
   return (true);
 }
 
