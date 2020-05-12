@@ -779,9 +779,9 @@ string printNodesName(const Environment& environment) {
   return s;
 }
 
-//--------------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
 // printEdges
-//--------------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
 // Description: print the list of edges in environment.edges 
 // (only half of them as the matrix is symetrical)
 //
@@ -792,7 +792,7 @@ string printNodesName(const Environment& environment) {
 //   When false, displays all edges.
 //
 // Returns: None
-//--------------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
 void printEdges (Environment& environment, bool filter_status) 
   {
   if (filter_status)
@@ -838,16 +838,16 @@ void printEdges (Environment& environment, bool filter_status)
     }
   }
 
-//--------------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
 // printNoMoreAdress
-//--------------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
 // Desciption: print the list of edges in environment.noMoreAdress
 //
 // Params: 
 // - Environment&: the environment structure
 //
 // Returns: None
-//--------------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
 void printNoMoreAdress (Environment& environment) 
   {
   cout << "List of edges in environment.noMoreAdress:\n";
@@ -863,10 +863,11 @@ void printNoMoreAdress (Environment& environment)
   cout << endl;
   }
 
-//--------------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
 // printAdjacencyMatrix
-//--------------------------------------------------------------------------------
-// Desciption: print an adjacency matrix from the list of edges environment.edges
+//-----------------------------------------------------------------------------
+// Desciption: 
+// print an adjacency matrix from the list of edges environment.edges
 //
 // Params: 
 // - Environment&: the environment structure
@@ -875,7 +876,7 @@ void printNoMoreAdress (Environment& environment)
 //   Possible values are "status", "status_init" and "status_prev"  
 //
 // Returns: None
-//--------------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
 void printAdjacencyMatrix (Environment& environment, std::string status_field) 
   {
   cout << "Adjacency matrix using environment.edges on col " << status_field << endl;
