@@ -1,0 +1,587 @@
+#*****************************************************************************
+# Filename   : tmiic.scores.R                   Creation date: 24 march 2020
+#
+# Description: Methods to evaluate the reconstruction of timed graphs
+#
+# Author     : Franck SIMON (fsimon.informaticien@wanadoo.fr)
+#
+# Changes history:
+# - 24 march 2020 : initial version
+#*****************************************************************************
+
+#-----------------------------------------------------------------------------
+# tmiic.compute_one_score
+#-----------------------------------------------------------------------------
+#' tmiic.compute_one_score
+#'
+#' @description 
+#' Compute confusion matrix, precision, recall and f-score on the reconstructed graph
+#' Values are computed both for nunoriented and oriendted edges
+#'
+#' @param df_edges [a dataframe] the list of edges computed
+#' @param df_true_edges [a dataframe]  the list of true edges
+#' @param list_nodes [a list] the list of nodes in the network
+#' @param tau [an integer] the number of timesteps back in time used to construct 
+#' the temporal graph
+#' 
+#' @returns [a list] the returned list contains 2 dataframes containing both 
+#' the confusion matrix, the precision, recall and f-score. The first dataframe
+#' is for unoriented edges and the second about oriented ones.
+#'
+tmiic.compute_one_score <- function (df_edges, df_true_edges, list_nodes, tau) 
+  {
+  DEBUG <- FALSE
+  if (DEBUG)
+    {
+    print ("tmiic.compute_one_score:")
+    print ("List nodes:")
+    print (list_nodes)
+    print (paste ("Tau:", tau, sep="") )
+    print (paste ("Input edges df (class ", class(df_edges), ") limited to type 'P'=", sep="") )
+    print (df_edges[df_edges$type=='P',] 
+             %>% select(x,y,type,infOrt,sign,info,info_cond,cplx,Nxy_ai,log_confidence))
+    print (paste ("True edges df (class ", class(df_true_edges), ")", sep="") )
+    print (df_true_edges)
+    }
+  n_nodes <- length(list_nodes)
+  #
+  # If true edge list is not supplied (ie debug model), ends
+  #
+  df_empty <- data.frame ( matrix(ncol = 7, nrow = 0), stringsAsFactors=FALSE)
+  colnames (df_empty) <- c("tp", "fp", "fn", "tn", "precision", "recall", "fscore")
+  if (is.null(df_true_edges))
+    return (list (df_empty, df_empty) )
+  if (nrow(df_true_edges) <= 0)
+    return (list (df_empty, df_empty) )
+  #
+  # Evaluate true/false positive
+  #
+  fp <- 0
+  tp <- 0
+  fp_orient <- 0
+  tp_orient <- 0
+  for (row_idx in 1:nrow(df_edges) )
+    {
+    one_edge <- df_edges[row_idx,]
+    #
+    # if type != P, this is not a real edge in fact
+    #
+    if (one_edge$type != "P")
+      {
+      if (DEBUG)
+        {
+        print (paste(one_edge$x, "-", one_edge$y, ", type=", one_edge$type, 
+                     " => type!='P', don't consider edge", sep="") )
+        }
+      next  
+      }
+    node_x <- one_edge$x
+    node_y <- one_edge$y
+    orient <- one_edge$infOrt
+    #
+    # Get the lag for each the vertices of the edge
+    #
+    pos_lag_x <- str_locate(node_x, "_lag")
+    tau_idx_x <- 0
+    if ( !is.na(pos_lag_x[1]) )
+      {
+      tau_idx_x <- str_remove(node_x, ".*_lag")
+      tau_idx_x <- strtoi (tau_idx_x)
+      }
+    pos_lag_y <- str_locate(node_y, "_lag")
+    tau_idx_y <- 0
+    if ( !is.na(pos_lag_y[1]) )
+      {
+      tau_idx_y <- str_remove(node_y, ".*_lag")
+      tau_idx_y <- strtoi (tau_idx_y)
+      }
+    #
+    # Compute the lags and reorder from oldest to newest
+    #
+    diff = tau_idx_x - tau_idx_y
+    if (diff < 0)
+      {
+      diff <- - diff
+      
+      temp_var <- tau_idx_x
+      tau_idx_x <- tau_idx_y
+      tau_idx_y <- temp_var
+      
+      temp_var <- node_x
+      node_x <- node_y
+      node_y <- temp_var
+      
+      if ( (orient == 2) | (orient == -2) )
+        orient = -orient
+      }
+    #
+    # Remove "_lag" information from the nodes names
+    # find the index of the nodes in the nodes list
+    # and search this edge in the true edge df 
+    #
+    node_oldest <- gsub("_lag.*","",node_x)
+    node_newest <- gsub("_lag.*","",node_y)
+    idx_node_oldest <- which (list_nodes == node_oldest)[[1]]
+    idx_node_newest <- which (list_nodes == node_newest)[[1]]
+    
+    cond_old_new = (  (df_true_edges[["orig"]] == idx_node_oldest) 
+                    & (df_true_edges[["dest"]] == idx_node_newest) 
+                    & (df_true_edges[["lag"]] == diff) )
+    if (sum(cond_old_new) == 0)
+      {
+      #
+      # if edge is not in the true edge list => false pos
+      #
+      fp <- fp + 1
+      #
+      # if edge is oriented => false pos also for oriented
+      #
+      if (orient != 1)
+        {
+        fp_orient <- fp_orient + 1
+        if (DEBUG)
+          {
+          print (paste (one_edge$x, "-", one_edge$y, " type=", one_edge$type, " ort=", one_edge$infOrt, 
+                        " => ", node_oldest, "-", node_newest, " lag=", diff, 
+                        " => not found and oriented => fp + 1, fp_orient + 1", sep="") )
+          }
+        }
+      else if (DEBUG)
+        {
+        print (paste (one_edge$x, "-", one_edge$y, " type=", one_edge$type, " ort=", one_edge$infOrt, 
+                      " => ", node_oldest, "-", node_newest, " lag=", diff, 
+                      "  => not found and unoriented => fp + 1, fp_orient unchanged", sep="") )
+        }
+      }
+    else
+      {
+      #
+      # the edge is in the true edge list => at least true pos for non oriented
+      #
+      tp <- tp + 1
+      if (orient == 1)
+        {
+        #
+        # Edge found has no orientation, nothing to count for oriented
+        #
+        if (DEBUG)
+          {
+          print (paste (one_edge$x, "-", one_edge$y, " type=", one_edge$type, " ort=", one_edge$infOrt, 
+                        " => ", node_oldest, "-", node_newest, " lag=", diff, 
+                        " => found and unoriented => tp + 1, tp_orient unchanged",  sep="") )
+          }
+        }
+      else
+        {
+        #
+        # Edge found has orientation, check if correct
+        #
+        if ( (orient == 2) | (orient == 6) )
+          {
+          if (DEBUG)
+            {
+            print (paste (one_edge$x, "-", one_edge$y, " type=", one_edge$type, " ort=", one_edge$infOrt, 
+                          " => ", node_oldest, "-", node_newest, " lag=", diff, 
+                          " => found and correctly oriented => tp + 1, tp_orient + 1", sep="") )
+            }
+          tp_orient <- tp_orient + 1
+          }
+        else  
+          {
+          if (DEBUG)
+            {
+            print (paste (one_edge$x, "-", one_edge$y, " type=", one_edge$type, " ort=", one_edge$infOrt, 
+                          " => ", node_oldest, "-", node_newest, " lag=", diff, 
+                          " => found and badly correctly => tp + 1, fp_orient + 1", sep="") )
+            }
+          fp_orient <- fp_orient + 1
+          }
+        }
+      
+      }
+    }
+  #
+  # Compute the number of true edges
+  #
+  nb_true_edges_orient <- nrow(df_true_edges)
+  nb_true_edges <- nb_true_edges_orient
+  for (row_idx in 1:nrow(df_true_edges) )
+    {
+    one_edge <- df_true_edges[row_idx,]
+    if (one_edge$lag != 0)
+      next
+    cond_opposite = (  (df_true_edges[["orig"]] == one_edge$dest) 
+                     & (df_true_edges[["dest"]] == one_edge$orig) 
+                     & (df_true_edges[["lag"]] == 0) )
+    #
+    # If we have opposite edges at lag=0 between the same edge,
+    # then we must decrease the number of unoriented by 1
+    # => remove 0.5 because we will find a 2 matches
+    #
+    if (sum(cond_opposite) > 0)
+      nb_true_edges <- nb_true_edges - 0.5
+    }
+  
+  tp_rate <- tp / nb_true_edges
+  tp_orient_rate <- tp_orient / nb_true_edges_orient
+  #
+  # Compute nb of no edges 
+  #
+  taux_plus_1 <- tau + 1
+  nb_possible_edges_for_one_node <- tau + taux_plus_1 * (n_nodes - 1)
+  nb_possible_edges_orient <- nb_possible_edges_for_one_node * n_nodes
+  nb_possible_edges <- nb_possible_edges_orient - (n_nodes - 1)
+  
+  nb_no_edges <- nb_possible_edges - nb_true_edges
+  nb_no_edges_orient <- nb_possible_edges_orient - nb_true_edges_orient
+  fp_rate <- fp / nb_no_edges 
+  fp_orient_rate <- fp_orient / nb_no_edges_orient
+  #
+  # Evaluate false negative
+  #
+  fn <- 0
+  fn_orient <- 0
+  for (row_idx in 1:nrow(df_true_edges) )
+    {
+    one_edge <- df_true_edges[row_idx,]
+    #
+    # Get nodes the edge
+    #
+    node_orig <- list_nodes[[one_edge$orig]] 
+    node_dest <- list_nodes[[one_edge$dest]]
+    lag <- one_edge$lag
+    node_orig <- paste(node_orig, "_lag", lag, sep="")
+    node_dest <- paste(node_dest, "_lag0", sep="")
+    #
+    # Search if this edge has been found
+    #
+    cond_old_new = (  (df_edges[["x"]] == node_orig) 
+                    & (df_edges[["y"]] == node_dest)
+                    & (df_edges[["type"]] == "P") )
+    cond_new_old = (  (df_edges[["x"]] == node_dest) 
+                    & (df_edges[["y"]] == node_orig)
+                    & (df_edges[["type"]] == "P") )
+    #
+    # If edge is not in the computed edges list => false neg
+    #
+    if ( (sum(cond_old_new) == 0) & (sum(cond_new_old) == 0) )
+      {
+      if (DEBUG)
+        print (paste (one_edge$orig, "-", one_edge$dest, " lag=", lag, 
+                      " => ", node_orig, "-", node_dest, 
+                      " not found in computed edges => fn + 1, fn_orient + 1", sep="") )
+      fn <- fn +1
+      fn_orient <- fn_orient + 1
+      next
+      }
+    #
+    # We have an edge matching, it is not a FN for unoriented
+    # => look for oriented
+    #
+    if (DEBUG)
+      print (paste (one_edge$orig, "-", one_edge$dest, " lag=", lag, 
+                    " => ", node_orig, "-", node_dest, 
+                    " => found (not an unoriented FN)", sep="") )
+    #
+    # Normally we should not find two edges with the nodes (we can find the edge with 
+    # the same starting and ending nodes or the opposite but normally, not the two)
+    #
+    if ( (sum(cond_old_new) > 0) & (sum(cond_new_old) > 0) )
+      {
+      message ("Warning: tmiic compute score, 2 edges found : should not happen")
+      if (  ( (df_edges[cond_old_new,]$infOrt != 6) & (df_edges[cond_old_new,]$infOrt != 2) )
+          & ( (df_edges[cond_new_old,]$infOrt != 6) & (df_edges[cond_new_old,]$infOrt != -2) ) )
+        {
+        fn_orient <- fn_orient + 1
+        if (DEBUG)
+          print (paste (one_edge$orig, "-", one_edge$dest, " lag=", lag, 
+                        " => ", node_orig, "-", node_dest, 
+                        " => found 2 times but wrong orient => fn_orient + 1", sep="") )
+
+        }
+      next
+      }
+    #
+    # We know that one edge and only one has been found
+    #
+    if ( (sum(cond_old_new) > 0) )
+      {
+      orient <- df_edges[cond_old_new,]$infOrt
+      if ( (orient != 6) & (orient != 2) )
+        {
+        fn_orient <- fn_orient + 1
+        if (DEBUG)
+          print (paste (one_edge$orig, "-", one_edge$dest, " lag=", lag, 
+                        " => ", node_orig, "-", node_dest, 
+                        " found but wrong orient=", orient, " => fn_orient + 1", sep="") )
+        }
+      else
+        {
+        if (DEBUG)
+          print (paste (one_edge$orig, "-", one_edge$dest, " lag=", lag, 
+                        " => ", node_orig, "-", node_dest, 
+                        " => found with good orient=", orient, 
+                        " => Not a FN oriented", sep="") )
+        }
+      next
+      }
+    #
+    # We know there is an edge and it is not the one with the same starting end ending node
+    #
+    orient <- df_edges[cond_new_old,]$infOrt
+    if ( (orient != 6) & (orient != -2) )
+      {
+      fn_orient <- fn_orient + 1
+      if (DEBUG)
+        print (paste (one_edge$orig, "-", one_edge$dest, " lag=", lag, 
+                      " => ", node_orig, "-", node_dest, 
+                      " => found but wrong orient=", orient, " => fn_orient + 1", sep="") )
+      }
+    else
+      {
+      if (DEBUG)
+        print (paste (one_edge$orig, "-", one_edge$dest, " lag=", lag, 
+                      " => ", node_orig, "-", node_dest, 
+                      " => found with good orient=", orient, " => Not a FN oriented", sep="") )
+      }
+    }
+  fn_rate <- fn / nb_true_edges
+  fn_orient_rate <- fn_orient / nb_true_edges
+  #
+  # True negatif
+  #
+  tn <- nb_possible_edges - tp - fp - fn
+  tn_rate <- tn / nb_no_edges 
+
+  tn_orient <- nb_possible_edges_orient - tp_orient - fp_orient - fn_orient
+  tn_orient_rate <- tn_orient / nb_no_edges_orient
+  #
+  # Precision, Recall and F-Score
+  #
+  val_precision <- 0
+  if (tp + fp > 0)
+    {
+    val_precision <- tp / (tp + fp)
+    }
+  val_recall <- 0
+  if (tp + fn > 0)
+    {
+    val_recall <- tp / (tp + fn)
+    }
+  val_fscore <- 0
+  if ( (2 * tp) + fp + fn > 0 )
+    {
+    val_fscore <- (2 * tp) / ( (2 * tp) + fp + fn)
+    }
+
+  val_precision_orient <- 0
+  if (tp_orient + fp_orient > 0)
+    {
+    val_precision_orient <- tp_orient / (tp_orient + fp_orient)
+    }
+  val_recall_orient <- 0
+  if (tp_orient + fn_orient > 0)
+    {
+    val_recall_orient <- tp_orient / (tp_orient + fn_orient)
+    }
+  val_fscore_orient <- 0
+  if ( (2 * tp_orient) + fp_orient + fn_orient > 0 )
+    {
+    val_fscore_orient <- (2 * tp_orient) / ( (2 * tp_orient) + fp_orient + fn_orient)
+    }
+  #
+  # Trace and return results
+  #
+  ret <- data.frame (tp=tp_rate, fp=fp_rate, fn=fn_rate, tn=tn_rate, 
+                     precision=val_precision, recall=val_recall, fscore=val_fscore,
+                     stringsAsFactors=FALSE)
+  ret_orient <- data.frame (tp=tp_orient_rate, fp=fp_orient_rate, fn=fn_orient_rate, tn=tn_orient_rate, 
+                           precision=val_precision_orient, recall=val_recall_orient, fscore=val_fscore_orient,
+                           stringsAsFactors=FALSE)
+  if (DEBUG)
+    {
+    print (paste ("tp ", tp, " fp ", fp, " fn ", fn, " tn ", tn, sep="") )
+    print (paste ("nb true edges ", nb_true_edges, " nb no edges ", nb_no_edges, 
+            " nb tot edges possible ", nb_possible_edges, sep="") )
+    print (paste ("tp rate ", tp_rate, " fp rate ", fp_rate, 
+                  " fn rate ", fn_rate, " tn rate ", tn_rate, 
+                  " prec ", val_precision, " recall ", val_recall, " fscore ", val_fscore, 
+                  sep="") )
+    print ("")
+    print (paste ( "tp orient ", tp_orient, " fp orient ", fp_orient, 
+                  " fn orient ", fn_orient, " tn orient ", tn_orient, sep="") )
+    print (paste ("nb true edges ", nb_true_edges, " nb no edges orient ", nb_no_edges_orient, 
+                  " nb tot edges possible orient ", nb_possible_edges_orient, sep="") )
+    print (paste ("tp orient rate ", tp_orient_rate, " fp orient rate ", fp_orient_rate, 
+                  " fn orient rate ", fn_orient_rate, " tn orient rate ", tn_orient_rate, 
+                  " prec orient ", val_precision_orient, " recall orient ", val_recall_orient, 
+                  " fscore orient ", val_fscore_orient, sep="") )
+    print ("")
+    print ("Returned df:")
+    print (ret)
+    print ("Returned orient df:")
+    print (ret_orient)
+    }
+  return ( list (ret, ret_orient) )
+  }
+
+#-----------------------------------------------------------------------------
+# tmiic.compute_scores
+#-----------------------------------------------------------------------------
+#' tmiic.compute_scores
+#'
+#' @description 
+#' Compute scores on a list of tmiic results
+#'
+#' @param list_res [a list] the list of tmiic's results. It can be a list of
+#' full results or only summary
+#' @param df_true_edges [a dataframe]  the list of true edges
+#' @param list_nodes [a list] the list of nodes in the network
+#' @param tau [an integer] the number of timesteps back in time used to construct 
+#' the temporal graph
+#' 
+#' @returns [a list] the returned list contains 2 dataframes containing both 
+#' the scores for each tmiic result. The first dataframe is for unoriented edges 
+#' and the second about oriented ones.
+#'
+tmiic.compute_scores <- function (list_res, df_true_edges, list_nodes, tau) 
+  {
+  DEBUG <- FALSE
+  if (DEBUG)
+    {
+    print ("tmiic.compute_scores:")
+    print (paste ("input results list length:", length(list_res), sep="") )
+    print ("input df_true_edges:")
+    print (df_true_edges)
+    }
+  #
+  # prepare df to  store performance evalutation
+  #
+  df_no_result <- data.frame (tp=NaN, fp=NaN, fn=NaN, tn=NaN, 
+                              precision=NaN, recall=NaN, fscore=NaN, stringsAsFactors=FALSE)
+  
+  df_scores_unoriented <- data.frame ( matrix(ncol = 7, nrow = 0) )
+  colnames (df_scores_unoriented) <- c("tp", "fp", "fn", "tn", "precision", "recall", "fscore")
+  
+  df_scores_oriented <- data.frame ( matrix(ncol = 7, nrow = 0) )
+  colnames (df_scores_oriented) <- c("tp", "fp", "fn", "tn", "precision", "recall", "fscore")
+  #
+  # If true edge list is not supplied (ie debug model), ends
+  #
+  if (is.null(df_true_edges))
+    return (list (df_scores_unoriented, df_scores_oriented) )
+  if (nrow(df_true_edges) <= 0)
+    return (list (df_scores_unoriented, df_scores_oriented) )
+  #
+  # Iterate over results
+  # 
+  for (list_idx in 1:length(list_res) )
+    {
+    one_res <- list_res[[list_idx]]
+    if (all(is.na (one_res)))
+      {
+      df_scores_unoriented[nrow(df_scores_unoriented) + 1,] <- df_no_result
+      df_scores_oriented  [nrow(df_scores_oriented)   + 1,] <- df_no_result
+      }
+    else
+      {
+      if (! is.data.frame(one_res))
+        one_res <- one_res$all.edges.summary
+      tmp_ret <- tmiic.compute_one_score (one_res, df_true_edges, list_nodes, tau)
+      df_scores_unoriented[nrow(df_scores_unoriented) + 1,] <- tmp_ret[[1]]
+      df_scores_oriented  [nrow(df_scores_oriented)   + 1,] <- tmp_ret[[2]]
+      }
+    }
+  
+  if (DEBUG)
+    {
+    print ("Returned scores non oriented:")
+    print (df_scores_unoriented)
+    print ("Returned scores oriented:")
+    print (df_scores_oriented)
+    }
+  return ( list(df_scores_unoriented, df_scores_oriented) )
+  }
+
+#-----------------------------------------------------------------------------
+# tmiic.plot_scores
+#-----------------------------------------------------------------------------
+#' tmiic.plot_scores
+#'
+#' @description 
+#' plot evolution of precision, recall and f-score or TP, FP, FN, TN rates
+#'
+#' @param scores [a dataframe]Dataframe of scores. Expected columns are
+#' tp, fp, tn, fn, precision, recall and fscore with score per run as rows.
+#' @param title [a string]The tille of the plot
+#' @param list_labels [a list]the list of labels on the X axis]
+#' @param type [a string]Optional, "PRFS" by default. Represents the type 
+#' of the plot: "PRFS" plots Presion, Recall F-Score whilst the other type 
+#' available is True/False positives ("TPFP")
+#' @param plot_fntn [a boolean] Optional, false by default. Applies only to  
+#' type "TPFP" plot. If set to true, displays True and False Negative
+#' @param filename [a string] Optional, NULL by default. The file name where
+#' to save the plot,
+#' 
+#' @return nothing
+#'
+tmiic.plot_scores <- function(scores, title, list_labels, 
+                              type="PRFS", plot_fntn=FALSE, filename=NULL)
+  {
+  DEBUG <- FALSE
+  if (DEBUG)
+    {
+    print ("tmiic.plot_scores:")
+    print ("Input scores matrix df:")
+    print (scores)
+   }
+  #
+  # If df score is not supplied or empty (ie debug model), ends
+  #
+  if (is.null(scores))
+    return ()
+  if (nrow(scores) <= 0)
+    return ()
+  #
+  # Define graphic output
+  #
+  if (! is.null(filename) )
+    {
+    png (filename=filename, res=100)
+    }
+  #
+  # Plot score
+  #
+  if (type == "PRFS")
+    {
+    plot (scores$precision, type="l", xlab="Number of samples", ylab="Rate", 
+          main=title, cex.axis = 0.7, xaxt = 'n', ylim=c(0,1), col="blue")
+    lines (scores$recall, col="red")
+    lines (scores$fscore, col="black")
+    legend(x=1, y=1, legend=c("Precision", "Recall", "F-Score"), col=c("blue","red","black"), lty=c(1,1,1), cex=0.5)
+    }
+  else  
+    {
+    plot (scores$tp, type="l", xlab="Number of samples", ylab="Rate", 
+          main=title, cex.axis = 0.7, xaxt = 'n', ylim=c(0,1), col="blue")
+    lines (scores$fp, col="red")
+    if (plot_fntn)
+      {
+      lines (scores$fn, col="orange")
+      lines (scores$tn, col="black")
+      legend(x=1, y=1, legend=c("TP", "FP", "FN", "TN"), col=c("blue","red","orange", "black"), 
+             lty=c(1,1), cex=0.5)
+      }
+    else
+      {
+      legend(x=1, y=1, legend=c("TP", "FP"), col=c("blue","red"), lty=c(1,1), cex=0.5)
+      }
+    }
+  axis (side=1, cex.axis=0.7, at=seq ( 1:length(list_labels) ), labels=list_labels)
+  
+  if (! is.null(filename) )
+    {
+    dev.off()
+    }
+  }
+
