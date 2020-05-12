@@ -16,6 +16,9 @@
 #include "proba_orientation.h"
 #include "structure.h"
 #include "utilities.h"
+#include "tmiic.h"
+
+#define _DEBUG 0
 
 namespace miic {
 namespace reconstruction {
@@ -26,6 +29,7 @@ using std::vector;
 using namespace miic::computation;
 using namespace miic::structure;
 using namespace miic::utility;
+using namespace tmiic;
 
 void getSStructure(Environment& environment, const int posX, const int posY,
     const int posZ, bool isVerbose, vector<vector<int> >& allTpl,
@@ -114,10 +118,18 @@ vector<vector<string> > orientationProbability(Environment& environment) {
   vector<double> allI3;
   double* ptrRetProbValues;
   bool isVerbose = environment.isVerbose;
+  //
+  // For temporal graph, repeat edges found over history if latent variable 
+  // discovery is activated
+  //
+  if ( (environment.tau > 0) && ( (environment.isLatent) || (environment.isLatentOnlyOrientation) ) )
+    tmiic::repeatEdgesOverHistory (environment);
+  
   // GET ALL TPL that could be V/NON-V-STRUCTURES #######
   for (uint pos = 0; pos < environment.noMoreAddress.size(); pos++) {
     int posX = environment.noMoreAddress[pos]->i;
     int posY = environment.noMoreAddress[pos]->j;
+
     // Prepare a list that will contain the neighbors of "x" and the neighbors
     // of "y"
     vector<int> neighboursX;
@@ -157,7 +169,7 @@ vector<vector<string> > orientationProbability(Environment& environment) {
           environment, posX, posY, neighboursY[i], isVerbose, allTpl, allI3);
     }
   }
-
+  
   int* oneLineMatrixallTpl = new int[allTpl.size() * 3];
   for (uint i = 0; i < allTpl.size(); i++) {
     for (int j = 0; j < 3; j++) {
@@ -167,6 +179,23 @@ vector<vector<string> > orientationProbability(Environment& environment) {
   }
   // Compute the arrowhead probability of each edge endpoint
   int myNbrTpl = allTpl.size();
+  
+#if _DEBUG
+    std::cout << "\noneLineMatrixallTpl Init:\n";
+    for (int i = 0; i < myNbrTpl; i++) 
+      {
+      // CAUTION : in oneLineMatrixallTpl nodes indices start from 1 !!!!!!!!
+      // The indice shift occurs line 164-165
+      int node0 = oneLineMatrixallTpl[0 * myNbrTpl + i] - 1;
+      int node1 = oneLineMatrixallTpl[1 * myNbrTpl + i] - 1;
+      int node2 = oneLineMatrixallTpl[2 * myNbrTpl + i] - 1;
+      std::cout << "!!! Tpl " << node0 << "=" << environment.nodes[node0].name;
+      std::cout << " " << node1 << "=" << environment.nodes[node1].name;
+      std::cout << " " << node2 << "=" << environment.nodes[node2].name;
+      std::cout << " -- I3=" << allI3[i] << "\n";
+     }
+#endif
+  
   if (myNbrTpl > 0) {
     int propag = 0;
     if (environment.isPropagation) propag = 1;
@@ -175,7 +204,7 @@ vector<vector<string> > orientationProbability(Environment& environment) {
     int latent = 0;
     if (environment.isLatent || environment.isLatentOnlyOrientation) latent = 1;
 
-    ptrRetProbValues = getOrientTplLVDegPropag(myNbrTpl, oneLineMatrixallTpl,
+    ptrRetProbValues = getOrientTplLVDegPropag(environment, myNbrTpl, oneLineMatrixallTpl,
         &allI3[0], latent, degeneracy, propag, environment.halfVStructures);
     // update ptrRetProbValues for possible inconsistencies
     std::map<string, double> probabsMap;
@@ -367,6 +396,17 @@ vector<vector<string> > orientationProbability(Environment& environment) {
   }
   delete[] oneLineMatrixallTpl;
   delete[] ptrRetProbValues;
+  //
+  // For temporal graph, remove edges duplicated over history for the next skeleton iteration
+  // (taking into account that duplication has been done only if latent variable discovery is activated)
+  //
+  if ( (environment.tau > 0) && ( (environment.isLatent) || (environment.isLatentOnlyOrientation) ) )
+    tmiic::dropPastEdges (environment);
+
+#if _DEBUG
+  std::cout << "\norientationProbability end:\n";
+  printEdges (environment);
+#endif
 
   return orientations;
 }
