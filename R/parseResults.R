@@ -159,9 +159,14 @@ summarizeResults <- function(observations = NULL, edges = NULL,
   # proba contains the orientation likelihoods as computed by miic (cf
   # Affeldt & Isambert, UAI 2015 proceedings) : the probabilities of
   # both orientations separated by a semi-colon.
-  summary$proba <- sapply(1:nrow(summary), function(i) {
-    paste(findProba(summary, orientation_probabilities, i), collapse = ";")
-  })
+  #
+  # QUICK FIX 14 may 2020: in tmiic, we can orient edges using only time => no proba
+  # TODO ? add proba on c++ side for edges oriented using time
+  #
+  if (length(orientation_probabilities) > 0) 
+    summary$proba <- sapply(1:nrow(summary), function(i) {
+      paste(findProba(summary, orientation_probabilities, i), collapse = ";")
+    })
 
   # Sort summary by log confidence and return it
   summary <- summary[order(summary$log_confidence, decreasing = T), ]
