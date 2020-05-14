@@ -790,15 +790,23 @@ string printNodesName(const Environment& environment) {
 // - filter_status: boolean. Optional, true by default. 
 //   When true, displays only edges with status != 0.
 //   When false, displays all edges.
+// - half_only: boolean. Optional, true by default. 
+//   When true, displays only edges with col > row (matrix is symetrical).
+//   When false, displays all edges.
 //
 // Returns: None
 //-----------------------------------------------------------------------------
-void printEdges (Environment& environment, bool filter_status) 
+void printEdges (Environment& environment, bool filter_status, bool half_only) 
   {
-  if (filter_status)
-    cout << "List of edges in environment.edges (half list filtered on status != 0):\n";
+  string half_or_full_str = "";
+  if (half_only)
+    half_or_full_str = "half list";
   else
-    cout << "List of edges in environment.edges (half list):\n";
+    half_or_full_str = "full list";
+  if (filter_status)
+    cout << "List of edges in environment.edges (" << half_or_full_str << " filtered on status != 0):\n";
+  else
+    cout << "List of edges in environment.edges (" << half_or_full_str << "):\n";
     
   cout << "node\tnode\tstat\tstat\tstat\tconnect.  Nxy      mutInfo      cplx_noU   Nxy_ui cplx Ixy_ui Rxyz_ui z_name_idx zi_vect_idx  ui_vect_idx" << endl;
   cout << "  1 \t  2 \t    \tinit\tprev\t        nb joint mutual info   Complexity                      Score  Index last candid.nodes  Indice of" << endl;
@@ -807,7 +815,12 @@ void printEdges (Environment& environment, bool filter_status)
 
   for (uint i = 0; i < environment.numNodes; i++) 
     {
-    for (uint j = i+1; j < environment.numNodes; j++) 
+    uint j;
+    if (half_only)
+      j = i + 1;
+    else
+      j = 0;
+    for (; j < environment.numNodes; j++) 
       {
       const Edge& one_edge = environment.edges[i][j];
       std::shared_ptr<EdgeSharedInfo> shared_info_ptr = one_edge.shared_info;

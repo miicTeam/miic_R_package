@@ -10,7 +10,7 @@ void createMemorySpace(structure::Environment&, structure::MemorySpace&);
 void deleteMemorySpace(structure::Environment&, structure::MemorySpace&);
 void deleteStruct(structure::Environment&);
 std::string printNodesName(const structure::Environment&);
-void printEdges (structure::Environment&, bool filter_status=true);
+void printEdges (structure::Environment&, bool filter_status=true, bool half_only=true);
 void printNoMoreAdress (structure::Environment&);
 void printAdjacencyMatrix (structure::Environment&, std::string status_field="status"); 
 void printMatrix(const structure::Environment&, std::string);
