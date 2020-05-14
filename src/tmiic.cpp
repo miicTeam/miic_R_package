@@ -26,7 +26,7 @@
 //=============================================================================
 // CONSTANTS
 //=============================================================================
-#define _DEBUG 1
+#define _DEBUG 0
 
 //=============================================================================
 // NAMESPACES
@@ -135,50 +135,28 @@ void repeatEdgesOverHistory (Environment& environment)
       //
       environment.noMoreAddress.emplace_back ( new EdgeID (node1_pos, node2_pos) );
       //
-      // TODO ? save current edge values
-      //
-      //
       // Duplicate the edge info into environment.edges array
       //
       Edge& edge_to_modif = environment.edges[node1_pos][node2_pos];
-      if (edge_to_modif.shared_info == NULL)
-        edge_to_modif.shared_info = std::make_shared<EdgeSharedInfo>();
-      else
-        edge_to_modif.shared_info->reset();
-      //
-      // Copy the orignal edge infos into the lagged edges (assuming stationarity)
-      //
+      
       edge_to_modif.status = edge_orig.status;
       edge_to_modif.status_init = edge_orig.status_init;
       edge_to_modif.status_prev = edge_orig.status_prev;
-      for (int i = 0; i < edge_orig.shared_info->ui_vect_idx.size(); i++) 
-        if (edge_orig.shared_info->ui_vect_idx[i] + nodes_cnt < environment.numNodes)
-          edge_to_modif.shared_info->ui_vect_idx.push_back (edge_orig.shared_info->ui_vect_idx[i] + nodes_cnt); 
-        else
-          cout << edge_orig.shared_info->ui_vect_idx[i] + nodes_cnt << " out of graph" << "\n";
-      for (int i = 0; i < edge_orig.shared_info->zi_vect_idx.size(); i++) 
-        if (edge_orig.shared_info->zi_vect_idx[i] + nodes_cnt < environment.numNodes)
-          edge_to_modif.shared_info->zi_vect_idx.push_back (edge_orig.shared_info->zi_vect_idx[i] + nodes_cnt); 
-        else
-          cout << edge_orig.shared_info->zi_vect_idx[i] + nodes_cnt << " out of graph" << "\n";
-      edge_to_modif.shared_info->z_name_idx  = edge_orig.shared_info->z_name_idx;
-      edge_to_modif.shared_info->Rxyz_ui  = edge_orig.shared_info->Rxyz_ui;
-      edge_to_modif.shared_info->Ixy_ui  = edge_orig.shared_info->Ixy_ui;
-      edge_to_modif.shared_info->cplx  = edge_orig.shared_info->cplx;
-      edge_to_modif.shared_info->Nxy_ui  = edge_orig.shared_info->Nxy_ui;
-      edge_to_modif.shared_info->connected  = edge_orig.shared_info->connected;
-      edge_to_modif.shared_info->mutInfo  = edge_orig.shared_info->mutInfo;
-      edge_to_modif.shared_info->cplx_noU  = edge_orig.shared_info->cplx_noU;
-      edge_to_modif.shared_info->Nxy  = edge_orig.shared_info->Nxy;
-      //
-      // Duplicate the edge info into environment.edges array for inverse indexes
-      //
-      std::shared_ptr<EdgeSharedInfo> ptr_shared_edge_sav = edge_to_modif.shared_info;
-      edge_to_modif = environment.edges[node2_pos][node1_pos];
-      edge_to_modif.status = edge_orig.status;
-      edge_to_modif.status_init = edge_orig.status_init;
-      edge_to_modif.status_prev = edge_orig.status_prev;
-      edge_to_modif.shared_info = ptr_shared_edge_sav;
+#if _DEBUG
+      cout << "Edge " << node1_pos << " (" << environment.nodes[node1_pos].name << ") - " 
+           << node2_pos << " (" << environment.nodes[node2_pos].name << ") modified:"
+           << edge_to_modif.status << "\n";
+#endif
+      
+      Edge& edge_to_modif_inverse = environment.edges[node2_pos][node1_pos];
+      edge_to_modif_inverse.status = edge_orig.status;
+      edge_to_modif_inverse.status_init = edge_orig.status_init;
+      edge_to_modif_inverse.status_prev = edge_orig.status_prev;
+#if _DEBUG
+      cout << "Edge " << node2_pos << " (" << environment.nodes[node2_pos].name << ") - " 
+           << node1_pos << " (" << environment.nodes[node1_pos].name << ") modified:"
+           << edge_to_modif_inverse.status << "\n";
+#endif
       }
     }
 
