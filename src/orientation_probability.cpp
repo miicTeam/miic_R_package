@@ -19,7 +19,7 @@
 #include "utilities.h"
 #include "tmiic.h"
 
-#define _DEBUG 1
+#define _DEBUG 0
 
 namespace miic {
 namespace reconstruction {
@@ -131,7 +131,7 @@ vector<vector<string> > orientationProbability(Environment& environment) {
     if ( (environment.isLatent) || (environment.isLatentOnlyOrientation) )
       tmiic::repeatEdgesOverHistory (environment);
     //
-    // We count also how much non lagged nodes we have 
+    // We count how much non lagged nodes we have 
     // => we look for the first lag1 node
     //
     std::regex lag_expr(".*lag");
@@ -189,7 +189,7 @@ vector<vector<string> > orientationProbability(Environment& environment) {
         }
       //
       // For temporal mode of miic : we are interested in orienting only
-      // the triplets having at least one node contemporanous (lag = 0)
+      // the triplets having at least one node contemporaneous (lag = 0)
       //
       int lag_nodeX = posX / nodes_cnt_not_lagged;
       int lag_nodeY = posY / nodes_cnt_not_lagged;
@@ -200,7 +200,7 @@ vector<vector<string> > orientationProbability(Environment& environment) {
         continue;
       // 
       // Triplet has at least one node contemporanous (lag = 0)
-      // First, consider open triplets as normal mode of miic 
+      // First, consider open triplets as in normal mode of miic 
       //
       if (posY1 == posX && !environment.edges[posY][posX1].status)
         neighboursX.push_back(posX1);
@@ -209,21 +209,24 @@ vector<vector<string> > orientationProbability(Environment& environment) {
       else
         {
         //
-        // Quick fix to orient temporal edges not in open temporal triplets: 
+        // Then, quick fix to orient temporal edges not part of open triplets: 
         // compute the lag level of all the nodes in the triplet and 
         // add the closed triplet if lagged
         //
         bool is_lagged = ( (lag_nodeX != lag_nodeY) || (lag_nodeX != lag_nodeX1) || (lag_nodeY != lag_nodeX1) );
-        bool is_to_add = (has_0_level && is_lagged);
-        if ( (posY1 == posX) && is_to_add )
+        if ( (posY1 == posX) && is_lagged )
           {
           neighboursX.push_back(posX1);
-          std::cout << "X=" << posX << " Y=" << posY << " X1=" << posX1 << " neighboursX\n";         
+#if _DEBUG
+          std::cout << "Side1: Add closed triplet X=" << posX << " Y=" << posY << " X1=" << posX1 << " in neighboursX\n";         
+#endif
           }
-        else if ( (posY1 == posY) && is_to_add )
+        else if ( (posY1 == posY) && is_lagged )
           {
           neighboursY.push_back(posX1);
-          std::cout << "X=" << posX << " Y=" << posY << " X1=" << posX1 << " neighboursY\n";         
+#if _DEBUG
+          std::cout << "Side1: Add closed triplet X=" << posX << " Y=" << posY << " X1=" << posX1 << " in neighboursY\n";         
+#endif
           }
         }
       }
@@ -273,17 +276,20 @@ vector<vector<string> > orientationProbability(Environment& environment) {
         // add the closed triplet if lagged
         //
         bool is_lagged = ( (lag_nodeX != lag_nodeY) || (lag_nodeX != lag_nodeY1) || (lag_nodeY != lag_nodeY1) );
-        bool is_to_add = (has_0_level && is_lagged);
           
-        if ( (posX1 == posX) && is_to_add )
+        if ( (posX1 == posX) && is_lagged )
           {
           neighboursX.push_back(posY1);
-          std::cout << "X=" << posX << " Y=" << posY << " Y1=" << posY1 << " neighboursX\n";         
+#if _DEBUG
+          std::cout << "Side2: Add closed triplet X=" << posX << " Y=" << posY << " Y1=" << posY1 << " in neighboursX\n";         
+#endif
           }
-        else if ( (posX1 == posY) && is_to_add )
+        else if ( (posX1 == posY) && is_lagged )
           {
           neighboursY.push_back(posY1);
-          std::cout << "X=" << posX <<  " Y=" << posY << " Y1=" << posY1 << " neighboursY\n";         
+#if _DEBUG
+          std::cout << "Side2: Add closed triplet X=" << posX <<  " Y=" << posY << " Y1=" << posY1 << " in neighboursY\n";         
+#endif
           }
         }
       }
@@ -533,13 +539,96 @@ vector<vector<string> > orientationProbability(Environment& environment) {
   }
   delete[] oneLineMatrixallTpl;
   delete[] ptrRetProbValues;
-  //
-  // For temporal graph, remove edges duplicated over history for the next skeleton iteration
-  // (taking into account that duplication has been done only if latent variable discovery is activated)
-  //
-  if ( (environment.tau > 0) && ( (environment.isLatent) || (environment.isLatentOnlyOrientation) ) )
-    tmiic::dropPastEdges (environment);
 
+  if (environment.tau > 0) 
+    {
+    //
+    // For temporal graph, when latent variable discovery is enabled, 
+    // we duplicated the edges over the history at the beginning 
+    // of the function => we need now to drop these extra edges
+    //
+    if ( (environment.isLatent) || (environment.isLatentOnlyOrientation) )
+      tmiic::dropPastEdges (environment);
+    //
+    // Quick fix for orientation of temporal edges not part of a triplet. 
+    // Isolated edges are not oriented by the orientation step as it is based 
+    // only on triplets => In temporal mode, orient isolated edges using time 
+    //
+    for (uint edge_idx = 0; edge_idx < environment.noMoreAddress.size(); edge_idx++) 
+      {
+      int egde_node0 = environment.noMoreAddress[edge_idx]->i;
+      int egde_node1 = environment.noMoreAddress[edge_idx]->j;
+      //
+      // If the edge is not temporal, nothing that we can do
+      //
+      int lag_node0 = egde_node0 / nodes_cnt_not_lagged;
+      int lag_node1 = egde_node1 / nodes_cnt_not_lagged;
+      if (lag_node0 == lag_node1)
+        continue;
+      //
+      // The edge is temporal, check if edge was in the triplet list
+      //
+      for (uint tpl_idx = 0; tpl_idx < allTpl.size(); tpl_idx++) 
+        {
+        int tpl_node0 = allTpl[tpl_idx][0];
+        int tpl_node1 = allTpl[tpl_idx][1];
+        int tpl_node2 = allTpl[tpl_idx][2];
+        if (  (egde_node0 == tpl_node0) && (egde_node1 == tpl_node1)
+           || (egde_node0 == tpl_node1) && (egde_node1 == tpl_node0)
+           || (egde_node0 == tpl_node1) && (egde_node1 == tpl_node2)
+           || (egde_node0 == tpl_node2) && (egde_node1 == tpl_node1) )
+           continue;
+        }
+      //
+      // Edge is temporal and was not in the triplet list, look if not oriented
+      //
+      int orient = environment.edges[egde_node0][egde_node1].status;
+      if (orient != 1)
+        continue;
+      //
+      // Edge is temporal and is not oriented => orient it
+      //
+      if (lag_node0 < lag_node1)
+        orient = -2;
+      else
+        orient = 2;
+      environment.edges[egde_node0][egde_node1].status = orient;
+      environment.edges[egde_node1][egde_node0].status = -orient;
+#if _DEBUG
+      std::cout << "Edge " << environment.nodes[egde_node0].name
+                       << "-" << environment.nodes[egde_node1].name
+                       << " oriented using time, orientation=" << orient << "\n";
+#endif
+      }
+    //
+    // Check if orientation found by miic is aligned with time
+    //
+    for (uint edge_idx = 0; edge_idx < environment.noMoreAddress.size(); edge_idx++) 
+      {
+      int egde_node0 = environment.noMoreAddress[edge_idx]->i;
+      int egde_node1 = environment.noMoreAddress[edge_idx]->j;
+
+      int lag_node0 = egde_node0 / nodes_cnt_not_lagged;
+      int lag_node1 = egde_node1 / nodes_cnt_not_lagged;
+      if (lag_node0 == lag_node1)
+        continue;
+      
+      int orient_from_time;
+      if (lag_node0 < lag_node1)
+        orient_from_time = -2;
+      else
+        orient_from_time = 2;
+      
+      int orient_from_miic = environment.edges[egde_node0][egde_node1].status;
+      
+      if (orient_from_miic != orient_from_time)
+        std::cout << "Warning: Edge " << environment.nodes[egde_node0].name
+                       << "-" << environment.nodes[egde_node1].name
+                       << ", miic orientation=" << orient_from_miic
+                       << " differs from time orientation=" << orient_from_time << "\n";
+      }
+    }
+  
 #if _DEBUG
   std::cout << "\norientationProbability end:\n";
   printEdges (environment);

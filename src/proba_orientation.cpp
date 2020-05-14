@@ -735,7 +735,7 @@ double* miic::reconstruction::getOrientTplLVDegPropag(structure::Environment& en
     if (LV)
       proba_tail = 0.5;
     //
-    // Initialise the arrowhead probabilities using time
+    // Initialise the arrows head/tail probabilities using time
     //
     for (int i = 0; i < nbrTpl; i++) 
       {
