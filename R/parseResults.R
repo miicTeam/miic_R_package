@@ -242,19 +242,21 @@ compute_partial_correlation <- function(summary, observations, state_order) {
       !any(is.na(row[columns]))
     }, c(x, y, ai))
 
-    if (!is.null(ai)) {
-      ai <- unlist(strsplit(ai, ",")) # Character vector
-
-      edge_res <- ppcor::pcor.test(observations[non_na_rows, x],
-        observations[non_na_rows, y],
-        observations[non_na_rows, ai],
-        method = "spearman"
-      )
-    } else {
-      edge_res <- cor.test(observations[non_na_rows, x],
-        observations[non_na_rows, y],
-        method = "spearman"
-      )
+    OK <- complete.cases(observations[non_na_rows, x], observations[non_na_rows, y])
+    if (sum(OK) >= 2) {
+      if (!is.null(ai)) {
+        ai <- unlist(strsplit(ai, ",")) # Character vector
+        edge_res <- ppcor::pcor.test(observations[non_na_rows, x],
+          observations[non_na_rows, y],
+          observations[non_na_rows, ai],
+          method = "spearman"
+        )
+      } else {
+        edge_res <- cor.test(observations[non_na_rows, x],
+          observations[non_na_rows, y],
+          method = "spearman"
+        )
+      }
     }
 
     # Save sign and coef
