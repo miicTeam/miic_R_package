@@ -16,6 +16,7 @@
 #'  Default: \emph{layout_with_kk}
 #' @param title [a string] Optional, the title of the plot. NULL by default.
 #' @param curve_edges [a boolean value] Optional, FALSE by default. If TRUE, edges are curved. 
+#' @param edge_arrow_size [a float] Optional, NULL by default. The size of edges arrows.
 #' @param verbose [a boolean value] Optional, FALSE by default. If TRUE, debugging output is printed.
 #' @param call_from_tmiic [a boolean value] Optional, FALSE by default.
 #' Used to avoid graphical layout mess when plotting from tmiic. if TRUE, does not change the graphic
@@ -32,6 +33,7 @@ miic.plot <-
            userLayout = NULL,
            title=NULL, 
            curve_edges = FALSE,
+           edge_arrow_size= NULL,
            verbose = F,
            call_from_tmiic = FALSE) {
     if (is.null(g$all.edges.summary)) {
@@ -111,11 +113,17 @@ miic.plot <-
         if (curve_edges)
           {
           curves <- miic.autocurve.edges (myGraph, flag_curve_all=TRUE)
-          graphics::plot(myGraph, edge.curved=curves, layout = myLayout)
+          if (call_from_tmiic)
+            graphics::plot(myGraph, edge.curved=curves, layout = myLayout, 
+                           edge.arrow.size=edge_arrow_size, 
+                           vertex.label.dist=1, vertex.label.degree=pi/2)
+          else
+            graphics::plot(myGraph, edge.curved=curves, layout = myLayout, 
+                           edge.arrow.size=edge_arrow_size)
           }
         else
           {
-          graphics::plot(myGraph, layout = myLayout)
+          graphics::plot(myGraph, layout = myLayout, edge.arrow.size=edge_arrow_size)
           }
         if (! is.null(title) )
           {
@@ -174,14 +182,16 @@ miic.plot <-
         {
         curves <- miic.autocurve.edges (myGraph, flag_curve_all=TRUE)
         if (call_from_tmiic)
-          graphics::plot(myGraph, edge.curved=curves, layout = myLayout,
+          graphics::plot(myGraph, edge.curved=curves, layout = myLayout, 
+                         edge.arrow.size=edge_arrow_size, 
                          vertex.label.dist=1, vertex.label.degree=pi/2)
         else
-          graphics::plot(myGraph, edge.curved=curves, layout = myLayout)
+          graphics::plot(myGraph, edge.curved=curves, layout = myLayout, 
+                         edge.arrow.size=edge_arrow_size)
         }
       else
         {
-        graphics::plot(myGraph, layout = myLayout)
+        graphics::plot(myGraph, layout = myLayout, edge.arrow.size=edge_arrow_size)
         }
       if (! is.null(title) )
         {
