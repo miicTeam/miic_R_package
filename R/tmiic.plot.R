@@ -35,10 +35,12 @@
 #' @param title [a string] Optional, NULL by default. The title of the plot.
 #' @param filename [a string] Optional, NULL by default. If supplied, plot will be saved here.
 #' @param curve_edges [a boolean value] Optional, TRUE by default. If TRUE, edges are curved. 
+#' @param edge_arrow_size [a float] Optional, NULL by default. The size of edges arrows.
 #' @param verbose [a boolean value] If TRUE, debugging output is printed.
 #--------------------------------------------------------------------------------
 tmiic.plot <- function (g, method="log_confidence", igraphLayout=NULL, userLayout=NULL,
-                        title=NULL, filename=NULL, curve_edges=TRUE, verbose=FALSE) 
+                        title=NULL, filename=NULL, curve_edges=TRUE, edge_arrow_size=NULL,
+                        verbose=FALSE) 
   {
   DEBUG <- FALSE
   
@@ -103,7 +105,8 @@ tmiic.plot <- function (g, method="log_confidence", igraphLayout=NULL, userLayou
     }
   miic.plot (g=g, method=method, igraphLayout=igraphLayout, 
              userLayout=userLayout, curve_edges=curve_edges, 
-             title=title, verbose=verbose, call_from_tmiic=TRUE) 
+             edge_arrow_size=edge_arrow_size, title=title, 
+             verbose=verbose, call_from_tmiic=TRUE) 
   if (! is.null(filename) )
     {
     dev.off()
