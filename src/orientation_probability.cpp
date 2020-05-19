@@ -147,16 +147,8 @@ vector<vector<string> > orientationProbability(Environment& environment) {
   //  
   // GET ALL TPL that could be V/NON-V-STRUCTURES #######
   //
-  // In classic (non temporal) mode of miic, only open triplets are considered. 
-  // Closed triplets (forming a triangle in the graph) can not be used to 
-  // determine the orientation of edges. 
-  //
-  // In temporal mode, the oriention of temporal edges can be determined
-  // using the time. So next to open triplets, we should prepate a list
-  // of temporal edges that are, by nature, oriented. 
-  // As all the orientation code has been designed for triplets, it is not
-  // suited to deal with a temporal edges. As a quick fix, we add closed 
-  // triplets as long as they include a temporal information.
+  // Only open triplets are considered. Closed triplets (forming a triangle
+  // in the graph) can not be used to determine the orientation of edges. 
   //
   for (uint pos = 0; pos < environment.noMoreAddress.size(); pos++) 
     {
@@ -177,58 +169,32 @@ vector<vector<string> > orientationProbability(Environment& environment) {
       int posX1 = environment.noMoreAddress[i]->i;
       int posY1 = environment.noMoreAddress[i]->j;
       
-      if (environment.tau <= 0) 
+      if ( (environment.tau > 0) && ( (environment.isLatent) || (environment.isLatentOnlyOrientation) ) )
         {
-        // Classic (non temporal) mode
+        // For temporal mode of miic, we are only interested to orient
+        // triplets having at least on node contemporaneaous (lag0).
+        // Triplets having only past nodes are induced by the call to 
+        // repeatEdgesOverHistory when latent discovery is on 
+        // => we checked these past only triplets to skip them here
         //
-        if (posY1 == posX && !environment.edges[posY][posX1].status)
-          neighboursX.push_back(posX1);
-        else if (posY1 == posY && !environment.edges[posX][posX1].status)
-          neighboursY.push_back(posX1);
-        continue;
+        int lag_node0 = posX / nodes_cnt_not_lagged;
+        int lag_node1 = posY / nodes_cnt_not_lagged;
+        int lag_node2 = posX1 / nodes_cnt_not_lagged;
+        if ( (lag_node0 > 0) && (lag_node1 > 0) && (lag_node2 > 0) )
+          {
+#if _DEBUG
+        std::cout << "First loop, past only triplet: Edges " << environment.nodes[posX].name
+                       << "-" << environment.nodes[posY].name 
+                       << "-" << environment.nodes[posX1].name << " skipped\n";
+#endif
+          continue;
+          }
         }
-      //
-      // For temporal mode of miic : we are interested in orienting only
-      // the triplets having at least one node contemporaneous (lag = 0)
-      //
-      int lag_nodeX = posX / nodes_cnt_not_lagged;
-      int lag_nodeY = posY / nodes_cnt_not_lagged;
-      int lag_nodeX1 = posX1 / nodes_cnt_not_lagged;
-      bool has_0_level = ( (lag_nodeX == 0) || (lag_nodeY == 0) || (lag_nodeX1 == 0) );
       
-      if (!has_0_level)
-        continue;
-      // 
-      // Triplet has at least one node contemporanous (lag = 0)
-      // First, consider open triplets as in normal mode of miic 
-      //
       if (posY1 == posX && !environment.edges[posY][posX1].status)
         neighboursX.push_back(posX1);
       else if (posY1 == posY && !environment.edges[posX][posX1].status)
         neighboursY.push_back(posX1);
-      else
-        {
-        //
-        // Then, quick fix to orient temporal edges not part of open triplets: 
-        // compute the lag level of all the nodes in the triplet and 
-        // add the closed triplet if lagged
-        //
-        bool is_lagged = ( (lag_nodeX != lag_nodeY) || (lag_nodeX != lag_nodeX1) || (lag_nodeY != lag_nodeX1) );
-        if ( (posY1 == posX) && is_lagged )
-          {
-          neighboursX.push_back(posX1);
-#if _DEBUG
-          std::cout << "Side1: Add closed triplet X=" << posX << " Y=" << posY << " X1=" << posX1 << " in neighboursX\n";         
-#endif
-          }
-        else if ( (posY1 == posY) && is_lagged )
-          {
-          neighboursY.push_back(posX1);
-#if _DEBUG
-          std::cout << "Side1: Add closed triplet X=" << posX << " Y=" << posY << " X1=" << posX1 << " in neighboursY\n";         
-#endif
-          }
-        }
       }
     //
     // Second loop to identify possible triplets on the other side 
@@ -239,59 +205,28 @@ vector<vector<string> > orientationProbability(Environment& environment) {
       int posX1 = environment.noMoreAddress[i]->i;
       int posY1 = environment.noMoreAddress[i]->j;
       
-      if (environment.tau <= 0) 
+      if ( (environment.tau > 0) && ( (environment.isLatent) || (environment.isLatentOnlyOrientation) ) )
         {
-        // Classic (non temporal) case
+        // Same as first loop, skip past only triplets in temporal mode
         //
-        if (posX1 == posX && !environment.edges[posY][posY1].status)
-          neighboursX.push_back(posY1);
-        else if (posX1 == posY && !environment.edges[posX][posY1].status)
-          neighboursY.push_back(posY1);
-        continue;
+        int lag_node0 = posX / nodes_cnt_not_lagged;
+        int lag_node1 = posY / nodes_cnt_not_lagged;
+        int lag_node2 = posY1 / nodes_cnt_not_lagged;
+        if ( (lag_node0 > 0) && (lag_node1 > 0) && (lag_node2 > 0) )
+          {
+#if _DEBUG
+        std::cout << "Second loop, past only triplet: Edges " << environment.nodes[posX].name
+                       << "-" << environment.nodes[posY].name 
+                       << "-" << environment.nodes[posY1].name << " skipped\n";
+#endif
+          continue;
+          }
         }
-      //
-      // For temporal mode of miic : we are interested in orienting only
-      // the triplets having at least one node contemporanous (lag = 0)
-      //
-      int lag_nodeX = posX / nodes_cnt_not_lagged;
-      int lag_nodeY = posY / nodes_cnt_not_lagged;
-      int lag_nodeY1 = posY1 / nodes_cnt_not_lagged;
-      bool has_0_level = ( (lag_nodeX == 0) || (lag_nodeY == 0) || (lag_nodeY1 == 0) );
       
-      if (!has_0_level)
-        continue;
-      // 
-      // Triplet has at least one node contemporanous (lag = 0)
-      // First, consider open triplets as normal mode of miic 
-      //
       if (posX1 == posX && !environment.edges[posY][posY1].status)
         neighboursX.push_back(posY1);
       else if (posX1 == posY && !environment.edges[posX][posY1].status)
         neighboursY.push_back(posY1);
-      else
-        {
-        //
-        // Quick fix to orient temporal edges not in open temporal triplets: 
-        // compute the lag level of all the nodes in the triplet and 
-        // add the closed triplet if lagged
-        //
-        bool is_lagged = ( (lag_nodeX != lag_nodeY) || (lag_nodeX != lag_nodeY1) || (lag_nodeY != lag_nodeY1) );
-          
-        if ( (posX1 == posX) && is_lagged )
-          {
-          neighboursX.push_back(posY1);
-#if _DEBUG
-          std::cout << "Side2: Add closed triplet X=" << posX << " Y=" << posY << " Y1=" << posY1 << " in neighboursX\n";         
-#endif
-          }
-        else if ( (posX1 == posY) && is_lagged )
-          {
-          neighboursY.push_back(posY1);
-#if _DEBUG
-          std::cout << "Side2: Add closed triplet X=" << posX <<  " Y=" << posY << " Y1=" << posY1 << " in neighboursY\n";         
-#endif
-          }
-        }
       }
     //
     // The lists of neighbours on both sides is ready for the edge
@@ -299,7 +234,10 @@ vector<vector<string> > orientationProbability(Environment& environment) {
     int sizeX = neighboursX.size();
     int sizeY = neighboursY.size();
     if (sizeX == 0 && sizeY == 0) continue;
-
+    //
+    // getSStructure computes triplets and I3 from the neighbours lists.
+    // CAUTION: nodes indexes returned in allTpl are shihted of +1
+    //
     for (int i = 0; i < sizeX; i++) {
       // Get the structure if any
       getSStructure(
@@ -312,14 +250,89 @@ vector<vector<string> > orientationProbability(Environment& environment) {
           environment, posX, posY, neighboursY[i], isVerbose, allTpl, allI3);
     }
   }
-  
+  //
+  // In temporal mode, the oriention of temporal edges can be determined
+  // using the time. So even if a temporal edge is not part of an open
+  // edge, we will add it for orientation.
+  // 
+  // As all the orientation code has been designed for triplets, 
+  // we use a trick here by creating a fake triplet with:
+  // node1 of edge - node2 of edge - node1 of edge 
+  //
+  if (environment.tau > 0) 
+    {
+    //
+    // Go over all edges computed
+    //
+    for (uint edge_idx = 0; edge_idx < environment.noMoreAddress.size(); edge_idx++) 
+      {
+      int egde_node0 = environment.noMoreAddress[edge_idx]->i;
+      int egde_node1 = environment.noMoreAddress[edge_idx]->j;
+      //
+      // If edge is not temporal, we don't add it
+      //
+      int lag_node0 = egde_node0 / nodes_cnt_not_lagged;
+      int lag_node1 = egde_node1 / nodes_cnt_not_lagged;
+      if (lag_node0 == lag_node1)
+        continue;
+      //
+      // If edge has no contemporaneous node, we don't add it
+      // (this can only happen whe latent discovery is activated
+      // because we duplicated edges over history and we are not 
+      // interested to orient duplicated past edges)
+      //
+      if ( (lag_node0 >0) && (lag_node1 > 0) )
+        continue;
+      //
+      // The computed edge is temporal and we want to have it oriented.
+      // We now check if the edge is already in the open triplets list
+      //
+      bool is_edge_in_list = false;
+      for (uint tpl_idx = 0; tpl_idx < allTpl.size(); tpl_idx++) 
+        {
+        // CAUTION : getSStructure added 1 to the node index => remove 1
+        //
+        int tpl_node0 = allTpl[tpl_idx][0]-1;
+        int tpl_node1 = allTpl[tpl_idx][1]-1;
+        int tpl_node2 = allTpl[tpl_idx][2]-1;
+        if (  (egde_node0 == tpl_node0) && (egde_node1 == tpl_node1)
+           || (egde_node0 == tpl_node1) && (egde_node1 == tpl_node0)
+           || (egde_node0 == tpl_node1) && (egde_node1 == tpl_node2)
+           || (egde_node0 == tpl_node2) && (egde_node1 == tpl_node1) )
+          {
+          is_edge_in_list = true;
+          break;
+          }
+        }
+      //
+      // If the edge is already in the triplets list, nothing to do
+      //
+      if (is_edge_in_list)
+        continue;
+      //
+      // If the edge is not in the triplets list, add a fake triplet
+      // with node1 of edge - node2 of edge - node1 of edge
+      // (and we add 1 to the node indexes like getSStructure does)
+      //
+      allTpl.emplace_back(std::initializer_list<int>{egde_node0 + 1, egde_node1 + 1, egde_node0 + 1});
+      allI3.push_back (0);
+#if _DEBUG
+      std::cout << "Fake triplet: Edges " << environment.nodes[egde_node0].name
+                     << "-" << environment.nodes[egde_node1].name 
+                     << "-" << environment.nodes[egde_node0].name << " with I3=0 added\n";
+#endif
+      }
+    }
+    
   int* oneLineMatrixallTpl = new int[allTpl.size() * 3];
-  for (uint i = 0; i < allTpl.size(); i++) {
-    for (int j = 0; j < 3; j++) {
+  for (uint i = 0; i < allTpl.size(); i++) 
+    {
+    for (int j = 0; j < 3; j++) 
+      {
       oneLineMatrixallTpl[j * allTpl.size() + i] = allTpl[i][j];
       allTpl[i][j]--;
+      }
     }
-  }
   // Compute the arrowhead probability of each edge endpoint
   int myNbrTpl = allTpl.size();
   
@@ -328,7 +341,7 @@ vector<vector<string> > orientationProbability(Environment& environment) {
     for (int i = 0; i < myNbrTpl; i++) 
       {
       // CAUTION : in oneLineMatrixallTpl nodes indices start from 1 !!!!!!!!
-      // The indice shift occurs line 164-165
+      // The indice shift occurs in getSStructure
       int node0 = oneLineMatrixallTpl[0 * myNbrTpl + i] - 1;
       int node1 = oneLineMatrixallTpl[1 * myNbrTpl + i] - 1;
       int node2 = oneLineMatrixallTpl[2 * myNbrTpl + i] - 1;
@@ -543,63 +556,12 @@ vector<vector<string> > orientationProbability(Environment& environment) {
   if (environment.tau > 0) 
     {
     //
-    // For temporal graph, when latent variable discovery is enabled, 
+    // For temporal mode, when latent variable discovery is enabled, 
     // we duplicated the edges over the history at the beginning 
     // of the function => we need now to drop these extra edges
     //
     if ( (environment.isLatent) || (environment.isLatentOnlyOrientation) )
       tmiic::dropPastEdges (environment);
-    //
-    // Quick fix for orientation of temporal edges not part of a triplet. 
-    // Isolated edges are not oriented by the orientation step as it is based 
-    // only on triplets => In temporal mode, orient isolated edges using time 
-    //
-    for (uint edge_idx = 0; edge_idx < environment.noMoreAddress.size(); edge_idx++) 
-      {
-      int egde_node0 = environment.noMoreAddress[edge_idx]->i;
-      int egde_node1 = environment.noMoreAddress[edge_idx]->j;
-      //
-      // If the edge is not temporal, nothing that we can do
-      //
-      int lag_node0 = egde_node0 / nodes_cnt_not_lagged;
-      int lag_node1 = egde_node1 / nodes_cnt_not_lagged;
-      if (lag_node0 == lag_node1)
-        continue;
-      //
-      // The edge is temporal, check if edge was in the triplet list
-      //
-      for (uint tpl_idx = 0; tpl_idx < allTpl.size(); tpl_idx++) 
-        {
-        int tpl_node0 = allTpl[tpl_idx][0];
-        int tpl_node1 = allTpl[tpl_idx][1];
-        int tpl_node2 = allTpl[tpl_idx][2];
-        if (  (egde_node0 == tpl_node0) && (egde_node1 == tpl_node1)
-           || (egde_node0 == tpl_node1) && (egde_node1 == tpl_node0)
-           || (egde_node0 == tpl_node1) && (egde_node1 == tpl_node2)
-           || (egde_node0 == tpl_node2) && (egde_node1 == tpl_node1) )
-           continue;
-        }
-      //
-      // Edge is temporal and was not in the triplet list, look if not oriented
-      //
-      int orient = environment.edges[egde_node0][egde_node1].status;
-      if (orient != 1)
-        continue;
-      //
-      // Edge is temporal and is not oriented => orient it
-      //
-      if (lag_node0 < lag_node1)
-        orient = -2;
-      else
-        orient = 2;
-      environment.edges[egde_node0][egde_node1].status = orient;
-      environment.edges[egde_node1][egde_node0].status = -orient;
-#if _DEBUG
-      std::cout << "Edge " << environment.nodes[egde_node0].name
-                       << "-" << environment.nodes[egde_node1].name
-                       << " oriented using time, orientation=" << orient << "\n";
-#endif
-      }
     //
     // Check if orientation found by miic is aligned with time
     //

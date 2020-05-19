@@ -798,7 +798,9 @@ double* miic::reconstruction::getOrientTplLVDegPropag(structure::Environment& en
     }
   else
     {
+    // Classical (non temporal) mode of miic:
     // Initialise the arrowhead probabilities to 0.5
+    //
     for (int i = 0; i < nbrTpl; i++) {
       for (int j = 0; j < 4; j++) {
         ptrRetProbValues[i + j * nbrTpl] = 0.5;
