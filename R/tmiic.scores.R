@@ -96,7 +96,7 @@ tmiic.compute_one_score <- function (df_edges, df_true_edges, list_nodes, tau)
       tau_idx_y <- strtoi (tau_idx_y)
       }
     #
-    # Compute the lags and reorder from oldest to newest
+    # It temporal, ensure to order from oldest to newest
     #
     diff = tau_idx_x - tau_idx_y
     if (diff < 0)
@@ -117,98 +117,195 @@ tmiic.compute_one_score <- function (df_edges, df_true_edges, list_nodes, tau)
     #
     # Remove "_lag" information from the nodes names
     # find the index of the nodes in the nodes list
-    # and search this edge in the true edge df 
     #
     node_oldest <- gsub("_lag.*","",node_x)
     node_newest <- gsub("_lag.*","",node_y)
     idx_node_oldest <- which (list_nodes == node_oldest)[[1]]
     idx_node_newest <- which (list_nodes == node_newest)[[1]]
-    
+    #
+    # Search this edge in the true edge df 
+    #
     cond_old_new = (  (df_true_edges[["orig"]] == idx_node_oldest) 
                     & (df_true_edges[["dest"]] == idx_node_newest) 
                     & (df_true_edges[["lag"]] == diff) )
-    if (sum(cond_old_new) == 0)
+    #
+    # If edge is not temporal, we must look also the opposite way
+    #
+    cond_new_old = 0
+    if (diff == 0)
+      cond_new_old = (  (df_true_edges[["orig"]] == idx_node_newest) 
+                     & (df_true_edges[["dest"]] == idx_node_oldest) 
+                     & (df_true_edges[["lag"]] == 0) )
+    
+    if ( (sum(cond_old_new) == 0) && (sum(cond_new_old) == 0) )
       {
       #
-      # if edge is not in the true edge list => false pos
+      # If edge is not in the true edges list => false pos
       #
       fp <- fp + 1
-      #
-      # if edge is oriented => false pos also for oriented
-      #
-      if (orient != 1)
-        {
-        fp_orient <- fp_orient + 1
-        if (DEBUG)
-          {
-          print (paste (one_edge$x, "-", one_edge$y, " type=", one_edge$type, " ort=", one_edge$infOrt, 
-                        " => ", node_oldest, "-", node_newest, " lag=", diff, 
-                        " => not found and oriented => fp + 1, fp_orient + 1", sep="") )
-          }
-        }
-      else if (DEBUG)
-        {
-        print (paste (one_edge$x, "-", one_edge$y, " type=", one_edge$type, " ort=", one_edge$infOrt, 
-                      " => ", node_oldest, "-", node_newest, " lag=", diff, 
-                      "  => not found and unoriented => fp + 1, fp_orient unchanged", sep="") )
-        }
-      }
-    else
-      {
-      #
-      # the edge is in the true edge list => at least true pos for non oriented
-      #
-      tp <- tp + 1
+      
       if (orient == 1)
         {
         #
-        # Edge found has no orientation, nothing to count for oriented
+        # Edge not in the true edges list and was not oriented => Nothing to count for oriented
         #
         if (DEBUG)
-          {
           print (paste (one_edge$x, "-", one_edge$y, " type=", one_edge$type, " ort=", one_edge$infOrt, 
                         " => ", node_oldest, "-", node_newest, " lag=", diff, 
-                        " => found and unoriented => tp + 1, tp_orient unchanged",  sep="") )
-          }
+                        "  => not found and unoriented => fp + 1, fp_orient unchanged", sep="") )
+        next
+        }
+      #
+      # If the edge not in the true edges list is oriented => false pos also for oriented
+      #
+      if (orient == 6) # bidirectional
+        {
+        fp_orient <- fp_orient + 2
+        if (DEBUG)
+          print (paste (one_edge$x, "-", one_edge$y, " type=", one_edge$type, " ort=", one_edge$infOrt, 
+                        " => ", node_oldest, "-", node_newest, " lag=", diff, 
+                        " => not found and oriented => fp + 1, fp_orient + 2", sep="") )
         }
       else
         {
-        #
-        # Edge found has orientation, check if correct
-        #
-        if ( (orient == 2) | (orient == 6) )
-          {
-          if (DEBUG)
-            {
-            print (paste (one_edge$x, "-", one_edge$y, " type=", one_edge$type, " ort=", one_edge$infOrt, 
-                          " => ", node_oldest, "-", node_newest, " lag=", diff, 
-                          " => found and correctly oriented => tp + 1, tp_orient + 1", sep="") )
-            }
-          tp_orient <- tp_orient + 1
-          }
-        else  
-          {
-          if (DEBUG)
-            {
-            print (paste (one_edge$x, "-", one_edge$y, " type=", one_edge$type, " ort=", one_edge$infOrt, 
-                          " => ", node_oldest, "-", node_newest, " lag=", diff, 
-                          " => found and badly correctly => tp + 1, fp_orient + 1", sep="") )
-            }
-          fp_orient <- fp_orient + 1
-          }
+        fp_orient <- fp_orient + 1
+        if (DEBUG)
+          print (paste (one_edge$x, "-", one_edge$y, " type=", one_edge$type, " ort=", one_edge$infOrt, 
+                        " => ", node_oldest, "-", node_newest, " lag=", diff, 
+                        " => not found and oriented => fp + 1, fp_orient + 1", sep="") )
         }
-      
+      next
       }
+    #
+    # The edge is in the true edge list => at least true pos for non oriented
+    #
+    tp <- tp + 1
+    if (orient == 1)
+      {
+      #
+      # Edge computed has no orientation, nothing to count for oriented
+      #
+      if (DEBUG)
+        print (paste (one_edge$x, "-", one_edge$y, " type=", one_edge$type, " ort=", one_edge$infOrt, 
+                      " => ", node_oldest, "-", node_newest, " lag=", diff, 
+                      " => found and unoriented => tp + 1, tp_orient unchanged",  sep="") )
+      next
+      }
+    #
+    # As latent variable are identified in the true edges by strength = 0
+    # Set new contion taking excluding latent variable (because they are unoriented)
+    #
+    cond_old_new_not_latent = ( (df_true_edges[["orig"]] == idx_node_oldest) 
+                              & (df_true_edges[["dest"]] == idx_node_newest) 
+                              & (df_true_edges[["lag"]] == diff) 
+                              & (df_true_edges[["strength"]] != 0) )
+    #
+    # If edge is not temporal, we must look also the opposite way
+    #
+    cond_new_old_not_latent = 0
+    if (diff == 0)
+      cond_new_old_not_latent = ( (df_true_edges[["orig"]] == idx_node_newest) 
+                                & (df_true_edges[["dest"]] == idx_node_oldest) 
+                                & (df_true_edges[["lag"]] == 0)  
+                                & (df_true_edges[["strength"]] != 0) )
+    
+    #
+    # Edge computed has an orientation, check if correct
+    #
+    if (orient == 6)
+      {
+      # 
+      # Edge commputed is birectional => we must find 2 true edges not latent
+      #
+      if (sum(cond_old_new_not_latent) + sum(cond_new_old_not_latent) == 2)
+        {
+        #
+        # Computed edge (implies not temporal) found in the 2 ways => + 2 true positive
+        #
+        if (DEBUG)
+          print (paste (one_edge$x, "-", one_edge$y, " type=", one_edge$type, " ort=", one_edge$infOrt, 
+                        " => ", node_oldest, "-", node_newest, " lag=", diff, 
+                        " => found 2 times (bidirectional)",
+                        " => tp + 1, tp_orient + 2", sep="") )
+        tp_orient <- tp_orient + 2
+        next
+        }
+      #
+      # Computed edge found in 1 way only => + 1 true positive, + 1 false positive
+      #
+      if (sum(cond_old_new_not_latent) + sum(cond_new_old_not_latent) == 1)
+        {
+        if (DEBUG)
+          print (paste (one_edge$x, "-", one_edge$y, " type=", one_edge$type, " ort=", one_edge$infOrt, 
+                        " => ", node_oldest, "-", node_newest, " lag=", diff, 
+                        " => found 1 time (unidirectional)",
+                        " => tp + 1, tp_orient + 1, fp_orient + 1", sep="") )
+        tp_orient <- tp_orient + 1
+        fp_orient <- fp_orient + 1
+        next
+        }
+      #
+      # Computed edge not found in non latent  => + 2 false positive
+      #
+      if (DEBUG)
+        print (paste (one_edge$x, "-", one_edge$y, " type=", one_edge$type, " ort=", one_edge$infOrt, 
+                      " => ", node_oldest, "-", node_newest, " lag=", diff, 
+                      " => found but latent (not oriented)",
+                      " => tp + 1, fp_orient + 2", sep="") )
+      fp_orient <- fp_orient + 2
+      next
+      }
+    #
+    # Computed edge is unidirectional (orient == 2)
+    # and has been found including latent
+    # => look if still good when latent are excluded
+    #
+    if (sum(cond_old_new_not_latent) + sum(cond_new_old_not_latent) == 0)
+      {
+      if (DEBUG)
+        print (paste (one_edge$x, "-", one_edge$y, " type=", one_edge$type, " ort=", one_edge$infOrt, 
+                      " => ", node_oldest, "-", node_newest, " lag=", diff, 
+                      " => found but latent (not oriented) => tp + 1, fp_orient + 1", sep="") )
+      fp_orient <- fp_orient + 1
+      next
+      }
+    #
+    # Computed edge is unidirectional (orient == 2)
+    # and has been found excluding latent
+    # => look if correctly oriented
+    #
+    if (sum(cond_old_new_not_latent) > 0)
+      {
+      if (DEBUG)
+        print (paste (one_edge$x, "-", one_edge$y, " type=", one_edge$type, " ort=", one_edge$infOrt, 
+                      " => ", node_oldest, "-", node_newest, " lag=", diff, 
+                      " => found and correctly oriented => tp + 1, tp_orient + 1", sep="") )
+      tp_orient <- tp_orient + 1
+      next
+      }
+    #
+    # Edge found but badly oriented
+    #
+    if (DEBUG)
+      print (paste (one_edge$x, "-", one_edge$y, " type=", one_edge$type, " ort=", one_edge$infOrt, 
+                    " => ", node_oldest, "-", node_newest, " lag=", diff, 
+                    " => found and badly oriented => tp + 1, fp_orient + 1", sep="") )
+    fp_orient <- fp_orient + 1
     }
   #
   # Compute the number of true edges
   #
-  nb_true_edges_orient <- nrow(df_true_edges)
-  nb_true_edges <- nb_true_edges_orient
+  nb_true_edges_total <- nrow(df_true_edges)
+  nb_true_edges_orient <- nrow(df_true_edges[df_true_edges$strength != 0,])
+  nb_true_edges_non_orient <- nb_true_edges_total
   for (row_idx in 1:nrow(df_true_edges) )
     {
+    # Exclude lagged edges as they appear always once
     one_edge <- df_true_edges[row_idx,]
     if (one_edge$lag != 0)
+      next
+    # Exclude latent edges as they appear always once
+    if (one_edge$strength != 0) 
       next
     cond_opposite = (  (df_true_edges[["orig"]] == one_edge$dest) 
                      & (df_true_edges[["dest"]] == one_edge$orig) 
@@ -219,22 +316,23 @@ tmiic.compute_one_score <- function (df_edges, df_true_edges, list_nodes, tau)
     # => remove 0.5 because we will find a 2 matches
     #
     if (sum(cond_opposite) > 0)
-      nb_true_edges <- nb_true_edges - 0.5
+      nb_true_edges_non_orient <- nb_true_edges_non_orient - 0.5
     }
   
-  tp_rate <- tp / nb_true_edges
+  tp_rate <- tp / nb_true_edges_non_orient
   tp_orient_rate <- tp_orient / nb_true_edges_orient
   #
   # Compute nb of no edges 
   #
   taux_plus_1 <- tau + 1
-  nb_possible_edges_for_one_node <- tau + taux_plus_1 * (n_nodes - 1)
-  nb_possible_edges_orient <- nb_possible_edges_for_one_node * n_nodes
-  nb_possible_edges <- nb_possible_edges_orient - (n_nodes - 1)
+  nb_possible_edges_for_one_lag0_node <- tau + taux_plus_1 * (n_nodes - 1)
+  nb_possible_edges_with_one_node_lag0 <- nb_possible_edges_for_one_lag0_node * n_nodes
+  nb_possible_edges_non_orient <- nb_possible_edges_with_one_node_lag0 - (n_nodes - 1)
+  nb_possible_edges_orient <- nb_possible_edges_non_orient * 2
   
-  nb_no_edges <- nb_possible_edges - nb_true_edges
+  nb_no_edges_non_orient <- nb_possible_edges_non_orient - nb_true_edges_non_orient
   nb_no_edges_orient <- nb_possible_edges_orient - nb_true_edges_orient
-  fp_rate <- fp / nb_no_edges 
+  fp_rate <- fp / nb_no_edges_non_orient 
   fp_orient_rate <- fp_orient / nb_no_edges_orient
   #
   # Evaluate false negative
@@ -250,6 +348,7 @@ tmiic.compute_one_score <- function (df_edges, df_true_edges, list_nodes, tau)
     node_orig <- list_nodes[[one_edge$orig]] 
     node_dest <- list_nodes[[one_edge$dest]]
     lag <- one_edge$lag
+    strength <- one_edge$strength
     node_orig <- paste(node_orig, "_lag", lag, sep="")
     node_dest <- paste(node_dest, "_lag0", sep="")
     #
@@ -266,22 +365,46 @@ tmiic.compute_one_score <- function (df_edges, df_true_edges, list_nodes, tau)
     #
     if ( (sum(cond_old_new) == 0) & (sum(cond_new_old) == 0) )
       {
-      if (DEBUG)
-        print (paste (one_edge$orig, "-", one_edge$dest, " lag=", lag, 
-                      " => ", node_orig, "-", node_dest, 
-                      " not found in computed edges => fn + 1, fn_orient + 1", sep="") )
       fn <- fn +1
-      fn_orient <- fn_orient + 1
+      if (strength != 0)
+        {
+        fn_orient <- fn_orient + 1
+        if (DEBUG)
+          print (paste (one_edge$orig, "-", one_edge$dest, " lag=", lag, " strength=", strength, 
+                        " => ", node_orig, "-", node_dest, 
+                        " not found in computed edges => fn + 1, fn_orient + 1", sep="") )
+        }
+      else
+        {
+        if (DEBUG)
+          print (paste (one_edge$orig, "-", one_edge$dest, " lag=", lag, " strength=", strength, 
+                        " => ", node_orig, "-", node_dest, 
+                        " not found in computed edges => fn + 1, not fn_orient because latent", sep="") )
+        }
       next
       }
     #
     # We have an edge matching, it is not a FN for unoriented
-    # => look for oriented
     #
     if (DEBUG)
       print (paste (one_edge$orig, "-", one_edge$dest, " lag=", lag, 
                     " => ", node_orig, "-", node_dest, 
                     " => found (not an unoriented FN)", sep="") )
+    #
+    # If true edge is a latent variable, it is unoriented 
+    # => Nothing to do about orientation (can not be a FN oriented)
+    #
+    if (strength == 0)
+      {
+      if (DEBUG)
+        print (paste (one_edge$orig, "-", one_edge$dest, " lag=", lag, " strength=", strength, 
+                      " => ", node_orig, "-", node_dest, 
+                      " => found and true edge is latent => noting to do on FN oriented", sep="") )
+      next
+      }
+    #    
+    # We have an edge matching the true edge and the true edge is oriented
+    # => look for orientation
     #
     # Normally we should not find two edges with the nodes (we can find the edge with 
     # the same starting and ending nodes or the opposite but normally, not the two)
@@ -345,13 +468,13 @@ tmiic.compute_one_score <- function (df_edges, df_true_edges, list_nodes, tau)
                       " => found with good orient=", orient, " => Not a FN oriented", sep="") )
       }
     }
-  fn_rate <- fn / nb_true_edges
-  fn_orient_rate <- fn_orient / nb_true_edges
+  fn_rate <- fn / nb_true_edges_non_orient
+  fn_orient_rate <- fn_orient / nb_true_edges_orient
   #
   # True negatif
   #
-  tn <- nb_possible_edges - tp - fp - fn
-  tn_rate <- tn / nb_no_edges 
+  tn <- nb_possible_edges_non_orient - tp - fp - fn
+  tn_rate <- tn / nb_no_edges_non_orient
 
   tn_orient <- nb_possible_edges_orient - tp_orient - fp_orient - fn_orient
   tn_orient_rate <- tn_orient / nb_no_edges_orient
@@ -401,8 +524,8 @@ tmiic.compute_one_score <- function (df_edges, df_true_edges, list_nodes, tau)
   if (DEBUG)
     {
     print (paste ("tp ", tp, " fp ", fp, " fn ", fn, " tn ", tn, sep="") )
-    print (paste ("nb true edges ", nb_true_edges, " nb no edges ", nb_no_edges, 
-            " nb tot edges possible ", nb_possible_edges, sep="") )
+    print (paste ("nb true edges ", nb_true_edges_non_orient, " nb no edges ", nb_no_edges_non_orient, 
+            " nb tot edges possible ", nb_possible_edges_non_orient, sep="") )
     print (paste ("tp rate ", tp_rate, " fp rate ", fp_rate, 
                   " fn rate ", fn_rate, " tn rate ", tn_rate, 
                   " prec ", val_precision, " recall ", val_recall, " fscore ", val_fscore, 
@@ -410,7 +533,7 @@ tmiic.compute_one_score <- function (df_edges, df_true_edges, list_nodes, tau)
     print ("")
     print (paste ( "tp orient ", tp_orient, " fp orient ", fp_orient, 
                   " fn orient ", fn_orient, " tn orient ", tn_orient, sep="") )
-    print (paste ("nb true edges ", nb_true_edges, " nb no edges orient ", nb_no_edges_orient, 
+    print (paste ("nb true edges ", nb_true_edges_orient, " nb no edges orient ", nb_no_edges_orient, 
                   " nb tot edges possible orient ", nb_possible_edges_orient, sep="") )
     print (paste ("tp orient rate ", tp_orient_rate, " fp orient rate ", fp_orient_rate, 
                   " fn orient rate ", fn_orient_rate, " tn orient rate ", tn_orient_rate, 
