@@ -237,7 +237,7 @@ tmiic.call_funct <- function(funct, x)
 #-----------------------------------------------------------------------------
 tmiic.generate_predefined_dataset <- function (model_idx, funct, n_samples, n_time) 
   {
-  DEBUG <- TRUE
+  DEBUG <- FALSE
   if (DEBUG)
     {
     print ("tmiic.generate_predefined_dataset:")
