@@ -51,6 +51,28 @@
 # X4(t) <- 0.80 * X4(t-1) + 0.287 * f( X1(t-1) ) - 0.287 * f( X2(t-1) ) + noise4(t)
 # X5(t) <- 0.60 * X5(t-1) + 0.287 * f( X1(t-2) ) - 0.287 * f( X4(t) ) + noise5(t)
 #
+# Model 5 : test isolated edges orientation using time
+#
+# X1(t) <- 0.287 * X2(t-1) + noise1(t)
+# X2(t) <- noise2(t)
+# X3(t) <- 0.287 * X3(t-1) + noise3(t)
+#
+# Model 6 : orientation of non lagged edges with 4 points
+#
+# X1(t) <- noise1(t)
+# X2(t) <- - 0.287 * X1(t-1) + noise2(t)
+# X3(t) <- + 0.287 * X2(t)   - 0.287 * X4(t-1) + noise3(t)
+# X4(t) <- noise4(t)
+#
+#
+# Model 7 : latent variable on X3 (erased by new white noise after generation)
+#
+# X1(t) <- 0.40 * X1(t-1) + noise1[t]
+# X2(t) <- 0.30 * X2(t-1) - 0.287 * f( X1(t-1) ) + 0.287 * f( X3(t-1) ) + noise2[t]
+# X3(t) <- noise3[t]
+# X4(t) <- 0.20 * X4(t-1) + 0.287 * f( X5(t-1) ) - 0.287 * f( X3(t-1) ) + noise4[t]
+# X5(t) <- 0.60 * X5(t-1)  + noise5[t]
+#
 # noises ~ N(0, 1)
 # f1 (x) = x
 # f2 (x) = ( 1 - 4 * e[-(x^2)/2] ) * x
@@ -81,10 +103,31 @@ tmiic.DF_TRUE_EDGES_MODEL_3 = data.frame (
   stringsAsFactors=FALSE)
 
 tmiic.DF_TRUE_EDGES_MODEL_4 = data.frame (
-  orig     = c(1,    2,    4,    5,    1  ,    1  ,    2     , 1     , 4     ), 
-  dest     = c(1,    2,    4,    5,    2  ,    4  ,    4     , 5     , 5     ),
+  orig     = c(1   , 2,    4,    5,    1  ,    1  ,    2     , 1     , 4     ), 
+  dest     = c(1   , 2,    4,    5,    2  ,    4  ,    4     , 5     , 5     ),
   lag      = c(1   , 1   , 1   , 1   , 1     , 1     , 1     , 2     , 0     ),
   strength = c(+0.4, +0.2, +0.8, +0.6, -0.287, +0.287, -0.287, +0.287, -0.287),
+  stringsAsFactors=FALSE)
+
+tmiic.DF_TRUE_EDGES_MODEL_5 = data.frame (
+  orig     = c(2     , 3     ), 
+  dest     = c(1     , 3     ),
+  lag      = c(1     , 1     ),
+  strength = c(+0.287, +0.287),
+  stringsAsFactors=FALSE)
+
+tmiic.DF_TRUE_EDGES_MODEL_6 = data.frame (
+  orig     = c(1     , 2     , 4     ), 
+  dest     = c(2     , 3     , 3     ),
+  lag      = c(1     , 0     , 1     ),
+  strength = c(-0.287, +0.287, -0.287),
+  stringsAsFactors=FALSE)
+
+tmiic.DF_TRUE_EDGES_MODEL_7 = data.frame (
+  orig     = c(1   , 2   , 1     , 3     , 4   , 3     , 5     , 5   ), 
+  dest     = c(1   , 2   , 2     , 2     , 4   , 4     , 4     , 5   ),
+  lag      = c(1   , 1   , 1     , 1     , 1   , 1     , 1     , 1   ),
+  strength = c(+0.4, +0.3, -0.287, +0.287, +0.2, -0.287, +0.287, +0.6),
   stringsAsFactors=FALSE)
 
 #-----------------------------------------------------------------------------
@@ -141,8 +184,15 @@ tmiic.f3 <- function (x)
   }
 
 #-----------------------------------------------------------------------------
-# Constant to iterate over possible functions
+# Constant to iterate over possible models and functions
 #-----------------------------------------------------------------------------
+tmiic.LIST_MODELS = list (model1 = tmiic.DF_TRUE_EDGES_MODEL_1, 
+                          model2 = tmiic.DF_TRUE_EDGES_MODEL_2, 
+                          model3 = tmiic.DF_TRUE_EDGES_MODEL_3, 
+                          model4 = tmiic.DF_TRUE_EDGES_MODEL_4, 
+                          model5 = tmiic.DF_TRUE_EDGES_MODEL_5, 
+                          model6 = tmiic.DF_TRUE_EDGES_MODEL_6, 
+                          model7 = tmiic.DF_TRUE_EDGES_MODEL_7)
 tmiic.LIST_FUNCTS = list (f1 = tmiic.f1, f2 = tmiic.f2, f3 = tmiic.f3)
 
 #-----------------------------------------------------------------------------
@@ -171,12 +221,13 @@ tmiic.call_funct <- function(funct, x)
 #' Generate n_samples samples for x nodes over n_time timesteps
 #' using a predefined model
 #'
-#' @param model [a number betwen 0 and 4] The model for the data generation.
+#' @param model_idx [a number betwen 0 and 4] The model for the data generation.
 #' Model 0 is for debug (intialazing nodes with easily identiable values)
 #' Model 1 uses only t-1 information. 
 #' Models 2 and 3 uses both t-1 and t-2.
 #' Model 4 used t-1, t-2 and contemporanous edge
-#' @param funct [the function to use for the generation : f1, f2 or f3]
+#' @param funct [a function] the function usse for the generation : 
+  #' tmiic.f1, f2 or f3 or any other function computing a float from a float 
 #' @param n_samples [the number of samples to generate]
 #' @param n_time [the number of timesteps of the time series generated]
 #'
@@ -184,20 +235,20 @@ tmiic.call_funct <- function(funct, x)
 #' - samples as an array of dimensions n_samples * n_nodes * n_time
 #' - a dataframe with the true edes of the network
 #-----------------------------------------------------------------------------
-tmiic.generate_predefined_dataset <- function (model, funct, n_samples, n_time) 
+tmiic.generate_predefined_dataset <- function (model_idx, funct, n_samples, n_time) 
   {
-  DEBUG <- FALSE
+  DEBUG <- TRUE
   if (DEBUG)
     {
     print ("tmiic.generate_predefined_dataset:")
-    print (paste ("model=", model, sep="") )
+    print (paste ("model_idx=", model_idx, sep="") )
     print (paste ("n_samples=", n_samples, sep="") )
     print (paste ("n_time=", n_time, sep="") )
     }
   
-  if ( (model < 0) | (model > 4) )
+  if ( (model_idx < 0) | (model_idx > length(tmiic.LIST_MODELS)) )
     {
-    stop (paste ("Predefined model", model, "doesn't exist") )
+    stop (paste ("Predefined model", model_idx, "doesn't exist") )
     }
   #
   # All the predefined models have 5 nodes
@@ -207,7 +258,7 @@ tmiic.generate_predefined_dataset <- function (model, funct, n_samples, n_time)
   #
   # Model 0 is debug
   #
-  if (model == 0)
+  if (model_idx == 0)
     {
     true_edges <- data.frame ( orig=character(), dest=character(),
                                lag=integer(), strength=double(), 
@@ -229,11 +280,21 @@ tmiic.generate_predefined_dataset <- function (model, funct, n_samples, n_time)
   else
     {
     #
-    # Model 1 to 4 are predefined models
+    # Model >= 1 are predefined models
     #
-    true_edges <- switch (model, tmiic.DF_TRUE_EDGES_MODEL_1, tmiic.DF_TRUE_EDGES_MODEL_2, 
-                                 tmiic.DF_TRUE_EDGES_MODEL_3, tmiic.DF_TRUE_EDGES_MODEL_4)
+    true_edges <- tmiic.LIST_MODELS[[model_idx]]
     data_tab <- tmiic.generate_dataset (true_edges, funct, list_nodes, n_samples, n_time) 
+    #
+    # For model 7, erase node 3 data which is the latent node and modify the 
+    # true edges dataframe to remove edges starting from node3 and add a latent
+    # edge between node 2 and 4 (indicated by strengh = 0)
+    #
+    if (model_idx == 7)
+      {
+      data_tab[,3,] <- rnorm(n_samples * n_time)
+      true_edges <- true_edges[true_edges$orig != 3,]
+      true_edges [nrow(true_edges) + 1,] = c(2, 4, 0, 0)
+      }
     }
   if (DEBUG)
     {
