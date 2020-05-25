@@ -51,10 +51,23 @@
 #' @param tau [an int]
 #' An int representating the max lag
 #' 
+#' @param categoryOrder [a data frame] Optional, NULL by default. 
+#' A data frame giving information about how to order the various states of 
+#' categorical variables. This dataframe will be lagged as the imputData on
+#' tau timesteps 
+#' 
+#' @param sub_sample [an int] Optional, default=-1. When -1, no subsampling
+#' is applied. When > 1, keeps one sample evevry sub_sample samples
+#' 
+#' @param boostrap [an int] Optional, default=-1. When -1, no bootstraping
+#' is done. When > 0, select randomly boostrap samples from the
+#' set of samples, a sample can be selected more than once.
+#' 
 #' @return a 2D array of dimensions [ n_samples * (n_time - tau) ), 
 #'                                    n_nodes * (tau+1) ]
 #'                                  
-tmiic.transform_data_for_miic <- function (data_tab, tau)
+tmiic.transform_data_for_miic <- function (data_tab, tau, categoryOrder=NULL, 
+                                           sub_sample=-1, bootstrap=-1)
   {
   DEBUG <- FALSE
   if (DEBUG)
@@ -81,6 +94,17 @@ tmiic.transform_data_for_miic <- function (data_tab, tau)
   n_time <- dim_data[[3]]
   list_nodes <- dimnames(data_tab)[[2]]
 
+  file_trace <- file("trace.txt")
+  writeLines (paste ("tmiic.transform_data_for_miic called at ", Sys.time(), "\n",
+                     "Nb samples=", n_samples, "\n",
+                     "Nb nodes=", n_nodes, "\n",
+                     "Nb timesteps=", n_time, "\n",
+                     "Tau max=", tau, "\n",
+                     "Subsampling=", sub_sample, "\n",
+                     "Bootstrap=", bootstrap, 
+                     sep=""), file_trace)
+  close (file_trace)
+  
   if (DEBUG)
     {
     print (paste ("Nb samples  :", n_samples, sep="") )
@@ -113,6 +137,35 @@ tmiic.transform_data_for_miic <- function (data_tab, tau)
   if (DEBUG)
     {
     print (paste ("new nb nodes=", new_n_nodes, sep="") )
+    }
+  #
+  # Transform the other parameter to fit with the new list of nodes
+  #
+  if (!is.null(categoryOrder))
+    {
+    new_categories <- categoryOrder [FALSE,]
+    categ_col1 <- colnames(categoryOrder)[[1]]
+    for (tau_idx in 0:tau)
+      {
+      for (old_categ_idx in 1:nrow(categoryOrder))
+        {
+        new_categ_idx <- tau_idx * nrow(categoryOrder) + old_categ_idx
+        new_categories [new_categ_idx,] <- categoryOrder [old_categ_idx,]
+        new_categories [new_categ_idx, categ_col1] <- paste (categoryOrder [old_categ_idx, categ_col1], 
+                                                      "_lag", tau_idx, sep="" ) 
+        if (DEBUG)
+          {
+          print (paste ("old categ=", categoryOrder [old_categ_idx, categ_col1],
+                        " new categ=", new_categories [new_categ_idx, categ_col1], sep="") )
+          }
+        }
+      }
+    if (DEBUG)
+      {
+      print ("New categ df=")
+      print (paste ("new nb nodes=", new_n_nodes, sep="") )
+      }
+    categoryOrder <- new_categories
     }
   #
   # Create the new array with dimensions = 
@@ -155,6 +208,7 @@ tmiic.transform_data_for_miic <- function (data_tab, tau)
       tab_lagged[new_sample_idx, new_node_idx] <- data_tab [old_sample_idx, old_node_idx, old_time_rev_idx]
       }
     }
+  
   if (DEBUG)
     {
     print ("")
@@ -187,31 +241,71 @@ tmiic.transform_data_for_miic <- function (data_tab, tau)
     print (tab_lagged[1,])
     print (tab_lagged[(n_samples_from_history * n_samples),])
     }
-  
-  #--------------------------------  
-  # Test only keep 1 sample every x
-  #--------------------------------  
-  # print ("tab samples avt:")
-  # print (dim(tab_lagged))
-  # print (paste ("nb samples orig:", n_samples) )
-  # new_nb_samples <- (n_samples * n_samples_from_history) %/% 10
-  # new_tab_lagged2 <- array ( data=NA, dim=c (new_nb_samples, new_n_nodes),
-  #                     dimnames=list(seq(1,new_nb_samples), new_list_nodes) )
-  # for (i in 1:new_nb_samples)
-  #   {
-  #   new_tab_lagged2 [i,] <- tab_lagged[i * 10,]
-  #   }
-  # tab_lagged <- new_tab_lagged2
-  # print ("tab samples ap:")
-  # print (dim(tab_lagged))
-  # print (tab_lagged[1,])
-  # print (tab_lagged[new_nb_samples,])
-  #--------------------------------  
-  # End test only keep 1 sample every x
-  #--------------------------------  
+   #
+  # If subsampling : we keep only keep 1 sample every x
   #
-  # return a dataframe as miic expects 
+  if (sub_sample > 1)
+    {
+    if (DEBUG)
+      {
+      print ("Sub sampling:")
+      print ("tab samples avt:")
+      print (dim(tab_lagged))
+      print (paste ("nb samples orig:", n_samples) )
+      }
+    new_nb_samples <- (n_samples * n_samples_from_history) %/% sub_sample
+    new_tab_lagged <- array ( data=NA, dim=c (new_nb_samples, new_n_nodes),
+                        dimnames=list(seq(1,new_nb_samples), new_list_nodes) )
+    for (i in 1:new_nb_samples)
+      {
+      new_tab_lagged [i,] <- tab_lagged[i * sub_sample,]
+      }
+    tab_lagged <- new_tab_lagged
+    if (DEBUG)
+      {
+      print ("Tab samples ap:")
+      print (dim(tab_lagged))
+      print (tab_lagged[1,])
+      print (tab_lagged[new_nb_samples,])
+      }
+    }
   #
-  return ( as.data.frame(tab_lagged, stringsAsFactors = FALSE) )
+  # If Bootstrapping
+  #
+  if (bootstrap > 0)
+    {
+    tab_boost <- array ( data=NA, dim=c (bootstrap, new_n_nodes),
+                          dimnames=list(seq(bootstrap), new_list_nodes) )
+    if (DEBUG)
+      {
+      print ("Bootstrapping:")
+      print ("tab samples avt:")
+      print (dim(tab_lagged))
+      print (paste ("nb samples orig:", n_samples) )
+      print ("create empty array of dim: ")
+      print ( dim(tab_boost) )
+      }
+    #
+    # To fill the bootstrapped tab, take randomly samples until arry filled
+    #
+    for (boost_idx in 1:bootstrap)
+      {
+      rand_idx = sample(1:(n_samples * n_samples_from_history), 1)
+      tab_boost[boost_idx,] <- tab_lagged[rand_idx,]
+      }
+    tab_lagged <- tab_boost
+    if (DEBUG)
+      {
+      print ("Tab samples ap:")
+      print (dim(tab_lagged))
+      print (tab_lagged[1,])
+      print (tab_lagged[boost_idx,])
+      }
+    }
+  #
+  # returns the dataframe as miic expects and categoryOrder (if supplied) lagged
+  #
+  return (list (inputData=as.data.frame(tab_lagged, stringsAsFactors = FALSE),
+                categoryOrder=categoryOrder) )
   }
 

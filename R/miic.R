@@ -314,7 +314,9 @@ miic <- function(inputData,
       inputData <- as.matrix (t(inputData), dim=c( ncol(inputData), nrow(inputData) ),
                               dimnames=list ( colnames(inputData), rownames(inputData) ) )
       }
-    inputData <- tmiic.transform_data_for_miic (inputData, tau)
+    struct_ret <- tmiic.transform_data_for_miic (inputData, tau, categoryOrder)
+    inputData <- struct_ret$inputData
+    categoryOrder <- struct_ret$categoryOrder
     }
   else
     {
