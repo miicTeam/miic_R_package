@@ -1,3 +1,4 @@
+library(scales)
 summarizeResults <- function(observations = NULL, results = NULL,
                              true_edges = NULL, state_order = NULL,
                              verbose = FALSE) {
@@ -163,6 +164,19 @@ summarizeResults <- function(observations = NULL, results = NULL,
   summary$proba <- sapply(1:nrow(summary), function(i) {
     paste(findProba(summary, orientation_probabilities, i), collapse = ";")
   })
+
+  # If consistent parameter is turned on and the result graph is a union of more
+  # than one inconsistent graphs, get the possible orientations of each
+  # edge with the correponding frequencies.
+  if (length(results$adj_matrices) > 1) {
+    target <- which(names(summary) == "infOrt")[1]
+    summary <- cbind(
+      summary[, 1:target, drop = FALSE],
+      edge_stats = apply(summary, 1, get_edge_stats, colnames(adj_matrix),
+                         results$adj_matrices),
+      summary[, (target + 1):length(summary), drop = FALSE]
+    )
+  }
 
   # Sort summary by log confidence and return it
   summary <- summary[order(summary$log_confidence, decreasing = T), ]
@@ -415,4 +429,20 @@ findProba <- function(outputSummary.df, proba, index) {
     }
   }
   return(NA)
+}
+
+get_edge_stats <- function(row, var_names, adj_matrices) {
+  # row[1]: variable name of x
+  # row[2]: variable name of y
+  n_var <- length(var_names)
+  # adj_matrices is of dimention (n_var * n_var, n_cycle), i.e., each
+  # column is a 1-d adjacency matrix
+  index_1d <- n_var * (match(row[1], var_names) - 1) + match(row[2], var_names)
+  n_cycle <- dim(adj_matrices)[2]
+  # edge stats table, count replaced by frequency (percentage)
+  t <- table(adj_matrices[index_1d,]) / n_cycle
+  t <- t[order(t, decreasing = TRUE), drop = FALSE]
+  t <- apply(t, 1, scales::percent_format())
+  # return a ";" separated string of format "percentage(orientation)"
+  return(paste(t, "(", names(t), ")", sep = "", collapse = ";"))
 }

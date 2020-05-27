@@ -124,6 +124,12 @@ miic.reconstruct <- function(inputData = NULL,
   # update the returned adj matrix
   res$adjMatrix <- df
 
+  # format adj_matrices
+  if (!is.null(res$adj_matrices)) {
+    res$adj_matrices <- matrix(unlist(res$adj_matrices),
+                               ncol = length(res$adj_matrices))
+  }
+
   if (confidenceShuffle > 0) {
     # create the data frame for the confidence file
     confData <- res$confData

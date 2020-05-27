@@ -263,22 +263,19 @@ extern "C" SEXP reconstruct(SEXP inputDataR, SEXP typeOfDataR, SEXP cntVarR,
   time.push_back(environment.execTime.initIter + environment.execTime.cut);
 
   List result;
+  result = List::create(
+      _["adjMatrix"]         = adjMatrix,
+      _["edges"]             = edgesMatrix,
+      _["orientations.prob"] = orientations,
+      _["time"]              = time,
+      _["interrupted"]       = false);
   if (environment.numberShuffles > 0) {
-    result = List::create(
-        _["confData"]          = confVect,
-        _["adjMatrix"]         = adjMatrix,
-        _["edges"]             = edgesMatrix,
-        _["orientations.prob"] = orientations,
-        _["time"]              = time,
-        _["interrupted"]       = false);
-  } else {
-    result = List::create(
-        _["adjMatrix"]         = adjMatrix,
-        _["edges"]             = edgesMatrix,
-        _["orientations.prob"] = orientations,
-        _["time"]              = time,
-        _["interrupted"]       = false);
+    result.push_back(confVect, "confData");
   }
+  if (environment.consistentPhase) {
+    result.push_back(cycle_tracker.adj_matrices, "adj_matrices");
+  }
+
   for (uint i = 0; i < environment.nThreads; i++) {
     deleteMemorySpace(environment, environment.memoryThreads[i]);
   }
@@ -318,7 +315,7 @@ bool CycleTracker::hasCycle() {
   // of iterations).
   std::vector<int> changed(env_.numNodes * (env_.numNodes - 1) / 2, 0);
   // backtracking over iteration to get changed_edges
-  uint cycle_size = 0;
+  int cycle_size = 0;
   for (const auto& iter : iterations_) {
     ++cycle_size;
     for (const auto& k : iter.changed_edges) {
@@ -334,7 +331,7 @@ bool CycleTracker::hasCycle() {
     if (std::any_of(
             changed.begin(), changed.end(), [](uint j) { return j != 0; })) {
       // no cycle
-      if (iter_indices.empty()) break;
+      if (iter_indices.empty()) return false;
       continue;
     }
     for (auto& k : edges_union) {
@@ -345,10 +342,14 @@ bool CycleTracker::hasCycle() {
     }
 
     std::cout << "cycle found of size " << cycle_size << std::endl;
-    return true;
+    break;
   }
-  return false;
+  // fill the adj_matrices
+  for (auto i = iterations_.begin(), e = iterations_.begin() + cycle_size;
+       i != e; ++i) {
+    adj_matrices.push_back(i->adj_matrix_1d);
+  }
+  return true;
 }
-
 }  // namespace reconstruction
 }  // namespace miic

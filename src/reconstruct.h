@@ -75,11 +75,19 @@ class CycleTracker {
     // key: index of edge
     // value: status of edge in the previous iteration
     std::map<uint, int> changed_edges;
+    std::vector<int> adj_matrix_1d;
 
-    Iteration(const Environment& env, uint i) : index(i) {
+    Iteration(const Environment& env, uint i)
+        : index(i), adj_matrix_1d(env.numNodes * env.numNodes, 0) {
+      int n_node(env.numNodes);
+      for (int i = 0; i < n_node; ++i) {
+        for (int j = 0; j < n_node; ++j) {
+          adj_matrix_1d[j + i * n_node] = env.edges[i][j].status;
+        }
+      }
       // Keep track of the lower triangular part
-      for (uint i = 1; i < env.numNodes; ++i) {
-        for (uint j = 0; j < i; ++j) {
+      for (int i = 1; i < n_node; ++i) {
+        for (int j = 0; j < i; ++j) {
           const auto& edge = env.edges[i][j];
           if (edge.status_prev == edge.status) continue;
 
@@ -139,6 +147,8 @@ class CycleTracker {
   }
   // check if a cycle exists between the current and the past iterations
   bool hasCycle();
+  // when a cycle is found, hold the adj_matrix of all iterations in the cycle
+  std::vector<std::vector<int>> adj_matrices;
 };
 }  // namespace reconstruction_impl
 using reconstruction_impl::BCC;
