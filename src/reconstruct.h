@@ -67,9 +67,8 @@ class BCC {
 // iteration.
 class CycleTracker {
  private:
-  // Max number of iterations to track in a cycle, cycle of larger size won't
-  // be recognized.
-  static constexpr uint max_cycle_size = 100;
+  // Max number of iterations to track.
+  static constexpr uint max_iter_size = 1000;
 
   struct Iteration {
     uint index;
@@ -91,15 +90,13 @@ class CycleTracker {
     }
   };
 
-  // Internal class keeping track of iterations, max size is given
-  // by max_cycle_size, new iteration is inserted at the front
+  // Internal class keeping track of iterations.
   class IterationList {
     std::deque<Iteration> iteration_list_;
 
    public:
     void add(Iteration&& i) {
       iteration_list_.push_front(std::move(i));
-      if (iteration_list_.size() > max_cycle_size) iteration_list_.pop_back();
     }
     Iteration& get(uint i) { return iteration_list_[i]; }
 

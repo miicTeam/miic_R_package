@@ -303,6 +303,10 @@ bool CycleTracker::hasCycle() {
   for (auto it = range.first; it != range.second; ++it)
     iter_indices.push_back(it->second + 1);
   saveIteration();
+  if (n_saved > max_iter_size) {
+    std::cout << "Max number of iterations reached: " << max_iter_size << '\n';
+    return true;
+  }
   if (no_cycle_found) return false;
   // Backtracking requires starting from the largest index first
   std::sort(iter_indices.begin(), iter_indices.end(), std::greater<uint>());
@@ -317,11 +321,6 @@ bool CycleTracker::hasCycle() {
   uint cycle_size = 0;
   for (const auto& iter : iterations_) {
     ++cycle_size;
-    if (cycle_size > max_cycle_size) {
-      // FIXME: decide what to do if cycle_size > max_cycle_size
-      std::cout << "Cycle size out of limit size: " << max_cycle_size << '\n';
-      return true;
-    }
     for (const auto& k : iter.changed_edges) {
       edges_union.insert(k.first);
       // compare edge status in the previous iteration against the latest edge
