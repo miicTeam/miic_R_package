@@ -29,19 +29,19 @@
 #
 # Model 2
 #
-# X1(t) <- 0.40 * X1(t-1) + 0.287 * f( X5(t-1) ) + 0.287 * f( X4(t-1) ) + noise1[t]
-# X2(t) <- 0.20 * X2(t-1) - 0.287 * f( X4(t-1) ) + noise2[t]
-# X3(t) <- noise3[t]
-# X4(t) <- 0.80 * X4(t-1) + 0.287 * f( X5(t-1) ) - 0.287 * f( X3(t-2) ) + noise4[t]
-# X5(t) <- 0.60 * X5(t-1)  + noise5[t]
+# X1(t) <- 0.40 * X1(t-1) + 0.287 * f( X5(t-1) ) + 0.287 * f( X4(t-1) ) + noise1(t)
+# X2(t) <- 0.20 * X2(t-1) - 0.287 * f( X4(t-1) ) + noise2(t)
+# X3(t) <- noise3(t)
+# X4(t) <- 0.80 * X4(t-1) + 0.287 * f( X5(t-1) ) - 0.287 * f( X3(t-2) ) + noise4(t)
+# X5(t) <- 0.60 * X5(t-1)  + noise5(t)
 #
 # Model 3
 #
-# X1(t) <- - 0.287 * f( X4(t-1) ) + noise1[t]
-# X2(t) <-   0.40 * X2(t-1) - 0.287 * f( X4(t-1) ) + 0.287 * f( X1(t-1) ) +  noise2[t]
-# X3(t) <-   0.90 * X3(t-1) - 0.287 * f( X1(t-2) ) + noise3[t]
-# X4(t) <-   0.90 * X4(t-1) + noise4[t]
-# X5(t) <-   0.80 * X5(t-1) - 0.287 * f( X3(t-2) )  + noise5[t]
+# X1(t) <- - 0.287 * f( X4(t-1) ) + noise1(t)
+# X2(t) <-   0.40 * X2(t-1) - 0.287 * f( X4(t-1) ) + 0.287 * f( X1(t-1) ) +  noise2(t)
+# X3(t) <-   0.90 * X3(t-1) - 0.287 * f( X1(t-2) ) + noise3(t)
+# X4(t) <-   0.90 * X4(t-1) + noise4(t)
+# X5(t) <-   0.80 * X5(t-1) - 0.287 * f( X3(t-2) )  + noise5(t)
 #
 # Model 4
 #
@@ -228,14 +228,17 @@ tmiic.call_funct <- function(funct, x)
 #' Model 4 used t-1, t-2 and contemporanous edge
 #' @param funct [a function] the function usse for the generation : 
   #' tmiic.f1, f2 or f3 or any other function computing a float from a float 
-#' @param n_samples [the number of samples to generate]
-#' @param n_time [the number of timesteps of the time series generated]
+#' @param n_samples [an integer] The number of samples to generate
+#' @param n_time [an integer] The number of timesteps of the time series generated
+#' @param seed [an integer] Optiinal, NULL by default. The seed to use when 
+#' generating the dataset
 #'
 #' @return a list with two entries :
 #' - samples as an array of dimensions n_samples * n_nodes * n_time
 #' - a dataframe with the true edes of the network
 #-----------------------------------------------------------------------------
-tmiic.generate_predefined_dataset <- function (model_idx, funct, n_samples, n_time) 
+tmiic.generate_predefined_dataset <- function (model_idx, funct, n_samples, 
+                                               n_time, seed=NULL) 
   {
   DEBUG <- FALSE
   if (DEBUG)
@@ -283,7 +286,8 @@ tmiic.generate_predefined_dataset <- function (model_idx, funct, n_samples, n_ti
     # Model >= 1 are predefined models
     #
     true_edges <- tmiic.LIST_MODELS[[model_idx]]
-    data_tab <- tmiic.generate_dataset (true_edges, funct, list_nodes, n_samples, n_time) 
+    data_tab <- tmiic.generate_dataset (true_edges, funct, list_nodes, 
+                                        n_samples, n_time, seed) 
     #
     # For model 7, erase node 3 data which is the latent node and modify the 
     # true edges dataframe to remove edges starting from node3 and add a latent
@@ -340,12 +344,15 @@ tmiic.generate_predefined_dataset <- function (model_idx, funct, n_samples, n_ti
 #' the edge X3(t-1) -> X2(t) must appear first in the true_edges parameter.
 #' @param funct [the function to apply when an edge exist between two nodes]
 #' @param list_nodes [the list of nodes to generate]
-#' @param n_samples [the number of samples to generate]
-#' @param n_time [the number of timesteps of the time series generated]
-#'
+#' @param n_samples [an integer] The number of samples to generate
+#' @param n_time [an integer] The number of timesteps of the time series generated
+#' @param seed [an integer] Optiinal, NULL by default. The seed to use when 
+#' generating the dataset
+#' 
 #' @return an array of dimensions n_samples * n_nodes * n_time
 #-----------------------------------------------------------------------------
-tmiic.generate_dataset <- function (true_edges, funct, list_nodes, n_samples, n_time) 
+tmiic.generate_dataset <- function (true_edges, funct, list_nodes, n_samples, 
+                                    n_time, seed=NULL) 
   {
   DEBUG <- FALSE
   if (DEBUG)
@@ -361,6 +368,11 @@ tmiic.generate_dataset <- function (true_edges, funct, list_nodes, n_samples, n_
   n_nodes = length (list_nodes)
   max_lag = max(true_edges$lag)
   n_time_generation = (n_time + max_lag) * 2
+  # 
+  # If seed is specified
+  #
+  if ( !is.null (seed) )
+    set.seed (seed)
   #
   # Init the array with white noise, dimensions n_samples * n_nodes * n_time_generation
   #
