@@ -48,9 +48,9 @@ double ramanujan(int n);
 int printProgress(double percentage, double startTime, std::string outdir,
     int prg_numSearchMore);
 // KL divergence functions
-double compute_kl_divergence(int* posArray, structure::Environment&,
-    int samplesNotNA, int** dataNumeric_red, int* AllLevels_red,
-    int* samplesToEvaluate);
+double compute_kl_divergence(int* posArray, structure::Environment& environment,
+    int samplesNotNA, const std::vector<int> &AllLevels_red,
+    const std::vector<int> &sample_is_not_NA);
 
 double kl(double** freqs1, double** freqs2, int nrows, int ncols);
 double kl(int** counts1, double** freqs2, int nrows, int ncols);
@@ -58,12 +58,26 @@ double kl(double* freqs1, double* freqs2, int nlevels);
 double kl(int* freqs1, int* freqs2, int n1, int n2, int nlevels);
 
 void getJointMixed(structure::Environment&, int i, int j, int* mixedDiscrete,
-    double* mixedContinuous, int* curr_samplesToEvaluate);
+    double* mixedContinuous, int* curr_sample_is_not_NA);
 double** getJointFreqs(
-    structure::Environment&, int i, int j, int numSamples_nonNA);
+    structure::Environment&, int i, int j,
+    const std::vector<int>& sample_is_not_NA = std::vector<int>());
 void getJointSpace(structure::Environment&, int i, int j, double** jointSpace,
-    int* curr_samplesToEvaluate);
+    int* curr_sample_is_not_NA);
 int getNumSamples_nonNA(structure::Environment&, int i, int j);
+
+uint count_non_NAs(int nbrUi, std::vector<int> &sample_is_not_NA,
+    std::vector<int> &NAs_count, int* posArray, 
+    structure::Environment& environment, int z=-1);
+
+bool filter_NAs(int nbrUi, std::vector<int> &AllLevels, std::vector<int> &cnt,
+    std::vector<int> &posArray_red, int* posArray,
+    std::vector<std::vector<int> > &dataNumeric,
+    std::vector<std::vector<int> > &dataNumericIdx, 
+    std::vector<double> &sample_weights, 
+    const std::vector<int> &sample_is_not_NA, 
+    const std::vector<int> &NAs_count, 
+    structure::Environment& environment, int z=-1);
 
 bool checkInterrupt(bool check = true);
 

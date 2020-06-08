@@ -14,27 +14,24 @@ namespace computation {
 
 using std::vector;
 
-double* compute_Ixy_alg1(int** data, int** sortidx, int* ptr_cnt,
-    int* ptrVarIdx, int* AllLevels, int n, vector<double> sample_weights,
-    bool flag_sample_weights, structure::Environment& environment, 
+double* compute_Ixy_alg1(vector<vector<int> > data, vector<vector<int> > sortidx,
+    vector<int> ptr_cnt, vector<int> ptrVarIdx, vector<int> AllLevels, int n,
+    int** cut, int* r, vector<double> sample_weights, bool flag_sample_weights,
+    structure::Environment& environment, bool saveIterations = false);
+
+double* compute_mi_cond_alg1(vector<vector<int> > data, vector<vector<int> > sortidx,
+    vector<int> AllLevels, vector <int> ptr_cnt, vector<int> ptrVarIdx,
+    int nbrUi, int n, vector<double> sample_weights,
+    bool flag_sample_weights, structure::Environment& environment,
     bool saveIterations = false);
 
-double* compute_mi_cond_alg1(int** data, int** sortidx, int* AllLevels,
-    int* ptr_cnt, int* ptrVarIdx, int nbrUi, int n, vector<double> sample_weights,
-    bool flag_sample_weights, structure::Environment& environment, 
-    bool saveIterations = false);
-
-double* compute_Rscore_Ixyz_alg5(int** data, int** sortidx, int* AllLevels,
-    int* ptr_cnt, int* ptrVarIdx, int nbrUi, int ptrZiIdx, int n,
+double* compute_Rscore_Ixyz_alg5(vector<vector<int> > data,
+    vector<vector<int> > sortidx, vector<int> AllLevels, vector<int> ptr_cnt,
+    vector<int> ptrVarIdx, int nbrUi, int ptrZiIdx, int n,
     vector<double> sample_weights, bool flag_sample_weights,
     structure::Environment& environment, bool saveIterations = false);
 
-double* compute_Rscore_Ixyz_new_alg5(int** data, int** sortidx, int* AllLevels,
-    int* ptr_cnt, int* ptrVarIdx, int nbrUi, int ptrZiIdx, int n,
-    vector<double> sample_weights, bool flag_sample_weights,
-    structure::Environment& environment, bool saveIterations = false);
-
-void optfun_onerun_kmdl_coarse(int* sortidx_var, int* data, int nbrV,
+void optfun_onerun_kmdl_coarse(vector<int> sortidx_var, vector<int> data, int nbrV,
     int** factors, int* r, double sc, int sc_levels1, int previous_levels,
     int n, int nnr, int* cut, int* r_opt, vector<double> sample_weights,
     bool flag_sample_weights, structure::Environment& environment);

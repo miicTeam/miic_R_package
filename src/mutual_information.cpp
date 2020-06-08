@@ -72,7 +72,9 @@ int reconstruction_cut_coarse(vector<int> &memory_cuts,
 // d: index of variable in datafactors
 // varidx: index of variable in sortidx
 void update_datafactors(
-    int **sortidx, int varidx, int **datafactors, int d, int n, int **cut) {
+    vector<vector<int> > &sortidx, int varidx, int** datafactors,
+    int d, int n, int **cut) {
+
   int j, sjj, uu = 0;
   for (j = 0; j <= n - 1; j++) {
     sjj = sortidx[varidx][j];

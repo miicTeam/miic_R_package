@@ -17,6 +17,7 @@
 #include "compute_info.h"
 #include "info_cnt.h"
 #include "mutual_information.h"
+#include "utilities.h"
 
 #define STEPMAX 50
 #define STEPMAXOUTER 50
@@ -27,6 +28,8 @@ using std::map;
 using std::vector;
 using namespace Rcpp;
 using namespace miic::computation;
+using namespace miic::structure;
+using namespace miic::utility;
 using uint = unsigned int;
 
 // Dealing with input variables
@@ -175,15 +178,9 @@ extern "C" SEXP mydiscretizeMutual(SEXP RmyDist1, SEXP RmyDist2, SEXP RflatU,
     }
   }
   // AllLevels
-  int* AllLevels = new int[nbrU + 2];
+  uint* AllLevels = new uint[nbrU + 2];
   for (i = 0; i < (nbrU + 2); i++) {
     AllLevels[i] = nlevels[i];
-  }
-  // ptr_cnt
-  int* ptr_cnt = new int[nbrU + 2];
-  for (i = 0; i < (nbrU + 2); i++) {
-    ptr_cnt[i] = cnt_vec[i];
-    // ptr_cnt[i] = 1;
   }
   // nrbUi
   int nbrUi = nbrU;
@@ -215,7 +212,7 @@ extern "C" SEXP mydiscretizeMutual(SEXP RmyDist1, SEXP RmyDist2, SEXP RflatU,
   // Declare the lookup table of the parametric complexity
   int ncol = std::max(maxbins, init_bin) + 1;
   for (int j = 0; j < (nbrU + 2); j++) {
-    if (ptr_cnt[j] == 0) ncol = std::max(ncol, (AllLevels[j] + 1));
+    if (cnt_vec[j] == 0) ncol = std::max(ncol, int(AllLevels[j] + 1));
   }
   ncol = 1000;  // combinations of Us can exceed ncol
   double** sc_look = new double*[ncol];
@@ -271,103 +268,37 @@ extern "C" SEXP mydiscretizeMutual(SEXP RmyDist1, SEXP RmyDist2, SEXP RflatU,
   environment.cplx = cplx;
   environment.effN = effN;
   environment.numSamples = n;
+  environment.dataNumeric = dataNumeric;
+  environment.dataNumericIdx = dataNumericIdx;
+  environment.allLevels = AllLevels;
+  environment.columnAsContinuous = new int[nbrU+2];
 
   // Declare tables_red
   int* posArray = new int[nbrU + 2];
   for (i = 0; i < (nbrU + 2); i++) {
     posArray[i] = i;
+    environment.columnAsContinuous[i] = cnt_vec[i];
   }
 
-  // progressive data rank with repetition for same values
-  int** dataNumeric_red;
-  int** dataNumericIdx_red;  // index of sorted data
-  int* AllLevels_red;        // number of levels
-  int* cnt_red;              // bool continuous or not
-  int* posArray_red;         // node references
+  // Mark rows containing NAs and count the number of complete samples
+  vector <int> sample_is_not_NA(environment.numSamples);
+  vector <int> NAs_count(environment.numSamples);
+  uint samplesNotNA = count_non_NAs(nbrU, sample_is_not_NA,
+    NAs_count, posArray, environment);
 
-  int samplesNotNA = 0;
-  int* samplesToEvaluate = new int[n];
-  int* samplesToEvaluateTemplate = new int[n];
-  bool is_sample_NA = false;
-  for (int i = 0; i < n; i++) {
-
-    is_sample_NA = false;
-    if (i != 0)
-      samplesToEvaluateTemplate[i] = samplesToEvaluateTemplate[i - 1];
-    else
-      samplesToEvaluateTemplate[i] = 0;
-
-    for (int j = 0; (j < nbrU + 2) && (!is_sample_NA); j++) {
-      if (dataNumeric[i][posArray[j]] == -1) {
-        is_sample_NA = true;
-      }
-    }
-    if(is_sample_NA){
-      samplesToEvaluate[i] = 0;
-      samplesToEvaluateTemplate[i]++;
-    }
-    else{
-      samplesToEvaluate[i] = 1;
-      samplesNotNA++;
-    }
-  }
-  // allocate data reducted *_red
-  // all *_red variables are passed to the optimization routine
-  // not using memory space
+  // Allocate data reducted *_red without rows containing NAs
+  // All *_red variables are passed to the optimization routine
+  vector<int> AllLevels_red(nbrU+2);
+  vector<int> cnt_red(nbrU+2);
+  vector<int> posArray_red(nbrU+2);
   vector<double> sample_weights_red(samplesNotNA);
-  bool flag_sample_weights(false);
-  dataNumericIdx_red = new int*[nbrU + 2];
-  dataNumeric_red = new int*[nbrU + 2];
-  for (int j = 0; j < (nbrU + 2); j++) {
-    dataNumericIdx_red[j] = new int[samplesNotNA];
-    dataNumeric_red[j] = new int[samplesNotNA];
-  }
+  vector<vector<int> > dataNumeric_red(nbrU+2, vector<int> (samplesNotNA));  
+  vector<vector<int> > dataNumericIdx_red(nbrU+2, vector<int> (samplesNotNA));  
 
-  AllLevels_red = new int[nbrU + 2];
-  cnt_red = new int[nbrU + 2];
-  posArray_red = new int[nbrU + 2];
-
-  // copy data to evaluate in new vectors to pass to optimization
-  int k1, k2, si;
-
-  int nnr;  // effective number of not repeated values
-  int prev_val;
-
-  for (int j = 0; j < (nbrU + 2); j++) {
-    posArray_red[j] = j;
-    AllLevels_red[j] = AllLevels[posArray[j]];
-    cnt_red[j] = ptr_cnt[posArray[j]];
-
-    k1 = 0;
-    k2 = 0;
-
-    nnr = 0;
-    prev_val = -1;
-    for (int i = 0; i < n; i++) {
-      if (samplesToEvaluate[i] == 1) {
-        dataNumeric_red[j][k1] = dataNumeric[i][posArray[j]];
-        if(j==0) {
-          sample_weights_red[k1] = environment.sampleWeights[i];
-          if(sample_weights_red[k1] != 1.0) flag_sample_weights = true;
-        }
-        k1++;
-      }
-      if (cnt_red[j] == 1) {
-        si = dataNumericIdx[posArray[j]][i];
-        if (samplesToEvaluate[si] == 1) {
-          dataNumericIdx_red[j][k2] = si - samplesToEvaluateTemplate[si];
-          k2++;
-          // check whether is a different values or repeated
-          if (dataNumeric[si][posArray[j]] != prev_val) {
-            nnr++;
-            prev_val = dataNumeric[si][posArray[j]];
-          }
-        }
-      }
-    }
-    // update with the effective number of levels
-    if (cnt_red[j] == 1) AllLevels_red[j] = nnr;
-  }
+  bool flag_sample_weights = filter_NAs(nbrU, AllLevels_red, cnt_red,
+    posArray_red, posArray, dataNumeric_red, dataNumericIdx_red,
+    sample_weights_red, sample_is_not_NA, NAs_count,
+    environment);
 
   int** iterative_cuts = (int**)calloc(STEPMAX + 1, sizeof(int*));
   for (int i = 0; i < STEPMAX + 1; i++) {
@@ -389,11 +320,7 @@ extern "C" SEXP mydiscretizeMutual(SEXP RmyDist1, SEXP RmyDist2, SEXP RflatU,
   }
   delete[] dataNumericIdx;
 
-  delete[] samplesToEvaluateTemplate;
-  delete[] samplesToEvaluate;
-
   delete[] AllLevels;
-  delete[] ptr_cnt;
   delete[] posArray;
 
   int niterations = 0;
@@ -471,18 +398,6 @@ extern "C" SEXP mydiscretizeMutual(SEXP RmyDist1, SEXP RmyDist2, SEXP RflatU,
     delete[] iterative_cutpoints[i];
   }
   delete[] iterative_cutpoints;
-
-  delete[] AllLevels_red;
-  delete[] cnt_red;
-  delete[] posArray_red;
-
-  for (int j = 0; j < (nbrU + 2); j++) {
-    delete[] dataNumericIdx_red[j];
-    delete[] dataNumeric_red[j];
-  }
-
-  delete[] dataNumericIdx_red;
-  delete[] dataNumeric_red;
 
   return result;
 }

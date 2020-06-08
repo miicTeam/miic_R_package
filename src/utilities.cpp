@@ -166,9 +166,9 @@ void sort2arraysConfidence(int len, int a[], int brr[]) {
   std::sort(brr, brr + len, sort_indices(a));
 }
 
-vector<vector<string>> getAdjMatrix(const Environment& environment) {
+vector<vector<string> > getAdjMatrix(const Environment& environment) {
   stringstream ss;
-  vector<vector<string>> adjMatrix;
+  vector<vector<string> > adjMatrix;
   vector<string> vec;
   for (uint i = 0; i < environment.numNodes; i++) {
     vec.push_back(environment.nodes[i].name);
@@ -234,8 +234,8 @@ void createMemorySpace(Environment& environment, MemorySpace& m) {
   }
   // continuous part
   if (environment.atLeastOneContinuous) {
-    m.samplesToEvaluate = (int*)new int[environment.numSamples];
-    m.samplesToEvaluateTemplate = (int*)new int[environment.numSamples];
+    m.sample_is_not_NA = (int*)new int[environment.numSamples];
+    m.NAs_count = (int*)new int[environment.numSamples];
     m.dataNumericIdx_red = (int**)new int*[(MAX_NBRUI + 3)];
     m.dataNumeric_red = (int**)new int*[(MAX_NBRUI + 3)];
 
@@ -285,11 +285,11 @@ void deleteMemorySpace(Environment& environment, MemorySpace& m) {
   }
   // cotinuous part
   if (environment.atLeastOneContinuous) {
-    free(m.samplesToEvaluate);
-    free(m.samplesToEvaluateTemplate);
-    free(m.AllLevels_red);
-    free(m.cnt_red);
-    free(m.posArray_red);
+    delete[] m.sample_is_not_NA;
+    delete[] m.NAs_count;
+    delete[] m.AllLevels_red;
+    delete[] m.cnt_red;
+    delete[] m.posArray_red;
     for (int i = 0; i < MAX_NBRUI + 3; i++) {
       delete[] m.dataNumericIdx_red[i];
       delete[] m.dataNumeric_red[i];
@@ -616,8 +616,8 @@ bool readBlackbox(vector<string> v, Environment& environment) {
   return true;
 }
 
-vector<vector<string>> saveEdgesListAsTable(Environment& environment) {
-  vector<vector<string>> data;
+vector<vector<string> > saveEdgesListAsTable(Environment& environment) {
+  vector<vector<string> > data;
 
   vector<EdgeID*> allEdges;
 
@@ -980,9 +980,9 @@ void transformToFactorsContinuousIdx(Environment& environment, int i) {
   // clean the dictionary since it is used column by column
   myMap.clear();
 
-  // vector <int> clmn;
+  int entry;
   for (uint j = 0; j < environment.numSamples; j++) {
-    int entry = environment.dataNumeric[j][i];
+    entry = environment.dataNumeric[j][i];
     if (entry != -1) myMap[entry] = j;
   }
 
@@ -1056,12 +1056,12 @@ int getNumSamples_nonNA(Environment& environment, int i, int j) {
 }
 
 void getJointSpace(Environment& environment, int i, int j,
-    vector<vector<double>>& jointSpace, int* curr_samplesToEvaluate) {
+    vector<vector<double> >& jointSpace, int* curr_sample_is_not_NA) {
   int numSamples_nonNA = 0;
   bool sampleOk;
   for (uint k = 0; k < environment.numSamples; k++) {
     sampleOk = true;
-    curr_samplesToEvaluate[k] = 0;
+    curr_sample_is_not_NA[k] = 0;
     if (environment.dataNumeric[k][i] != -1 &&
         environment.dataNumeric[k][j] != -1) {
       for (uint u = 0;
@@ -1073,7 +1073,7 @@ void getJointSpace(Environment& environment, int i, int j,
         }
       }
       if (sampleOk) {
-        curr_samplesToEvaluate[k] = 1;
+        curr_sample_is_not_NA[k] = 1;
         jointSpace[numSamples_nonNA][0] = environment.dataDouble[k][i];
         jointSpace[numSamples_nonNA][1] = environment.dataDouble[k][j];
         numSamples_nonNA++;
@@ -1083,7 +1083,8 @@ void getJointSpace(Environment& environment, int i, int j,
 }
 
 double** getJointFreqs(
-    Environment& environment, int i, int j, int numSamples_nonNA) {
+    Environment& environment, int i, int j,
+    const vector<int> &sample_is_not_NA) {
   double** jointFreqs = new double*[environment.allLevels[i]];
   for (uint k = 0; k < environment.allLevels[i]; k++) {
     jointFreqs[k] = new double[environment.allLevels[j]];
@@ -1092,20 +1093,31 @@ double** getJointFreqs(
     }
   }
 
+  int numSamples_nonNA(0);
   bool sampleOk;
   for (uint k = 0; k < environment.numSamples; k++) {
     sampleOk = true;
-    if (environment.dataNumeric[k][i] != -1 &&
-        environment.dataNumeric[k][j] != -1) {
-      for (uint u = 0;
-           u < environment.edges[i][j].shared_info->ui_vect_idx.size(); u++) {
-        if (environment.dataNumeric[k][environment.edges[i][j]
-                                           .shared_info->ui_vect_idx[u]] == -1)
-          sampleOk = false;
+    if(sample_is_not_NA.empty()){
+      // Check if any value is NA in X,Y or the Us
+      if (environment.dataNumeric[k][i] != -1 &&
+          environment.dataNumeric[k][j] != -1) {
+        for (uint u = 0;
+            u < environment.edges[i][j].shared_info->ui_vect_idx.size(); u++) {
+          if (environment.dataNumeric[k][environment.edges[i][j]
+                                            .shared_info->ui_vect_idx[u]] == -1)
+            sampleOk = false;
+        }
       }
-      if (sampleOk)
-        jointFreqs[environment.dataNumeric[k][i]]
-                  [environment.dataNumeric[k][j]]++;
+      else sampleOk = false;
+    }
+    else {
+      // Use the sample_is_not_NA vector
+      sampleOk = sample_is_not_NA[k];
+    }
+    if (sampleOk) {
+      jointFreqs[environment.dataNumeric[k][i]]
+                [environment.dataNumeric[k][j]]++;
+      numSamples_nonNA++;
     }
   }
 
@@ -1117,7 +1129,7 @@ double** getJointFreqs(
 }
 
 void getJointMixed(Environment& environment, int i, int j, int* mixedDiscrete,
-    double* mixedContinuous, int* curr_samplesToEvaluate) {
+    double* mixedContinuous, int* curr_sample_is_not_NA) {
   int discrete_pos = environment.columnAsContinuous[i] == 0 ? i : j;
   int continuous_pos = environment.columnAsContinuous[i] == 1 ? i : j;
 
@@ -1126,7 +1138,7 @@ void getJointMixed(Environment& environment, int i, int j, int* mixedDiscrete,
   bool sampleOk;
   for (uint k = 0; k < environment.numSamples; k++) {
     sampleOk = true;
-    curr_samplesToEvaluate[k] = 0;
+    curr_sample_is_not_NA[k] = 0;
     if (environment.dataNumeric[k][i] != -1 &&
         environment.dataNumeric[k][j] != -1) {
       for (uint u = 0;
@@ -1138,7 +1150,7 @@ void getJointMixed(Environment& environment, int i, int j, int* mixedDiscrete,
         }
       }
       if (sampleOk) {
-        curr_samplesToEvaluate[k] = 1;
+        curr_sample_is_not_NA[k] = 1;
         mixedContinuous[numSamples_nonNA] =
             environment.dataDouble[k][continuous_pos];
         mixedDiscrete[numSamples_nonNA] =
@@ -1729,7 +1741,7 @@ void readFilesAndFillStructures(
   int posY = -1;
   int numCols = 10;
 
-  vector<vector<string>> vec;
+  vector<vector<string> > vec;
   vector<string> v;
 
   for (uint i = 0; i < edgesVectorOneLine.size(); i++) {
@@ -1862,7 +1874,7 @@ int printProgress(
 // 	-k			: the rank of the nearest neigbhour's distance
 // to return
 using my_kd_tree_t =
-    KDTreeVectorOfVectorsAdaptor<vector<vector<double>>, double>;
+    KDTreeVectorOfVectorsAdaptor<vector<vector<double> >, double>;
 double compute_k_nearest_distance(
     vector<double> point, my_kd_tree_t::index_t* index, int k) {
   vector<size_t> ret_indexes(k);
@@ -1879,8 +1891,8 @@ double compute_k_nearest_distance(
 // of real values based on the KNN estimation (F. Perez-Cruz 2004).
 //
 // <space 1> is the subsampling of <space 2> after removing NAs.
-double compute_kl_divergence_continuous(vector<vector<double>> space1,
-    vector<vector<double>> space2, int n1, int n2, int ndims, int k,
+double compute_kl_divergence_continuous(vector<vector<double> > space1,
+    vector<vector<double> > space2, int n1, int n2, int ndims, int k,
     bool* flag_break_ties, int* map_samples, double* noiseVec) {
   double D;
   double sumlog = 0;
@@ -1921,38 +1933,24 @@ double compute_kl_divergence_continuous(vector<vector<double>> space1,
 }
 
 double compute_kl_divergence(int* posArray, Environment& environment,
-    int samplesNotNA, int** dataNumeric_red, int* AllLevels_red,
-    int* samplesToEvaluate) {
+    int samplesNotNA, const vector<int> &AllLevels_red,
+    const vector<int> &sample_is_not_NA) {
   int current_samplesNotNA =
       getNumSamples_nonNA(environment, posArray[0], posArray[1]);
   double kldiv = 0;
+
   // 1 - XY discrete
   if (environment.columnAsContinuous[posArray[0]] == 0 &&
       environment.columnAsContinuous[posArray[1]] == 0) {
-    // XY discrete
-    // Retrieve marginal distibutions with the current conditioning Us
-    int current_samplesNotNA =
-        getNumSamples_nonNA(environment, posArray[0], posArray[1]);
+
+    // Joint freqs X,Y before adding the new contributor (with the current
+    // conditioning Us)
     double** jointFreqs = getJointFreqs(
-        environment, posArray[0], posArray[1], current_samplesNotNA);
+        environment, posArray[0], posArray[1]);
 
-    double** freqs2 = new double*[environment.allLevels[posArray[0]]];
-    for (uint j = 0; j < environment.allLevels[posArray[0]]; j++) {
-      freqs2[j] = new double[environment.allLevels[posArray[1]]];
-      for (uint k = 0; k < environment.allLevels[posArray[1]]; k++) {
-        freqs2[j][k] = 0;
-      }
-    }
-
-    // fill table
-    for (int k = 0; k < samplesNotNA; k++) {
-      freqs2[dataNumeric_red[0][k]][dataNumeric_red[1][k]]++;
-    }
-    for (uint j = 0; j < environment.allLevels[posArray[0]]; j++) {
-      for (uint k = 0; k < environment.allLevels[posArray[1]]; k++) {
-        freqs2[j][k] = 1.0 * freqs2[j][k] / samplesNotNA;
-      }
-    }
+    // Joint freqs X,Y after adding the new contributor (Z)
+    double** freqs2 = getJointFreqs(
+        environment, posArray[0], posArray[1], sample_is_not_NA);
 
     kldiv = samplesNotNA * kl(freqs2, jointFreqs,
                                environment.allLevels[posArray[0]],
@@ -1968,26 +1966,26 @@ double compute_kl_divergence(int* posArray, Environment& environment,
              environment.columnAsContinuous[posArray[1]] == 1) {
     // 2 - XY continuous
     // Retrieve marginal distibutions with the current conditioning Us
-    vector<vector<double>> joint_base(current_samplesNotNA, vector<double>(2));
-    int* curr_samplesToEvaluate = new int[environment.numSamples];
+    vector<vector<double> > joint_base(current_samplesNotNA, vector<double>(2));
+    int* curr_sample_is_not_NA = new int[environment.numSamples];
     getJointSpace(environment, posArray[0], posArray[1], joint_base,
-        curr_samplesToEvaluate);
+        curr_sample_is_not_NA);
 
     int* map_samples = new int[current_samplesNotNA];
     int i_map = 0;
     for (uint i = 0; i < environment.numSamples; i++) {
-      if (curr_samplesToEvaluate[i] == 1) {  // sample i is present in X;Y|U
+      if (curr_sample_is_not_NA[i] == 1) {  // sample i is present in X;Y|U
         map_samples[i_map] = 0;
-        if (samplesToEvaluate[i] == 1) {  // sample i is also present in X;Y|U,Z
+        if (sample_is_not_NA[i] == 1) {  // sample i is also present in X;Y|U,Z
           map_samples[i_map] = 1;
         }
         i_map++;
       }
     }
-    vector<vector<double>> joint_nonNA(samplesNotNA, vector<double>(2));
+    vector<vector<double> > joint_nonNA(samplesNotNA, vector<double>(2));
     int i_nonNA = 0;
     for (uint i = 0; i < environment.numSamples; i++) {
-      if (samplesToEvaluate[i] == 1) {
+      if (sample_is_not_NA[i] == 1) {
         for (int k = 0; k < 2; k++) {
           joint_nonNA[i_nonNA][k] = environment.dataDouble[i][posArray[k]];
         }
@@ -2005,26 +2003,21 @@ double compute_kl_divergence(int* posArray, Environment& environment,
                            samplesNotNA, current_samplesNotNA, 2, KNN_K,
                            flag_break_ties, map_samples, environment.noiseVec);
 
-    delete[] curr_samplesToEvaluate;
+    delete[] curr_sample_is_not_NA;
     delete[] map_samples;
     delete[] flag_break_ties;
   } else {
     // 3 - One discrete and one continuous
-    int discrete_pos;
-    int continuous_pos;
-    int discrete_pos_binary;
-    int continuous_pos_binary;
+    int discrete_pos, continuous_pos, discrete_pos_binary, continuous_pos_binary;
     if (environment.columnAsContinuous[posArray[0]] == 0) {
-      discrete_pos = posArray[0];
-      continuous_pos = posArray[1];
       discrete_pos_binary = 0;
       continuous_pos_binary = 1;
     } else {
-      discrete_pos = posArray[1];
-      continuous_pos = posArray[0];
       discrete_pos_binary = 1;
       continuous_pos_binary = 0;
     }
+    discrete_pos = posArray[discrete_pos_binary];
+    continuous_pos = posArray[continuous_pos_binary];
     int n_discrete_levels = environment.allLevels[discrete_pos];
 
     // Retrieve marginal distibutions with the current conditioning Us
@@ -2032,9 +2025,9 @@ double compute_kl_divergence(int* posArray, Environment& environment,
         getNumSamples_nonNA(environment, posArray[0], posArray[1]);
     int* mixedDiscrete = new int[current_samplesNotNA];
     double* mixedContinuous = new double[current_samplesNotNA];
-    int* curr_samplesToEvaluate = new int[environment.numSamples];
+    int* curr_sample_is_not_NA = new int[environment.numSamples];
     getJointMixed(environment, posArray[0], posArray[1], mixedDiscrete,
-        mixedContinuous, curr_samplesToEvaluate);
+        mixedContinuous, curr_sample_is_not_NA);
 
     // Create count vectors for the discrete variable
     int* count_base = new int[n_discrete_levels];
@@ -2046,8 +2039,11 @@ double compute_kl_divergence(int* posArray, Environment& environment,
     for (int i = 0; i < current_samplesNotNA; i++) {
       count_base[mixedDiscrete[i]]++;
     }
-    for (int i = 0; i < samplesNotNA; i++) {
-      count_nonNA[dataNumeric_red[discrete_pos_binary][i]]++;
+    for (int i = 0; i < environment.numSamples; i++) {
+      // Make sure to use environment data so that the levels match (may be 
+      // recoded in reduced data)
+      if(sample_is_not_NA[i])
+        count_nonNA[environment.dataNumeric[i][discrete_pos]]++;
     }
 
     // Compute the sum count(y) * KL(X_nonNA|y || X|y) over all values of Y y
@@ -2056,15 +2052,15 @@ double compute_kl_divergence(int* posArray, Environment& environment,
       int i_level = 0;
       for (uint i = 0; i < environment.numSamples; i++) {
         if (environment.dataNumeric[i][discrete_pos] == level) {
-          if (curr_samplesToEvaluate[i]) {
+          if (curr_sample_is_not_NA[i]) {
             map_level[i_level] = 0;
-            if (samplesToEvaluate[i] == 1) map_level[i_level] = 1;
+            if (sample_is_not_NA[i] == 1) map_level[i_level] = 1;
             i_level++;
           }
         }
       }
 
-      vector<vector<double>> continuous_base(
+      vector<vector<double> > continuous_base(
           count_base[level], vector<double>(1));
       i_level = 0;
       for (int i = 0; i < current_samplesNotNA; i++) {
@@ -2074,11 +2070,11 @@ double compute_kl_divergence(int* posArray, Environment& environment,
         }
       }
 
-      vector<vector<double>> continuous_nonNA(
+      vector<vector<double> > continuous_nonNA(
           count_nonNA[level], vector<double>(1));
       int i_level_nonNA = 0;
       for (uint i = 0; i < environment.numSamples; i++) {
-        if (samplesToEvaluate[i] == 1 &&
+        if (sample_is_not_NA[i] == 1 &&
             environment.dataNumeric[i][discrete_pos] == level) {
           continuous_nonNA[i_level_nonNA][0] =
               environment.dataDouble[i][continuous_pos];
@@ -2108,7 +2104,7 @@ double compute_kl_divergence(int* posArray, Environment& environment,
     delete[] count_base;
     delete[] mixedDiscrete;
     delete[] mixedContinuous;
-    delete[] curr_samplesToEvaluate;
+    delete[] curr_sample_is_not_NA;
   }
   return (kldiv);
 }
@@ -2120,6 +2116,134 @@ int sign(double val) {
     return 1;
   else
     return 0;
+}
+
+/**
+ * Counts and marks the rows that contain "NA"s for the edge given by 
+ * \a posArray ([0] is X, [1] is Y and above are Us) and an optional \a z.
+ * 
+ * \return The number of non NA samples and modifies the vectors
+ * sample_is_not_NA and NAs_count
+ */
+uint count_non_NAs(int nbrUi, vector<int> &sample_is_not_NA,
+    vector<int> &NAs_count, int* posArray, 
+    Environment& environment, int z){
+
+  uint samplesNotNA = 0;
+  bool is_NA;
+
+  for (uint i = 0; i < environment.numSamples; i++) {
+    sample_is_not_NA[i] = 1;
+    if (i != 0)
+      NAs_count[i] = NAs_count[i - 1];
+    else
+      NAs_count[i] = 0;
+
+    is_NA = false;
+    for (int j = 0; (j < nbrUi + 2) && (!is_NA); j++) {
+      is_NA = environment.dataNumeric[i][posArray[j]] == -1;
+    }
+    if (z != -1) is_NA = is_NA || environment.dataNumeric[i][z] == -1;
+    if (is_NA) {
+      sample_is_not_NA[i] = 0;
+      NAs_count[i]++;
+    } else
+      samplesNotNA++;
+  }
+
+  return(samplesNotNA);
+}
+
+/**
+ * Reduces the full data to its "reduced" form without NA rows given the edge 
+ * X-Y | U,(Z). In the case of discrete variables, levels are remapped so that
+ * the reduced data still has levels that start at 0. For continuous variables,
+ * the ranks are updated (\a dataNumericIdx).
+ *
+ * \return A boolean telling whether or not sample weights are needed on the
+ * reduced data. More importantly, modifies the vectors passed as argument :
+ * \a AllLevels contains the number of unique levels of the reduced variables
+ * \a cnt tells whether the reduced variables are continuous or not
+ * \a posArray_red contains the positions of variables in the reduced data
+ * \a dataNumeric contains the discrete levels of the reduced data
+ * \a dataNumericIdx contains the continuous ranks of the reduced data
+ * \a sample_weights contains the individual sample weights of the reduced data
+ */
+bool filter_NAs(int nbrUi, vector<int> &AllLevels, vector<int> &cnt,
+    vector<int> &posArray_red, int* posArray, vector<vector<int> > &dataNumeric,
+    vector<vector<int> > &dataNumericIdx, vector<double> &sample_weights,
+    const vector<int> &sample_is_not_NA, 
+    const vector<int> &NAs_count, 
+    Environment& environment, int z) {
+
+  int k1, k2, nnr, prev_val, si, old_val, new_val, updated_discrete_level;
+  int column;
+  bool flag_sample_weights(false);
+
+  // Map to make sure that the levels of the reduced data start at zero
+  std::map<int, int> new_levels;
+
+  for (int j = 0; j < (nbrUi + 2 + int(z!=-1)); j++) {
+    if(j < nbrUi+2) {
+      column = posArray[j];
+    } else {
+      column = z;
+    }
+    posArray_red[j] = j;
+    cnt[j] = environment.columnAsContinuous[column];
+
+    k1 = 0; // position in the full data
+    k2 = 0; // position in the reduced data
+    nnr = 0; // number of non repeated values
+    prev_val = -1; // previous value
+    new_levels.clear();
+    new_val = 0;
+    updated_discrete_level = 0;
+
+    for (uint i = 0; i < environment.numSamples; i++) {
+
+      if (sample_is_not_NA[i] == 1) {
+        // Row at index i does not contain any NA
+        old_val = environment.dataNumeric[i][column];
+        if (new_levels.count(old_val)==0){
+          // If level has not already been seen add it to the map
+          // and increment the number of unique levels in reduced data
+          new_levels.insert({old_val, updated_discrete_level});
+          updated_discrete_level ++;
+        }
+        new_val = new_levels[old_val];
+
+        dataNumeric[j][k1] = new_val;
+        if(j==0) {
+          sample_weights[k1] = environment.sampleWeights[i];
+          if(sample_weights[k1] != 1.0) flag_sample_weights = true;
+        }
+        k1++;
+      }
+      if (cnt[j] != 0) {
+        // Variable j is continuous
+        si = environment.dataNumericIdx[column][i]; //position of ith sample (order)
+        if (si != -1 && sample_is_not_NA[si] == 1) {
+          // Row at position si does not contain any NA, rank is updated taking
+          // into account the number of NAs up to si.
+          dataNumericIdx[j][k2] = si - NAs_count[si];
+          k2++;
+          // check whether is a different values or repeated
+          if (environment.dataNumeric[si][column] != prev_val) {
+            nnr++;
+            prev_val = environment.dataNumeric[si][column];
+          }
+        }
+      }
+    }
+    // Update with the effective number of levels
+    if (cnt[j] == 1) {
+      if (nnr < 3) cnt[j] = 0;
+      AllLevels[j] = nnr;
+    }
+    else AllLevels[j] = updated_discrete_level;
+  }
+  return(flag_sample_weights);
 }
 
 }  // namespace utility

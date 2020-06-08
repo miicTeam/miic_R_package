@@ -570,7 +570,9 @@ double* getAllInfoNEW(int* ptrAllData, uint* ptrAllLevels, int* ptrVarIdx,
         }
         Lxyui = sortedSample[k][1];
         Nxyuis += NNxyui;
-        Pxyui = weights[sortedSample[k][0]];  // weights[k];
+        Pxyui = weights[sortedSample[k][0]-1];  // weights[k];
+        if(Pxyui!=1)printf("Pxyui %f at %i   (%i,%i,%i)\n",Pxyui,
+        sortedSample[k][0],sampleSize,sampleSizeEff,nSample0);
 
         if (k < nSample0) X = sortedSample[k][4];
         if (k < nSample0) Y = sortedSample[k][5];
@@ -841,11 +843,9 @@ double* getAllInfoNEW(int* ptrAllData, uint* ptrAllLevels, int* ptrVarIdx,
           }
 
           if (testDistribution) {
-            int** counts2 =
-                (int**)calloc(ptrAllLevels[ptrVarIdx[0]], sizeof(int*));
+            int** counts2 = new int*[ptrAllLevels[ptrVarIdx[0]]];
             for (uint j = 0; j < ptrAllLevels[ptrVarIdx[0]]; j++)
-              counts2[j] =
-                  (int*)calloc(ptrAllLevels[ptrVarIdx[1]], sizeof(int));
+              counts2[j] = new int[ptrAllLevels[ptrVarIdx[1]]];
             // fill table
             for (int k = 0; k < nSampleZ; k++) {
               i = sampleWithZ[k];

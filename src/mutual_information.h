@@ -20,7 +20,8 @@ namespace computation {
 int reconstruction_cut_coarse(std::vector<int> &memory_cuts,
     std::vector<int> &memory_cuts2, int np, int n, int *cut);
 void update_datafactors(
-    int **sortidx, int varidx, int **datafactors, int d, int n, int **cut);
+    std::vector<std::vector<int> > &sortidx, int varidx,
+    int** datafactors, int d, int n, int **cut);
 // compute jointfactors functions
 void jointfactors_uiyx(
     int **datafactors, int dui, int n, int Mui, int *r, int **, int *);

@@ -54,7 +54,6 @@ struct EdgeSharedInfo {
 
 struct Node {
   string name;
-  int level;
 };
 
 struct EdgeID {
@@ -95,8 +94,8 @@ struct MemorySpace {
   int* bridge;
   double* Pxyuiz;
   // continuous data
-  int* samplesToEvaluate;
-  int* samplesToEvaluateTemplate;
+  int* sample_is_not_NA;
+  int* NAs_count;
 
   int** dataNumeric_red;
   int** dataNumericIdx_red;

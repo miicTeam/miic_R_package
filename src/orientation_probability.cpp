@@ -102,7 +102,7 @@ void getSStructure(Environment& environment, const int posX, const int posY,
       Is = Is - Cs;
     }
   }
-  delete (res);
+  delete[] res;
 
   allTpl.emplace_back(std::initializer_list<int>{posX + 1, posY + 1, posZ + 1});
   allI3.push_back(Is);
@@ -366,7 +366,7 @@ vector<vector<string> > orientationProbability(Environment& environment) {
     }
   }
   delete[] oneLineMatrixallTpl;
-  delete[] ptrRetProbValues;
+  if (myNbrTpl > 0) delete[] ptrRetProbValues;
 
   return orientations;
 }
