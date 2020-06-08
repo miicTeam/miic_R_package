@@ -2019,6 +2019,7 @@ double compute_kl_divergence(int* posArray, Environment& environment,
     discrete_pos = posArray[discrete_pos_binary];
     continuous_pos = posArray[continuous_pos_binary];
     int n_discrete_levels = environment.allLevels[discrete_pos];
+    // Full and reduced data may not have the same number of unique levels
 
     // Retrieve marginal distibutions with the current conditioning Us
     int current_samplesNotNA =
@@ -2039,7 +2040,7 @@ double compute_kl_divergence(int* posArray, Environment& environment,
     for (int i = 0; i < current_samplesNotNA; i++) {
       count_base[mixedDiscrete[i]]++;
     }
-    for (int i = 0; i < environment.numSamples; i++) {
+    for (uint i = 0; i < environment.numSamples; i++) {
       // Make sure to use environment data so that the levels match (may be 
       // recoded in reduced data)
       if(sample_is_not_NA[i])

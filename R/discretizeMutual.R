@@ -6,19 +6,20 @@
 #'
 #' @details For a pair of variables \eqn{X} and \eqn{Y}, the algorithm will in turn choose cutpoints on \eqn{X}
 #' then on \eqn{Y}, maximizing \eqn{I(X_{d};Y_{d}) - cplx(X_{d};Y_{d})} where \eqn{cplx(X_{d};Y_{d})} is the
-#' complexity cost of the considered discretizations of \eqn{X} and \eqn{Y} (see Affeldt 2016).
+#' complexity cost of the considered discretizations of \eqn{X} and \eqn{Y} (see Affeldt 2016 and Cabeli 2020).
 #' When the value \eqn{I(X_{d};Y_{d})} is stable between two iterations the discretization scheme of
 #' \eqn{X_{d}} and \eqn{Y_{d}} is returned as well as \eqn{I(X_{d};Y_{d})} and \eqn{I(X_{d};Y_{d})-cplx(X_{d};Y_{d})}.
 #'
 #' With a set of conditioning variables \eqn{U}, the discretization scheme maximizes each term of the sum
 #' \eqn{I(X;Y|U) \sim 0.5*(I(X_{d};Y_{d}, U_{d}) - I(X_{d};U_{d}) + I(Y_{d};X_{d}, U_{d}) - I(Y_{d};U_{d}))}.
 #'
-#' Discrete variables can be passed as factors will be used "as is" to maximize each term.
+#' Discrete variables can be passed as factors and will be used "as is" to maximize each term.
 #'
 #'
 #' @references
 #' \itemize{
-#' \item verny et al., \emph{plos comp. bio. 2017.}
+#' \item Verny et al., \emph{PLoS Comp. Bio. 2017.  https://doi.org/10.1371/journal.pcbi.1005662
+#' \item Cabeli et al., \emph{PLoS Comp. Bio. 2020.  https://doi.org/10.1371/journal.pcbi.1007866
 #' \item Affeldt et al., \emph{Bioinformatics 2016}
 #' }
 #'

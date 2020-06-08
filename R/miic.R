@@ -10,10 +10,23 @@
 #' indirect paths, and assesses edge-specific confidences from randomization of
 #' available data. The remaining edges are then oriented based on the signature
 #' of causality in observational data.
-#'
+#' 
+#' The method relies on an information theoretic based (conditional) independence
+#' test which is described in (Verny \emph{et al.}, PLoS Comp. Bio. 2017),
+#' (Cabeli \emph{et al.}, PLoS Comp. Bio. 2020). It deals with both categorical
+#' and continuous variables by performing optimal context-dependent discretization.
+#' As such, the input data frame may contain both numerical columns which will be
+#' treated as continuous, or character / factor columns which will be treated
+#' as categorical. For further details on the optimal discretization method and
+#' the conditional independence test, see the function discretizeMutual.
+#' 
+#' @seealso \code{\link{discretizeMutual}} for optimal discretization and
+#' (conditional) independence test.
+#' 
 #' @references
 #' \itemize{
-#' \item Verny et al., \emph{PLoS Comp. Bio. 2017.}
+#' \item Verny et al., \emph{PLoS Comp. Bio. 2017.  https://doi.org/10.1371/journal.pcbi.1005662
+#' \item Cabeli et al., \emph{PLoS Comp. Bio. 2020.  https://doi.org/10.1371/journal.pcbi.1007866
 #' }
 #'
 #' @param inputData [a data frame]
@@ -389,14 +402,31 @@ miic <- function(inputData,
     cat("START miic...\n")
   }
 
-  # continuous or discrete?
-  cntVar <- sapply(inputData, is.numeric)
+  is_column_cnt <- sapply(inputData, is.numeric)
+  # Use the "state order" file to convert discrete numerical variables to factors
+  if (!is.null(categoryOrder)) {
+    err_code <- checkStateOrder(categoryOrder, inputData)
+    if (err_code != "0") {
+      print(errorCodeToString(err_code))
+      print("WARNING: Category order file will be ignored!")
+      categoryOrder <- NULL
+    }
+    for(row in 1:nrow(categoryOrder)){
+      col = as.character(categoryOrder[row,"var_names"])
+      if(categoryOrder[row,"var_type"] == 0 && is_column_cnt[[col]]){
+        inputData[,col] = factor(inputData[,col])
+        is_column_cnt[[col]] = F
+      }
+    }
+  }
+  # Check the number of unique values of continuous and discrete variables
   for (col in colnames(inputData)) {
     unique_values <- length(unique(inputData[[col]][!is.na(inputData[[col]])]))
-    if (cntVar[[col]] &&
+    if (is_column_cnt[[col]] &&
       (unique_values <= 40) && (nrow(inputData) > 40)) {
-      if (cntVar[[col]] &&
+      if (is_column_cnt[[col]] &&
         (unique_values <= 2) && (nrow(inputData) > 40)) {
+        # Less than 3 unique values does not make sense for a continuous variable
         stop(
           paste0(
             "Numerical variable ",
@@ -407,6 +437,8 @@ miic <- function(inputData,
           )
         )
       }
+      # Less than 40 unique variables can be discretized but may not be truly
+      # continuous
       warning(
         paste0(
           "Numerical variable ",
@@ -417,7 +449,7 @@ miic <- function(inputData,
         )
       )
     }
-    if ((!cntVar[[col]]) &&
+    if ((!is_column_cnt[[col]]) &&
       (unique_values >= 40) && (nrow(inputData) > 40)) {
       warning(paste0(
         col,
@@ -428,22 +460,12 @@ miic <- function(inputData,
     }
   }
   typeOfData <- 0 # Assume all discrete
-  if (any(cntVar)) {
+  if (any(is_column_cnt)) {
     typeOfData <- 2 # Mixed if any are continuous
-    if (all(cntVar)) {
+    if (all(is_column_cnt)) {
       typeOfData <- 1 # All continuous
     }
   }
-
-    # STATE ORDER FILE
-    if (!is.null(categoryOrder)) {
-      err_code <- checkStateOrder(categoryOrder, inputData)
-      if (err_code != "0") {
-        print(errorCodeToString(err_code))
-        print("WARNING: Category order file will be ignored!")
-        categoryOrder <- NULL
-      }
-    }
 
   err_code <- checkInput(inputData, "miic")
   if (err_code != "0") {
@@ -467,7 +489,7 @@ miic <- function(inputData,
         propagation = propagation,
         confidenceThreshold = confidenceThreshold,
         verbose = verbose,
-        cntVar = cntVar,
+        cntVar = is_column_cnt,
         typeOfData = typeOfData,
         sampleWeights = sampleWeights,
         testMAR = testMAR,

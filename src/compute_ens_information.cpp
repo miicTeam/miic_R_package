@@ -360,11 +360,6 @@ void computeContributingScores(Environment& environment, int* ziContPosIdx,
     int iz, int* myZi, int myNbrUi, uint numSamples_nonNA, int* posArray,
     double* res, double* scoresZ, MemorySpace m) {
   // progressive data rank with repetition for same values
-  int** dataNumeric_red;
-  int** dataNumericIdx_red;  // index of sorted data
-  int* AllLevels_red;        // number of levels
-  int* cnt_red;              // bool continuous or not
-  int* posArray_red;         // node references
 
   int cplx = environment.cplx;
   int z;

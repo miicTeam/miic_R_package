@@ -89,8 +89,6 @@ checkStateOrder <- function(stateOrderFile, dataFile) {
     errCode <- "141"
   } else {
     rownames(stateOrderFile) <- stateOrderFile[, "var_names"]
-    myVariables <- rownames(stateOrderFile)
-
   }
   return(errCode)
 }
