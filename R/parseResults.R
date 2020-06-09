@@ -1,13 +1,12 @@
-summarizeResults <- function(observations = NULL, edges = NULL,
-                             true_edges = NULL,
-                             state_order = NULL, adj_matrix = NULL,
-                             orientation_probabilities = NULL,
+summarizeResults <- function(observations = NULL, results = NULL,
+                             true_edges = NULL, state_order = NULL,
                              verbose = FALSE) {
   # Reduced list of edges that will be summarized. There are 3 categories:
   # - Edges that exist in the miic reconstruction (oriented or not)
   # - Edges that were conditioned away with a non-empty separating set
   # - If ground truth is known, any other positive edge
   summarized_edges <- matrix(ncol = 2)
+  adj_matrix <- results$adjMatrix
 
   # List of edges found by miic
   half_adj_matrix = adj_matrix
@@ -19,6 +18,7 @@ summarizeResults <- function(observations = NULL, edges = NULL,
   # Add to summarized edges list
   summarized_edges <- predicted_edges
 
+  edges <- results$edges
   # List of negative edges with non null conditioning set
   conditioned_edges <- as.matrix(edges[(!is.na(edges$ai.vect)) &
     edges$category != 1, c("x", "y")])
@@ -147,6 +147,7 @@ summarizeResults <- function(observations = NULL, edges = NULL,
     summary, observations, state_order
   )
 
+  orientation_probabilities <- results$orientations.prob
   # isCausal considers whether the source node of an oriented edge is also
   # at the tip of a V-structure. If so, then the source node has a stronger
   # indication of being causal.

@@ -494,11 +494,9 @@ miic <- function(inputData,
     # --------
     res$all.edges.summary <- summarizeResults(
       observations = inputData,
-      edges = res$edges,
+      results = res,
       true_edges = trueEdges,
       state_order = categoryOrder,
-      adj_matrix = res$adjMatrix,
-      orientation_probabilities = res$orientations.prob,
       verbose = verbose
     )
   }
