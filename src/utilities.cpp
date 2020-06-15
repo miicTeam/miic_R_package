@@ -193,8 +193,8 @@ void createMemorySpace(Environment& environment, MemorySpace& m) {
   if (environment.atLeastTwoDiscrete) {
     uint maxLevel = 0;
     for (uint i = 0; i < environment.numNodes; i++) {
-      if (environment.columnAsContinuous[i] == 0 &&
-          environment.allLevels[i] > maxLevel)
+      //if (environment.columnAsContinuous[i] == 0 &&
+      if (environment.allLevels[i] > maxLevel)
         maxLevel = environment.allLevels[i];
     }
     m.maxlevel = maxLevel;
