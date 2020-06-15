@@ -4,14 +4,16 @@
 \name{cosmicCancer_stateOrder}
 \alias{cosmicCancer_stateOrder}
 \title{Genomic and ploidy alterations in breast tumors}
-\format{A data.frame object.}
+\format{
+A data.frame object.
+}
 \usage{
 data(cosmicCancer_stateOrder)
 }
 \description{
 The dataset contains 807 samples without predisposing Brca1/2 germline mutations
 and includes 204 somatic mutations (from whole exome sequencing) and expression
- level information for 91 genes, cathegory order file.
+ level information for 91 genes, category order file.
 }
 \references{
 Forbes SA, Beare D, Gunasekaran P, Leung K, Bindal N, et al. (2015)

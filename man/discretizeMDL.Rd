@@ -23,19 +23,19 @@ according to the MDL principle.
 }
 \examples{
 library(miic)
-
 \dontrun{
 # Bimodal normal distribution
-N=300
-modes = sample(1:2, size=N, replace=T)
-myDist = as.numeric(modes==1) * rnorm(N,mean=0,sd=1) + as.numeric(modes==2) * rnorm(N,mean=5,sd=2)
-MDL_disc = discretizeMDL(myDist)
-hist(myDist, breaks=MDL_disc$cutpoints)
+N <- 300
+modes <- sample(1:2, size = N, replace = T)
+myDist <- as.numeric(modes == 1) * rnorm(N, mean = 0, sd = 1) + as.numeric(modes == 2) * rnorm(N, mean = 5, sd = 2)
+MDL_disc <- discretizeMDL(myDist)
+hist(myDist, breaks = MDL_disc$cutpoints)
 
-N=2000
-modes = sample(1:2, size=N, replace=T)
-myDist = as.numeric(modes==1) * rnorm(N,mean=0,sd=1) + as.numeric(modes==2) * rnorm(N,mean=5,sd=2)
-MDL_disc = discretizeMDL(myDist)
-hist(myDist, breaks=MDL_disc$cutpoints)
+N <- 2000
+modes <- sample(1:2, size = N, replace = T)
+myDist <- as.numeric(modes == 1) * rnorm(N, mean = 0, sd = 1) + as.numeric(modes == 2) * rnorm(N, mean = 5, sd = 2)
+MDL_disc <- discretizeMDL(myDist)
+hist(myDist, breaks = MDL_disc$cutpoints)
 }
+
 }

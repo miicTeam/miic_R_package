@@ -27,8 +27,8 @@ summarizeResults <- function(observations = NULL, results = NULL,
   indep_null_cond_set_edges <- as.matrix(edges[(is.na(edges$ai.vect)) &
     edges$category != 1, c("x", "y")])
   # Add to summarized edges list
-  summarized_edges <- rbind(summarized_edges, conditioned_edges,
-                            indep_null_cond_set_edges)
+  summarized_edges <- rbind(summarized_edges, conditioned_edges)
+                            #indep_null_cond_set_edges)
 
   if (!is.null(true_edges)) {
     # List of False Negative edges

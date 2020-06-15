@@ -4,8 +4,13 @@
 \alias{miic.plot}
 \title{Igraph plotting function for miic}
 \usage{
-miic.plot(g, method = "log_confidence", igraphLayout = NULL,
-  userLayout = NULL, verbose = F)
+miic.plot(
+  g,
+  method = "log_confidence",
+  igraphLayout = NULL,
+  userLayout = NULL,
+  verbose = F
+)
 }
 \arguments{
 \item{g}{[a miic graph object]

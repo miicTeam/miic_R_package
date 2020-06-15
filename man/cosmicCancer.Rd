@@ -4,7 +4,9 @@
 \name{cosmicCancer}
 \alias{cosmicCancer}
 \title{Genomic and ploidy alterations in breast tumors}
-\format{A data.frame object.}
+\format{
+A data.frame object.
+}
 \usage{
 data(cosmicCancer)
 }

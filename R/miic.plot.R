@@ -81,7 +81,7 @@ miic.plot <-
     }
 
     if (method == "pcor") {
-      if (!is.na(g$retained.edges.summary$partial_correlation[1])) {
+      if (!is.na(g$all.edges.summary$partial_correlation[1])) {
         myColors <- pCor.edgeCol(mySummary, myVariables)
         # create the graph object
         myGraph <- modif.Graph(mySummary, myVariables, myColors)
@@ -155,7 +155,7 @@ miic.plot <-
       graphics::par(adj = 1)
 
 
-      if (!is.na(g$retained.edges.summary$partial_correlation[1])) {
+      if (!is.na(g$all.edges.summary$partial_correlation[1])) {
         leg_colors <- c(red.gradient, blue.gradient)
 
         graphics::title("Confidence\npcor+",

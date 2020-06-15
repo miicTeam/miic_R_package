@@ -369,7 +369,7 @@ discretizeMutual <- function(X,
   result$efinfo <- rescpp$efinfo
 
   if (plot) {
-    if (require(ggplot2) & require(gridExtra)) {
+    if (require(ggplot2, quietly = TRUE) & require(gridExtra, quietly = TRUE)) {
       if (!any(is_discrete[1:2])) {
         result$plot <- jointplot_hist(X, Y, result, nameDist1, nameDist2)
       } else if (!all(is_discrete[1:2])) {
