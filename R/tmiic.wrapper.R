@@ -7,6 +7,7 @@
 #
 # Changes history:
 # - 24 march 2020 : initial version
+# - 04 june 2020 : add tmiic.flatten_network
 #*****************************************************************************
 
 #-----------------------------------------------------------------------------
@@ -15,57 +16,64 @@
 #' tmiic.transform_data_for_miic
 #'
 #' @description
-#' Reorganizes the data using the history to create lagged nodes and samples 
-#' in a format usable by miic
+#' Reorganizes the data using the history to create lagged nodes and extra 
+#' samples in a format usable by miic
 #'
 #' @details 
-#' The function slices the input data according to the lag max argument tau :
-#' Data are expected to be received in a 3 dimensional array [n_samples * n_nodes * n_time]
-#' History us assumed to be time ordered from the oldest (first rows) to lastest (ending rows)
+#' The function slices the input data according to the lag max argument 
+#' \emph{tau}. Data are expected to be received in a 3 dimensional array 
+#' [n_samples * n_nodes * n_time]. History is assumed to be time ordered from 
+#' the oldest (first rows) to lastest (ending rows).
 #' 
-#' The number of nodes is increased and renamed on tau layers, ie with tau=2:
-#' node1, node2 => node1_lag0, node2_lag0, node1_lag1, node2_lag1, node1_lag2, node2_lag2
+#' The number of nodes is increased and renamed on \emph{tau} layers.\cr 
+#' i.e. with \emph{tau}=2: node1, node2 => node1_lag0, node2_lag0, node1_lag1, 
+#' node2_lag1, node1_lag2, node2_lag2.
 #' 
-#' Every timestep (until n_time - tau) is converted into a sample in the lagged graph:
+#-----------------------------------------------------------------------------
+#' Every timestep (until number of timesteps - \emph{tau}) is converted into 
+#' a sample in the lagged graph:
 #' 
-#' Timestep Node & value   Node & value   => Sample  Node & value   Node & value
-#'   t-2    node1_val(t-2) node2_val(t-2) =>    i    node1_lag2_val node2_lag2_val
-#'   t-1    node1_val(t-1) node2_val(t-1) =>    i    node1_lag1_val node2_lag1_val 
-#'   t      node1_val(t)   node2_val(t)   =>    i    node1_lag0_val node2_lag0_val 
-#'   
-#'   t-3    node1_val(t-3) node2_val(t-3) =>    i'   node1_lag2_val node2_lag2_val
-#'   t-2    node1_val(t-2) node2_val(t-2) =>    i'   node1_lag1_val node2_lag1_val
-#'   t-1    node1_val(t-1) node2_val(t-1) =>    i    node1_lag0_val node2_lag0_val 
-#'   
-#'   t-4    node1_val(t-4) node2_val(t-4) =>    i"   node1_lag2_val node2_lag2_val
-#'   t-3    node1_val(t-3) node2_val(t-3) =>    i"   node1_lag1_val node2_lag1_val
-#'   t-2    node1_val(t-2) node2_val(t-2) =>    i"   node1_lag0_val node2_lag0_val
-#'   ...    .............. .............. ..    ..   .............. ..............
-#' until n_time-tau is reached. The same process is applied to all input samples
+#' \tabular{ccccccc}{
+#' Timestep \tab  Node & value  \tab  Node & value  \tab => \tab Sample \tab  Node & value  \tab  Node & value \cr
+#'   t-2    \tab node1_val(t-2) \tab node2_val(t-2) \tab => \tab   i    \tab node1_lag2_val \tab node2_lag2_val\cr
+#'   t-1    \tab node1_val(t-1) \tab node2_val(t-1) \tab => \tab   i    \tab node1_lag1_val \tab node2_lag1_val\cr
+#'    t     \tab  node1_val(t)  \tab  node2_val(t)  \tab => \tab   i    \tab node1_lag0_val \tab node2_lag0_val\cr
+#'   \cr    \tab                \tab                \tab    \tab        \tab                \tab               \cr
+#'   t-3    \tab node1_val(t-3) \tab node2_val(t-3) \tab => \tab   i'   \tab node1_lag2_val \tab node2_lag2_val\cr
+#'   t-2    \tab node1_val(t-2) \tab node2_val(t-2) \tab => \tab   i'   \tab node1_lag1_val \tab node2_lag1_val\cr
+#'   t-1    \tab node1_val(t-1) \tab node2_val(t-1) \tab => \tab   i'   \tab node1_lag0_val \tab node2_lag0_val\cr
+#'   \cr    \tab                \tab                \tab    \tab        \tab                \tab               \cr
+#'   t-4    \tab node1_val(t-4) \tab node2_val(t-4) \tab => \tab   i"   \tab node1_lag2_val \tab node2_lag2_val\cr
+#'   t-3    \tab node1_val(t-3) \tab node2_val(t-3) \tab => \tab   i"   \tab node1_lag1_val \tab node2_lag1_val\cr
+#'   t-2    \tab node1_val(t-2) \tab node2_val(t-2) \tab => \tab   i"   \tab node1_lag0_val \tab node2_lag0_val\cr
+#'   \cr    \tab                \tab                \tab    \tab        \tab                \tab               \cr
+#'   ...    \tab .............. \tab .............. \tab => \tab ...... \tab .............. \tab ............. \cr
+#' }
+#' until number of timesteps - \emph{tau} is reached. The same process is applied
+#' to all input samples.
 #'
 #' @param data_tab [a 2D or 3D array] 
 #' An array of the time series for all nodes and samples of dimensions
 #' [n_samples * n_nodes * n_time] for 3D or [n_nodes * n_time] for 2D.
 #' When a 2D array is supplied, the number of samples is assumed to be 1.
 #'
-#' @param tau [an int]
-#' An int representating the max lag
+#' @param tau [an int] An int defining the max lag
 #' 
 #' @param categoryOrder [a data frame] Optional, NULL by default. 
 #' A data frame giving information about how to order the various states of 
-#' categorical variables. This dataframe will be lagged as the imputData on
-#' tau timesteps 
+#' categorical variables. This data frame will be lagged as the input 
+#' data on \emph{tau} timesteps.
 #' 
-#' @param sub_sample [an int] Optional, default=-1. When -1, no subsampling
-#' is applied. When > 1, keeps one sample evevry sub_sample samples
+#' @param subsample [an int] Optional, default=-1. When -1, no subsampling
+#' is applied. When > 1, keeps one sample every \emph{subsample} samples.
 #' 
 #' @param boostrap [an int] Optional, default=-1. When -1, no bootstraping
-#' is done. When > 0, select randomly boostrap samples from the
+#' is done. When > 0, select randomly \emph{boostrap} samples from the
 #' set of samples, a sample can be selected more than once.
 #' 
-#' @return a 2D array of dimensions [ n_samples * (n_time - tau) ), 
-#'                                    n_nodes * (tau+1) ]
-#'                                  
+#' @return a 2D array of dimensions [ n_samples * (n_time -  \emph{tau}) ), 
+#'                                    n_nodes * ( \emph{tau}+1) ]
+#-----------------------------------------------------------------------------
 tmiic.transform_data_for_miic <- function (data_tab, tau, categoryOrder=NULL, 
                                            sub_sample=-1, bootstrap=-1)
   {
@@ -307,5 +315,361 @@ tmiic.transform_data_for_miic <- function (data_tab, tau, categoryOrder=NULL,
   #
   return (list (inputData=as.data.frame(tab_lagged, stringsAsFactors = FALSE),
                 categoryOrder=categoryOrder) )
+  }
+
+#-----------------------------------------------------------------------------
+# tmiic.flatten_network
+#-----------------------------------------------------------------------------
+#' tmiic.flatten_network
+#'
+#' @description
+#' Flattten the lagged network returned by tmiic
+#'
+#' @details 
+#' In temporal mode, the network returned by miic contains lagged nodes 
+#' (X_lag0, X_lag1, ...) over tau timesteps. This function flatten the 
+#' network depending of the \emph{flatten_mode} parameter.\cr
+#' Note that only the adjMatrix and summary data frames are flatened.
+#' 
+#' @param miic_return [a list] The value returned by miic. (a list which
+#' contains the different data frames resulting of miic's execution)
+#' 
+#' @param flatten_mode [a string]. Optional, default value "normal".
+#' Possible values are \emph{"normal"}, \emph{"unique"}, \emph{"drop"}:
+#' \itemize{
+#' \item When \emph{flatten_mode} = \emph{"normal"}, the default, edges are simply 
+#'   converted into a flattened version.\cr
+#'   i.e.:  X_lag0-Y_lag1, X_lag0-Y_lag2 become respectively X-Y lag=1, 
+#'   X-Y lag=2 (lag is a new column added in the dataframe) 
+#' \item When \emph{flatten_mode} = \emph{"unique"}, only the edges having the highest 
+#'   log_confidence for a couple of nodes are kept in the flattened network.\cr 
+#'   i.e.: X_lag0-Y_lag1, X_lag0-Y_lag2 with log_confidence of 
+#'   X_lag0-Y_lag1 > X_lag0-Y_lag2 become X-Y lag=1  (lag is a new column 
+#'   added in the dataframe) 
+#' \item When \emph{flatten_mode} = \emph{"drop"}, only the edges having the highest 
+#'   log_confidence for a couple of nodes are kept in the flattened network
+#'   and no column for the lag value is added.\cr
+#'   i.e. :  X_lag0-Y_lag1, X_lag0-Y_lag2 with log_confidence of 
+#'   X_lag0-Y_lag1 > X_lag0-Y_lag2 become X-Y. The lag information is 
+#'   "lost" after flattening
+#' }
+#' @param keep_edges_on_same_node [a boolean] Optional, TRUE by default.
+#' When TRUE, the edges like X_lag0-X_lag1 are kept during flatenning
+#' (it becomes an X-X edge). When FALSE, only edges having different nodes 
+#' are kept in the flatten network.
+#' 
+#' @return [a list] The returned list is the one received as input where
+#' the adjacency and summary dataframes has beEn flattened.\cr
+#' Note that the adjacency matrix does not contain any more the orientation
+#' as this information make less sense after flattening. Orientations are 
+#' replaced by lag(s) in the adjacency matrix.
+#'                                  
+#' @export
+#' @useDynLib miic
+#-----------------------------------------------------------------------------
+tmiic.flatten_network <- function (miic_return, flatten_mode="normal", 
+                                   keep_edges_on_same_node=TRUE)
+  {
+  DEBUG <- FALSE
+  if (DEBUG)
+    {
+    print ("tmiic.flatten_network:")
+    print ("adjacency matrix:")
+    print (miic_return$adjMatrix)
+    print ("summary:")
+    print (miic_return$all.edges.summary %>% select(x,y,type,infOrt,sign,log_confidence) )
+    print (paste ("flatten_mode=", flatten_mode) )
+    }
+  #
+  # Construct the list of nodes not lagged 
+  #
+  df_adj <- miic_return$adjMatrix
+  list_nodes_lagged = colnames (df_adj)
+  list_nodes_not_lagged = list ()
+  for (node_idx in 1:ncol (df_adj) )
+    {
+    #
+    # As long we find "_lag0" at the end of the node name
+    #
+    one_node = list_nodes_lagged[[node_idx]]
+    if ( endsWith(one_node, "_lag0") )
+      {
+      #
+      # Remove "_lag0" information from the nodes names and add it to list
+      #
+      one_node <- gsub("_lag0", "", one_node)
+      list_nodes_not_lagged[[node_idx]] <- one_node
+      }
+    else
+      break
+    }
+  n_nodes = length (list_nodes_not_lagged)
+  if (DEBUG)
+    {
+    print ("list of node not lagged:")
+    print (list_nodes_not_lagged)
+    print (paste ("number of nodes not lagged=", n_nodes) )
+    }
+  #
+  # First step, perform flatten_mode="normal" : 
+  # - on adjacency matrix : construct a n_nodes x n_nodes with lags in each cell
+  # - on summary: remove lag info from nodes names and put it into a lag column
+  #
+  df_adj <- array ( data="", dim=c(n_nodes ,n_nodes),
+                    dimnames=list(list_nodes_not_lagged, list_nodes_not_lagged) )
+  df_edges <- miic_return$all.edges.summary
+  df_edges$lag <- -1
+  for (edge_idx in 1:nrow(df_edges) )
+    {
+    #
+    # Get nodes the edge wthout "_lagX"
+    #
+    one_edge <- df_edges[edge_idx,]
+    #
+    # Edges with type != "P" are not true edges
+    #
+    if (one_edge$type != "P")
+      {
+      if (DEBUG)
+        {
+        print ( paste("Edge ", one_edge$x, "-", one_edge$y, ", type=", one_edge$type,
+                      " => type!='P' => dropped", sep="") )
+        }
+      df_edges[edge_idx,]$x <- "DROP"
+      df_edges[edge_idx,]$y <- "DROP"
+      next
+      }
+    #
+    # The edge is a real one, extract nodes names and orient
+    #
+    node_x <- one_edge$x
+    node_y <- one_edge$y
+    orient <- one_edge$infOrt
+    #
+    # Get the lag for each node of the edge
+    #
+    pos_lag_x <- str_locate(node_x, "_lag")
+    tau_idx_x <- 0
+    if ( !is.na(pos_lag_x[1]) )
+      {
+      tau_idx_x <- str_remove(node_x, ".*_lag")
+      tau_idx_x <- strtoi (tau_idx_x)
+      }
+    pos_lag_y <- str_locate(node_y, "_lag")
+    tau_idx_y <- 0
+    if ( !is.na(pos_lag_y[1]) )
+      {
+      tau_idx_y <- str_remove(node_y, ".*_lag")
+      tau_idx_y <- strtoi (tau_idx_y)
+      }
+    #
+    # It temporal, ensure to order from oldest to newest
+    #
+    lag = tau_idx_x - tau_idx_y
+    if (lag < 0)
+      {
+      lag <- -lag
+      
+      temp_var <- tau_idx_x
+      tau_idx_x <- tau_idx_y
+      tau_idx_y <- temp_var
+      
+      temp_var <- node_x
+      node_x <- node_y
+      node_y <- temp_var
+      
+      if ( (orient == 2) | (orient == -2) )
+        orient = -orient
+      }
+    #
+    # Remove "_lag" information from the nodes names
+    #
+    node_x <- gsub("_lag.*","",node_x)
+    node_y <- gsub("_lag.*","",node_y)
+    #
+    # If we oblige the nodes to be different, discard edges between the same node
+    #
+    if ( (!keep_edges_on_same_node) & (node_x == node_y) )
+      {
+      if (DEBUG)
+        {
+        print ( paste("Edge ", one_edge$x, "-", one_edge$y, ", type=", one_edge$type,
+                      " => node_x==node_y' => dropped", sep="") )
+        }
+      df_edges[edge_idx,]$x <- "DROP"
+      df_edges[edge_idx,]$y <- "DROP"
+      next
+      }
+    #
+    # Edge kept, Update it
+    #
+    df_edges[edge_idx,]$x <- node_x
+    df_edges[edge_idx,]$y <- node_y
+    df_edges[edge_idx,]$infOrt <- orient
+    df_edges[edge_idx,]$lag <- lag
+    #
+    # Update adj matrix
+    #
+    if (df_adj[node_x,node_y] == "")
+      df_adj[node_x,node_y] = paste (lag, sep="")
+    else
+      df_adj[node_x,node_y] = paste (df_adj[node_x,node_y], ",", lag, sep="")
+    df_adj[node_y,node_x] = df_adj[node_x,node_y]
+    }
+  #
+  # Drop rows flagged 
+  #
+  df_edges <- df_edges[!(df_edges$x=="DROP"),]
+  #
+  # Order the list of lag in the adjacency matrix
+  #
+  for (i in 1:ncol (df_adj) )
+    {
+    for (j in i:ncol (df_adj) )
+      {
+      lags_str <- df_adj[i,j]
+      if (nchar (lags_str) > 0)
+        if ( grepl (',', lags_str, fixed = TRUE) )
+          {
+          split_str <- strsplit (lags_str, ",")[[1]]
+          split_num <- as.integer (split_str)
+          split_sorted <- sort (split_num)
+          df_adj[i,j] <- paste (split_sorted, collapse=',', sep="")
+          df_adj[j,i] <- df_adj[i,j]
+          }
+      }
+    }
+  #
+  # Step 1 "normal" node done
+  #
+  if (DEBUG)
+    {
+    print ("End step 1: lag moved into its own column")
+    print ("df_adj:")
+    print (df_adj)
+    print ("df_edges:")
+    print (df_edges %>% select(x,y,lag,type,infOrt,sign,log_confidence))
+    }
+  #
+  # If we want only one edge per couple of nodes 
+  #
+  if ( (flatten_mode == "unique") | (flatten_mode == "drop") )
+    {
+    #
+    # Keep the rows having max log_confidence when grouped by on x, y
+    #
+    df_group <- df_edges %>% group_by(x,y) %>% top_n(n=1, wt = log_confidence)
+    df_group <- as.data.frame (df_group)
+    #
+    # Update the orientions (in case the grouped edges have different orientations)
+    # and put in the lag column the list of lags
+    #
+    for (edge_idx in 1:nrow(df_group) )
+      {
+      one_edge <- df_group[edge_idx,]
+      node_x <- one_edge$x
+      node_y <- one_edge$y
+      log_c <- one_edge$log_confidence
+      #
+      # Update the list of lags (value has been computed in adjacency matrix)
+      #
+      df_group[edge_idx,]$lag <- df_adj[node_x, node_y]
+      #
+      # Update orientation
+      #
+      cond_for_orient <- ( (df_edges[["x"]] == node_x) 
+                         & (df_edges[["y"]] == node_y) 
+                         & (df_edges[["log_confidence"]] != log_c) )
+      #
+      # If edge was unique (no different lag between the nodes), nothing to do
+      #
+      if (sum(cond_for_orient) == 0) 
+        next
+      #
+      # Edge was having two or more lags
+      #
+      df_other <- df_edges[cond_for_orient,]
+      for (other_idx in 1:nrow(df_other) )
+        {
+        other_edge <- df_other[other_idx,]
+        #
+        # If other edge has no orient, nothing to do
+        #
+        if (other_edge$infOrt == 1)
+          {
+          if (DEBUG)
+            print (paste ("Update orientation: ", node_x, "-", node_y, " log=", log_c,
+                   " orient=", df_group[edge_idx,]$infOrt, 
+                   ", other edge orientation=", other_edge$infOrt, 
+                   " => unoriented, nothing to do", sep="") )
+          next            
+          }
+        #
+        # If grouped edge has no orient, we can always update
+        #
+        if (df_group[edge_idx,]$infOrt == 1)
+          {
+          if (DEBUG)
+            print (paste ("Update orientation: ", node_x, "-", node_y, " log=", log_c,
+                   " orient=", df_group[edge_idx,]$infOrt, 
+                   ", other edge orientation=", other_edge$infOrt, 
+                   " => update to ", other_edge$infOrt, sep="") )
+          df_group[edge_idx,]$infOrt <- other_edge$infOrt
+          next            
+          }
+        #
+        # If the other edge is bidirectional or opposite to the groupe one 
+        # -> update to bidirectional
+        #
+        if ( (other_edge$infOrt == 6) | (other_edge$infOrt == -df_group[edge_idx,]$infOrt) )
+          {
+          if (DEBUG)
+            print (paste ("Update orientation: ", node_x, "-", node_y, " log=", log_c,
+                   " orient=", df_group[edge_idx,]$infOrt, 
+                   ", other edge orientation=", other_edge$infOrt, 
+                   " => update to birectional=6", sep="") )
+          df_group[edge_idx,]$infOrt <- 6
+          next            
+          }
+        if (DEBUG)
+          print (paste ("Update orientation: ", node_x, "-", node_y, " log=", log_c,
+                 " orient=", df_group[edge_idx,]$infOrt, 
+                 ", other edge orientation=", other_edge$infOrt, 
+                 " => nothing done", sep="") )
+        }
+      }    
+    df_edges <- df_group
+    if (DEBUG)
+      {
+      print ("after flatten_mode == 'unique':")
+      print (df_edges %>% select(x,y,lag,type,infOrt,sign,log_confidence))
+      }
+    }
+  #
+  # If we do not want to keep info about lag at all
+  #
+  if (flatten_mode == "drop")
+    {
+    if (DEBUG)
+      {
+      df_edges$lag <- NULL
+      print ("after flatten_mode == 'drop':")
+      print (df_edges %>% select(x,y,lag,type,infOrt,sign,log_confidence))
+      }
+    }
+  #
+  # returns the list of dataframes where network has been flattened
+  #
+  miic_return$adjMatrix <- df_adj
+  miic_return$all.edges.summary <- df_edges
+  if (DEBUG)
+    {
+    print ("Returned values:")
+    print ("df_adj:")
+    print (miic_return$adjMatrix)
+    print ("Summary:")
+    print (miic_return$all.edges.summary %>% select(x,y,lag,type,infOrt,sign,log_confidence))
+    }
+  return (miic_return)
   }
 
