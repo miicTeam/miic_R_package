@@ -1,341 +1,545 @@
+#*****************************************************************************
+# Filename   : miic.plot.R                     Creation date: 11 june 2020
+#
+# Description: iGrpah plotting for miic
+#
+# Author     : Franck SIMON (fsimon.informaticien@wanadoo.fr)
+#
+# Changes history:
+# - 11 june 2020 : initial version
+#   This version is a rewrite from miic.plot.R and gmPlot.lib.R, needed to
+#   be able to plot multiple edges between same nodes
+#*****************************************************************************
+# library (igraph)
+# library (dplyr)
+
+#-----------------------------------------------------------------------------
+# miic.plot
+#-----------------------------------------------------------------------------
 #' Igraph plotting function for miic
-#' @description This functions plots the network with the given layout (if specified) using the igraph package.
+#' 
+#' @description This functions plots the network with the given layout 
+#' (if specified) using the igraph package.
 #'
-#' @details The plot reports the partial correlation or the log_confidence as strength of the edges.
+#' @details The plot reports the partial correlation or the log_confidence
+#' as strength of the edges.
 #'
-#' @param g [a miic graph object]
+#' @param miic_result [a miic graph object]
 #' The graph object returned by the miic execution.
 #' @param method [a string; \emph{c("pcor", "log_confidence")}]
-#' The column used to plot the strength of the edges. Default: pcor.
-#' @param userLayout [a data frame]
-#' An optional data frame reporting the position of nodes. Each line corresponds to the \emph{(x,y)}
-#' coordinates of each vertex. This data frame must have three columns, the first containing the
-#' name of the vertex as indicated in the colnames of the input data frame, the two others reporting the x and y positions.
+#' Optional, "log_confidence" by default. The column used to plot the 
+#' strength of the edges. 
 #' @param igraphLayout [an igraph layout object]
-#' When set it is used to plot the network. See the igraph manual for more information.
-#'  Default: \emph{layout_with_kk}
-#' @param title [a string] Optional, the title of the plot. NULL by default.
-#' @param curve_edges [a boolean value] Optional, FALSE by default. If TRUE, edges are curved. 
-#' @param edge_arrow_size [a float] Optional, NULL by default. The size of edges arrows.
-#' @param verbose [a boolean value] Optional, FALSE by default. If TRUE, debugging output is printed.
-#' @param call_from_tmiic [a boolean value] Optional, FALSE by default.
-#' Used to avoid graphical layout mess when plotting from tmiic. if TRUE, does not change the graphic
-#' layout parameters and does not display the confidence/correlation legend on the right side.
+#' Optional, \emph{layout_with_kk} by default. When set, it is used to plot 
+#' the network. See the igraph manual for more information.
+#' @param userLayout [a data frame]
+#' Optional, NULL by default. A data frame reporting the position of nodes. 
+#' Each line corresponds to the \emph{(x,y)} coordinates of each vertex.
+#' When the data frame has two columns, the first one is assocated with
+#' \emph{x} and the second to \emph{y}. When the data frame has more than 
+#' two columns, columns two and three are extracted and mapped, 
+#' respectively, to \emph{x} and \emph{y} positions.
+#' @param miic_defaults [a boolean] Optional, TRUE by default. 
+#' When TRUE, several graphic parameters are intialised with default values
+#' suited for most of miic results:
+#' \itemize{
+#' \item For nodes, font family: "Helvetica", color: "lightblue", size: 10, 
+#' label.cex: 0.6
+#' \item For edges, arrow.size: 0.2, arrow.width: 3, width: 3, curved: FALSE
+#' }
+#' Note that if the user supplies specific values for these parameters
+#' (ie a specific node size), the user choices will overwrite the miic 
+#' defaults.
+#' @param filename [a string] Optional, NULL by default. 
+#' If supplied, plot will be saved here.
+#' @param file_figsize [a list: \emph{c(length, height)}] Optional, NULL by 
+#' default. When plots are drawn to a file, the size of the draw in pixels 
+#' can be specified by a couple of values. The first is the lentgh, the 
+#' second the height.
+#' @param draw_legend [a boolean] Optional, TRUE by default. 
+#' When TRUE, a legend is drawn on the right side of the plot.
+#' @param title [a string] Optional, NULL by default. The title of the plot. 
+#' @param title_cex [a number] Optional, 1.5 by default. The size of the title. 
+#' @param font_family [a string] Optional, NULL by default. The font to use.\cr
+#' Note that the font may not apply in all the graphical parts, depending
+#' on how the plotted objects manage the font parameter.
+#' @param nodes_label_dist [a number] Optional, NULL by default. 
+#' The distance of the labels from the nodes. 
+#' @param nodes_label_degree [a number] Optional, NULL by default.
+#' The degre where to draw the labels from the nodes. 
+#' @param nodes_label_cex [a number] Optional, NULL by default.
+#' The size of the nodes labels. 
+#' @param nodes_shape [a string] Optional, NULL by default.
+#' The shape of the nodes. See the igraph manual for more information.
+#' @param nodes_colors [a string or a vector] Optional, NULL by default.
+#' The colors of the nodes. See the igraph manual for more information.
+#' @param nodes_sizes [a number or a vector] Optional, NULL by default.
+#' The sizes of the nodes. See the igraph manual for more information.
+#' @param edges_labels [a vector] Optional, NULL by default.
+#' The labels to display on the edges. 
+#' @param edges_label_cex [a number] Optional, NULL by default.
+#' The size of the edges labels. 
+#' @param edges_width [a number] Optional, NULL by default.
+#' The width of the edges.  
+#' @param edges_curved [a boolean or a vector] Optional, NULL by default.
+#' The curvatures to apply to the edges. When TRUE, edges are curved 
+#' and when FALSE, edges are straitgh.\cr
+#' Note that mutiple edges between the same nodes will always be curved
+#' whatever value has \emph{edges_curved}. 
+#' See the igraph manual for more information.
+#' @param edges_arrow_size [a number] Optional, NULL by default.
+#' The size of the edges arrows.  
+#' @param edges_arrow_width [a number] Optional, NULL by default.
+#' The width of the edges arrows.  
+#' @param verbose [a boolean value] Optional, FALSE by default. If TRUE, 
+#' debugging output is printed.
 #'
 #' @export
 #' @useDynLib miic
-library(igraph)
-
-miic.plot <-
-  function(g,
-           method = "log_confidence",
-           igraphLayout = NULL,
-           userLayout = NULL,
-           title=NULL, 
-           curve_edges = FALSE,
-           edge_arrow_size= NULL,
-           verbose = F,
-           call_from_tmiic = FALSE) {
-    if (is.null(g$all.edges.summary)) {
-      stop("The learnt graphical model summary does not exist")
-    }
-    
-    if (verbose) {
-      if (is.null(userLayout)) {
-        cat("\t# --W--> No file path for the nodes user layout given.\n")
-      }
-    }
-
-    if (verbose) {
-      cat("# --------\n# -> START Plot...\n")
-    }
-
-    #### Set Global variables
-    myVariables <- colnames(g$adjMatrix)
-
-    #### Read the first line of the inputdata file to get all the properties
-    #### saved in the correct order
-    gV <- new.env()
-    #### ----
-
-    #### Load the vertices positions
-    if (verbose == TRUE) {
-      cat("# Load the positions of the vertices\n")
-    }
-
-    gV$myVerticesPos <- NULL
-    if (!is.null(userLayout)) {
-      gV$myVerticesPos <- userLayout
-      if (ncol(gV$myVerticesPos) > 2) {
-        gV$myVerticesPos <- gV$myVerticesPos[, -1]
-      }
-      gV$myVerticesPos <- as.matrix(gV$myVerticesPos)
-    }
-
-    #### summary
-    # plots for all technics on partial correlation
-    mySummary <- plot.loadSummary(g$all.edges.summary)
-    # create the color vector based on partial correlation values
-
-
-    # handle the layout
-    if (!is.null(userLayout)) {
-      myLayout <- gV$myVerticesPos
-    } else {
-      if (is.null(igraphLayout)) {
-        myLayout <- igraph::layout_with_kk
-        # if (length(myVariables) >=40){
-        #  myLayout = igraph::layout.circle
-        # }
-      } else {
-        myLayout <- igraphLayout
-      }
-    }
-  
-    if (method == "pcor") {
-      if (!is.na(g$retained.edges.summary$partial_correlation[1])) {
-        myColors <- pCor.edgeCol(mySummary, myVariables)
-        # create the graph object
-        myGraph <- modif.Graph(mySummary, myVariables, myColors)
-
-        if (!call_from_tmiic)
-          {
-          # plot the Partial Correlation Graph
-          graphics::layout(t(1:2), widths = c(5, 1))
-          # Set margins and turn all axis labels horizontally (with `las=1`)
-          graphics::par(
-            mar = rep(.5, 4),
-            oma = c(3, 3, 3, 1),
-            las = 1
-          )
-          }
-        
-        if (curve_edges)
-          {
-          curves <- miic.autocurve.edges (myGraph, flag_curve_all=TRUE)
-          if (call_from_tmiic)
-            graphics::plot(myGraph, edge.curved=curves, layout = myLayout, 
-                           edge.arrow.size=edge_arrow_size, 
-                           vertex.label.dist=1, vertex.label.degree=pi/2)
-          else
-            graphics::plot(myGraph, edge.curved=curves, layout = myLayout, 
-                           edge.arrow.size=edge_arrow_size)
-          }
-        else
-          {
-          graphics::plot(myGraph, layout = myLayout, edge.arrow.size=edge_arrow_size)
-          }
-        if (! is.null(title) )
-          {
-          title(paste ("\n", title, sep="") )
-          }
-        
-        if (!call_from_tmiic)
-          {
-          blue.gradient <- grDevices::rainbow(100, start = 3 / 6, end = 4 / 6)
-          red.gradient <- grDevices::rainbow(100, start = 0, end = 0.16)
-          leg_colors <- c(red.gradient, blue.gradient)
-          legend_image <-
-            grDevices::as.raster(matrix(leg_colors, ncol = 1))
-          graphics::plot(
-            c(0, 5),
-            c(-1, 1),
-            type = "n",
-            axes = F,
-            xlab = "",
-            ylab = "",
-            main = "Partial correlation",
-            cex.main = 0.7
-          )
-          graphics::text(
-            x = 1.5,
-            y = seq(-1, 1, l = 5),
-            labels = seq(-1, 1, l = 5),
-            cex = 0.7
-          )
-          graphics::rasterImage(legend_image, 2.5, -1, 3.5, 1)
-          }
-      } else {
-        print(
-          paste(
-            "It is not possible to plot correlation for categorical ",
-            "variables without an order"
-          )
-        )
-      }
-      # plot the Confidence Graph  only for miic on log_confidence
-    } else if (method == "log_confidence") {
-      myColors <- conf.edgeCol(mySummary, myVariables)
-      myGraph <- modif.Graph(mySummary, myVariables, myColors)
-
-      if (!call_from_tmiic)
-        {
-        graphics::layout(t(1:3), widths = c(5, 1, 1))
-        # Set margins and turn all axis labels horizontally (with `las=1`)
-        graphics::par(
-          mar = c(.5, .1, .5, .1),
-          oma = c(3, 3, 3, 1),
-          las = 1
-        )
-        }
-      if (curve_edges)
-        {
-        curves <- miic.autocurve.edges (myGraph, flag_curve_all=TRUE)
-        if (call_from_tmiic)
-          graphics::plot(myGraph, edge.curved=curves, layout = myLayout, 
-                         edge.arrow.size=edge_arrow_size, 
-                         vertex.label.dist=1, vertex.label.degree=pi/2)
-        else
-          graphics::plot(myGraph, edge.curved=curves, layout = myLayout, 
-                         edge.arrow.size=edge_arrow_size)
-        }
-      else
-        {
-        graphics::plot(myGraph, layout = myLayout, edge.arrow.size=edge_arrow_size)
-        }
-      if (! is.null(title) )
-        {
-        title( paste("\n", title, sep="") )
-        }
-
-      if (!call_from_tmiic)
-        {
-        blue.gradient <- grDevices::rainbow(100, start = 3 / 6, end = 4 / 6)
-        red.gradient <- grDevices::rainbow(100, start = 0, end = 0.16)
-        # Legend
-        # Positive correlations
-  
-        legend_image <-
-          grDevices::as.raster(matrix(red.gradient, ncol = 1))
-        graphics::plot(
-          c(0, 4),
-          c(0.2, 0.8),
-          type = "n",
-          axes = F,
-          xlab = "",
-          ylab = ""
-        )
-        graphics::par(adj = 1)
-        }
-      
-      if ( !is.null(g$retained) )
-        {
-        if (!is.na(g$retained.edges.summary$partial_correlation[1])) {
-          leg_colors <- c(red.gradient, blue.gradient)
-
-          graphics::title("Confidence\npcor+",
-            cex.main = 1,
-            line = -4
-          )
-          graphics::rasterImage(legend_image, 3.3, 0.25, 3.8, 0.75)
-          legend_image <-
-            grDevices::as.raster(matrix(rev(blue.gradient), ncol = 1))
-          graphics::plot(
-            c(0, 4),
-            c(0.2, 0.8),
-            type = "n",
-            axes = F,
-            xlab = "",
-            ylab = ""
-          )
-          graphics::par(adj = 0.5)
-          graphics::title("(NI' = -log Pxy)\npcor-",
-            cex.main = 1,
-            line = -4
-          )
-          graphics::text(
-            x = rep(.5, 3),
-            y = c(0.26, 0.5, 0.74),
-            labels = c("< 1", "50", "> 100"),
-            cex = 1
-          )
-          graphics::rasterImage(legend_image, 1.5, 0.25, 2, 0.75)
-        }
-        else {
-          leg_colors <- c(red.gradient)
-          graphics::title("Confidence   \n(NI' = -log Pxy)",
-            cex.main = 1,
-            line = -3
-          )
-          graphics::rasterImage(legend_image, 2.5, 0.25, 3, 0.75)
-          graphics::plot(
-            c(0, 4),
-            c(0.2, 0.8),
-            type = "n",
-            axes = F,
-            xlab = "",
-            ylab = ""
-          )
-          graphics::par(adj = 0.3)
-          graphics::text(
-            x = rep(.5, 3),
-            y = c(0.26, 0.5, 0.74),
-            labels = c("< 1", "50", "> 100"),
-            cex = 1
-          )
-          # graphics::rasterImage(legend_image, 1.5, 0.25, 2, 0.75)
-  
-          # legend_image <- grDevices::as.raster(matrix(leg_colors, ncol=1))
-          # graphics::plot(c(0,5),c(0,1),type = 'n', axes = F,xlab = '', ylab = '', main = "Confidence (NI' = -log Pxy)", cex.main = 0.7)
-          # graphics::text(x=1.5, y = seq(0,1,l=5), labels = seq(0,1,l=5), cex = 0.7)
-          # graphics::rasterImage(legend_image, 3.3, 0, 3.8, 1)
-        }
-      }
-    } else {
-      stop("incorrect method argument: must be \"log_confidence\" or \"pcor\" ")
-    }
-    if (verbose) {
-      cat("\t# --------\n# -> END Plot...\n")
-    }
-  }
-
-#--------------------------------------------------------------------------------
-# miic.autocurve.edges
-#--------------------------------------------------------------------------------
-#' miic.autocurve.edges
-#'
-#' Utility funcion to plot curved edges for miic
-#' 
-#' @description This functions generates curved edges in the igraph draw.
-#'
-#' @param graph [a miic graph object]
-#' The graph object returned by the miic execution.
-#' @param start [an integer]
-#' The strengh of the curvature ?
-#' @param flag_curve_all [a boolean]
-#' Optional, flag controling if all or only mutual edges are curved. FALSE by default
-#--------------------------------------------------------------------------------
-miic.autocurve.edges <-function (graph, start = 0.5, flag_curve_all=FALSE)
+#-----------------------------------------------------------------------------
+miic.plot <- function (miic_result, method = "log_confidence", 
+                       igraphLayout = NULL, userLayout = NULL, 
+                       miic_defaults=TRUE, filename=NULL, file_figsize=NULL,
+                       draw_legend=TRUE, title=NULL, title_cex=1.5, 
+                       font_family=NULL, nodes_label_dist=NULL, 
+                       nodes_label_degree=NULL, nodes_label_cex=NULL,
+                       nodes_shape=NULL, nodes_colors=NULL, nodes_sizes=NULL, 
+                       edges_labels=NULL, edges_label_cex=NULL, 
+                       edges_width=NULL, edges_curved=NULL, 
+                       edges_arrow_size=NULL, edges_arrow_width=NULL,
+                       verbose = FALSE) 
   {
-  cm <- count.multiple (graph)
-  mut <-is.mutual (graph)  #are connections mutual?
-  el <- apply(get.edgelist(graph, names = FALSE), 1, paste, collapse = ":")
-  ord <- order(el)
-  res <- numeric(length(ord))
-  p <- 1
-  while (p <= length(res)) 
+  DEBUG <- TRUE
+  if ( (verbose) | (DEBUG) )
+    print ("Start of plot ...")
+  #
+  # Check inputs
+  #
+  if ( (method != "pcor") & (method != "log_confidence") )
+    stop ("incorrect method argument: must be \"log_confidence\" or \"pcor\" ")
+  if ( is.null (miic_result$adjMatrix) ) 
+    stop ("The learnt graphical model adjacency matrix does not exist")
+  if ( is.null (miic_result$all.edges.summary) ) 
+    stop ("The learnt graphical model summary does not exist")
+  if (method == "pcor") 
     {
-    m <- cm[ord[p]]
-    mut.obs <-mut[ord[p]] #are the connections mutual for this point?
-    idx <- p:(p + m - 1)
-    if (flag_curve_all)
+    if (is.na (miic_result$all.edges.summary$partial_correlation[1])) 
       {
-      r <- seq(-start, start, length = m)
+      print ("Impossible to plot correlation without data in summary")
+      return
+      } 
+    } 
+  else
+    {
+    if (is.na (miic_result$all.edges.summary$log_confidence[1]) ) 
+      {
+      print ("Impossible to plot log_confidence without data in summary")
+      return
+      } 
+    } 
+  #
+  ############################################################################
+  # PREPARATION OF DATA
+  ############################################################################
+  #
+  # Extract nodes and edges. 
+  #
+  list_nodes <- colnames (miic_result$adjMatrix)
+  if (DEBUG) 
+    {
+    print ("list_nodes:")
+    print (list_nodes)
+    }
+  #
+  # Edge are filtered to remove "TN", "N", "FN"
+  #
+  df_edges <- miic_result$all.edges.summary
+  cond_filter <- ( (df_edges[["type"]] != "TN") 
+                 & (df_edges[["type"]] != "N") 
+                 & (df_edges[["type"]] != "FN") ) 
+  df_edges <- df_edges[cond_filter,]
+  #
+  # As we have a bug with curving of multiple edges between same nodes
+  # We will apply a specific treatment to deal with these edges. 
+  # At first, we ensure X string < Y string and we create an extra
+  # column containing x-y so we have an id to perform a duplicate check
+  #
+  df_edges$xy = NULL
+  for (edge_idx in 1:nrow(df_edges)) 
+    {
+    one_edge <- df_edges[edge_idx,]
+    if (one_edge$x < one_edge$y)
+      {
+      df_edges[edge_idx,"x"] <- one_edge$y
+      df_edges[edge_idx,"y"] <- one_edge$x
+      # inverse edge oriention if oriented and not bidirectional
+      # not sure -4,4 orientations still exists, it was present in the old code
+      if ( (abs(one_edge$infOrt) == 2) | (abs(one_edge$infOrt) == 4) )
+        df_edges[edge_idx, "infOrt"] <- -one_edge$infOrt
+      if ( !is.na(one_edge$trueOrt) ) 
+        if ( (abs(one_edge$trueOrt) == 2) | (abs(one_edge$trueOrt) == 4) )
+          df_edges[edge_idx, "trueOrt"] <- -one_edge$trueOrt
       }
+    df_edges[edge_idx, "xy"] <- paste (df_edges[edge_idx,"x"], "-",
+                                       df_edges[edge_idx,"y"], sep="")
+    }
+  if (DEBUG) 
+    {
+    print ("df_edges:")
+    if ( "lag" %in% colnames (df_edges) )
+      print (df_edges %>% select(xy,x,y,lag,type,infOrt,trueOrt,sign,log_confidence) )
     else
+      print (df_edges %>% select(xy,x,y,type,infOrt,trueOrt,sign,log_confidence) )
+    }
+  #
+  # Handle the layout : firstly, take user layout if supplied, 
+  # otherwise, use specific iGraph layout if supplied
+  # otherwise, use igraph::layout_with_kk
+  #
+  if ( !is.null (userLayout) ) 
+    {
+    layout <- userLayout
+    if (ncol (layout) > 2) 
+      # keep only posX and posY
+      layout <- layout[, 2:3]
+    layout <- as.matrix (layout)
+    if ( (verbose) | (DEBUG) )
+      print ("User layout supplied")
+    }
+  else 
+    {
+    if ( is.null (igraphLayout) ) 
       {
-      if (m == 1 & mut.obs==FALSE) 
+      layout <- igraph::layout_with_kk
+      if ( (verbose) | (DEBUG) )
+        print ("Use igraph::layout_with_kk layout as none supplied")
+      }
+    else 
+      {
+      layout <- igraphLayout
+      if ( (verbose) | (DEBUG) )
+        print ("Use supplied igraph::layout")
+      }
+    }
+  #
+  # Define the color gradients
+  #
+  blue.gradient <- grDevices::rainbow (100, start = 3 / 6, end = 4 / 6)
+  red.gradient <- rev (grDevices::rainbow (100, start = 0, end = 0.16) )
+  #
+  # Prepare the orientation and color of each edge in two vectors
+  #
+  edges_orients <- rep (NA, nrow (df_edges) )
+  edges_colors <- rep (NA, nrow (df_edges) )
+  for (edge_idx in 1:nrow(df_edges)) 
+    {
+    # Orientation part
+    #
+    one_edge_orient <- df_edges[edge_idx, "infOrt"]
+    if ( (one_edge_orient == 2) | (one_edge_orient == 4) ) # forward oriented
+      edges_orients[edge_idx] <- 2
+    else if ( (one_edge_orient == -2) | (one_edge_orient == -4) ) # backward oriented
+      edges_orients[edge_idx] <- 1
+    else if (one_edge_orient == 6) # bidirectional
+      edges_orients[edge_idx] <- 3
+    else  # not oriented
+      edges_orients[edge_idx] <- 0
+    #
+    # Color part depending on the method
+    #
+    edge_color_idx <- NULL
+    if (method == "pcor") 
+      {
+      edge_color_idx <- df_edges[edge_idx, "partial_correlation"]
+      edge_color_idx <- round ( abs (edge_color_idx) * 100 )
+      if (edge_color_idx == 0) 
+        edge_color_idx <- 1
+      }
+    else # log_confidence
+      {
+      edge_color_idx <- df_edges[edge_idx, "log_confidence"]
+      if (edge_color_idx < 1) # min confidence
+        edge_color_idx <- 1
+      if (edge_color_idx > 100) # max confidence
+        edge_color_idx <- 100
+      }
+    #
+    # Get the sign of the link to look at the correct color gradient
+    #
+    if ( is.na (df_edges[edge_idx, "sign"]) )
+      {
+      edges_colors[edge_idx] <- "grey88"
+      next
+      }
+    edge_sign <- df_edges[edge_idx, "sign"]
+    if (edge_sign == "+") 
+      edges_colors[edge_idx] <- red.gradient [edge_color_idx]
+    else
+      edges_colors[edge_idx] <- blue.gradient [edge_color_idx]
+    }
+  #
+  # To later identify multiple edges between same nodes
+  #
+  df_mult <- group_by (df_edges, xy, x, y)
+  df_mult <- summarise (df_mult, count=n())
+  df_mult <- df_mult[df_mult$count > 1,]
+  df_mult <- as.data.frame (df_mult)
+  #
+  ############################################################################
+  # GRAPH PART
+  ############################################################################
+  #
+  # Edges colors and orientations are ready, we can create our graph
+  #
+  graph <- graph.data.frame (df_edges[,c("x","y")], vertices=list_nodes, directed=TRUE)
+  #
+  # Set vertices options
+  #
+  if (miic_defaults)
+    {
+    igraph::V(graph)$label.family <- "Helvetica"
+    igraph::V(graph)$color <- "lightblue"
+    igraph::V(graph)$size <- 10
+    igraph::V(graph)$label.cex <- 0.6
+    }
+  
+  if ( !is.null (nodes_shape) )
+    igraph::V(graph)$shape <- nodes_shape
+  if ( !is.null (font_family) )
+    igraph::V(graph)$label.family <- font_family
+  if ( !is.null (nodes_colors) )
+    igraph::V(graph)$color <- nodes_colors
+  if ( !is.null (nodes_sizes) )
+    igraph::V(graph)$size <- nodes_sizes
+  if ( !is.null (nodes_label_dist) )
+    igraph::V(graph)$label.dist <- nodes_label_dist
+  if ( !is.null (nodes_label_degree) )
+    igraph::V(graph)$label.degree <- nodes_label_degree
+  if ( !is.null (nodes_label_cex) )
+    igraph::V(graph)$label.cex <- nodes_label_cex
+
+  igraph::V(graph)$label <- list_nodes
+  #
+  # Set the edges options
+  #
+  if (miic_defaults)
+    {
+    igraph::E(graph)$arrow.size <- 0.2
+    igraph::E(graph)$arrow.width <- 3
+    igraph::E(graph)$width <- 3
+    igraph::E(graph)$curved <- FALSE
+    }
+  
+  if ( !is.null (edges_labels) )
+    igraph::E(graph)$label <- edges_labels
+  # Generate an error : graphical parameter "family" has the wrong length 
+  # (iGraph github issue #37)
+  # if ( !is.null (font_family) )
+  #   igraph::E(graph)$label.family <- font_family
+  if ( !is.null (edges_label_cex) )
+    igraph::E(graph)$label.cex <- edges_label_cex
+  if ( !is.null (edges_width) )
+    igraph::E(graph)$width <- edges_width
+  if ( !is.null(edges_curved) )
+    igraph::E(graph)$curved <- edges_curved
+  if ( !is.null (edges_arrow_size) )
+    igraph::E(graph)$arrow.size <- edges_arrow_size
+  if ( !is.null (edges_arrow_width) )
+    igraph::E(graph)$arrow.width <- edges_arrow_width
+
+  igraph::E(graph)$color <- edges_colors
+  igraph::E(graph)$arrow.mode <- edges_orients
+  #
+  ############################################################################
+  # PLOT PART
+  ############################################################################
+  #
+  # Save the graphic settings (the ones that can be modified)
+  #
+  sav_config <- par (no.readonly=TRUE) 
+  if ( !is.null(font_family) )
+    par (family=font_family)
+  #
+  # If a filename is supplied, redirect the plot output
+  #
+  if (! is.null(filename) )
+    {
+    if (! is.null(file_figsize) )    
+      png (filename=filename, width=file_figsize[[1]], 
+           height=file_figsize[[2]], units="px")
+    else
+      png (filename=filename)
+    }
+  #
+  # If we draw the legend, divide the layout for plot and legend
+  # and set margins 
+  #
+  if (draw_legend)
+    {
+    margins <- par("mar")
+    if (method == "pcor")
+      {
+      graphics::layout (t(1:2), widths=c(5, 1))
+      graphics::par (mar=c(.5, .5, .5, .5),
+                     oma=c(0.5, .5, margins[[2]], .5) ) 
+      }
+    else # log_confidence
+      {
+      graphics::layout (t(1:3), widths = c(5, 1, 1))
+      graphics::par (mar=c(0, .5, .5, .5),
+                     oma=c(0, .5, (margins[[2]]+1), .5) ) 
+      }
+    }
+  #
+  # Plotting of the network
+  #
+  if (nrow (df_mult) <= 0)
+    {
+    # No multiple edges between the same nodes, we draw in one go
+    #
+    graphics::plot (graph, layout=layout)
+    }
+  else
+    {
+    # Multiple edges between the same nodes exist, draw iteratively
+    #
+    edges_colors_iter <- edges_colors
+    edges_labels_iter <- edges_labels
+    #
+    # If we have self loops, add margin on left and right 
+    # to avoid self loops to be drawn outside of the plotting area
+    #
+    graph_margin <- c(0,0,0,0)
+    if (nrow (df_mult[df_mult$x == df_mult$y]) > 0)
+      graph_margin <- c(0,0,0.25,0.25)
+    #
+    # On a first step, we will draw all the graph except multiple edges
+    # The multiple edges will be drawn with invisible color "#FF000000"
+    # and with no labels (if any)
+    #
+    for ( edge_idx in 1:nrow(df_edges) )
+      {
+      one_edge <- df_edges[edge_idx,]
+      if (one_edge$xy %in% df_mult$xy)
         {
-        #no mutual conn = no curve
-        r <- 0
+        edges_colors_iter[[edge_idx]] <- "#FF000000"
+        if (! is.null (edges_labels_iter) )
+          edges_labels_iter[[edge_idx]] <- NA
+        }
+      }
+    graphics::plot (graph, layout=layout, margin=graph_margin, 
+                    edge.color=edges_colors_iter, edge.label=edges_labels_iter)
+    #
+    # Draw each group of multiple edges
+    #
+    for ( mult_idx in 1:nrow(df_mult) )
+      {
+      one_mult <- df_mult[mult_idx,]
+      if (one_mult$x == one_mult$y)
+        {
+        # for self loop, we will go over 2*pi around the node
+        #
+        step_pos <- 0
+        step_inc <- (2 * pi) / one_mult$count
         }
       else
         {
-        r <- seq(-start, start, length = m)
+        # otherelse, we will curve edges from -0.5 to +0.5
+        #
+        if (one_mult$count > 4) # if more than 4 edges, curve more
+          {
+          step_pos <- -1 
+          step_inc <- 2.0 / (one_mult$count - 1)
+          }
+        else
+          {
+          step_pos <- -0.5 
+          step_inc <- 1.0 / (one_mult$count - 1)
+          }
+        }
+      #
+      # Draw mutliple egdes one by one
+      #
+      list_to_draw = which(df_edges[, "xy"] == one_mult$xy)
+      for (idx_to_draw in 1:length(list_to_draw) )
+        {
+        edge_to_draw = list_to_draw[[idx_to_draw]]
+        # 
+        # We hide all edges except one
+        #
+        edges_colors_iter <- rep ("#FF000000", nrow (df_edges) )
+        edges_labels_iter <- rep (NA, nrow (df_edges) )
+        edges_colors_iter[[edge_to_draw]] <- edges_colors[[edge_to_draw]]
+        edges_labels_iter[[edge_to_draw]] <- edges_labels[[edge_to_draw]]
+        
+        if (one_mult$x == one_mult$y)
+          graphics::plot (graph, layout=layout, margin=graph_margin, add=TRUE, 
+                          edge.color=edges_colors_iter, edge.label=edges_labels_iter,
+                          edge.loop.angle=step_pos)
+        else
+          graphics::plot (graph, layout=layout, margin=graph_margin, add=TRUE, 
+                          edge.color=edges_colors_iter, edge.label=edges_labels_iter,
+                          edge.curved=step_pos)
+        #
+        # Update position for next edge
+        #
+        step_pos <- step_pos + step_inc
         }
       }
-    res[ord[idx]] <- r
-    p <- p + m
     }
-  res
+  #
+  # Finition of the plot, add title
+  #
+  if (! is.null(title) )
+    {
+    if (draw_legend)
+      graphics::mtext (title, cex=title_cex, side=3, outer=TRUE, line=-1)
+    else  
+      graphics::title (title, cex=title_cex)
+    }
+  #
+  # Add legend
+  #
+  if (draw_legend)
+    {
+    if (method == "pcor")
+      {
+      leg_colors <- c(red.gradient, blue.gradient)
+      legend_image <- grDevices::as.raster (matrix (leg_colors, ncol=1) )
+      graphics::plot (x=c(0, 5), y=c(0, 0.8), type="n", axes=F, xlab="", ylab="")
+      # graphics::par (adj=0.5)
+      graphics::title ("Partial\ncorrelation", cex.main=1, line=-2)
+      graphics::text (x=1.5, y=seq(0, 0.75, l=5), 
+                      labels=seq(-1, 1, l=5), cex=1)
+      graphics::rasterImage(legend_image, 2.5, 0, 3.5, 0.75)
+      }
+    else # log_confidence
+      {
+      # Positive correlations
+      # 
+      legend_image <- grDevices::as.raster (matrix (red.gradient, ncol=1))
+      graphics::plot (x=c(0, 4), y=c(0.2, 0.8), type="n", axes=F, xlab="", ylab="")
+      graphics::par (adj=1)
+      graphics::title ("Confidence\npcor+", cex.main=1, line=-4)
+      graphics::rasterImage (legend_image, 3.3, 0.25, 3.8, 0.75)
+      #
+      # Negative correlations
+      # 
+      legend_image <- grDevices::as.raster (matrix (rev(blue.gradient), ncol=1) )
+      graphics::plot (x=c(0, 4), y=c(0.2, 0.8), type="n", axes=F, xlab="", ylab="")
+      graphics::par (adj=0.5)
+      graphics::title ("(NI' = -log Pxy)\npcor-", cex.main=1, line=-4)
+      graphics::rasterImage(legend_image, 1.5, 0.25, 2, 0.75)
+      
+      graphics::text (x=rep(.5, 3), y=c(0.26, 0.5, 0.74), 
+                      labels=c("< 1", "50", "> 100"), cex=1)
+      }
+    }
+  
+  if (! is.null(filename) )
+    dev.off()
+  par (sav_config, new=FALSE)
+  if ( (verbose) | (DEBUG) )
+    print ("End of plot ...")
   }
+
