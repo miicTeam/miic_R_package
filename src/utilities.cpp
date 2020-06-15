@@ -2041,7 +2041,7 @@ double compute_kl_divergence(int* posArray, Environment& environment,
       count_base[mixedDiscrete[i]]++;
     }
     for (uint i = 0; i < environment.numSamples; i++) {
-      // Make sure to use environment data so that the levels match (may be 
+      // Make sure to use environment data so that the levels match (may be
       // recoded in reduced data)
       if(sample_is_not_NA[i])
         count_nonNA[environment.dataNumeric[i][discrete_pos]]++;
@@ -2120,14 +2120,14 @@ int sign(double val) {
 }
 
 /**
- * Counts and marks the rows that contain "NA"s for the edge given by 
+ * Counts and marks the rows that contain "NA"s for the edge given by
  * \a posArray ([0] is X, [1] is Y and above are Us) and an optional \a z.
- * 
+ *
  * \return The number of non NA samples and modifies the vectors
  * sample_is_not_NA and NAs_count
  */
 uint count_non_NAs(int nbrUi, vector<int> &sample_is_not_NA,
-    vector<int> &NAs_count, int* posArray, 
+    vector<int> &NAs_count, int* posArray,
     Environment& environment, int z){
 
   uint samplesNotNA = 0;
@@ -2156,7 +2156,7 @@ uint count_non_NAs(int nbrUi, vector<int> &sample_is_not_NA,
 }
 
 /**
- * Reduces the full data to its "reduced" form without NA rows given the edge 
+ * Reduces the full data to its "reduced" form without NA rows given the edge
  * X-Y | U,(Z). In the case of discrete variables, levels are remapped so that
  * the reduced data still has levels that start at 0. For continuous variables,
  * the ranks are updated (\a dataNumericIdx).
@@ -2173,8 +2173,8 @@ uint count_non_NAs(int nbrUi, vector<int> &sample_is_not_NA,
 bool filter_NAs(int nbrUi, vector<int> &AllLevels, vector<int> &cnt,
     vector<int> &posArray_red, int* posArray, vector<vector<int> > &dataNumeric,
     vector<vector<int> > &dataNumericIdx, vector<double> &sample_weights,
-    const vector<int> &sample_is_not_NA, 
-    const vector<int> &NAs_count, 
+    const vector<int> &sample_is_not_NA,
+    const vector<int> &NAs_count,
     Environment& environment, int z) {
 
   int k1, k2, nnr, prev_val, si, old_val, new_val, updated_discrete_level;

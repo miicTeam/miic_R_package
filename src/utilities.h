@@ -66,7 +66,7 @@ void getJointSpace(structure::Environment&, int i, int j, double** jointSpace,
     int* curr_sample_is_not_NA);
 int getNumSamples_nonNA(structure::Environment&, int i, int j);
 
-uint count_non_NAs(int nbrUi, std::vector<int> &sample_is_not_NA,
+unsigned int count_non_NAs(int nbrUi, std::vector<int> &sample_is_not_NA,
     std::vector<int> &NAs_count, int* posArray, 
     structure::Environment& environment, int z=-1);
 
