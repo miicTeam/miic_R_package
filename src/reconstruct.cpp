@@ -52,10 +52,6 @@ extern "C" SEXP reconstruct(SEXP inputDataR, SEXP typeOfDataR, SEXP cntVarR,
     SEXP isK23R, SEXP isDegeneracyR, SEXP orientationR, SEXP propagationR,
     SEXP isNoInitEtaR, SEXP confidenceShuffleR, SEXP confidenceThresholdR,
     SEXP sampleWeightsR, SEXP consistentR, SEXP testDistR, SEXP verboseR) {
-  vector<vector<double> > outScore;
-  vector<vector<string> > edgesMatrix;
-  std::stringstream output;
-
   Environment environment;
   environment.myVersion = "V79";
 
@@ -216,45 +212,38 @@ extern "C" SEXP reconstruct(SEXP inputDataR, SEXP typeOfDataR, SEXP cntVarR,
   }
   environment.numNoMore = union_n_edges;
 
-  if (environment.numNoMore > 0) {
-    // skeleton consistent algorithm
-    if (environment.consistentPhase == 2) {
-      orientations = orientationProbability(environment);
-      // Check inconsistency after orientation, add undirected edge to
-      // pairs with inconsistent conditional independence.
-      bcc.analyse();
-      uint n_inconsistency = 0;
-      std::vector<std::pair<uint, uint> > inconsistent_edges;
-      for (uint i = 1; i < environment.numNodes; i++) {
-        for (uint j = 0; j < i; j++) {
-          const Edge& edge = environment.edges[i][j];
-          if (edge.status ||
-              bcc.is_consistent(i, j, edge.shared_info->ui_vect_idx))
-            continue;
-          if (environment.isVerbose) {
-            std::cout << environment.nodes[i].name << ",\t"
-                      << environment.nodes[j].name << "\t| "
-                      << vectorToStringNodeName(
-                             environment, edge.shared_info->ui_vect_idx)
-                      << std::endl;
-          }
-          inconsistent_edges.emplace_back(i, j);
-          ++n_inconsistency;
+  // skeleton consistent algorithm
+  if (environment.numNoMore > 0 && environment.consistentPhase == 2) {
+    orientations = orientationProbability(environment);
+    // Check inconsistency after orientation, add undirected edge to
+    // pairs with inconsistent conditional independence.
+    bcc.analyse();
+    uint n_inconsistency = 0;
+    std::vector<std::pair<uint, uint> > inconsistent_edges;
+    for (uint i = 1; i < environment.numNodes; i++) {
+      for (uint j = 0; j < i; j++) {
+        const Edge& edge = environment.edges[i][j];
+        if (edge.status ||
+            bcc.is_consistent(i, j, edge.shared_info->ui_vect_idx))
+          continue;
+        if (environment.isVerbose) {
+          std::cout << environment.nodes[i].name << ",\t"
+                    << environment.nodes[j].name << "\t| "
+                    << toNameString(environment, edge.shared_info->ui_vect_idx)
+                    << std::endl;
         }
+        inconsistent_edges.emplace_back(i, j);
+        ++n_inconsistency;
       }
-      for (const auto& k : inconsistent_edges) {
-        environment.edges[k.first][k.second].status = 1;
-        environment.edges[k.second][k.first].status = 1;
-        environment.edges[k.first][k.second].shared_info->setUndirected();
-      }
-      std::cout << n_inconsistency << " inconsistent conditional independences"
-                << " found after orientation." << std::endl;
     }
-    edgesMatrix = saveEdgesListAsTable(environment);
+    for (const auto& k : inconsistent_edges) {
+      environment.edges[k.first][k.second].status = 1;
+      environment.edges[k.second][k.first].status = 1;
+      environment.edges[k.first][k.second].shared_info->setUndirected();
+    }
+    std::cout << n_inconsistency << " inconsistent conditional independences"
+              << " found after orientation." << std::endl;
   }
-
-  vector<vector<string> > adjMatrix;
-  adjMatrix = getAdjMatrix(environment);
 
   vector<double> time;
   time.push_back(environment.execTime.init);
@@ -264,8 +253,8 @@ extern "C" SEXP reconstruct(SEXP inputDataR, SEXP typeOfDataR, SEXP cntVarR,
 
   List result;
   result = List::create(
-      _["adjMatrix"]         = adjMatrix,
-      _["edges"]             = edgesMatrix,
+      _["adj_matrix"]        = getAdjMatrix(environment),
+      _["edges"]             = getEdgesInfoTable(environment),
       _["orientations.prob"] = orientations,
       _["time"]              = time,
       _["interrupted"]       = false);

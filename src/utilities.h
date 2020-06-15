@@ -21,19 +21,18 @@ bool existsTest(const std::string&);
 bool checkNA(int**, int, int);
 void saveAdjMatrix(const structure::Environment&, const std::string);
 void saveAdjMatrixState(const structure::Environment&, const std::string);
-std::vector<std::vector<std::string> > saveEdgesListAsTable(
+std::vector<std::vector<std::string> > getEdgesInfoTable(
     structure::Environment&);
 void saveExecTime(const structure::Environment&, const std::string);
 std::string arrayToString(const double*, const int);
-std::string vectorToString(const std::vector<int>&);
-std::string vectorToStringNodeName(
+std::string toNameString(
     const structure::Environment&, const std::vector<int>&);
+std::string vectorToString(const std::vector<int>&);
 void readTime(structure::Environment&, std::string);
 void readFilesAndFillStructures(
     std::vector<std::string> edgesVectorOneLine, structure::Environment&);
 bool readBlackbox(std::vector<std::string>, structure::Environment&);
-std::vector<std::vector<std::string> > getAdjMatrix(
-    const structure::Environment&);
+std::vector<std::vector<int>> getAdjMatrix(const structure::Environment&);
 int sign(double val);
 void transformToFactors(structure::Environment&, int);
 void transformToFactorsContinuous(structure::Environment&, int);

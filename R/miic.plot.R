@@ -39,7 +39,7 @@ miic.plot <-
     }
 
     #### Set Global variables
-    myVariables <- colnames(g$adjMatrix)
+    myVariables <- colnames(g$adj_matrix)
 
     #### Read the first line of the inputdata file to get all the properties
     #### saved in the correct order

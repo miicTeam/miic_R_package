@@ -768,48 +768,10 @@ double* computeEnsInformationNew(Environment& environment, int* myCond,
   return res_new;
 }
 
-// remove the z from the zi
-void removeifNA(Environment& environment, vector<int>& vec, const int posX,
-    const int posY) {
-  vector<int>::iterator it = vec.begin();
-
-  while (it != vec.end()) {
-    if (*it == -1) {
-      vec.erase(it);
-    } else
-      ++it;
-  }
-}
-
-// If zx and zy are phantom, remove the z from the zi
-void removeifBothPhantomAndNA(Environment& environment, vector<int>& vec,
-    const int posX, const int posY) {
-  vector<int>::iterator it = vec.begin();
-
-  while (it != vec.end()) {
-    if (!environment.edges[posX][*it].status &&
-        !environment.edges[posY][*it].status) {
-      vec.erase(it);
-    } else
-      ++it;
-  }
-}
-
 void SearchForNewContributingNodeAndItsRank(
     Environment& environment, const int posX, const int posY, MemorySpace& m) {
-  if (environment.edges[posX][posY].shared_info->zi_vect_idx.size() == 0)
+  if (environment.edges[posX][posY].shared_info->zi_vect_idx.empty())
     return;
-  // If needed, remove the NA (-1) elements
-  removeifNA(environment,
-      environment.edges[posX][posY].shared_info->zi_vect_idx, posX, posY);
-
-  if (!environment.isLatent)
-    removeifBothPhantomAndNA(environment,
-        environment.edges[posX][posY].shared_info->zi_vect_idx, posX, posY);
-
-  int nbrZi = environment.edges[posX][posY].shared_info->zi_vect_idx.size();
-
-  if (nbrZi == 0) return;
 
   int* ui;
   int* zi;
@@ -896,13 +858,6 @@ void SearchForNewContributingNodeAndItsRankGaussian(
     Environment& environment, const int posX, const int posY, MemorySpace& m) {
   if (environment.edges[posX][posY].shared_info->zi_vect_idx.size() == 0)
     return;
-  // If needed, remove the NA (-1) elements
-  removeifNA(environment,
-      environment.edges[posX][posY].shared_info->zi_vect_idx, posX, posY);
-
-  if (!environment.isLatent)
-    removeifBothPhantomAndNA(environment,
-        environment.edges[posX][posY].shared_info->zi_vect_idx, posX, posY);
 
   int nbrZi = environment.edges[posX][posY].shared_info->zi_vect_idx.size();
 
@@ -1116,13 +1071,6 @@ double computeEnsInformationContinuous_Gaussian(
     Environment& environment, const int posX, const int posY, const int posZ) {
   if (environment.edges[posX][posY].shared_info->zi_vect_idx.size() == 0)
     return true;
-  // If needed, remove the NA (-1) elements
-  removeifNA(environment,
-      environment.edges[posX][posY].shared_info->zi_vect_idx, posX, posY);
-
-  if (!environment.isLatent)
-    removeifBothPhantomAndNA(environment,
-        environment.edges[posX][posY].shared_info->zi_vect_idx, posX, posY);
 
   int* ui;
   if (environment.edges[posX][posY].shared_info->ui_vect_idx.empty())

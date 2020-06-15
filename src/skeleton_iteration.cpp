@@ -290,13 +290,11 @@ bool skeletonIteration(Environment& environment) {
     if (environment.isVerbose) {
       cout << "# DO: Add new zi to {ui}: " << topEdgeElt->z_name_idx << endl;
     }
-
-    // Ui
+    // move top z_name_idx from zi_vect to ui_vect
     topEdgeElt->ui_vect_idx.push_back(
         topEdgeElt->zi_vect_idx[topEdgeElt->z_name_idx]);
-    // Zi
-    // topEdgeElt->z.name = NA
-    topEdgeElt->zi_vect_idx[topEdgeElt->z_name_idx] = -1;
+    topEdgeElt->zi_vect_idx.erase(
+        topEdgeElt->zi_vect_idx.begin() + topEdgeElt->z_name_idx);
     topEdgeElt->z_name_idx = -1;
 
     double* v = NULL;

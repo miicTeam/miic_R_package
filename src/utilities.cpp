@@ -166,27 +166,15 @@ void sort2arraysConfidence(int len, int a[], int brr[]) {
   std::sort(brr, brr + len, sort_indices(a));
 }
 
-vector<vector<string> > getAdjMatrix(const Environment& environment) {
-  stringstream ss;
-  vector<vector<string> > adjMatrix;
-  vector<string> vec;
-  for (uint i = 0; i < environment.numNodes; i++) {
-    vec.push_back(environment.nodes[i].name);
-  }
-
-  adjMatrix.push_back(vec);
-
-  for (uint i = 0; i < environment.numNodes; i++) {
-    vec.clear();
-    vec.push_back(environment.nodes[i].name);
-    for (uint j = 0; j < environment.numNodes; j++) {
-      ss.str("");
-      ss << environment.edges[i][j].status;
-      vec.push_back(ss.str());
+vector<vector<int>> getAdjMatrix(const Environment& env) {
+  vector<vector<int>> adj_matrix(env.numNodes, vector<int>(env.numNodes, 0));
+  for (uint i = 1; i < env.numNodes; i++) {
+    for (uint j = 0; j < i; j++) {
+      adj_matrix[i][j] = env.edges[i][j].status;
+      adj_matrix[j][i] = env.edges[j][i].status;
     }
-    adjMatrix.push_back(vec);
   }
-  return adjMatrix;
+  return adj_matrix;
 }
 
 void createMemorySpace(Environment& environment, MemorySpace& m) {
@@ -405,51 +393,26 @@ class sorterNoMore {
   }
 };
 
-bool SortFunction(
-    const EdgeID* a, const EdgeID* b, const Environment& environment) {
-  if (environment.edges[a->i][a->j].shared_info->connected >
-      environment.edges[b->i][b->j].shared_info->connected)
-    return true;
-  else if (environment.edges[a->i][a->j].shared_info->connected <
-           environment.edges[b->i][b->j].shared_info->connected)
-    return false;
-
-  if (environment.edges[a->i][a->j].shared_info->connected == 0 &&
-      environment.edges[b->i][b->j].shared_info->connected == 0) {
-    if (environment.edges[a->i][a->j].shared_info->Rxyz_ui == 0 &&
-        environment.edges[b->i][b->j].shared_info->Rxyz_ui != 0)
-      return true;
-    else if (environment.edges[a->i][a->j].shared_info->Rxyz_ui != 0 &&
-             environment.edges[b->i][b->j].shared_info->Rxyz_ui == 0)
-      return false;
-
-    if (environment.edges[a->i][a->j].shared_info->Rxyz_ui >
-        environment.edges[b->i][b->j].shared_info->Rxyz_ui)
-      return true;
-    else if (environment.edges[a->i][a->j].shared_info->Rxyz_ui <
-             environment.edges[b->i][b->j].shared_info->Rxyz_ui)
-      return false;
-  }
-
-  if (environment.edges[a->i][a->j].shared_info->connected == 1 &&
-      environment.edges[b->i][b->j].shared_info->connected == 1) {
-    if (environment.edges[a->i][a->j].shared_info->Ixy_ui >
-        environment.edges[b->i][b->j].shared_info->Ixy_ui)
-      return true;
-    else if (environment.edges[a->i][a->j].shared_info->Ixy_ui <
-             environment.edges[b->i][b->j].shared_info->Ixy_ui)
-      return false;
-  }
-  return false;
-}
-
-class sorter {
-  const Environment& environment;
+class EdgeSorter {
+  const Environment& env;
 
  public:
-  sorter(const Environment& env) : environment(env) {}
-  bool operator()(EdgeID const* o1, EdgeID const* o2) const {
-    return SortFunction(o1, o2, environment);
+  EdgeSorter(const Environment& env) : env(env) {}
+  bool operator()(const EdgeID& e1, const EdgeID& e2) const {
+    const auto info1 = env.edges[e1.i][e1.j].shared_info;
+    const auto info2 = env.edges[e2.i][e2.j].shared_info;
+    // connected can be 1 or 0
+    if (info1->connected != info2->connected)
+      return info1->connected > info2->connected;
+
+    if (info1->connected == 0) {
+      if (info1->Rxyz_ui == 0 || info2->Rxyz_ui == 0)
+        return info2->Rxyz_ui != 0;
+      else
+        return info1->Rxyz_ui > info2->Rxyz_ui;
+    } else {
+      return info1->Ixy_ui > info2->Ixy_ui;
+    }
   }
 };
 
@@ -541,19 +504,17 @@ void saveAdjMatrixState(const Environment& environment, const string filename) {
   }
 }
 
-string vectorToStringNodeName(
-    const Environment& environment, const vector<int>& vec) {
-  stringstream ss;
-  int length = vec.size();
-  if (length > 0) {
-    for (int temp = 0; temp < length; temp++) {
-      if (vec[temp] != -1) ss << environment.nodes[vec[temp]].name;
-      if (temp + 1 < length) ss << ",";
-    }
+string toNameString(const Environment& env, const vector<int>& vec) {
+  if (vec.empty()) {
+    return "NA";
   } else {
-    ss << "NA";
+    stringstream ss;
+    std::transform(vec.begin(), vec.end() - 1,
+        std::ostream_iterator<std::string>(ss, ","),
+        [&env](int i) { return env.nodes[i].name; });
+    ss << env.nodes[vec.back()].name;
+    return ss.str();
   }
-  return ss.str();
 }
 
 string vectorToString(const vector<int>& vec) {
@@ -577,15 +538,6 @@ string arrayToString(const double* int_array, const int length) {
   } else {
     ss << "NA";
   }
-  return ss.str();
-}
-
-string zNameToString(const Environment& environment, vector<int> vec, int pos) {
-  stringstream ss;
-  if (pos != -1)
-    ss << environment.nodes[vec[pos]].name;
-  else
-    ss << "NA";
   return ss.str();
 }
 
@@ -616,97 +568,42 @@ bool readBlackbox(vector<string> v, Environment& environment) {
   return true;
 }
 
-vector<vector<string> > saveEdgesListAsTable(Environment& environment) {
-  vector<vector<string> > data;
+vector<vector<string>> getEdgesInfoTable(Environment& env) {
+  vector<vector<string>> table;
 
-  vector<EdgeID*> allEdges;
-
-  for (uint i = 0; i < environment.numNodes - 1; i++) {
-    for (uint j = i + 1; j < environment.numNodes; j++) {
-      allEdges.emplace_back(new EdgeID(i, j));
+  vector<EdgeID> edge_list;
+  for (uint i = 0; i < env.numNodes - 1; i++) {
+    for (uint j = i + 1; j < env.numNodes; j++) {
+      edge_list.emplace_back(EdgeID(i, j));
     }
   }
+  std::sort(edge_list.begin(), edge_list.end(), EdgeSorter(env));
 
-  vector<string> row;
+  table.emplace_back(std::initializer_list<std::string>{"x", "y", "z.name",
+      "ai.vect", "zi.vect", "Ixy", "Ixy_ai", "cplx", "Rxyz_ai", "category",
+      "Nxy_ai"});
+  for (const auto& edge : edge_list) {
+    auto i = edge.i, j = edge.j;
+    auto info = env.edges[i][j].shared_info;
 
-  std::sort(allEdges.begin(), allEdges.end(), sorter(environment));
-
-  row.push_back("x");
-  row.push_back("y");
-  row.push_back("z.name");
-  row.push_back("ai.vect");
-  row.push_back("zi.vect");
-  row.push_back("Ixy");
-  row.push_back("Ixy_ai");
-  row.push_back("cplx");
-  row.push_back("Rxyz_ai");
-  row.push_back("category");
-  row.push_back("Nxy_ai");
-
-  data.push_back(row);
-
-  for (uint i = 0; i < allEdges.size(); i++) {
-    stringstream output;
-    row.clear();
-    for (uint j = 0; j < environment.numNodes; j++) {
-      if (j == allEdges[i]->i || j == allEdges[i]->j)
-        output << "1";
-      else
-        output << "0";
-    }
-    row.push_back(output.str());
-    row.push_back(environment.nodes[allEdges[i]->i].name);
-    row.push_back(environment.nodes[allEdges[i]->j].name);
-    row.push_back(zNameToString(environment,
-        environment.edges[allEdges[i]->i][allEdges[i]->j]
-            .shared_info->zi_vect_idx,
-        environment.edges[allEdges[i]->i][allEdges[i]->j]
-            .shared_info->z_name_idx));
-    row.push_back(vectorToStringNodeName(
-        environment, environment.edges[allEdges[i]->i][allEdges[i]->j]
-                         .shared_info->ui_vect_idx));
-    row.push_back(vectorToStringNodeName(
-        environment, environment.edges[allEdges[i]->i][allEdges[i]->j]
-                         .shared_info->zi_vect_idx));
-
-    output.str("");
-    output << environment.edges[allEdges[i]->i][allEdges[i]->j]
-                  .shared_info->mutInfo;
-    row.push_back(output.str());
-
-    output.str("");
-    output << environment.edges[allEdges[i]->i][allEdges[i]->j]
-                  .shared_info->Ixy_ui;
-    row.push_back(output.str());
-
-    output.str("");
-    output
-        << environment.edges[allEdges[i]->i][allEdges[i]->j].shared_info->cplx;
-    row.push_back(output.str());
-
-    output.str("");
-    output << environment.edges[allEdges[i]->i][allEdges[i]->j]
-                  .shared_info->Rxyz_ui;
-    row.push_back(output.str());
-
-    output.str("");
-    output << environment.edges[allEdges[i]->i][allEdges[i]->j]
-                  .shared_info->connected;
-    row.push_back(output.str());
-
-    output.str("");
-    output << environment.edges[allEdges[i]->i][allEdges[i]->j]
-                  .shared_info->Nxy_ui;
-    row.push_back(output.str());
-
-    data.push_back(row);
+    table.emplace_back(std::initializer_list<std::string>{
+        env.nodes[i].name,
+        env.nodes[j].name,
+        info->z_name_idx == -1
+          ? "NA"
+          : env.nodes[info->zi_vect_idx[info->z_name_idx]].name,
+        toNameString(env, info->ui_vect_idx),
+        toNameString(env, info->zi_vect_idx),
+        std::to_string(info->mutInfo),
+        std::to_string(info->Ixy_ui),
+        std::to_string(info->cplx),
+        std::to_string(info->Rxyz_ui),
+        std::to_string(info->connected),
+        std::to_string(info->Nxy_ui)
+    });
   }
 
-  for (uint i = 0; i < allEdges.size(); i++) {
-    delete allEdges[i];
-  }
-
-  return data;
+  return table;
 }
 
 void saveExecTime(const Environment& environment, const string filename) {

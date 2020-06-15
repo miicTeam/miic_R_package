@@ -26,7 +26,7 @@ miic.reconstruct <- function(inputData = NULL,
   isDegeneracy <- FALSE
   isNoInitEta <- FALSE
 
-  numNodes <- length(inputData)
+  n_node <- length(inputData)
 
   inData <- c(
     colnames(inputData),
@@ -63,7 +63,7 @@ miic.reconstruct <- function(inputData = NULL,
       inData,
       typeOfData,
       cntVar,
-      numNodes,
+      n_node,
       nThreads,
       edges,
       bB,
@@ -91,40 +91,26 @@ miic.reconstruct <- function(inputData = NULL,
     }
   }
 
-  # if(shuffle == 0) {
-  # create the data frame of the edges
-  tmp <- unlist(res$edges)[1:11]
-  res1 <- unlist(res$edges)[12:length(unlist(res$edges))]
-  df <-
-    data.frame(matrix(res1, nrow = length(res$edges) - 1, byrow = T),
-      stringsAsFactors = FALSE
-    )
-  row.names(df) <- df[, 1]
-  df <- df[, -1]
-  colnames(df) <- tmp
+  # R-formalize returned object
+  # table of edges infomation
+  n_row <- length(res$edges) - 1
+  header <- unlist(res$edges[1])
+  df <- data.frame(matrix(unlist(res$edges[2:n_row + 1]), nrow = n_row,
+                          byrow = TRUE), stringsAsFactors = FALSE)
+  colnames(df) <- header
   df[df == "NA"] <- NA
-  df[, c(6:10)] <- sapply(df[, c(6:10)], as.numeric)
-  # update the returned object
+  df$Ixy <- as.numeric(df$Ixy)
+  df$Ixy_ai <- as.numeric(df$Ixy_ai)
+  df$cplx <- as.numeric(df$cplx)
+  df$Rxyz_ai <- as.numeric(df$Rxyz_ai)
   res$edges <- df
-  # create the data frame of the adj matrix
-  a <- (length(res$adjMatrix[[1]]) + 1)
-  b <- length(unlist(res$adjMatrix))
-  tmp <- unlist(res$adjMatrix)[1:length(res$adjMatrix[[1]])]
-  res1 <- unlist(res$adjMatrix)[a:b]
-  df <- data.frame(matrix(res1,
-    nrow = length(res$adjMatrix) - 1,
-    byrow = T
-  ),
-  stringsAsFactors = FALSE
-  )
-  df <- df[, -1]
-  colnames(df) <- tmp
-  df <- sapply(df, as.numeric)
-  row.names(df) <- tmp
-  # update the returned adj matrix
-  res$adjMatrix <- df
 
-  # format adj_matrices
+  #  adj_matrix
+  res$adj_matrix <- matrix(unlist(res$adj_matrix), nrow = n_node, byrow = TRUE)
+  colnames(res$adj_matrix) <- colnames(inputData)
+  rownames(res$adj_matrix) <- colnames(inputData)
+
+  # adj_matrices (when consistent parameter is turned on)
   if (!is.null(res$adj_matrices)) {
     res$adj_matrices <- matrix(unlist(res$adj_matrices),
                                ncol = length(res$adj_matrices))

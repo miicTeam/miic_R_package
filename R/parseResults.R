@@ -7,7 +7,7 @@ summarizeResults <- function(observations = NULL, results = NULL,
   # - Edges that were conditioned away with a non-empty separating set
   # - If ground truth is known, any other positive edge
   summarized_edges <- matrix(ncol = 2)
-  adj_matrix <- results$adjMatrix
+  adj_matrix <- results$adj_matrix
 
   # List of edges found by miic
   half_adj_matrix = adj_matrix
