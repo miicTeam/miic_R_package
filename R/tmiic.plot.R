@@ -61,13 +61,21 @@
 #' @param file_figsize [a list; \emph{c(length, height)}] Optional, NULL by default. 
 #' When plots are drawn to a file, the size of the draw in pixels can be specified
 #' by a couple of values. The first is the lentgh, the second the height.
-#' @param draw_legend [a boolean] Optional, TRUE by default. 
-#' When TRUE, a legend is drawn on the right side of the plot.
-#' @param title [a string] Optional, NULL by default. The title of the plot. 
-#' @param title_cex [a number] Optional, 1.5 by default. The size of the title. 
 #' @param font_family [a string] Optional, NULL by default. The font to use.\cr
 #' Note that the font may not apply in all the graphical parts, depending
 #' on how the plotted objects manage the font parameter.
+#' @param title [a string] Optional, NULL by default. The title of the plot. 
+#' @param title_cex [a number] Optional, 1.5 by default. The size of the title. 
+#' @param draw_legend [a boolean] Optional, TRUE by default. 
+#' When TRUE, a legend is drawn on the right side of the plot.
+#' @param graph_margin [a list of floats: c(bottom,left,top,right)]
+#' Optional, NULL by default. Margin applied around the graph. 
+#' When NULL, the value is determined by the presence or absence of 
+#' self loop(s) in the graph: 
+#' \itemize{
+#' \item no self loop = no margin 
+#' \item at least one self loop = margin of 0.25 on the left and right sides 
+#' }
 #' @param nodes_label_dist [a number] Optional, NULL by default. 
 #' The distance of the labels from the nodes. 
 #' @param nodes_label_degree [a number] Optional, NULL by default.
@@ -108,8 +116,9 @@
 #--------------------------------------------------------------------------------
 tmiic.plot <- function (miic_result, method="log_confidence", igraphLayout=NULL, 
                         userLayout=NULL, miic_defaults=TRUE, 
-                        filename=NULL, file_figsize=NULL, draw_legend=TRUE, 
-                        title=NULL, title_cex=1.5, font_family=NULL, 
+                        filename=NULL, file_figsize=NULL, 
+                        font_family=NULL, title=NULL, title_cex=1.5, 
+                        draw_legend=TRUE, graph_margin=NULL, 
                         nodes_label_dist=NULL, nodes_label_degree=NULL, 
                         nodes_label_cex=NULL, nodes_shape=NULL, 
                         nodes_colors=NULL, nodes_sizes=NULL, 
@@ -218,8 +227,8 @@ tmiic.plot <- function (miic_result, method="log_confidence", igraphLayout=NULL,
   miic.plot (miic_result, method=method, igraphLayout=igraphLayout, 
              userLayout=userLayout, miic_defaults=miic_defaults, 
              filename=filename, file_figsize=file_figsize, 
-             draw_legend=draw_legend, title=title, title_cex=title_cex,
-             font_family=font_family, 
+             font_family=font_family, title=title, title_cex=title_cex,
+             draw_legend=draw_legend, graph_margin=graph_margin,
              nodes_label_dist=nodes_label_dist, nodes_label_degree=nodes_label_degree, 
              nodes_label_cex=nodes_label_cex, nodes_shape=nodes_shape, 
              nodes_colors=nodes_colors, nodes_sizes=nodes_sizes, 

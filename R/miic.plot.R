@@ -56,13 +56,21 @@
 #' default. When plots are drawn to a file, the size of the draw in pixels 
 #' can be specified by a couple of values. The first is the lentgh, the 
 #' second the height.
-#' @param draw_legend [a boolean] Optional, TRUE by default. 
-#' When TRUE, a legend is drawn on the right side of the plot.
-#' @param title [a string] Optional, NULL by default. The title of the plot. 
-#' @param title_cex [a number] Optional, 1.5 by default. The size of the title. 
 #' @param font_family [a string] Optional, NULL by default. The font to use.\cr
 #' Note that the font may not apply in all the graphical parts, depending
 #' on how the plotted objects manage the font parameter.
+#' @param title [a string] Optional, NULL by default. The title of the plot. 
+#' @param title_cex [a number] Optional, 1.5 by default. The size of the title. 
+#' @param draw_legend [a boolean] Optional, TRUE by default. 
+#' When TRUE, a legend is drawn on the right side of the plot.
+#' @param graph_margin [a list of floats: c(bottom,left,top,right)]
+#' Optional, NULL by default. Margin applied around the graph. 
+#' When NULL, the value is determined by the presence or absence of 
+#' self loop(s) in the graph: 
+#' \itemize{
+#' \item no self loop = no margin 
+#' \item at least one self loop = margin of 0.25 on the left and right sides 
+#' }
 #' @param nodes_label_dist [a number] Optional, NULL by default. 
 #' The distance of the labels from the nodes. 
 #' @param nodes_label_degree [a number] Optional, NULL by default.
@@ -100,16 +108,17 @@
 miic.plot <- function (miic_result, method = "log_confidence", 
                        igraphLayout = NULL, userLayout = NULL, 
                        miic_defaults=TRUE, filename=NULL, file_figsize=NULL,
-                       draw_legend=TRUE, title=NULL, title_cex=1.5, 
-                       font_family=NULL, nodes_label_dist=NULL, 
-                       nodes_label_degree=NULL, nodes_label_cex=NULL,
-                       nodes_shape=NULL, nodes_colors=NULL, nodes_sizes=NULL, 
+                       font_family=NULL, title=NULL, title_cex=1.5, 
+                       draw_legend=TRUE, graph_margin=NULL, 
+                       nodes_label_dist=NULL, nodes_label_degree=NULL, 
+                       nodes_label_cex=NULL, nodes_shape=NULL, 
+                       nodes_colors=NULL, nodes_sizes=NULL, 
                        edges_labels=NULL, edges_label_cex=NULL, 
                        edges_width=NULL, edges_curved=NULL, 
                        edges_arrow_size=NULL, edges_arrow_width=NULL,
                        verbose = FALSE) 
   {
-  DEBUG <- TRUE
+  DEBUG <- FALSE
   if ( (verbose) | (DEBUG) )
     print ("Start of plot ...")
   #
@@ -278,10 +287,20 @@ miic.plot <- function (miic_result, method = "log_confidence",
       edges_colors[edge_idx] <- blue.gradient [edge_color_idx]
     }
   #
-  # To later identify multiple edges between same nodes
+  # To later identify multiple edges between same nodes 
   #
   df_mult <- group_by (df_edges, xy, x, y)
   df_mult <- summarise (df_mult, count=n())
+  if ( is.null (graph_margin) )
+    {
+    # Define a margin (if none supplied) on left and right sides
+    # of the graph when we have self loop(s) to avoid self loops 
+    # to be drawn outside of the plotting area
+    #
+    graph_margin <- c(0,0,0,0)
+    if (sum (df_mult[["x"]] == df_mult[["y"]]) > 0)
+      graph_margin <- c(0,0.25,0,0.25)
+    }
   df_mult <- df_mult[df_mult$count > 1,]
   df_mult <- as.data.frame (df_mult)
   #
@@ -397,7 +416,7 @@ miic.plot <- function (miic_result, method = "log_confidence",
     {
     # No multiple edges between the same nodes, we draw in one go
     #
-    graphics::plot (graph, layout=layout)
+    graphics::plot (graph, layout=layout, margin=graph_margin)
     }
   else
     {
@@ -405,13 +424,6 @@ miic.plot <- function (miic_result, method = "log_confidence",
     #
     edges_colors_iter <- edges_colors
     edges_labels_iter <- edges_labels
-    #
-    # If we have self loops, add margin on left and right 
-    # to avoid self loops to be drawn outside of the plotting area
-    #
-    graph_margin <- c(0,0,0,0)
-    if (nrow (df_mult[df_mult$x == df_mult$y]) > 0)
-      graph_margin <- c(0,0,0.25,0.25)
     #
     # On a first step, we will draw all the graph except multiple edges
     # The multiple edges will be drawn with invisible color "#FF000000"
