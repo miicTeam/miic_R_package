@@ -4,20 +4,45 @@
 \alias{miic}
 \title{MIIC, causal network learning algorithm including latent variables}
 \usage{
-miic(inputData, categoryOrder = NULL, trueEdges = NULL,
-  blackBox = NULL, nThreads = 1, cplx = c("nml", "mdl"),
-  orientation = TRUE, propagation = TRUE, latent = FALSE,
-  neff = -1, edges = NULL, confidenceShuffle = 0,
-  confidenceThreshold = 0, confList = NULL, sampleWeights = NULL,
-  testMAR = TRUE, consistent = FALSE, verbose = FALSE)
+miic(
+  inputData,
+  categoryOrder = NULL,
+  trueEdges = NULL,
+  blackBox = NULL,
+  nThreads = 1,
+  cplx = c("nml", "mdl"),
+  orientation = TRUE,
+  propagation = TRUE,
+  latent = c("no", "yes", "ort"),
+  neff = -1,
+  edges = NULL,
+  confidenceShuffle = 0,
+  confidenceThreshold = 0,
+  confList = NULL,
+  sampleWeights = NULL,
+  testMAR = TRUE,
+  consistent = c("no", "orientation", "skeleton"),
+  tau = -1,
+  movavg = -1,
+  subtiming = -1,
+  bootstrap = -1,
+  verbose = FALSE
+)
 }
 \arguments{
-\item{inputData}{[a data frame]
-A data frame that contains the observational data. Each
-column corresponds to one variable and each row is a sample that gives the
-values for all the observed variables. The column names correspond to the
-names of the observed variables. Categorical variables must be passed as 
-factors and continuous ones must be numerical.}
+\item{inputData}{[a data frame or a 2D/3D array]\cr
+For non temporal series, a data frame that contains the observational data. 
+Each column corresponds to one variable and each row is a sample that gives 
+the values for all the observed variables. The column names correspond to 
+the names of the observed variables. Numeric columns will be treated as 
+continuous values, factors and character as categorical.\cr
+\cr
+For temporal series, \emph{inputData} can be either a dataframe,a 2D or 3D array.
+When \emph{inputData} is a dataframe, each column corresponds to one variable
+and each row is a timestep. When \emph{inputData} is an array, the dimension
+is [nb nodes, nb timesteps] for 2D and [nb samples, nb nodes, nb timesteps]
+when 3D. As for the non temporal case, numeric columns will be treated as 
+continuous values, factors and character as categorical.}
 
 \item{categoryOrder}{[a data frame] An optional data frame giving information
 about how to order the various states of categorical variables. It will be
@@ -28,14 +53,14 @@ by sorting each variable’s levels accordingly to the given category order.}
 true edges of the graph. Each line corresponds to one edge.}
 
 \item{blackBox}{[a data frame]
-An optional data frame containing the
-pairs of variables that should be considered as independent. Each row contains
-one column for each of the two variables. The variable name must correspond to
-the one in the \emph{inputData} data frame.}
+An optional data frame containing the pairs of variables that should be
+considered as independent. Each row contains one column for each of 
+the two variables. The variable name must correspond to the one in 
+the \emph{inputData} data frame.}
 
 \item{nThreads}{[a positive integer]
-When set greater than 1, the miic algorithm allows to use multithreading
-in the skeleton initialization phase.}
+When set greater than 1, nThreads parallel threads will be used for computation. Make sure
+your compiler is compatible with openmp if you wish to use multithreading.}
 
 \item{cplx}{[a string; \emph{c("nml", "mdl")}]
 In practice, the finite size of the input
@@ -49,27 +74,31 @@ Normalized Maximum Likelihood (NML) criterion can be used (set the option with "
 The default is "nml" (see Affeldt \emph{et al.}, UAI 2015).}
 
 \item{orientation}{[a boolean value]
-The miic network skeleton can be partially directed
-by orienting and propagating edge directions, based on the sign and magnitude
-of the conditional 3-point information of unshielded triples. The propagation
-procedure relyes on probabilities; for more details, see Verny \emph{et al.}, PLoS Comp. Bio. 2017).
+The miic network skeleton can be partially directed by orienting and 
+propagating edge directions. The orientation is based on the sign and 
+magnitude of the conditional 3-point information of unshielded triples
+and, for temporal graphs, on time lags.
+The propagation procedure relyes on probabilities; for more details, 
+see Verny \emph{et al.}, PLoS Comp. Bio. 2017).
 If set to FALSE the orientation step is not performed.}
 
 \item{propagation}{[a boolean value]
 If set to FALSE, the skeleton is partially oriented with only the
-v-structure orientations. Otherwise, the v-structure orientations are
-propagated to downstream undirected edges in unshielded triples following
-the orientation method}
+v-structure orientations, plus time for temporal graphs. 
+Otherwise, the v-structure orientations are propagated to downstream 
+undirected edges in unshielded triples following the orientation method.}
 
-\item{latent}{[a boolean value]
-When set to TRUE, the network reconstruction is taking into account
-hidden (latent) variables. Dependence between two observed variables due to
-a latent variable is indicated with a '6' in the adjacency matrix and in the
-network edges.summary and by a bi-directed edge in the (partially) oriented graph.}
+\item{latent}{[a string; \emph{c("no", "yes", "ort")}]
+When set to "yes", the network reconstruction is taking into account hidden (latent)
+variables. When set to "ort", latent variables are not considered during the skeleton
+reconstruction but allows bi-directed edges during the orientation. Dependence
+between two observed variables due to a latent variable is indicated with a '6' in
+the adjacency matrix and in the network edges.summary and by a bi-directed edge
+in the (partially) oriented graph.}
 
 \item{neff}{[a positive integer]
 The N samples given in the \emph{inputdata} data frame are expected
-to be independent. In case of correlated samples such as in time series or
+to be independent. In case of correlated samples such as in 
 Monte Carlo sampling approaches, the effective number of independent samples
 \emph{neff} can be estimated using the decay of the autocorrelation function
 (Verny \emph{et al.}, PLoS Comp. Bio. 2017). This \emph{effective} number \emph{neff}
@@ -99,15 +128,49 @@ be performed again, and the values in this data frame are used instead.}
 An optional vector containing the weight of each observation.}
 
 \item{testMAR}{[a boolean value]
-If set to TRUE, distributions with missing values will be tested with Kullback-Leibler 
-divergence : conditioning variables for the given link \eqn{X\arrow Y}\eqn{Z} will be 
-considered only if the divergence between the full distribution and the non-missing 
-distribution \eqn{KL(P(X,Y) | P(X,Y)_{!NA})} is low enough (with \eqn{P(X,Y)_{!NA}} as 
-the joint distribution of \eqn{X} and \eqn{Y} on samples which are not missing on Z. 
+If set to TRUE, distributions with missing values will be tested with Kullback-Leibler
+divergence : conditioning variables for the given link \eqn{X\arrow Y}\eqn{Z} will be
+considered only if the divergence between the full distribution and the non-missing
+distribution \eqn{KL(P(X,Y) | P(X,Y)_{!NA})} is low enough (with \eqn{P(X,Y)_{!NA}} as
+the joint distribution of \eqn{X} and \eqn{Y} on samples which are not missing on Z.
 This is a way to ensure that data are missing at random for the considered
 interaction and to avoid selection bias. Set to TRUE by default}
 
-\item{consistent}{[a boolean value] If TRUE, runs the consistent version.}
+\item{consistent}{[a string; \emph{c("no", "orientation", "skeleton")}]
+if "orientation": iterate over skeleton and orientation steps to ensure
+consistency of the network;
+if "skeleton": iterate over skeleton step to get a consistent skeleton, then
+orient edges and discard inconsistent orientations to ensure consistency of
+the network.}
+
+\item{tau}{[an integer] Optional, -1 by default.\cr
+Max lag used for temporal series. If \emph{tau} is supplied (integer >= 1), 
+miic switches to temporal mode: it contructs a lagged graph over tau periods 
+of time, and looks both for temporal and contemporaneous edges.}
+
+\item{movavg}{[an integer] Optional, -1 by default.\cr
+Used only in temporal mode, If \emph{movavg} is supplied (integer > 1), 
+a moving average operation is applied to the time series.\cr
+Note that when both moving average and subtiming are applied,
+the moving average is performed before the subtiming.}
+
+\item{subtiming}{[an integer] Optional, -1 by default.\cr
+Used only in temporal mode, If \emph{subtiming} is supplied (integer > 1), 
+the time series will be subtimed using 1 timestep every \emph{subtiming} 
+timesteps starting from the last.\cr 
+i.e.: on 1000 timesteps and \emph{subtiming} = 7, the timesteps kept 
+will be 1000, 993, 986, ..., 13, 6.\cr
+Note that when both moving average and subtiming are applied,
+the moving average is performed before the subtiming.}
+
+\item{bootstrap}{[an int] Optional, default=-1.\cr
+Experimental, used only in temporal mode, When -1, no bootstraping 
+is performed. When > 0, select randomly \emph{bootstrap} lagged samples 
+(the samples obtained after transformation of the input samples over 
+\emph{tau} timesteps).\cr
+As normal when using bootstrapping, the \emph{bootstrap} value can be
+greater than the number of lagged samples as a lagged sample can be  
+selected more than once.}
 
 \item{verbose}{[a boolean value] If TRUE, debugging output is printed.}
 }
@@ -192,11 +255,18 @@ from indirect effects amongst correlated variables, including cause-effect
 relationships and the effect of unobserved latent causes.
 }
 \details{
-Starting from a complete graph, the method iteratively removes
-dispensable edges, by uncovering significant information contributions from
-indirect paths, and assesses edge-specific confidences from randomization of
-available data. The remaining edges are then oriented based on the signature
-of causality in observational data.
+for non temporal series, the method, starting from a complete graph, 
+iteratively removes dispensable edges, by uncovering significant information 
+contributions from indirect paths, and assesses edge-specific confidences 
+from randomization of available data. The remaining edges are then oriented 
+based on the signature of causality in observational data.
+
+For temporal series, miic reorganizes the dataset using the max lag parameter
+(\emph{tau}) to transform the timesteps into lagged samples. As starting point,
+a lagged graph is created with only edges having at least one node laying
+on the last timestep. Then, miic standard algorithm is applied to remove 
+dispensable edges. The remaining edges are then oriented by using the
+temporality and the signature of causality in observational data.
 }
 \examples{
 library(miic)
@@ -205,8 +275,10 @@ library(miic)
 data(hematoData)
 
 # execute MIIC (reconstruct graph)
-miic.res = miic(inputData = hematoData, latent = TRUE,
-confidenceShuffle = 10, confidenceThreshold = 0.001)
+miic.res <- miic(
+  inputData = hematoData, latent = TRUE,
+  confidenceShuffle = 10, confidenceThreshold = 0.001
+)
 
 # plot graph
 miic.plot(miic.res)
@@ -215,36 +287,41 @@ miic.plot(miic.res)
 # write graph to graphml format. Note that to correctly visualize
 # the network we created the miic style for Cytoscape (http://www.cytoscape.org/).
 
-miic.write.network.cytoscape(g = miic.res, file = file.path(tempdir(),"temp"))
+miic.write.network.cytoscape(g = miic.res, file = file.path(tempdir(), "temp"))
 
 # EXAMPLE CANCER
 data(cosmicCancer)
 data(cosmicCancer_stateOrder)
 # execute MIIC (reconstruct graph)
-miic.res = miic(inputData = cosmicCancer, categoryOrder = cosmicCancer_stateOrder, latent = TRUE,
-confidenceShuffle = 100, confidenceThreshold = 0.001)
+miic.res <- miic(
+  inputData = cosmicCancer, categoryOrder = cosmicCancer_stateOrder, latent = "yes",
+  confidenceShuffle = 100, confidenceThreshold = 0.001
+)
 
 # plot graph
-miic.plot(miic.res, igraphLayout=igraph::layout_on_grid)
+miic.plot(miic.res, igraphLayout = igraph::layout_on_grid)
 
 # write graph to graphml format. Note that to correctly visualize
 # the network we created the miic style for Cytoscape (http://www.cytoscape.org/).
-miic.write.network.cytoscape(g = miic.res, file = file.path(tempdir(),"temp"))
+miic.write.network.cytoscape(g = miic.res, file = file.path(tempdir(), "temp"))
 
 # EXAMPLE OHNOLOGS
 data(ohno)
 data(ohno_stateOrder)
 # execute MIIC (reconstruct graph)
-miic.res = miic(inputData = ohno, latent = TRUE, categoryOrder = ohno_stateOrder,
-confidenceShuffle = 100, confidenceThreshold = 0.001)
+miic.res <- miic(
+  inputData = ohno, latent = "yes", categoryOrder = ohno_stateOrder,
+  confidenceShuffle = 100, confidenceThreshold = 0.001
+)
 
 # plot graph
 miic.plot(miic.res)
 
 # write graph to graphml format. Note that to correctly visualize
 # the network we created the miic style for Cytoscape (http://www.cytoscape.org/).
-miic.write.network.cytoscape(g = miic.res, file = file.path(tempdir(),"temp"))
+miic.write.network.cytoscape(g = miic.res, file = file.path(tempdir(), "temp"))
 }
+
 }
 \references{
 \itemize{

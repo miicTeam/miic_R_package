@@ -8,7 +8,8 @@ tmiic.transform_data_for_miic(
   data_tab,
   tau,
   categoryOrder = NULL,
-  sub_sample = -1,
+  movavg = -1,
+  subtiming = -1,
   bootstrap = -1
 )
 }
@@ -18,19 +19,36 @@ An array of the time series for all nodes and samples of dimensions
 [n_samples * n_nodes * n_time] for 3D or [n_nodes * n_time] for 2D.
 When a 2D array is supplied, the number of samples is assumed to be 1.}
 
-\item{tau}{[an int] An int defining the max lag}
+\item{tau}{[an int > 0] A strictly positive int defining the max lag.}
 
 \item{categoryOrder}{[a data frame] Optional, NULL by default. 
 A data frame giving information about how to order the various states of 
 categorical variables. This data frame will be lagged as the input 
 data on \emph{tau} timesteps.}
 
-\item{subsample}{[an int] Optional, default=-1. When -1, no subsampling
-is applied. When > 1, keeps one sample every \emph{subsample} samples.}
+\item{movavg}{[an integer] Optional, -1 by default.\cr
+When \emph{movavg} is supplied (integer > 1), a moving average 
+operation is applied to the time series.\cr
+Note that when both moving average and subtiming are applied,
+the moving average is performed before the subtiming.}
 
-\item{boostrap}{[an int] Optional, default=-1. When -1, no bootstraping
-is done. When > 0, select randomly \emph{boostrap} samples from the
-set of samples, a sample can be selected more than once.}
+\item{subtiming}{[an integer] Optional, -1 by default.\cr
+When \emph{subtiming} is supplied (integer > 1), the time series will be 
+subtimed using 1 timestep every \emph{subtiming} timesteps starting from
+the last.\cr 
+i.e.: on 1000 timesteps with \emph{subtiming} = 7, the  timesteps kept
+will be 1000, 993, 986, ..., 13, 6.\cr
+Note that when both moving average and subtiming are applied,
+the moving average is performed before the subtiming.}
+
+\item{bootstrap}{[an int] Optional, default=-1.\cr
+Experimental. When -1, no bootstraping is performed. 
+When > 0, select randomly \emph{bootstrap} lagged samples (the samples 
+obtained after transformation of the input samples over \emph{tau} 
+timesteps).\cr
+As normal when using bootstrapping, the \emph{bootstrap} value can be
+greater than the number of lagged samples as a lagged sample can be  
+selected more than once.}
 }
 \value{
 a 2D array of dimensions [ n_samples * (n_time -  \emph{tau}) ), 
@@ -53,19 +71,22 @@ node2_lag1, node1_lag2, node2_lag2.
 Every timestep (until number of timesteps - \emph{tau}) is converted into 
 a sample in the lagged graph:
 
-_Timestep Node & value   Node & value   => Sample Node & value   Node & value\cr
-.. t-2 .. node1_val(t-2) node2_val(t-2) => . i .. node1_lag2_val node2_lag2_val\cr
-.. t-1 .. node1_val(t-1) node2_val(t-1) => . i .. node1_lag1_val node2_lag1_val\cr
-... t ... node1_val( t ) node2_val( t ) => . i .. node1_lag0_val node2_lag0_val
-
-.. t-3 .. node1_val(t-3) node2_val(t-3) => . i' . node1_lag2_val node2_lag2_val\cr
-.. t-2 .. node1_val(t-2) node2_val(t-2) => . i' . node1_lag1_val node2_lag1_val\cr
-.. t-1 .. node1_val(t-1) node2_val(t-1) => . i' . node1_lag0_val node2_lag0_val
-
-.. t-4 .. node1_val(t-4) node2_val(t-4) => . i" . node1_lag2_val node2_lag2_val\cr
-.. t-3 .. node1_val(t-3) node2_val(t-3) => . i" . node1_lag1_val node2_lag1_val\cr
-.. t-2 .. node1_val(t-2) node2_val(t-2) => . i" . node1_lag0_val node2_lag0_val\cr
-
+\tabular{ccccccc}{
+Timestep \tab  Node & value  \tab  Node & value  \tab => \tab Sample \tab  Node & value  \tab  Node & value \cr
+  t-2    \tab node1_val(t-2) \tab node2_val(t-2) \tab => \tab   i    \tab node1_lag2_val \tab node2_lag2_val\cr
+  t-1    \tab node1_val(t-1) \tab node2_val(t-1) \tab => \tab   i    \tab node1_lag1_val \tab node2_lag1_val\cr
+   t     \tab  node1_val(t)  \tab  node2_val(t)  \tab => \tab   i    \tab node1_lag0_val \tab node2_lag0_val\cr
+  \cr    \tab                \tab                \tab    \tab        \tab                \tab               \cr
+  t-3    \tab node1_val(t-3) \tab node2_val(t-3) \tab => \tab   i'   \tab node1_lag2_val \tab node2_lag2_val\cr
+  t-2    \tab node1_val(t-2) \tab node2_val(t-2) \tab => \tab   i'   \tab node1_lag1_val \tab node2_lag1_val\cr
+  t-1    \tab node1_val(t-1) \tab node2_val(t-1) \tab => \tab   i'   \tab node1_lag0_val \tab node2_lag0_val\cr
+  \cr    \tab                \tab                \tab    \tab        \tab                \tab               \cr
+  t-4    \tab node1_val(t-4) \tab node2_val(t-4) \tab => \tab   i"   \tab node1_lag2_val \tab node2_lag2_val\cr
+  t-3    \tab node1_val(t-3) \tab node2_val(t-3) \tab => \tab   i"   \tab node1_lag1_val \tab node2_lag1_val\cr
+  t-2    \tab node1_val(t-2) \tab node2_val(t-2) \tab => \tab   i"   \tab node1_lag0_val \tab node2_lag0_val\cr
+  \cr    \tab                \tab                \tab    \tab        \tab                \tab               \cr
+  ...    \tab .............. \tab .............. \tab => \tab ...... \tab .............. \tab ............. \cr
+}
 until number of timesteps - \emph{tau} is reached. The same process is applied
 to all input samples.
 }

@@ -12,10 +12,11 @@ miic.plot(
   miic_defaults = TRUE,
   filename = NULL,
   file_figsize = NULL,
-  draw_legend = TRUE,
+  font_family = NULL,
   title = NULL,
   title_cex = 1.5,
-  font_family = NULL,
+  draw_legend = TRUE,
+  graph_margin = NULL,
   nodes_label_dist = NULL,
   nodes_label_degree = NULL,
   nodes_label_cex = NULL,
@@ -71,16 +72,25 @@ default. When plots are drawn to a file, the size of the draw in pixels
 can be specified by a couple of values. The first is the lentgh, the 
 second the height.}
 
-\item{draw_legend}{[a boolean] Optional, TRUE by default. 
-When TRUE, a legend is drawn on the right side of the plot.}
+\item{font_family}{[a string] Optional, NULL by default. The font to use.\cr
+Note that the font may not apply in all the graphical parts, depending
+on how the plotted objects manage the font parameter.}
 
 \item{title}{[a string] Optional, NULL by default. The title of the plot.}
 
 \item{title_cex}{[a number] Optional, 1.5 by default. The size of the title.}
 
-\item{font_family}{[a string] Optional, NULL by default. The font to use.\cr
-Note that the font may not apply in all the graphical parts, depending
-on how the plotted objects manage the font parameter.}
+\item{draw_legend}{[a boolean] Optional, TRUE by default. 
+When TRUE, a legend is drawn on the right side of the plot.}
+
+\item{graph_margin}{[a list of floats: c(bottom,left,top,right)]
+Optional, NULL by default. Margin applied around the graph. 
+When NULL, the value is determined by the presence or absence of 
+self loop(s) in the graph: 
+\itemize{
+\item no self loop = no margin 
+\item at least one self loop = margin of 0.25 on the left and right sides 
+}}
 
 \item{nodes_label_dist}{[a number] Optional, NULL by default. 
 The distance of the labels from the nodes.}

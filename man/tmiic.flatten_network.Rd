@@ -11,28 +11,38 @@ tmiic.flatten_network(
 )
 }
 \arguments{
-\item{miic_return}{[a list] The value returned by miic. (a list which
-contains the different data frames resulting of miic's execution)}
+\item{miic_return}{[a miic object] The object returned by miic's 
+execution.}
 
 \item{flatten_mode}{[a string]. Optional, default value "normal".
-Possible values are \emph{"normal"}, \emph{"unique"}, \emph{"drop"}:
+Possible values are \emph{"normal"}, \emph{"combine"}, \emph{"unique"}, 
+\emph{"drop"}:
 \itemize{
-\item When \emph{flatten_mode} = \emph{"normal"}, the default, edges are simply 
-  converted into a flattened version.\cr
-  i.e.:  X_lag0-Y_lag1, X_lag0-Y_lag2 become respectively X-Y lag=1, 
-  X-Y lag=2 (lag is a new column added in the dataframe) 
-\item When \emph{flatten_mode} = \emph{"unique"}, only the edges having the highest 
-  log_confidence for a couple of nodes are kept in the flattened network.\cr 
-  i.e.: X_lag0-Y_lag1, X_lag0-Y_lag2 with log_confidence of 
-  X_lag0-Y_lag1 > X_lag0-Y_lag2 become X-Y lag=1  (lag is a new column 
-  added in the dataframe) 
-\item When \emph{flatten_mode} = \emph{"drop"}, only the edges having the highest 
-  log_confidence for a couple of nodes are kept in the flattened network
-  and no column for the lag value is added.\cr
-  i.e. :  X_lag0-Y_lag1, X_lag0-Y_lag2 with log_confidence of 
-  X_lag0-Y_lag1 > X_lag0-Y_lag2 become X-Y. The lag information is 
+\item When \emph{flatten_mode} = \emph{"normal"}, the default, edges are 
+  simply converted into a flattened version.\cr
+  i.e.: X_lag1->Y_lag0, X_lag2<-Y_lag0 become respectively X->Y lag=1, 
+  X<-Y lag=2. 
+\item When \emph{flatten_mode} = \emph{"combine"}, one edge will be kept
+  per couple of nodes. The log_confidence will be the highest one 
+  of the summarized edges whilst the lag and orientation of the
+  summarized edge will be an agregation.\cr 
+  i.e.: X_lag1->Y_lag0, X_lag2<-Y_lag0 will become X<->Y lag=1,2 with
+  the log_confidence of X_lag1->Y_lag0 if log_confidence of 
+  X_lag1->Y_lag0 > X_lag2<-Y_lag0.
+\item When \emph{flatten_mode} = \emph{"unique"}, only the edges having the
+  highest log_confidence for a couple of nodes are kept in the flattened 
+  network.\cr 
+  i.e.: X_lag1->Y_lag0, X_lag2<-Y_lag0 with log_confidence of 
+  X_lag1->Y_lag0 > X_lag2<-Y_lag0 become X->Y lag=1.
+\item When \emph{flatten_mode} = \emph{"drop"}, only the edges having the 
+  highest log_confidence for a couple of nodes are kept in the flattened 
+  network.\cr
+  i.e. :  X_lag1->Y_lag0, X_lag2<-Y_lag0 with log_confidence of 
+  X_lag1->Y_lag0 > X_lag2<-Y_lag0 become X->Y. The lag information is 
   "lost" after flattening
-}}
+}
+Note that for all modes other than \emph{"drop"}, lag is a new column 
+added in the dataframe.}
 
 \item{keep_edges_on_same_node}{[a boolean] Optional, TRUE by default.
 When TRUE, the edges like X_lag0-X_lag1 are kept during flatenning
@@ -41,7 +51,7 @@ are kept in the flatten network.}
 }
 \value{
 [a list] The returned list is the one received as input where
-the adjacency and summary dataframes has beEn flattened.\cr
+the adjacency and summary dataframes has been flattened.\cr
 Note that the adjacency matrix does not contain any more the orientation
 as this information make less sense after flattening. Orientations are 
 replaced by lag(s) in the adjacency matrix.
