@@ -37,8 +37,6 @@ int sign(double val);
 void transformToFactors(structure::Environment&, int);
 void transformToFactorsContinuous(structure::Environment&, int);
 void transformToFactorsContinuousIdx(structure::Environment&, int);
-void computeMeansandStandardDeviations(structure::Environment&);
-void computeCorrelations(structure::Environment&);
 void sort2arraysConfidence(int len, int a[], int brr[]);
 bool allVariablesDiscrete(int* array, int* posArray, int num);
 void sort2arrays(int len, int a[], int brr[], int bridge[]);

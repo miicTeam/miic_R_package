@@ -47,7 +47,6 @@ vector<vector<string> > miic::reconstruction::confidenceCut(
     Environment& environment) {
   int** safe_state;
   int** safe_stateIdx;
-  double** safe_stateDouble;
 
   int* lookup = new int[environment.numSamples];
   int* lookup2 = new int[environment.numSamples];
@@ -72,11 +71,6 @@ vector<vector<string> > miic::reconstruction::confidenceCut(
     }
   }
 
-  if (environment.atLeastTwoGaussian == 1) {
-    safe_stateDouble = new double*[environment.numSamples];
-    for (uint i = 0; i < environment.numSamples; i++)
-      safe_stateDouble[i] = new double[environment.numNodes];
-  }
   // Create a back up of the data, for later randomization
   safe_state = new int*[environment.numSamples];
   for (uint i = 0; i < environment.numSamples; i++)
@@ -102,8 +96,6 @@ vector<vector<string> > miic::reconstruction::confidenceCut(
       safe_state[i][j] = environment.dataNumeric[i][j];
       if (environment.columnAsContinuous[j] == 1)
         safe_stateIdx[j][i] = environment.dataNumericIdx[j][i];
-      if (environment.atLeastTwoGaussian)
-        safe_stateDouble[i][j] = environment.dataDouble[i][j];
     }
     if (environment.sampleWeightsVec[0] == -1) {
       // re-init weigths
@@ -142,12 +134,6 @@ vector<vector<string> > miic::reconstruction::confidenceCut(
         }
         for (uint row = 0; row < environment.numSamples; row++) {
           environment.dataNumeric[row][col] = safe_state[lookup[row]][col];
-
-          if (environment.columnAsGaussian[col] == 1 &&
-              environment.atLeastTwoGaussian == 1) {
-            environment.dataDouble[row][col] =
-                safe_stateDouble[lookup[row]][col];
-          }
         }
 
         for (uint row = 0; row < environment.numSamples; row++) {
@@ -174,15 +160,6 @@ vector<vector<string> > miic::reconstruction::confidenceCut(
       }
     }
 
-    if (environment.atLeastTwoGaussian == 1) {
-      for (uint i = 0; i < environment.numNodes; i++) {
-        environment.means[i] = 0.0;
-        environment.standardDeviations[i] = 0.0;
-      }
-      computeMeansandStandardDeviations(environment);
-      computeCorrelations(environment);
-    }
-
     int X, Y;
     double NIxy_ui, k_xy_ui;
     // evaluate the mutual information for every edge
@@ -191,25 +168,16 @@ vector<vector<string> > miic::reconstruction::confidenceCut(
       Y = inferredEdges_tab[i][1];
 
       double* res;
-      // discrete case
       if (environment.columnAsContinuous[X] == 0 &&
           environment.columnAsContinuous[Y] == 0) {
+        // discrete case
         res = computeEnsInformationNew(environment, NULL, 0, NULL, 0, -1, X, Y,
             environment.cplx, environment.m);
         NIxy_ui = res[1];
         k_xy_ui = res[2];
         free(res);
-      } else if (environment.columnAsGaussian[X] == 1 &&
-                 environment.columnAsGaussian[Y] == 1) {
-        int N = environment.numSamples;
-        double NIxy_ui1 = environment.rho[X][Y];
-        k_xy_ui = log(N);
-
-        NIxy_ui = (-log(1 - pow(NIxy_ui1, 2)) / 2) * environment.numSamples;
-      }
-
-      // continuous case non gaussian, mixed
-      else {
+      } else {
+        // mixed case
         res = computeEnsInformationContinuous(environment, NULL, 0, NULL, 0, -1,
             X, Y, environment.cplx, environment.m);
         NIxy_ui = res[1];
@@ -278,8 +246,6 @@ vector<vector<string> > miic::reconstruction::confidenceCut(
 
     for (uint j = 0; j < environment.numNodes; j++) {
       environment.dataNumeric[i][j] = safe_state[i][j];
-      if (environment.atLeastTwoGaussian)
-        environment.dataDouble[i][j] = safe_stateDouble[i][j];
     }
   }
 
@@ -304,15 +270,7 @@ vector<vector<string> > miic::reconstruction::confidenceCut(
         transformToFactors(environment, j);
       }
     }
-  } else if (environment.atLeastTwoGaussian) {
-    for (uint i = 0; i < environment.numNodes; i++) {
-      environment.means[i] = 0.0;
-      environment.standardDeviations[i] = 0.0;
-    }
-    computeMeansandStandardDeviations(environment);
-    computeCorrelations(environment);
-  }
-  // End copy data back
+  }  // End copy data back
 
   std::sort(environment.noMoreAddress.begin(), environment.noMoreAddress.end(),
       sorterNoMore2(environment));
@@ -323,11 +281,6 @@ vector<vector<string> > miic::reconstruction::confidenceCut(
   for (uint i = 0; i < environment.numSamples; i++) delete safe_state[i];
   delete[] safe_state;
 
-  if (environment.atLeastTwoGaussian) {
-    for (uint i = 0; i < environment.numSamples; i++)
-      delete safe_stateDouble[i];
-    delete[] safe_stateDouble;
-  }
   delete[] lookup;
   delete[] lookup2;
 

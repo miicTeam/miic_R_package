@@ -112,8 +112,6 @@ extern "C" SEXP reconstruct(SEXP inputDataR, SEXP typeOfDataR, SEXP cntVarR,
 
   string filePath;
 
-  environment.isAllGaussian = false;
-
   // set the environment
   srand(0);
   setEnvironment(environment);

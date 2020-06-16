@@ -42,14 +42,6 @@ class sorterNoMore {
   }
 };
 
-bool areallUiGaussian(Environment& environment, vector<int> uis, int size) {
-  for (int i = 0; i < size; i++) {
-    if (environment.columnAsGaussian[uis[i]] != 1) return false;
-  }
-
-  return true;
-}
-
 bool areallUiDiscrete(Environment& environment, vector<int> uis, int size) {
   for (int i = 0; i < size; i++) {
     if (environment.columnAsContinuous[uis[i]] != 0) return false;
@@ -183,13 +175,8 @@ bool firstStepIteration(Environment& environment, BCC& bcc) {
              << environment.nodes[posY].name << "\n\n";
       if (environment.edges[posX][posY].shared_info->zi_vect_idx.size() > 0) {
         // Search for new contributing node and its rank
-        if (environment.isAllGaussian == 0) {
-          SearchForNewContributingNodeAndItsRank(
-              environment, posX, posY, environment.memoryThreads[threadnum]);
-        } else {
-          SearchForNewContributingNodeAndItsRankGaussian(
-              environment, posX, posY, environment.memoryThreads[threadnum]);
-        }
+        SearchForNewContributingNodeAndItsRank(
+            environment, posX, posY, environment.memoryThreads[threadnum]);
       }
       // Dynamic thread allocation makes it so we can't know the end point of
       // thread 0, on average it will be numSearchMore - nThreads/2
@@ -312,25 +299,6 @@ bool skeletonIteration(Environment& environment) {
       topEdgeElt->Nxy_ui = v[0];
       topEdgeElt->cplx = v[2];
       free(v);
-    } else if (environment.columnAsGaussian[posX] == 1 &&
-               environment.columnAsGaussian[posY] == 1 &&
-               areallUiGaussian(environment,
-                   environment.edges[posX][posY].shared_info->ui_vect_idx,
-                   environment.edges[posX][posY]
-                       .shared_info->ui_vect_idx.size())) {
-      int s = environment.edges[posX][posY].shared_info->ui_vect_idx.size();
-      v = corrMutInfo(environment, environment.dataDouble,
-          &environment.edges[posX][posY].shared_info->ui_vect_idx[0], s, NULL,
-          0, posX, posY, -2);
-      int N = environment.nSamples[posX][posY];
-      environment.edges[posX][posY].shared_info->Nxy_ui = N;
-      topEdgeElt->cplx =
-          0.5 *
-          (environment.edges[posX][posY].shared_info->ui_vect_idx.size() + 2) *
-          log(N);
-      topEdgeElt->Ixy_ui = v[0];
-      delete[] v;
-
     } else {
       v = computeEnsInformationContinuous(environment,
           &environment.edges[posX][posY].shared_info->ui_vect_idx[0],
@@ -386,13 +354,8 @@ bool skeletonIteration(Environment& environment) {
       }
 
       if (topEdgeElt->zi_vect_idx.size() > 0) {
-        if (environment.isAllGaussian == 0) {
-          SearchForNewContributingNodeAndItsRank(
-              environment, posX, posY, environment.m);
-        } else {
-          SearchForNewContributingNodeAndItsRankGaussian(
-              environment, posX, posY, environment.m);
-        }
+        SearchForNewContributingNodeAndItsRank(
+            environment, posX, posY, environment.m);
       }
 
       if (environment.isVerbose) {

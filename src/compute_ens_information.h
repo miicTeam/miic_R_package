@@ -9,11 +9,6 @@ namespace computation {
 void computeContributingScores(structure::Environment&, int* ziContPosIdx,
     int iz, int* myZi, int myNbrUi, unsigned int numSamples_nonNA,
     int* posArray, double* scoresZ, structure::MemorySpace m);
-double* computeDifference(double*, double*, int);
-double* computeDifferenceByStep(double*, double*, int, int);
-double* computeSum(double*, double*, int);
-double* computeEnsInformation(
-    structure::Environment&, int*, int, int*, int, int, int, int, int);
 double* computeEnsInformationNew(structure::Environment&, int*, int, int*, int,
     int, int, int, int, structure::MemorySpace&);
 void SearchForNewContributingNodeAndItsRank(
@@ -25,15 +20,6 @@ double* computeEnsInformationContinuous(structure::Environment&, int* myCond,
 double* computeEnsInformationContinuous_Orientation(structure::Environment&,
     int* myCond, int myNbrUi, int* myZi, int myVarIdxX, int myVarIdxY, int cplx,
     structure::MemorySpace&);
-// Gaussian case
-double* corrMutInfo(structure::Environment&, double** dataset, int*, int, int*,
-    int, int, int, int);
-void SearchForNewContributingNodeAndItsRankGaussian(
-    structure::Environment& environment, const int posX, const int posY,
-    structure::MemorySpace&);
-double computeEnsInformationContinuous_Gaussian(
-    structure::Environment& environment, const int posX, const int posY,
-    const int posZ);
 
 }  // namespace computation
 }  // namespace miic

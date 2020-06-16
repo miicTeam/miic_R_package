@@ -122,30 +122,21 @@ struct Environment {
   ExecutionTime execTime;
   int consistentPhase;
   // for gaussian case
-  double** rho;
-  double* standardDeviations;
-  double* means;
   double** dataDouble;
-  double** pMatrix;
-  int** nSamples;
   int** iterative_cuts;
   double* sampleWeights;
   vector<double> sampleWeightsVec;
   bool flag_sample_weights;
 
   bool testDistribution;
-  int seed;
   uint nThreads;
   MemorySpace m;
-  vector<int> steps;
   MemorySpace* memoryThreads;
-  // Matrix to keep the number of edges for each eta and shuffle
-  double** shuffleListNumEdges;
+
   double* c2terms;
   double** cterms;
   double** lookchoose;
   int* columnAsContinuous;
-  int* columnAsGaussian;
   vector<int> cntVarVec;
   int* oneLineMatrix;
 
@@ -169,8 +160,6 @@ struct Environment {
   int numNoMore;
 
   int typeOfData;
-  int isAllGaussian;
-  int atLeastTwoGaussian;
   int atLeastOneContinuous;
   int atLeastTwoDiscrete;
 

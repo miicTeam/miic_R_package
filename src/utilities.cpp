@@ -300,83 +300,6 @@ void deleteStruct(Environment& environment) {
   delete[] environment.edges;
 }
 
-void computeMeansandStandardDeviations(Environment& environment) {
-  for (uint c = 0; c < environment.numNodes; c++) {
-    if (environment.columnAsGaussian[c] == 1) {
-      int nsamples = 0;
-      for (uint r = 0; r < environment.numSamples; r++) {
-        if (!std::isnan(environment.dataDouble[r][c])) {
-          environment.means[c] += environment.dataDouble[r][c];
-          nsamples++;
-        }
-      }
-
-      environment.means[c] /= (double)nsamples;
-
-      for (uint r = 0; r < environment.numSamples; r++) {
-        if (!std::isnan(environment.dataDouble[r][c]))
-          environment.standardDeviations[c] +=
-              pow((environment.dataDouble[r][c] - environment.means[c]), 2);
-      }
-
-      environment.standardDeviations[c] /= (double)nsamples;
-      environment.standardDeviations[c] =
-          sqrt(environment.standardDeviations[c]);
-    }
-  }
-}
-
-void computeCorrelations(Environment& environment) {
-  double covariance = 0.0;
-  for (uint i = 0; i < environment.numNodes; i++) {
-    for (uint j = 0; j < environment.numNodes; j++) {
-      if (environment.columnAsGaussian[i] == 1 &&
-          environment.columnAsGaussian[j] == 1) {
-        // cout << "i: " << i << "j: " << j <<  endl << flush;
-        if (i != j) {
-          covariance = 0.0;
-          int nSamples = 0;
-          // cout << "environment.numSamples: " << environment.numSamples  <<
-          // endl << flush;
-          for (uint k = 0; k < environment.numSamples; k++) {
-            // cout << "environment.dataDouble[k][i]: " <<
-            // environment.dataDouble[k][i]  <<  endl << flush;
-
-            if (!std::isnan(environment.dataDouble[k][i]) &&
-                !std::isnan(environment.dataDouble[k][j])) {
-              covariance +=
-                  (environment.dataDouble[k][i] - environment.means[i]) *
-                  (environment.dataDouble[k][j] - environment.means[j]);
-              nSamples++;
-            }
-          }
-
-          // divide covariance by nCols
-          covariance /= nSamples;
-          environment.nSamples[i][j] = nSamples;
-          environment.rho[i][j] =
-              covariance / (environment.standardDeviations[i] *
-                               environment.standardDeviations[j]);
-        } else {
-          environment.rho[i][j] = 1;
-        }
-      }
-    }
-  }
-}
-
-bool isOnlyDouble(const char* str) {
-  char* endptr = 0;
-  strtod(str, &endptr);
-
-  if (*endptr != '\0' || endptr == str) return false;
-  return true;
-}
-
-bool comparatorPairs(const pair<double, int>& l, const pair<double, int>& r) {
-  return l.first < r.first;
-}
-
 bool SortFunctionNoMore1(
     const EdgeID* a, const EdgeID* b, const Environment& environment) {
   return environment.edges[a->i][a->j].shared_info->Ixy_ui >
@@ -1058,245 +981,6 @@ void getJointMixed(Environment& environment, int i, int j, int* mixedDiscrete,
   }
 }
 
-bool parseCommandLine(Environment& environment, int argc, char** argv) {
-  int c;
-  environment.inData = "";
-  environment.outDir = "";
-  environment.blackbox_name = "";
-  environment.edgeFile = "";
-  environment.effN = -1;
-  environment.cplx = 1;
-  environment.isVerbose = false;
-  environment.numberShuffles = 0;
-  environment.isLatent = false;
-  environment.isLatentOnlyOrientation = false;
-  environment.isTplReuse = true;
-  environment.isK23 = true;
-  environment.isDegeneracy = false;
-  environment.isNoInitEta = false;
-  environment.isPropagation = true;
-  environment.halfVStructures = 0;
-  environment.typeOfData = 0;
-  environment.isAllGaussian = 0;
-  environment.atLeastTwoGaussian = 0;
-  environment.atLeastTwoDiscrete = 0;
-  environment.atLeastOneContinuous = 0;
-  environment.nThreads = 0;
-  environment.testDistribution = true;
-  environment.consistentPhase = 0;
-
-  string s;
-  while ((c = getopt(argc, argv,
-              "j:i:o:b:d:c:e:s:r:q:k:n:p:a:h:m:t:u:z:x:l:gfv?")) != -1) {
-    switch (c) {
-      case 'i': {
-        environment.inData.append(optarg);
-        break;
-      }
-      case 'o': {
-        environment.outDir.append(optarg);
-        break;
-      }
-      case 'x': {
-        environment.seed = 0;
-        s = optarg;
-        if (!isInteger(s)) {
-          cout << "[ERR] Seed should be an integer!\n";
-        } else
-          environment.seed = atoi(optarg);
-        break;
-      }
-      case 'b': {
-        environment.blackbox_name.append(optarg);
-        break;
-      }
-      case 'd': {
-        s = optarg;
-        stringstream ss(s);  // Turn the string into a stream.
-        string tok;
-        char delimiter = ',';
-        while (getline(ss, tok, delimiter)) {
-          int ival = atoi(tok.c_str());
-          environment.steps.push_back(ival);
-        }
-        break;
-      }
-      case 'n': {
-        s = optarg;
-        if (!isInteger(s) && atoi(optarg) > 1) {
-          cout << "[ERR] EffeN should be a positive integer!\n";
-        } else
-          environment.effN = atoi(optarg);
-        break;
-      }
-      case 'h': {
-        environment.isAllGaussian = atoi(optarg);
-        break;
-      }
-      case 't': {
-        s = optarg;
-        if (!isInteger(s)) {
-          cout << "[ERR] Type of data should be an integer!\n";
-        } else {
-          if (atoi(optarg) == 0 || atoi(optarg) == 1 || atoi(optarg) == 2)
-            environment.typeOfData = atoi(optarg);
-          else
-            exit(1);
-        }
-        break;
-      }
-      case 'u': {
-        s = optarg;
-        environment.dataTypeFile.append(optarg);
-        break;
-      }
-      case 'm': {
-        environment.edgeFile.append(optarg);
-        break;
-      }
-      case 'z': {
-        environment.nThreads = atoi(optarg);
-        break;
-      }
-      case 'c': {
-        environment.cplxType.append(optarg);
-
-        if (environment.cplxType.compare("mdl") != 0 &&
-            environment.cplxType.compare("nml") != 0) {
-          cout << "[ERR] Wrong complexity check option!\n";
-          exit(1);
-        } else if (environment.cplxType.compare("mdl") == 0) {
-          environment.cplx = 0;
-        }
-        break;
-      }
-      case 'e': {
-        s = optarg;
-        if (!isOnlyDouble(optarg)) {
-          cout << "[ERR] Confidence cut should be a double!\n";
-          exit(1);
-        }
-
-        environment.confidenceThreshold = atof(optarg);
-        break;
-      }
-      case 's': {
-        s = optarg;
-        if (!isInteger(s)) {
-          cout << "[ERR] Shuffle should be an integer!\n";
-          exit(1);
-        } else
-          environment.numberShuffles = atoi(optarg);
-        break;
-      }
-      case 'r': {
-        s = optarg;
-        if (s.compare("1") != 0 && s.compare("0") != 0) {
-          cout << "[ERR] Wrong reuse/not reuse tpl argument!\n";
-          return false;
-        } else if (s.compare("0") == 0)
-          environment.isTplReuse = false;
-        break;
-      }
-      case 'k': {
-        s = optarg;
-        if (s.compare("1") != 0 && s.compare("0") != 0) {
-          cout << "[ERR] Case k: Wrong k23 argument!\n";
-          exit(1);
-        } else if (s.compare("0") == 0)
-          environment.isK23 = false;
-        break;
-      }
-      case 'p': {
-        s = optarg;
-        if (s.compare("0") != 0) {
-          cout << "[ERR] Case p: Wrong propagation argument!*" << s << "*\n";
-          exit(1);
-        } else if (s.compare("0") == 0)
-          environment.isPropagation = false;
-        break;
-      }
-      case 'j': {
-        s = optarg;
-        if (s.compare("1") != 0 && s.compare("0") != 0) {
-          cout << "[ERR] Case j: Wrong consistent argument!*" << s << "*\n";
-          exit(1);
-        } else if (s.compare("1") == 0)
-          environment.consistentPhase = true;
-        break;
-      }
-      case 'a': {
-        s = optarg;
-        if (s.compare("0") != 0 && s.compare("1") != 0) {
-          cout << "[ERR] Case a: Wrong half V-structures argument!*" << s
-               << "*\n";
-          exit(1);
-        } else
-          environment.halfVStructures = atoi(optarg);
-        break;
-      }
-      case 'l': {
-        s = optarg;
-        if (s.compare("0") != 0 && s.compare("1") != 0 && s.compare("2") != 0) {
-          cout << "[ERR] Wrong latent argument!*" << s << "*\n";
-          exit(1);
-        } else {
-          if (s.compare("1") == 0) {
-            environment.isLatent = true;
-          }
-          if (s.compare("2") == 0) {
-            environment.isLatentOnlyOrientation = true;
-          }
-        }
-        break;
-      }
-      case 'g': {
-        environment.isDegeneracy = true;
-        break;
-      }
-      case 'f': {
-        environment.isNoInitEta = true;
-        break;
-      }
-      case 'v': {
-        environment.isVerbose = true;
-        break;
-      }
-
-      case '?': {
-        if (optopt == 'c')
-          fprintf(stderr, "Option -%c requires an argument.\n", optopt);
-        else if (isprint(optopt))
-          fprintf(stderr, "Unknown option `-%c'.\n", optopt);
-        else
-          fprintf(stderr, "Unknown option character `\\x%x'.\n", optopt);
-        exit(1);
-      }
-    }
-  }
-
-  if (!environment.inData.compare("")) {
-    cout << "The input data file is required (-i)\n";
-    exit(1);
-  }
-
-  if (!existsTest(environment.inData)) {
-    cout << "The input file does not exist\n";
-    exit(1);
-  }
-
-  if (!environment.outDir.compare("")) {
-    cout << "The output dir path is required (-o)\n";
-    exit(1);
-  }
-
-  if (environment.steps.empty()) {
-    environment.steps.push_back(1);
-    environment.steps.push_back(2);
-  }
-  return true;
-}
-
 void printEnvironment(const Environment& environment) {
   stringstream s;
   s << "# --------\n# Inputs:\n# ----\n"
@@ -1322,22 +1006,9 @@ void printEnvironment(const Environment& environment) {
 }
 
 void readFileType(Environment& environment) {
-  uint numberGaussian = 0;
   for (uint pos = 0; pos < environment.numNodes; pos++) {
     environment.columnAsContinuous[pos] = environment.cntVarVec[pos];
-    if (environment.columnAsContinuous[pos] == 2) {
-      numberGaussian++;
-      environment.columnAsContinuous[pos] = 1;
-      environment.columnAsGaussian[pos] = 1;
-    } else {
-      environment.columnAsGaussian[pos] = 0;
-    }
   }
-
-  if (numberGaussian == environment.numNodes) environment.isAllGaussian = 1;
-
-  if (numberGaussian >= 2) environment.atLeastTwoGaussian = 1;
-
   if (environment.typeOfData != 0) {
     environment.dataDouble = new double*[environment.numSamples];
 
@@ -1365,8 +1036,6 @@ void setEnvironment(Environment& environment) {
   environment.searchMoreAddress.clear();
   environment.numSearchMore = 0;
 
-  environment.isAllGaussian = 0;
-  environment.atLeastTwoGaussian = 0;
   environment.atLeastTwoDiscrete = 0;
   environment.atLeastOneContinuous = 0;
 
@@ -1377,11 +1046,9 @@ void setEnvironment(Environment& environment) {
   if (isNA) removeRowsAllNA(environment);
 
   environment.columnAsContinuous = new int[environment.numNodes];
-  environment.columnAsGaussian = new int[environment.numNodes];
   if (environment.typeOfData == 0) {
     for (uint i = 0; i < environment.numNodes; i++) {
       environment.columnAsContinuous[i] = 0;
-      environment.columnAsGaussian[i] = 0;
     }
   } else {
     readFileType(environment);
@@ -1561,46 +1228,6 @@ void setEnvironment(Environment& environment) {
   for (uint i = 0; i < 2 * environment.numSamples; i++) {
     environment.noiseVec[i] =
         std::rand() / ((RAND_MAX + 1u) / MAGNITUDE_TIES) - MAGNITUDE_TIES / 2;
-  }
-
-  // for continuous gaussian
-  if (environment.atLeastTwoGaussian == 1) {
-    // set correlation part
-    environment.means = new double[environment.numNodes];
-    environment.standardDeviations = new double[environment.numNodes];
-
-    // create rho matrix
-    environment.rho = new double*[environment.numNodes];
-
-    for (uint i = 0; i < environment.numNodes; i++) {
-      environment.rho[i] = new double[environment.numNodes];
-      for (uint j = 0; j < environment.numNodes; j++) {
-        environment.rho[i][j] = 0;
-      }
-    }
-
-    // create nsamples matrix
-    environment.nSamples = new int*[environment.numNodes];
-
-    for (uint i = 0; i < environment.numNodes; i++) {
-      environment.nSamples[i] = new int[environment.numNodes];
-    }
-
-    for (uint i = 0; i < environment.numNodes; i++) {
-      environment.means[i] = 0.0;
-      environment.standardDeviations[i] = 0.0;
-    }
-    // compute the means and standard deviations
-    computeMeansandStandardDeviations(environment);
-    // compute the correlations coefficients
-    computeCorrelations(environment);
-
-    // Alloc the rho for correlations() (save time)
-    environment.pMatrix = new double*[environment.numNodes];
-
-    for (uint i = 0; i < environment.numNodes; i++) {
-      environment.pMatrix[i] = new double[environment.numNodes];
-    }
   }
 }
 

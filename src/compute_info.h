@@ -6,9 +6,6 @@
 namespace miic {
 namespace computation {
 
-int computeInfoAndCplx(int* myNxyui, int* myDVect, int* myLevels, int* myVarIdx,
-    int mySSize, int mySSizeEff, int myNbrVar, double* infoAndCplx,
-    int myCplxType, double*);
 double computeLogC(int N, int r, double* looklog, double* c2terms);
 double computeLogC(int N, int r, double* looklog, double** cterms);
 double* getAllInfoNEW(int* ptrAllData, unsigned int* ptrAllLevels,

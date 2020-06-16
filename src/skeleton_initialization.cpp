@@ -34,19 +34,6 @@ int initEdgeElt(Environment& environment, int i, int j, MemorySpace& m) {
     environment.edges[i][j].shared_info->cplx = res[2];
     environment.edges[i][j].shared_info->Nxy_ui = res[0];
     free(res);
-  }
-
-  else if (environment.columnAsGaussian[i] == 1 &&
-           environment.columnAsGaussian[j] == 1) {
-    res = corrMutInfo(
-        environment, environment.dataDouble, NULL, 0, NULL, 0, i, j, -2);
-    int N = environment.nSamples[i][j];
-    environment.edges[i][j].shared_info->Ixy_ui = res[0];
-    environment.edges[i][j].shared_info->cplx =
-        0.5 * (environment.edges[i][j].shared_info->ui_vect_idx.size() + 2) *
-        log(N);
-    environment.edges[i][j].shared_info->Nxy_ui = N;
-    delete[] res;
   } else {
     res = computeEnsInformationContinuous(
         environment, NULL, 0, NULL, 0, -1, i, j, environment.cplx, m);
