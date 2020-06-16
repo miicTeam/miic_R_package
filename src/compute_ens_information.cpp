@@ -358,7 +358,7 @@ double* computeEnsInformationContinuous_Orientation(Environment& environment,
 
 void computeContributingScores(Environment& environment, int* ziContPosIdx,
     int iz, int* myZi, int myNbrUi, uint numSamples_nonNA, int* posArray,
-    double* res, double* scoresZ, MemorySpace m) {
+    double* scoresZ, MemorySpace m) {
   // progressive data rank with repetition for same values
 
   int cplx = environment.cplx;
@@ -374,11 +374,9 @@ void computeContributingScores(Environment& environment, int* ziContPosIdx,
   uint samplesNotNA = count_non_NAs(myNbrUi, sample_is_not_NA,
     NAs_count, posArray, environment, z);
 
+  double output_score;
   if (samplesNotNA <= 2) {
-    res = new double[3];
-    res[0] = -DBL_MAX;  // Rscore
-    res[1] = 0;         // I
-    res[2] = 1;         // k
+    output_score = -DBL_MAX;
   } else {
     // Allocate data reducted *_red without rows containing NAs
     // All *_red variables are passed to the optimization routine
@@ -402,13 +400,14 @@ void computeContributingScores(Environment& environment, int* ziContPosIdx,
       double** jointFreqs = getJointFreqs(
           environment, posArray[0], posArray[1], sample_is_not_NA);
 
-      res = getAllInfoNEW(environment.oneLineMatrix, environment.allLevels,
-          posArray, myNbrUi, zz, 1, -1, environment.numSamples,
-          environment.effN, cplx, environment.isK23, environment.looklog,
-          environment.c2terms, &m, environment.sampleWeights, jointFreqs,
-          environment.testDistribution);
+      double* res = getAllInfoNEW(environment.oneLineMatrix,
+          environment.allLevels, posArray, myNbrUi, zz, 1, -1,
+          environment.numSamples, environment.effN, cplx, environment.isK23,
+          environment.looklog, environment.c2terms, &m,
+          environment.sampleWeights, jointFreqs, environment.testDistribution);
 
-      res[0] = res[6];
+      output_score = res[6];
+      delete[] res;
 
       for (uint level0 = 0; level0 < environment.allLevels[posArray[0]];
            level0++)
@@ -417,9 +416,6 @@ void computeContributingScores(Environment& environment, int* ziContPosIdx,
       delete[] zz;
 
     } else {
-      // res[0]=Rscore
-      // res[1]=N*Ixyz
-      // res[2]=N*kxyz
       // we do not want to add a z if x or y have only one bin
       bool ok = true;  // ok : do we compute I or return 0?
       if (samplesNotNA < environment.numSamples) {
@@ -450,20 +446,19 @@ void computeContributingScores(Environment& environment, int* ziContPosIdx,
       }
 
       if (ok) {
-        res = compute_Rscore_Ixyz_alg5(dataNumeric_red, dataNumericIdx_red,
-            AllLevels_red, cnt_red, posArray_red, myNbrUi, myNbrUi + 2,
-            samplesNotNA, sample_weights_red, flag_sample_weights, environment);
-      } 
-      else{
-        res = new double[3];
-        res[0] = -DBL_MAX;  // Rscore
-        res[1] = 0;         // I
-        res[2] = 1;         // k
+        double* res = compute_Rscore_Ixyz_alg5(dataNumeric_red,
+            dataNumericIdx_red, AllLevels_red, cnt_red, posArray_red, myNbrUi,
+            myNbrUi + 2, samplesNotNA, sample_weights_red, flag_sample_weights,
+            environment);
+        output_score = res[0];
+        delete[] res;
+      } else {
+        output_score = -DBL_MAX;
       }
     }
   }  // jump cond no statistics
 
-  scoresZ[iz] = res[0];
+  scoresZ[iz] = output_score;
 }
 
 double* computeEnsInformationContinuous(Environment& environment, int* myCond,
@@ -483,8 +478,6 @@ double* computeEnsInformationContinuous(Environment& environment, int* myCond,
     }
   }
 
-  int numSamples_nonNA =
-      getNumSamples_nonNA(environment, posArray[0], posArray[1]);
   double* res_new;
 
   // initialization part (no z)
@@ -616,9 +609,8 @@ double* computeEnsInformationContinuous(Environment& environment, int* myCond,
 #endif
       int numSamples_nonNA =
           getNumSamples_nonNA(environment, posArray[0], posArray[1]);
-      double* res;
       computeContributingScores(environment, ziContPosIdx, iz, myZi, myNbrUi,
-          numSamples_nonNA, posArray, res, scoresZ, privateM);
+          numSamples_nonNA, posArray, scoresZ, privateM);
     }  // parallel for on z
 
     for (uint iz = 0; iz < myNbrZi; iz++) {  // find optimal z
@@ -721,8 +713,6 @@ double* computeEnsInformationNew(Environment& environment, int* myCond,
   printf("\n# =====> before getAllInfoNEW \n");
 #endif  // _MY_DEBUG_NEW
 
-  int numSamples_nonNA =
-      getNumSamples_nonNA(environment, posArray[0], posArray[1]);
   double** jointFreqs =
       getJointFreqs(environment, posArray[0], posArray[1]);
 

@@ -245,11 +245,11 @@ extern "C" SEXP mydiscretizeMutual(SEXP RmyDist1, SEXP RmyDist2, SEXP RflatU,
   environment.sampleWeightsVec = Rcpp::as<vector<double> >(RsampleWeights);
   environment.sampleWeights = new double[n];
   if (environment.sampleWeightsVec[0] != -1) {
-    for (uint i = 0; i < n; i++) {
+    for (int i = 0; i < n; i++) {
       environment.sampleWeights[i] = environment.sampleWeightsVec[i];
     }
   } else {
-    for (uint i = 0; i < n; i++) {
+    for (int i = 0; i < n; i++) {
       if (effN == n)
         environment.sampleWeights[i] = 1;
       else

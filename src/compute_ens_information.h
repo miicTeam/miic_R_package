@@ -8,7 +8,7 @@ namespace computation {
 
 void computeContributingScores(structure::Environment&, int* ziContPosIdx,
     int iz, int* myZi, int myNbrUi, unsigned int numSamples_nonNA,
-    int* posArray, double* res, double* scoresZ, structure::MemorySpace m);
+    int* posArray, double* scoresZ, structure::MemorySpace m);
 double* computeDifference(double*, double*, int);
 double* computeDifferenceByStep(double*, double*, int, int);
 double* computeSum(double*, double*, int);
