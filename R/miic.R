@@ -5,16 +5,16 @@
 #' from indirect effects amongst correlated variables, including cause-effect
 #' relationships and the effect of unobserved latent causes.
 #'
-#' @details In non temporal cases, starting from a complete graph, the method 
+#' @details for non temporal series, the method, starting from a complete graph, 
 #' iteratively removes dispensable edges, by uncovering significant information 
 #' contributions from indirect paths, and assesses edge-specific confidences 
 #' from randomization of available data. The remaining edges are then oriented 
 #' based on the signature of causality in observational data.
 #' 
-#' For temporal graphs, miic reorganizes the dataset using the max lag parameter
-#' (tau) to transform every timestep of the data into a lagged sample. 
-#' A lagged graph is created with only edges having at least one of the two nodes 
-#' on the the last timestep. Then, miic standard algorithm is applied to remove 
+#' For temporal series, miic reorganizes the dataset using the max lag parameter
+#' (\emph{tau}) to transform the timesteps into lagged samples. As starting point,
+#' a lagged graph is created with only edges having at least one node laying
+#' on the last timestep. Then, miic standard algorithm is applied to remove 
 #' dispensable edges. The remaining edges are then oriented by using the
 #' temporality and the signature of causality in observational data.
 #'
@@ -23,29 +23,29 @@
 #' \item Verny et al., \emph{PLoS Comp. Bio. 2017.}
 #' }
 #'
-#' @param inputData [a data frame]
-#' For non temporal graphs, a data frame that contains the observational data. 
+#' @param inputData [a data frame or a 2D/3D array]\cr
+#' For non temporal series, a data frame that contains the observational data. 
 #' Each column corresponds to one variable and each row is a sample that gives 
 #' the values for all the observed variables. The column names correspond to 
 #' the names of the observed variables. Numeric columns will be treated as 
-#' continuous values, factors and character as categorical.
-#' 
-#' For temporal graphs, inputData can be either a dataframe,a 2D or 3D array.
-#' When inputData is a dataframe, each column corresponds to one variable
-#' and each row is a timestep. When inputData is an array, the dimension
+#' continuous values, factors and character as categorical.\cr
+#' \cr
+#' For temporal series, \emph{inputData} can be either a dataframe,a 2D or 3D array.
+#' When \emph{inputData} is a dataframe, each column corresponds to one variable
+#' and each row is a timestep. When \emph{inputData} is an array, the dimension
 #' is [nb nodes, nb timesteps] for 2D and [nb samples, nb nodes, nb timesteps]
 #' when 3D. As for the non temporal case, numeric columns will be treated as 
 #' continuous values, factors and character as categorical.
 #'
 #' @param blackBox [a data frame]
-#' An optional data frame containing the
-#' pairs of variables that should be considered as independent. Each row contains
-#' one column for each of the two variables. The variable name must correspond to
-#' the one in the \emph{inputData} data frame.
+#' An optional data frame containing the pairs of variables that should be
+#' considered as independent. Each row contains one column for each of 
+#' the two variables. The variable name must correspond to the one in 
+#' the \emph{inputData} data frame.
 #'
 #' @param neff [a positive integer]
 #' The N samples given in the \emph{inputdata} data frame are expected
-#' to be independent. In case of correlated samples such as in time series or
+#' to be independent. In case of correlated samples such as in 
 #' Monte Carlo sampling approaches, the effective number of independent samples
 #' \emph{neff} can be estimated using the decay of the autocorrelation function
 #' (Verny \emph{et al.}, PLoS Comp. Bio. 2017). This \emph{effective} number \emph{neff}
@@ -71,17 +71,19 @@
 #' in the (partially) oriented graph.
 #'
 #' @param orientation [a boolean value]
-#' The miic network skeleton can be partially directed
-#' by orienting and propagating edge directions, based on the sign and magnitude
-#' of the conditional 3-point information of unshielded triples. The propagation
-#' procedure relyes on probabilities; for more details, see Verny \emph{et al.}, PLoS Comp. Bio. 2017).
+#' The miic network skeleton can be partially directed by orienting and 
+#' propagating edge directions. The orientation is based on the sign and 
+#' magnitude of the conditional 3-point information of unshielded triples
+#' and, for temporal graphs, on time lags.
+#' The propagation procedure relyes on probabilities; for more details, 
+#' see Verny \emph{et al.}, PLoS Comp. Bio. 2017).
 #' If set to FALSE the orientation step is not performed.
 #'
 #' @param propagation [a boolean value]
 #' If set to FALSE, the skeleton is partially oriented with only the
-#' v-structure orientations. Otherwise, the v-structure orientations are
-#' propagated to downstream undirected edges in unshielded triples following
-#' the orientation method
+#' v-structure orientations, plus time for temporal graphs. 
+#' Otherwise, the v-structure orientations are propagated to downstream 
+#' undirected edges in unshielded triples following the orientation method.
 #'
 #' @param categoryOrder [a data frame] An optional data frame giving information
 #' about how to order the various states of categorical variables. It will be
@@ -130,16 +132,40 @@
 #' orient edges and discard inconsistent orientations to ensure consistency of
 #' the network.
 #'
-#' @param tau [an integer]
-#' Max lag used for temporal series. If tau is supplied (integer >= 1), 
-#' miic switches to temporal mode: it contructs a lagged graph over tau periods of time,
-#' and looks both for temporal and contemporaneous edges
-#' 
-#' @param verbose [a boolean value] If TRUE, debugging output is printed.
-#'
 #' @param nThreads [a positive integer]
 #' When set greater than 1, nThreads parallel threads will be used for computation. Make sure
 #' your compiler is compatible with openmp if you wish to use multithreading.
+#'
+#' @param tau [an integer] Optional, -1 by default.\cr
+#' Max lag used for temporal series. If \emph{tau} is supplied (integer >= 1), 
+#' miic switches to temporal mode: it contructs a lagged graph over tau periods 
+#' of time, and looks both for temporal and contemporaneous edges.
+#' 
+#' @param movavg [an integer] Optional, -1 by default.\cr
+#' Used only in temporal mode, If \emph{movavg} is supplied (integer > 1), 
+#' a moving average operation is applied to the time series.\cr
+#' Note that when both moving average and subtiming are applied,
+#' the moving average is performed before the subtiming.
+#' 
+#' @param subtiming [an integer] Optional, -1 by default.\cr
+#' Used only in temporal mode, If \emph{subtiming} is supplied (integer > 1), 
+#' the time series will be subtimed using 1 timestep every \emph{subtiming} 
+#' timesteps starting from the last.\cr 
+#' i.e.: on 1000 timesteps and \emph{subtiming} = 7, the timesteps kept 
+#' will be 1000, 993, 986, ..., 13, 6.\cr
+#' Note that when both moving average and subtiming are applied,
+#' the moving average is performed before the subtiming.
+#' 
+#' @param bootstrap [an int] Optional, default=-1.\cr
+#' Experimental, used only in temporal mode, When -1, no bootstraping 
+#' is performed. When > 0, select randomly \emph{bootstrap} lagged samples 
+#' (the samples obtained after transformation of the input samples over 
+#' \emph{tau} timesteps).\cr
+#' As normal when using bootstrapping, the \emph{bootstrap} value can be
+#' greater than the number of lagged samples as a lagged sample can be  
+#' selected more than once.
+#' 
+#' @param verbose [a boolean value] If TRUE, debugging output is printed.
 #'
 #' @return A \emph{miic-like} object that contains:
 #' \itemize{
@@ -288,7 +314,11 @@ miic <- function(inputData,
                  testMAR = TRUE,
                  consistent = c("no", "orientation", "skeleton"),
                  tau = -1,
-                 verbose = FALSE) {
+                 movavg = -1,
+                 subtiming = -1,
+                 bootstrap = -1,
+                 verbose = FALSE
+                 ) {
   res <- NULL
   skeleton <- TRUE
 
@@ -314,7 +344,9 @@ miic <- function(inputData,
       inputData <- as.matrix (t(inputData), dim=c( ncol(inputData), nrow(inputData) ),
                               dimnames=list ( colnames(inputData), rownames(inputData) ) )
       }
-    struct_ret <- tmiic.transform_data_for_miic (inputData, tau, categoryOrder)
+    struct_ret <- tmiic.transform_data_for_miic (inputData, tau, 
+                                categoryOrder=categoryOrder, movavg=movavg, 
+                                subtiming=subtiming, bootstrap=bootstrap)
     inputData <- struct_ret$inputData
     categoryOrder <- struct_ret$categoryOrder
     }
