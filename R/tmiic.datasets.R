@@ -136,7 +136,7 @@ tmiic.DF_TRUE_EDGES_MODEL_7 = data.frame (
 #' tmiic.f1
 #'
 #' @description 
-#' basic linear function used for sample generation f(x) = x
+#' basic linear function used for samples generation f(x) = x
 #'
 #' @param x [a number]
 #'
@@ -153,8 +153,8 @@ tmiic.f1 <- function (x)
 #' tmiic.f2
 #'
 #' @description 
-#' non linear function used for sample generation 
-#' f(x) = (1 - 4 * exp[-(x^2)/2]) * x 
+#' non linear function used for samples generation 
+#' \eqn{f(x) = ( 1 - 4 * exp[-(x^2)/2] ) * x}
 #'
 #' @param x [a number]
 #'
@@ -171,8 +171,8 @@ tmiic.f2 <- function (x)
 #' tmiic.f3
 #'
 #' @description 
-#' non linear function used for sample generation 
-#' f(x) = ( 1 - 4 * x^3 * exp[-(x^2)/2] ) * x
+#' non linear function used for samples generation 
+#' \eqn{f(x) = ( 1 - 4 * x^3 * exp[-(x^2)/2] ) * x}
 #'
 #' @param x [a number]
 #'
@@ -201,11 +201,14 @@ tmiic.LIST_FUNCTS = list (f1 = tmiic.f1, f2 = tmiic.f2, f3 = tmiic.f3)
 #' tmiic.call_funct
 #'
 #' @description 
-#' Utility function to call function f1, f2 or f3 supplied as parameter
+#' Utility function to call a function supplied as parameter. 
 #'
-#' @param funct [the function to use for the generation : f1, f2 or f3]
-#'
-#' @return the number computed by f(x)
+#' @param funct [a function] The function to use. 
+#' Typically, the function will be \emph{tmiic.f1}, \emph{tmiic.f2} or 
+#' \emph{tmiic.f3} but any function accepting a float as parameter and 
+#' returning a float can be used.
+#'  
+#' @return the number computed by the funct function
 #-----------------------------------------------------------------------------
 tmiic.call_funct <- function(funct, x)
   { 
@@ -221,21 +224,40 @@ tmiic.call_funct <- function(funct, x)
 #' Generate n_samples samples for x nodes over n_time timesteps
 #' using a predefined model
 #'
-#' @param model_idx [a number betwen 0 and 4] The model for the data generation.
-#' Model 0 is for debug (intialazing nodes with easily identiable values)
-#' Model 1 uses only t-1 information. 
-#' Models 2 and 3 uses both t-1 and t-2.
-#' Model 4 used t-1, t-2 and contemporanous edge
-#' @param funct [a function] the function usse for the generation : 
-  #' tmiic.f1, f2 or f3 or any other function computing a float from a float 
+#' @param model_idx [an integer betwen 0 and 7] The model for the data 
+#' generation:
+#' \itemize{
+#' \item Model 0 is for debug (intialazing nodes with easily identiable values)
+#' \item Model 1 uses only t-1 information. 
+#' \item Models 2 and 3 use both t-1 and t-2.
+#' \item Model 4 uses t-1, t-2 and contemporaneous edge
+#' \item Model 5 isolated temporal edges oriented using time
+#' \item Model 6 contemporaneous edge oriented using the 4 points condition
+#' \item Model 7 latent node unveiled by edge between X2 and X4
+#' }
+#' @param funct [a function] the function used for the generation.\cr
+#' It can be any function computing a float from a float or one of the
+#' predefined ones:
+#' \itemize{
+#' \item \emph{tmiic.f1}: \eqn{f(x) = x}
+#' \item \emph{tmiic.f2}: \eqn{f(x) = ( 1 - 4 * exp[-(x^2)/2] ) * x}
+#' \item \emph{tmiic.f3}: \eqn{f(x) = ( 1 - 4 * x^3 * exp[-(x^2)/2] ) * x}
+#' }
 #' @param n_samples [an integer] The number of samples to generate
-#' @param n_time [an integer] The number of timesteps of the time series generated
+#' @param n_time [an integer] The number of timesteps of the time series 
+#' generated
 #' @param seed [an integer] Optiinal, NULL by default. The seed to use when 
 #' generating the dataset
 #'
 #' @return a list with two entries :
-#' - samples as an array of dimensions n_samples * n_nodes * n_time
-#' - a dataframe with the true edes of the network
+#' \itemize{
+#' \item samples as an array of dimensions \emph{n_samples} * 
+#' \emph{n_nodes} * \emph{n_time}
+#' \item a dataframe with the true edes of the network
+#' }
+#' 
+#' @export
+#' @useDynLib miic
 #-----------------------------------------------------------------------------
 tmiic.generate_predefined_dataset <- function (model_idx, funct, n_samples, 
                                                n_time, seed=NULL) 
@@ -321,35 +343,47 @@ tmiic.generate_predefined_dataset <- function (model_idx, funct, n_samples,
 #' tmiic.generate_dataset
 #'
 #' @description 
-#' Generate n_samples samples for n_nodes nodes over n_time timesteps
+#' Generate \emph{n_samples} samples for \emph{n_nodes} nodes over 
+#' \emph{n_time} timesteps
 #'
 #' @details 
-#' The function uses the funct and the true_edge parameters to generate temporal 
-#' samples. ie: if in the true edges, the node1 is connected to itself at t-1
-#' with strengh 0.5 and to the node2 at t-2 with strength 0.2, the generation 
-#' will compute for each timestep of node 1 :
+#' The function uses the \emph{funct} and the \emph{true_edges} parameters 
+#' to generate temporal dataset.
+#'  
+#' i.e.: if in the true edges, the node1 is:
+#' \itemize{
+#' \item connected to itself at t-1 with strengh 0.5 
+#' \item connected to the node2 at t-2 with strength 0.2
+#' } 
+#' the generation will compute for each timestep of node 1:\cr
 #' node1(t) <- 0.5 * funct ( node1[t-1] ) + 0.2 * funct ( node2[t-2] ) + white noise
-#' generate_temporal_dataset discards the first iterations so the tempral data
-#' generated are not affected by the intial values.
 #' 
-#' @param true_edges [a dataframe] The true_edges dataframe must at least contains
-#' the columns orig, dest, lag and strengh. The orig and dest columns are the 
-#' indexes of the edges's nodes. Lag is a postive or 0 integer. Strengh is 
-#' a real number positive or negative indicating the impact of the orig node to
-#' the dest one.
-#' CAUTION: if a 0 lag is used, the order of the edges in the imput dataframe
+#' Values of the first iterations are discarded, so the temporal data
+#' generated are not affected by the initial values.
+#' 
+#' @param true_edges [a dataframe] The true_edges dataframe must at least 
+#' contains the columns orig, dest, lag and strengh. The orig and dest 
+#' columns are the indexes of the edges's nodes. Lag is a postive or 0 integer.
+#' Strengh is a real number positive or negative indicating the impact of the
+#' orig node to the dest one.\cr
+#' CAUTION: if a 0 lag is used, the order of the edges in the input dataframe
 #' is important. The values of orig node(s) of the lag 0 edge must be completly
-#' computed before the dest node of the lag 0 edge is computed. 
+#' computed before the dest node of the lag 0 edge is computed.\cr
 #' i.e. : if we have edges X3(t-1) -> X2(t) and X2(t) -> X1(t)
 #' the edge X3(t-1) -> X2(t) must appear first in the true_edges parameter.
-#' @param funct [the function to apply when an edge exist between two nodes]
-#' @param list_nodes [the list of nodes to generate]
+#' @param funct [a function] The function to apply when an edge exist between
+#' two nodes
+#' @param list_nodes [a list] The list of nodes in the dataset
 #' @param n_samples [an integer] The number of samples to generate
-#' @param n_time [an integer] The number of timesteps of the time series generated
-#' @param seed [an integer] Optiinal, NULL by default. The seed to use when 
+#' @param n_time [an integer] The number of timesteps of the time series 
+#' generated
+#' @param seed [an integer] Optional, NULL by default. The seed to use when 
 #' generating the dataset
 #' 
 #' @return an array of dimensions n_samples * n_nodes * n_time
+#' 
+#' @export
+#' @useDynLib miic
 #-----------------------------------------------------------------------------
 tmiic.generate_dataset <- function (true_edges, funct, list_nodes, n_samples, 
                                     n_time, seed=NULL) 
@@ -483,19 +517,24 @@ tmiic.generate_dataset <- function (true_edges, funct, list_nodes, n_samples,
 # tmiic.plot_one_sample
 #-----------------------------------------------------------------------------
 #' tmiic.plot_one_sample
-#'
+#' 
 #' @description 
-#' plot one sample of a temporal serie
+#' Plot one sample of a temporal serie
 #'
 #' @param data_tab [an array of dimensions n_samples * n_nodes * n_time]
-#' @param sample_idx [an integer] the sample index to plot
+#' The array containing the samples
+#' @param sample_idx [an integer] The sample index to plot
 #' @param title [a string] Optional, NULL by default. The title of the plot
 #' @param filename [a string] Optional, NULL by default. If supplied, the plot
 #' is saved in this file
 #'
 #' @return None
+#' 
+#' @export
+#' @useDynLib miic
 #-----------------------------------------------------------------------------
-tmiic.plot_one_sample <- function (data_tab, sample_idx, title=NULL, filename=NULL)
+tmiic.plot_one_sample <- function (data_tab, sample_idx, 
+                                   title=NULL, filename=NULL)
   {
   DEBUG <- FALSE
   

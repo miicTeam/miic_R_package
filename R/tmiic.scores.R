@@ -10,30 +10,35 @@
 #*****************************************************************************
 
 #-----------------------------------------------------------------------------
-# tmiic.compute_one_score
+# tmiic.compute_scores
 #-----------------------------------------------------------------------------
-#' tmiic.compute_one_score
+#' tmiic.compute_scores
 #'
 #' @description 
-#' Compute confusion matrix, precision, recall and f-score on the reconstructed graph
-#' Values are computed both for nunoriented and oriendted edges
+#' Compute confusion matrix, precision, recall and f-score on the 
+#' reconstructed graph. Values are computed both for unoriented and 
+#' oriendted graphs
 #'
-#' @param df_edges [a dataframe] the list of edges computed
-#' @param df_true_edges [a dataframe]  the list of true edges
-#' @param list_nodes [a list] the list of nodes in the network
-#' @param tau [an integer] the number of timesteps back in time used to construct 
-#' the temporal graph
+#' @param df_edges [a dataframe] The list of edges computed by tmiic
+#' (the summary dataframe of tmiic's return)
+#' @param df_true_edges [a dataframe]  The list of true edges
+#' @param list_nodes [a list] The list of nodes in the network
+#' @param tau [an integer] The number of timesteps back in time used to 
+#' construct the temporal graph
 #' 
-#' @returns [a list] the returned list contains 2 dataframes containing both 
-#' the confusion matrix, the precision, recall and f-score. The first dataframe
-#' is for unoriented edges and the second about oriented ones.
+#' @returns [a list] The returned list contains two data frames containing 
+#' both the confusion matrix, the precision, recall and f-score. The first 
+#' dataframe is for unoriented edges and the second about oriented ones.
 #'
-tmiic.compute_one_score <- function (df_edges, df_true_edges, list_nodes, tau) 
+#' @export
+#' @useDynLib miic
+#-----------------------------------------------------------------------------
+tmiic.compute_scores <- function (df_edges, df_true_edges, list_nodes, tau) 
   {
   DEBUG <- FALSE
   if (DEBUG)
     {
-    print ("tmiic.compute_one_score:")
+    print ("tmiic.compute_scores:")
     print ("List nodes:")
     print (list_nodes)
     print (paste ("Tau:", tau, sep="") )
@@ -549,30 +554,33 @@ tmiic.compute_one_score <- function (df_edges, df_true_edges, list_nodes, tau)
   }
 
 #-----------------------------------------------------------------------------
-# tmiic.compute_scores
+# tmiic.compute_list_scores
 #-----------------------------------------------------------------------------
-#' tmiic.compute_scores
+#' tmiic.compute_list_scores
 #'
 #' @description 
 #' Compute scores on a list of tmiic results
 #'
 #' @param list_res [a list] the list of tmiic's results. It can be a list of
 #' full results or only summary
-#' @param df_true_edges [a dataframe]  the list of true edges
-#' @param list_nodes [a list] the list of nodes in the network
-#' @param tau [an integer] the number of timesteps back in time used to construct 
-#' the temporal graph
+#' @param df_true_edges [a dataframe] The list of the true edges
+#' @param list_nodes [a list] The list of nodes in the network
+#' @param tau [an integer] The number of timesteps back in time used to 
+#' construct the temporal graphs
 #' 
-#' @returns [a list] the returned list contains 2 dataframes containing both 
-#' the scores for each tmiic result. The first dataframe is for unoriented edges 
-#' and the second about oriented ones.
+#' @returns [a list] the returned list contains two dataframes containing 
+#' both the list of scores for each tmiic result. The first dataframe is for
+#' unoriented edges and the second about oriented ones.
 #'
-tmiic.compute_scores <- function (list_res, df_true_edges, list_nodes, tau) 
+#' @export
+#' @useDynLib miic
+#-----------------------------------------------------------------------------
+tmiic.compute_list_scores <- function (list_res, df_true_edges, list_nodes, tau) 
   {
   DEBUG <- FALSE
   if (DEBUG)
     {
-    print ("tmiic.compute_scores:")
+    print ("tmiic.compute_list_scores:")
     print (paste ("input results list length:", length(list_res), sep="") )
     print ("input df_true_edges:")
     print (df_true_edges)
@@ -610,7 +618,7 @@ tmiic.compute_scores <- function (list_res, df_true_edges, list_nodes, tau)
       {
       if (! is.data.frame(one_res))
         one_res <- one_res$all.edges.summary
-      tmp_ret <- tmiic.compute_one_score (one_res, df_true_edges, list_nodes, tau)
+      tmp_ret <- tmiic.compute_scores (one_res, df_true_edges, list_nodes, tau)
       df_scores_unoriented[nrow(df_scores_unoriented) + 1,] <- tmp_ret[[1]]
       df_scores_oriented  [nrow(df_scores_oriented)   + 1,] <- tmp_ret[[2]]
       }
@@ -634,20 +642,27 @@ tmiic.compute_scores <- function (list_res, df_true_edges, list_nodes, tau)
 #' @description 
 #' plot evolution of precision, recall and f-score or TP, FP, FN, TN rates
 #'
-#' @param scores [a dataframe]Dataframe of scores. Expected columns are
-#' tp, fp, tn, fn, precision, recall and fscore with score per run as rows.
-#' @param title [a string]The tille of the plot
-#' @param list_labels [a list]the list of labels on the X axis]
-#' @param type [a string]Optional, "PRFS" by default. Represents the type 
-#' of the plot: "PRFS" plots Presion, Recall F-Score whilst the other type 
-#' available is True/False positives ("TPFP")
-#' @param plot_fntn [a boolean] Optional, false by default. Applies only to  
-#' type "TPFP" plot. If set to true, displays True and False Negative
+#' @param scores [a dataframe] A dataframe of scores. Expected columns are
+#' tp, fp, tn, fn, precision, recall and fscore  whilst each row correspond 
+#' to a run of tmiic.
+#' @param title [a string] The tille of the plot
+#' @param list_labels [a list] The list of labels on the X axis. Typically,
+#' these labels are the settings used for the different runs.
+#' @param type [a string ] Optional, \emph{"PRFS"} by default. 
+#' Represents the type of the plot: \emph{"PRFS"} plots Precision, Recall 
+#' and F-Score whilst the other type available \emph{"TPFP"} plots 
+#' True/False positive rates. 
+#' @param plot_fntn [a boolean] Optional, FALSE by default. Applies only to  
+#' type \emph{"TPFP"} plot. If TRUE, displays also True and False negative
+#' rates.
 #' @param filename [a string] Optional, NULL by default. The file name where
 #' to save the plot,
 #' 
-#' @return nothing
+#' @return None
 #'
+#' @export
+#' @useDynLib miic
+#-----------------------------------------------------------------------------
 tmiic.plot_scores <- function(scores, title, list_labels, 
                               type="PRFS", plot_fntn=FALSE, filename=NULL)
   {
