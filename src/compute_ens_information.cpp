@@ -491,21 +491,30 @@ double* computeEnsInformationNew(Environment& environment, int* myCond,
 
 void SearchForNewContributingNodeAndItsRank(
     Environment& environment, const int posX, const int posY, MemorySpace& m) {
-  if (environment.edges[posX][posY].shared_info->zi_vect_idx.empty())
+  auto info = environment.edges[posX][posY].shared_info;
+  if (!environment.isLatent)
+    info->zi_vect_idx.erase(
+        std::remove_if(info->zi_vect_idx.begin(), info->zi_vect_idx.end(),
+            [&environment, &posX, &posY](int z) {
+              return !environment.edges[posX][z].status &&
+                     !environment.edges[posY][z].status;
+            }),
+        info->zi_vect_idx.end());
+  if (info->zi_vect_idx.empty())
     return;
 
   int* ui;
   int* zi;
 
-  if (environment.edges[posX][posY].shared_info->ui_vect_idx.empty())
+  if (info->ui_vect_idx.empty())
     ui = NULL;
   else
-    ui = &environment.edges[posX][posY].shared_info->ui_vect_idx[0];
+    ui = &info->ui_vect_idx[0];
 
-  if (environment.edges[posX][posY].shared_info->zi_vect_idx.empty())
+  if (info->zi_vect_idx.empty())
     zi = NULL;
   else
-    zi = &environment.edges[posX][posY].shared_info->zi_vect_idx[0];
+    zi = &info->zi_vect_idx[0];
 
   int argEnsInfo = -1;
   if (environment.isK23 == true) argEnsInfo = environment.cplx;
@@ -513,12 +522,10 @@ void SearchForNewContributingNodeAndItsRank(
   double* vect = NULL;
 
   if (environment.typeOfData == 0) {
-    vect = computeEnsInformationNew(environment, ui,
-        environment.edges[posX][posY].shared_info->ui_vect_idx.size(), zi,
-        environment.edges[posX][posY].shared_info->zi_vect_idx.size(),
-        environment.edges[posX][posY].shared_info->ui_vect_idx.size() + 2, posX,
-        posY, argEnsInfo, m);
-    if (vect[6] - environment.edges[posX][posY].shared_info->Rxyz_ui > 0) {
+    vect = computeEnsInformationNew(environment, ui, info->ui_vect_idx.size(),
+        zi, info->zi_vect_idx.size(), info->ui_vect_idx.size() + 2, posX, posY,
+        argEnsInfo, m);
+    if (vect[6] - info->Rxyz_ui > 0) {
       if (environment.isVerbose) {
         cout << "\n"
              << posX << "    " << posY << "# -----> possible zi: "
@@ -526,49 +533,42 @@ void SearchForNewContributingNodeAndItsRank(
                     .nodes[environment.edges[posX][posY]
                                .shared_info->zi_vect_idx[vect[3]]]
                     .name
-             << "(" << vect[6] << " > "
-             << environment.edges[posX][posY].shared_info->Rxyz_ui << ")\n";
+             << "(" << vect[6] << " > " << info->Rxyz_ui << ")\n";
       }
 
       // The order matters: set first the z.name.idx, than get the corresponding
       // zi from the original vect / Doing this way, we make sure that the
       // z.name has the right bin xyzi key
-      environment.edges[posX][posY].shared_info->z_name_idx = vect[3];
-      environment.edges[posX][posY].shared_info->Rxyz_ui = vect[6];
+      info->z_name_idx = vect[3];
+      info->Rxyz_ui = vect[6];
       free(vect);
 
     } else if (environment.isVerbose) {
-      cout << "# --!!--> Rxyz_ui.tmp = " << vect[6] << " < Rxyz_ui = "
-           << environment.edges[posX][posY].shared_info->Rxyz_ui << "\n";
+      cout << "# --!!--> Rxyz_ui.tmp = " << vect[6]
+           << " < Rxyz_ui = " << info->Rxyz_ui << "\n";
     }
 
   } else if (environment.typeOfData == 2 || environment.typeOfData == 1) {
     vect = computeEnsInformationContinuous(environment, ui,
-        environment.edges[posX][posY].shared_info->ui_vect_idx.size(), zi,
-        environment.edges[posX][posY].shared_info->zi_vect_idx.size(),
-        environment.edges[posX][posY].shared_info->ui_vect_idx.size() + 2, posX,
-        posY, argEnsInfo, m);
-    if (vect[2] - environment.edges[posX][posY].shared_info->Rxyz_ui > 0) {
+        info->ui_vect_idx.size(), zi, info->zi_vect_idx.size(),
+        info->ui_vect_idx.size() + 2, posX, posY, argEnsInfo, m);
+    if (vect[2] - info->Rxyz_ui > 0) {
       if (environment.isVerbose) {
         cout << "\n"
              << posX << " " << posY << " # -----> possible zi: "
-             << environment
-                    .nodes[environment.edges[posX][posY]
-                               .shared_info->zi_vect_idx[vect[1]]]
-                    .name
-             << "(" << vect[2] << " > "
-             << environment.edges[posX][posY].shared_info->Rxyz_ui << ")\n";
+             << environment.nodes[info->zi_vect_idx[vect[1]]].name << "("
+             << vect[2] << " > " << info->Rxyz_ui << ")\n";
       }
 
       // The order matters: set first the z.name.idx, than get the corresponding
       // zi from the original vect / Doing this way, we make sure
       // that the z.name has the right bin xyzi key
-      environment.edges[posX][posY].shared_info->z_name_idx = vect[1];
-      environment.edges[posX][posY].shared_info->Rxyz_ui = vect[2];
+      info->z_name_idx = vect[1];
+      info->Rxyz_ui = vect[2];
 
     } else if (environment.isVerbose) {
-      cout << "# --!!--> Rxyz_ui.tmp = " << vect[2] << " < Rxyz_ui = "
-           << environment.edges[posX][posY].shared_info->Rxyz_ui << "\n";
+      cout << "# --!!--> Rxyz_ui.tmp = " << vect[2]
+           << " < Rxyz_ui = " << info->Rxyz_ui << "\n";
     }
     delete[] vect;
   }
