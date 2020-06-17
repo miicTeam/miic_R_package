@@ -28,18 +28,6 @@ using std::vector;
 using namespace structure;
 using namespace utility;
 
-bool skeletonChanged(const Environment& environment) {
-  for (uint i = 0; i < environment.numNodes; i++) {
-    for (uint j = 0; j < environment.numNodes; j++) {
-      if (environment.edges[i][j].status !=
-          environment.edges[i][j].status_prev) {
-        return true;
-      }
-    }
-  }
-  return false;
-}
-
 List empty_results() {
   List result;
   result = List::create(_["interrupted"] = true);
@@ -54,8 +42,6 @@ extern "C" SEXP reconstruct(SEXP inputDataR, SEXP typeOfDataR, SEXP cntVarR,
     SEXP sampleWeightsR, SEXP consistentR, SEXP testDistR, SEXP verboseR) {
   Environment environment;
   environment.myVersion = "V79";
-
-  environment.myTest = false;
 
   environment.numNodes = Rcpp::as<int>(numNodesR);
   environment.nThreads = Rcpp::as<int>(nThreadsR);

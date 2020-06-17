@@ -300,133 +300,6 @@ void deleteStruct(Environment& environment) {
   delete[] environment.edges;
 }
 
-bool SortFunctionNoMore1(
-    const EdgeID* a, const EdgeID* b, const Environment& environment) {
-  return environment.edges[a->i][a->j].shared_info->Ixy_ui >
-         environment.edges[b->i][b->j].shared_info->Ixy_ui;
-}
-
-class sorterNoMore {
-  Environment& environment;
-
- public:
-  sorterNoMore(Environment& env) : environment(env) {}
-  bool operator()(EdgeID const* o1, EdgeID const* o2) const {
-    return SortFunctionNoMore1(o1, o2, environment);
-  }
-};
-
-class EdgeSorter {
-  const Environment& env;
-
- public:
-  EdgeSorter(const Environment& env) : env(env) {}
-  bool operator()(const EdgeID& e1, const EdgeID& e2) const {
-    const auto info1 = env.edges[e1.i][e1.j].shared_info;
-    const auto info2 = env.edges[e2.i][e2.j].shared_info;
-    // connected can be 1 or 0
-    if (info1->connected != info2->connected)
-      return info1->connected > info2->connected;
-
-    if (info1->connected == 0) {
-      if (info1->Rxyz_ui == 0 || info2->Rxyz_ui == 0)
-        return info2->Rxyz_ui != 0;
-      else
-        return info1->Rxyz_ui > info2->Rxyz_ui;
-    } else {
-      return info1->Ixy_ui > info2->Ixy_ui;
-    }
-  }
-};
-
-void readTime(Environment& environment, string name) {
-  const char* c = name.c_str();
-  std::ifstream input(c);
-  string lineData;
-  string s;
-  int row = 0;
-  int col = 0;
-  while (getline(input, lineData)) {
-    if (row == 1) {
-      std::istringstream f(lineData);
-      while (getline(f, s, '\t')) {
-        if (col == 0)
-          environment.execTime.init = atof(s.c_str());
-        else if (col == 1)
-          environment.execTime.iter = atof(s.c_str());
-        else if (col == 2)
-          environment.execTime.initIter = atof(s.c_str());
-        else if (col == 3)
-          environment.execTime.ort = atof(s.c_str());
-        else if (col == 4)
-          environment.execTime.cut = atof(s.c_str());
-        else if (col == 5)
-          environment.execTime.ort_after_cut = atof(s.c_str());
-        else if (col == 6)
-          environment.execTime.total = atof(s.c_str());
-        col++;
-      }
-    }
-    row++;
-  }
-}
-
-void saveAdjMatrix(const Environment& environment, const string filename) {
-  if (environment.isVerbose) cout << "Saving adjacency matrix\n";
-  std::ofstream output;
-  output.open(filename.c_str());
-  for (uint i = 0; i < environment.numNodes; i++) {
-    output << environment.nodes[i].name;
-    if (i + 1 < environment.numNodes) output << "\t";
-  }
-  output << endl;
-
-  for (uint i = 0; i < environment.numNodes; i++) {
-    output << environment.nodes[i].name << "\t";
-    for (uint j = 0; j < environment.numNodes; j++) {
-      output << environment.edges[i][j].status;
-      if (j + 1 < environment.numNodes) output << "\t";
-    }
-    output << endl;
-  }
-  output.close();
-}
-
-void saveAdjMatrixState(const Environment& environment, const string filename) {
-  if (environment.isVerbose) cout << "Saving adjacency matrix\n";
-  std::ofstream output;
-  output.open(filename.c_str());
-  output << "\t";
-  for (uint i = 0; i < environment.numNodes; i++) {
-    output << environment.nodes[i].name;
-    if (i + 1 < environment.numNodes) output << "\t";
-  }
-  output << endl;
-
-  for (uint i = 0; i < environment.numNodes; i++) {
-    output << environment.nodes[i].name << "\t";
-    for (uint j = 0; j < environment.numNodes; j++) {
-      if (j > i) {
-        if (environment.edges[i][j].shared_info->connected == 1)
-          output << "1";
-        else
-          output << "0";
-        if (j + 1 < environment.numNodes) output << "\t";
-      } else if (i > j) {
-        if (environment.edges[j][i].shared_info->connected == 1)
-          output << "1";
-        else
-          output << "0";
-        if (j + 1 < environment.numNodes) output << "\t";
-      } else {
-        output << "0";
-        if (j + 1 < environment.numNodes) output << "\t";
-      }
-    }
-    output << endl;
-  }
-}
-
 string toNameString(const Environment& env, const vector<int>& vec) {
   if (vec.empty()) {
     return "NA";
@@ -438,30 +311,6 @@ string toNameString(const Environment& env, const vector<int>& vec) {
     ss << env.nodes[vec.back()].name;
     return ss.str();
   }
-}
-
-string vectorToString(const vector<int>& vec) {
-  stringstream ss;
-  int length = vec.size();
-  if (length > 0) {
-    for (int temp = 0; temp < length; temp++) {
-      ss << vec[temp];
-      if (temp + 1 < length) ss << ",";
-    }
-  }
-  return ss.str();
-}
-
-string arrayToString(const double* int_array, const int length) {
-  stringstream ss;
-  if (length > 0) {
-    for (int temp = 0; temp < length; temp++) {
-      if (int_array[temp] != -1) ss << int_array[temp] << ", ";
-    }
-  } else {
-    ss << "NA";
-  }
-  return ss.str();
 }
 
 bool readBlackbox(vector<string> v, Environment& environment) {
@@ -529,112 +378,12 @@ vector<vector<string>> getEdgesInfoTable(Environment& env) {
   return table;
 }
 
-void saveExecTime(const Environment& environment, const string filename) {
-  if (environment.isVerbose) cout << "Saving execution time\n";
-  std::ofstream output;
-  output.open(filename.c_str());
-
-  output << "init"
-         << "\t"
-         << "iter"
-         << "\t"
-         << "initIter"
-         << "\t"
-         << "ort"
-         << "\t"
-         << "cut"
-         << "\t"
-         << "ort_after_cut"
-         << "\t"
-         << "total"
-         << "\n";
-  output << environment.execTime.init << "\t" << environment.execTime.iter
-         << "\t" << environment.execTime.initIter << "\t"
-         << environment.execTime.ort << "\t" << environment.execTime.cut << "\t"
-         << environment.execTime.ort_after_cut << "\t"
-         << environment.execTime.total;
-}
-
-bool existsTest(const string& name) {
-  std::ifstream f(name.c_str());
-  if (f.good()) {
-    f.close();
-    return true;
-  } else {
-    f.close();
-    return false;
-  }
-}
-
-int** copyMatrix(int** oldmatrix, int numRows, int numColumns) {
-  int** newMatrix;
-  newMatrix = new int*[numRows];
-  for (int i = 0; i < numRows; i++) newMatrix[i] = new int[numColumns];
-
-  for (int i = 0; i < numRows; i++) {
-    for (int j = 0; j < numColumns; j++) {
-      newMatrix[i][j] = oldmatrix[i][j];
-    }
-  }
-  return newMatrix;
-}
-
-bool checkNA(int** data, int numRows, int numColumns) {
-  for (int i = 0; i < numRows; i++)
-    for (int j = 0; j < numColumns; j++)
-      if (data[i][j] == -1) return true;
-
-  return false;
-}
-
-string printNodesName(const Environment& environment) {
-  string s = "";
-  for (uint i = 0; i < environment.numNodes; i++) {
-    cout << environment.nodes[i].name;
-    if (i + 1 < environment.numNodes) cout << " ";
-  }
-  cout << "\n";
-  return s;
-}
-
-void printMatrix(const Environment& environment, string type) {
-  if (type.compare("string") == 0) {
-    cout << "Data matrix of strings\n";
-    printNodesName(environment);
-    for (uint i = 0; i < environment.numSamples; i++) {
-      for (uint j = 0; j < environment.numNodes; j++) {
-        cout << environment.data[i][j] << " ";
-      }
-      cout << endl;
-    }
-  } else if (type.compare("factors") == 0) {
-    cout << "Data matrix of factors\n";
-    printNodesName(environment);
-    for (uint i = 0; i < environment.numSamples; i++) {
-      for (uint j = 0; j < environment.numNodes; j++) {
-        cout << environment.dataNumeric[i][j] << " ";
-      }
-      cout << endl;
-    }
-  }
-}
-
 // Initialize all the elements of the array to the given value
 bool setArrayValuesInt(int* array, int length, int value) {
   for (int i = 0; i < length; i++) {
     array[i] = value;
   }
   return true;
-}
-
-bool isInteger(const string& s) {
-  if (s.empty() || ((!isdigit(s[0])) && (s[0] != '-') && (s[0] != '+')))
-    return false;
-
-  char* p;
-  strtol(s.c_str(), &p, 10);
-
-  return (*p == 0);
 }
 
 bool readData(Environment& environment, bool& isNA) {
@@ -742,12 +491,6 @@ void transformToFactors(Environment& environment, int i) {
   }
 }
 
-void copyValue(Environment& environment, int i) {
-  for (uint j = 0; j < environment.numSamples; j++) {
-    environment.dataNumeric[j][i] = atof(environment.data[j][i].c_str());
-  }
-}
-
 void transformToFactorsContinuous(Environment& environment, int i) {
   if (environment.isVerbose)
     cout << "# Transforming matrix to factors continuous\n";
@@ -825,30 +568,6 @@ void setNumberLevels(Environment& environment) {
         max = environment.dataNumeric[j][i];
     }
     environment.allLevels[i] = max + 1;
-  }
-}
-
-void setProportions(Environment& environment) {
-  environment.proportions = new double*[environment.numNodes];
-  int count = 0;
-  for (uint i = 0; i < environment.numNodes; i++) {
-    count = 0;
-    if (environment.columnAsContinuous[i] == 0) {
-      environment.proportions[i] = new double[environment.allLevels[i]];
-      for (uint j = 0; j < environment.allLevels[i]; j++) {
-        environment.proportions[i][j] = 0;
-      }
-      for (uint j = 0; j < environment.numSamples; j++) {
-        if (environment.dataNumeric[j][i] > -1) {
-          environment.proportions[i][environment.dataNumeric[j][i]]++;
-          count++;
-        }
-      }
-
-      for (uint j = 0; j < environment.allLevels[i]; j++) {
-        environment.proportions[i][j] /= double(count);
-      }
-    }
   }
 }
 
@@ -981,30 +700,6 @@ void getJointMixed(Environment& environment, int i, int j, int* mixedDiscrete,
   }
 }
 
-void printEnvironment(const Environment& environment) {
-  stringstream s;
-  s << "# --------\n# Inputs:\n# ----\n"
-    << "# Input data file --> " << environment.inData << "\n"
-    << "# Output directory --> " << environment.outDir << "\n"
-    << "# All properties --> " << printNodesName(environment) << "\n"
-    << "# Eff. N --> " << environment.effN << "\n"
-    << "# Thres. Pc --> " << environment.thresPc << "\n"
-    << "# N min --> " << environment.minN << "\n"
-    << "# Clpx type --> " << environment.cplxType << "\n"
-    << "# Clpx check --> " << environment.cplx << "\n"
-    << "# Latent --> " << environment.isLatent << "\n"
-    << "# Consistent --> " << environment.consistentPhase << "\n"
-    << "# Reuse --> " << environment.isTplReuse << "\n"
-    << "# K23 --> " << environment.isK23 << "\n"
-    << "# propagation --> " << environment.isPropagation << "\n"
-    << "# half V structures --> " << environment.halfVStructures << "\n"
-    << "# Degeneracy --> " << environment.isDegeneracy << "\n"
-    << "# No Init Eta --> " << environment.isNoInitEta << "\n"
-    << "# VERSION --> " << environment.myVersion << "\n"
-    << "# --------\n";
-  cout << s.str();
-}
-
 void readFileType(Environment& environment) {
   for (uint pos = 0; pos < environment.numNodes; pos++) {
     environment.columnAsContinuous[pos] = environment.cntVarVec[pos];
@@ -1122,11 +817,8 @@ void setEnvironment(Environment& environment) {
     }
   }
 
-  //// Set a variables with all properties name and levels
+  // Set a variables with all properties name and levels
   setNumberLevels(environment);
-
-  // setProportions(environment);
-
   // create the 1000 entries to store c2 values
   environment.c2terms = new double[environment.numSamples + 1];
   for (uint i = 0; i < environment.numSamples + 1; i++) {
@@ -1185,10 +877,6 @@ void setEnvironment(Environment& environment) {
     }
   }
 
-  // Set the number of digits for the precision while using round( ..., digits =
-  // ... ) Make sure the min levels for the data is 0
-  environment.minN = 1;
-
   // Set the probability threshold for the rank
   environment.thresPc = 0;  // if the contribution probability is the min value
 
@@ -1231,126 +919,6 @@ void setEnvironment(Environment& environment) {
   }
 }
 
-void readFilesAndFillStructures(
-    vector<string> edgesVectorOneLine, Environment& environment) {
-  setEnvironment(environment);
-  environment.oneLineMatrix =
-      new int[environment.numSamples * environment.numNodes];
-  for (uint i = 0; i < environment.numSamples; i++) {
-    for (uint j = 0; j < environment.numNodes; j++) {
-      environment.oneLineMatrix[j * environment.numSamples + i] =
-          environment.dataNumeric[i][j];
-    }
-  }
-  environment.edges = new Edge*[environment.numNodes];
-
-  for (uint i = 0; i < environment.numNodes; i++)
-    environment.edges[i] = new Edge[environment.numNodes];
-
-  for (uint i = 0; i < environment.numNodes; i++) {
-    environment.edges[i][i].status = 0;
-    environment.edges[i][i].status_init = 0;
-  }
-
-  for (uint i = 0; i < environment.numNodes - 1; i++) {
-    for (uint j = i + 1; j < environment.numNodes; j++) {
-      environment.edges[i][j].shared_info = std::make_shared<EdgeSharedInfo>();
-      environment.edges[j][i].shared_info = environment.edges[i][j].shared_info;
-    }
-  }
-
-  string lineData;
-  string s;
-  int posX = -1;
-  int posY = -1;
-  int numCols = 10;
-
-  vector<vector<string> > vec;
-  vector<string> v;
-
-  for (uint i = 0; i < edgesVectorOneLine.size(); i++) {
-    v.push_back(edgesVectorOneLine[i]);
-    if ((i + 1) % numCols == 0 && i != 0) {
-      vec.push_back(v);
-      v.clear();
-    }
-  }
-
-  for (uint row = 0; row < vec.size(); row++) {
-    v = vec[row];
-    for (uint col = 0; col < v.size(); col++) {
-      string s = vec[row][col];
-
-      if (col == 0) {
-        for (uint i = 0; i < environment.numNodes; i++)
-          if (environment.nodes[i].name.compare(s) == 0) posX = i;
-
-      } else if (col == 1) {
-        for (uint i = 0; i < environment.numNodes; i++)
-          if (environment.nodes[i].name.compare(s) == 0) posY = i;
-      } else if (col == 2) {
-      } else if (col == 3) {
-        if (s.compare("NA") != 0) {
-          stringstream ss(s);  // Turn the string into a stream.
-          string tok;
-          char delimiter = ',';
-          while (getline(ss, tok, delimiter)) {
-            int ival;
-            for (uint i = 0; i < environment.numNodes; i++) {
-              if (environment.nodes[i].name.compare(tok) == 0) {
-                ival = i;
-                break;
-              }
-            }
-            environment.edges[posX][posY].shared_info->ui_vect_idx.push_back(
-                ival);
-          }
-        }
-      } else if (col == 4) {
-        if (s.compare("NA") != 0) {
-          stringstream ss(s);  // Turn the string into a stream.
-          string tok;
-          char delimiter = ',';
-          while (getline(ss, tok, delimiter)) {
-            int ival;
-            for (uint i = 0; i < environment.numNodes; i++) {
-              if (environment.nodes[i].name.compare(tok) == 0) {
-                ival = i;
-                break;
-              }
-            }
-            environment.edges[posX][posY].shared_info->zi_vect_idx.push_back(
-                ival);
-          }
-        }
-      } else if (col == 5) {
-        environment.edges[posX][posY].shared_info->Ixy_ui = atof(s.c_str());
-      } else if (col == 6) {
-        environment.edges[posX][posY].shared_info->cplx = atof(s.c_str());
-      } else if (col == 7) {
-        environment.edges[posX][posY].shared_info->Rxyz_ui = atof(s.c_str());
-      } else if (col == 8) {
-        int state = atoi(s.c_str());
-        environment.edges[posX][posY].shared_info->connected = state;
-        if (state == 1) {
-          environment.edges[posX][posY].status = 1;
-          environment.edges[posY][posX].status = 1;
-          // add the edge to Nomore
-          environment.noMoreAddress.emplace_back(new EdgeID(posX, posY));
-        } else {
-          environment.edges[posX][posY].status = 0;
-          environment.edges[posY][posX].status = 0;
-        }
-      } else if (col == 9) {
-        environment.edges[posX][posY].shared_info->Nxy_ui = atof(s.c_str());
-      }
-    }
-  }
-  environment.numNoMore = environment.noMoreAddress.size();
-  std::sort(environment.noMoreAddress.begin(), environment.noMoreAddress.end(),
-      sorterNoMore(environment));
-}
-
 static void chkIntFn(void* dummy) { R_CheckUserInterrupt(); }
 
 bool checkInterrupt(bool check /*=true*/) {
@@ -1360,8 +928,7 @@ bool checkInterrupt(bool check /*=true*/) {
     return false;
 }
 
-int printProgress(
-    double percentage, double startTime, string outdir, int prg_numSearchMore) {
+int printProgress(double percentage, double startTime, int prg_numSearchMore) {
   int pbwidth(40);
   string pbstr = string(pbwidth, '|');
   if (std::isnan(percentage) || std::isinf(percentage)) return 0;

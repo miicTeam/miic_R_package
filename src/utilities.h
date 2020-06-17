@@ -9,28 +9,14 @@ namespace utility {
 void createMemorySpace(structure::Environment&, structure::MemorySpace&);
 void deleteMemorySpace(structure::Environment&, structure::MemorySpace&);
 void deleteStruct(structure::Environment&);
-std::string printNodesName(const structure::Environment&);
-void printMatrix(const structure::Environment&, std::string);
 void readData(structure::Environment&);
 bool parseCommandLine(structure::Environment&, int, char**);
-void printEnvironment(const structure::Environment&);
 void setEnvironment(structure::Environment&);
-int** copyMatrix(int**, int, int);
 void setNumberLevels(structure::Environment&);
-bool existsTest(const std::string&);
-bool checkNA(int**, int, int);
-void saveAdjMatrix(const structure::Environment&, const std::string);
-void saveAdjMatrixState(const structure::Environment&, const std::string);
 std::vector<std::vector<std::string> > getEdgesInfoTable(
     structure::Environment&);
-void saveExecTime(const structure::Environment&, const std::string);
-std::string arrayToString(const double*, const int);
 std::string toNameString(
     const structure::Environment&, const std::vector<int>&);
-std::string vectorToString(const std::vector<int>&);
-void readTime(structure::Environment&, std::string);
-void readFilesAndFillStructures(
-    std::vector<std::string> edgesVectorOneLine, structure::Environment&);
 bool readBlackbox(std::vector<std::string>, structure::Environment&);
 std::vector<std::vector<int>> getAdjMatrix(const structure::Environment&);
 int sign(double val);
@@ -42,8 +28,7 @@ bool allVariablesDiscrete(int* array, int* posArray, int num);
 void sort2arrays(int len, int a[], int brr[], int bridge[]);
 double get_wall_time();
 double ramanujan(int n);
-int printProgress(double percentage, double startTime, std::string outdir,
-    int prg_numSearchMore);
+int printProgress(double percentage, double startTime, int prg_numSearchMore);
 // KL divergence functions
 double compute_kl_divergence(int* posArray, structure::Environment& environment,
     int samplesNotNA, const std::vector<int> &AllLevels_red,
@@ -77,6 +62,30 @@ bool filter_NAs(int nbrUi, std::vector<int> &AllLevels, std::vector<int> &cnt,
     structure::Environment& environment, int z=-1);
 
 bool checkInterrupt(bool check = true);
+
+class EdgeSorter {
+  const structure::Environment& env;
+
+ public:
+  EdgeSorter(const structure::Environment& env) : env(env) {}
+  bool operator()(
+      const structure::EdgeID& e1, const structure::EdgeID& e2) const {
+    const auto info1 = env.edges[e1.i][e1.j].shared_info;
+    const auto info2 = env.edges[e2.i][e2.j].shared_info;
+    // connected can be 1 or 0
+    if (info1->connected != info2->connected)
+      return info1->connected > info2->connected;
+
+    if (info1->connected == 0) {
+      if (info1->Rxyz_ui == 0 || info2->Rxyz_ui == 0)
+        return info2->Rxyz_ui != 0;
+      else
+        return info1->Rxyz_ui > info2->Rxyz_ui;
+    } else {
+      return info1->Ixy_ui > info2->Ixy_ui;
+    }
+  }
+};
 
 }  // namespace utility
 }  // namespace miic

@@ -140,15 +140,7 @@ struct Environment {
   vector<int> cntVarVec;
   int* oneLineMatrix;
 
-  string myVersion;  // -i parameter
-
-  string outDir;    // -i parameter
-  string inData;    // -o parameter
-  string cplxType;  // -c parameter
-  string blackbox_name;
-  string edgeFile;
-  string dataTypeFile;
-  // string sampleWeightsFile;// -w parameter
+  string myVersion;
 
   uint numNodes;
   uint numSamples;
@@ -163,9 +155,6 @@ struct Environment {
   int atLeastOneContinuous;
   int atLeastTwoDiscrete;
 
-  // Keep a trace of the number of edges for every state
-  int phantomEdgenNum;
-
   Node* nodes;
   Edge** edges;
   vector<string> vectorData;
@@ -174,19 +163,13 @@ struct Environment {
   int** dataNumericIdx;
   uint* allLevels;
 
-  double** proportions;
-
-  int** cut;
-
   double logEta;
 
-  bool myTest;
   bool isDegeneracy;             // -d parameter
   bool isVerbose;                // -v parameter
   bool isLatent;                 // -l parameter
   bool isLatentOnlyOrientation;  // -l parameter
   bool isNoInitEta;              // -f parameter
-  bool propag;
   bool isK23;  // -k parameter
   bool isPropagation;
 
@@ -198,7 +181,6 @@ struct Environment {
   double confidenceThreshold;  // -e parameter
 
   int effN;  // -n parameter
-  int minN;
   int thresPc;
 
   int maxbins;

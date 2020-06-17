@@ -498,7 +498,6 @@ miic <- function(inputData,
     if (res$interrupted) {
       stop("Interupted by user")
     }
-    time <- res$time
     if (verbose) {
       cat("\t# -> END reconstruction...\n\t# --------\n")
     }

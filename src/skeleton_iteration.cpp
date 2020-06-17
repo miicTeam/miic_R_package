@@ -183,13 +183,11 @@ bool firstStepIteration(Environment& environment, BCC& bcc) {
       if (threadnum == 0)
         prg_numSearchMore = printProgress(
             1.0 * i / (environment.numSearchMore - environment.nThreads / 2),
-            environment.execTime.startTimeInit, environment.outDir,
-            prg_numSearchMore);
+            environment.execTime.startTimeInit, prg_numSearchMore);
     }
     // Print finished progress bar
     prg_numSearchMore = printProgress(
-        1.0, environment.execTime.startTimeInit, environment.outDir,
-        prg_numSearchMore);
+        1.0, environment.execTime.startTimeInit, prg_numSearchMore);
 
     if (interrupt) return false;
 
@@ -414,8 +412,7 @@ bool skeletonIteration(Environment& environment) {
     prg_numSearchMore =
         printProgress(1.0 * (start_numSearchMore - environment.numSearchMore) /
                           (start_numSearchMore),
-            environment.execTime.startTimeIter, environment.outDir,
-            prg_numSearchMore);
+            environment.execTime.startTimeIter, prg_numSearchMore);
   }
   cout << "\n";
   std::sort(environment.noMoreAddress.begin(), environment.noMoreAddress.end(),
