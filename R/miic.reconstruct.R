@@ -95,7 +95,7 @@ miic.reconstruct <- function(inputData = NULL,
   # table of edges infomation
   n_row <- length(res$edges) - 1
   header <- unlist(res$edges[1])
-  df <- data.frame(matrix(unlist(res$edges[2:n_row + 1]), nrow = n_row,
+  df <- data.frame(matrix(unlist(res$edges[2:(n_row + 1)]), nrow = n_row,
                           byrow = TRUE), stringsAsFactors = FALSE)
   colnames(df) <- header
   df[df == "NA"] <- NA
@@ -111,7 +111,7 @@ miic.reconstruct <- function(inputData = NULL,
   rownames(res$adj_matrix) <- colnames(inputData)
 
   # adj_matrices (when consistent parameter is turned on)
-  if (!is.null(res$adj_matrices)) {
+  if (length(res$adj_matrices) > 0) {
     res$adj_matrices <- matrix(unlist(res$adj_matrices),
                                ncol = length(res$adj_matrices))
   }
