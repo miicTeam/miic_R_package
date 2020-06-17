@@ -160,7 +160,7 @@ extern "C" SEXP mydiscretizeMutual(SEXP RmyDist1, SEXP RmyDist2, SEXP RflatU,
       transformToFactors(data, dataNumeric, n, i);
   }
 
-  // sortidx for continuous non all gaussians
+  // sortidx for continuous
   // create the data matrix for factors indexes
   int** dataNumericIdx = new int*[nbrU + 2];
   for (i = 0; i < (nbrU + 2); i++) {

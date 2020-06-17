@@ -785,7 +785,7 @@ void setEnvironment(Environment& environment) {
     environment.dataNumeric[i] = new int[environment.numNodes];
   }
 
-  // for continuous non all gaussians
+  // for continuous
   if (environment.atLeastOneContinuous) {
     // create the data matrix for factors indexes
     environment.dataNumericIdx = new int*[environment.numNodes];
@@ -806,7 +806,7 @@ void setEnvironment(Environment& environment) {
                // taking into account repetition
   }
 
-  // for continuous non gaussian
+  // for continuous
   if (environment.atLeastOneContinuous) {
     for (uint j = 0; j < environment.numNodes; j++) {
       if (environment.columnAsContinuous[j] != 0) {

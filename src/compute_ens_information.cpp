@@ -426,7 +426,6 @@ double* computeEnsInformationContinuous(Environment& environment, int* myCond,
 double* computeEnsInformationNew(Environment& environment, int* myCond,
     int myNbrUi, int* myZi, int myNbrZi, int myZiPos, const int myVarIdxX,
     const int myVarIdxY, const int cplx, MemorySpace& m) {
-  bool test = false;
 
   int* posArray = new int[2 + environment.edges[myVarIdxX][myVarIdxY]
                                   .shared_info->ui_vect_idx.size()];
@@ -438,42 +437,6 @@ double* computeEnsInformationNew(Environment& environment, int* myCond,
       // The index of the variables in this dataset
       for (int i = 0; i < myNbrUi; ++i) posArray[i + 2] = myCond[i];
     }
-  }
-
-  if (test) {
-    if (myZi != NULL) {
-      // The index of the variables in this dataset
-      cout << "Number of zi :" << myNbrZi << endl;
-      for (int i = 0; i < myNbrZi; i++) {
-        cout << myZi[i] << " ";
-      }
-      cout << endl;
-    }
-
-    if (myCond != NULL) {
-      cout << "Ui passed: ";
-
-      for (int i = 0; i < myNbrUi; i++)
-        cout << environment.nodes[myCond[i]].name << " ";
-      cout << endl;
-
-      // The index of the variables in this dataset
-      cout << "Number of indexes with ui :" << myNbrUi << endl;
-      for (int i = 0; i < myNbrUi + 2; i++) {
-        cout << posArray[i] << " ";
-      }
-      cout << endl;
-    }
-
-    cout << "Levels\n";
-
-    for (uint i = 0; i < environment.numNodes; i++) {
-      cout << environment.allLevels[i] << " ";
-    }
-    cout << endl;
-
-    cout << "Number of samples " << environment.numSamples << endl;
-    cout << "Position x and y: " << posArray[0] << " " << posArray[1] << endl;
   }
 
 // Compute the mutual information

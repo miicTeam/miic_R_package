@@ -121,7 +121,6 @@ struct ExecutionTime {
 struct Environment {
   ExecutionTime execTime;
   int consistentPhase;
-  // for gaussian case
   double** dataDouble;
   int** iterative_cuts;
   double* sampleWeights;
