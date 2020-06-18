@@ -1,7 +1,7 @@
 #include "compute_info.h"
 
-#include <math.h>
-
+#define _USE_MATH_DEFINES
+#include <cmath>
 #include <set>
 
 #include "structure.h"

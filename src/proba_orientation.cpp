@@ -1,19 +1,19 @@
 #include "proba_orientation.h"
 
-#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
 #include <unistd.h>
 
 #include <algorithm>
+#define _USE_MATH_DEFINES
+#include <cmath>
 #include <iostream>
 
 #include "utilities.h"
 
 using namespace std;
 
-//#define M_PI		3.14159265358979323846	/* pi */
 #define eps 1.0e-12
 #define eps_diff 1.0e-12
 #define _MY_PRINT_ 0

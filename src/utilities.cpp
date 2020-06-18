@@ -1,10 +1,11 @@
 #include "utilities.h"
 
 #include <Rcpp.h>
-#include <math.h>
 #include <sys/time.h>
 #include <unistd.h>
 
+#define _USE_MATH_DEFINES
+#include <cmath>
 #include <fstream>
 #include <iostream>
 #include <limits>

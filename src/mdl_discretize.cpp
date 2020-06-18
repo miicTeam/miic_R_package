@@ -1,8 +1,9 @@
 #include <Rcpp.h>
-#include <math.h>
 
 #include <algorithm>
 #include <cfloat>
+#define _USE_MATH_DEFINES
+#include <cmath>
 #include <iostream>
 #include <limits>
 #include <vector>
