@@ -1208,5 +1208,48 @@ bool filter_NAs(int nbrUi, vector<int>& AllLevels, vector<int>& cnt,
   return(flag_sample_weights);
 }
 
+double lookupScore(int* posArray, int nbrUi, int z, Environment& environment) {
+    std::set<int> Ui_set (posArray + 2, posArray + nbrUi + 2);
+  Ui_set.insert(z);
+  EdgeKey key {posArray[0], posArray[1], Ui_set};
+  double score = -1.0;
+
+  if (environment.look_scores.count(key) != 0){
+    score = environment.look_scores[key];
+  }
+  return(score);
+}
+
+void lookupScore(int* posArray, int nbrUi, int z, double* res,
+    Environment& environment) {
+  std::set<int> Ui_set (posArray + 2, posArray + nbrUi + 2);
+  Ui_set.insert(z);
+  EdgeKey key {posArray[0], posArray[1], Ui_set};
+
+  if (environment.look_scores_orientation.count(key) != 0){
+    res[0] = environment.look_scores_orientation[key].n_samples;
+    res[1] = environment.look_scores_orientation[key].I_xyzUi;
+    res[2] = environment.look_scores_orientation[key].cplx;
+  }
+  return;
+}
+
+void saveScore(int* posArray, int nbrUi, int z, double score,
+    Environment& environment) {
+  std::set<int> Ui_set (posArray+2,posArray+nbrUi+2);
+  Ui_set.insert(z);
+  EdgeKey key {posArray[0], posArray[1], Ui_set};
+  environment.look_scores.insert({key, score});
+}
+
+void saveScore(int* posArray, int nbrUi, int z, double* score,
+    Environment& environment) {
+  std::set<int> Ui_set (posArray+2,posArray+nbrUi+2);
+  Ui_set.insert(z);
+  EdgeKey key {posArray[0], posArray[1], Ui_set};
+  ScoreValue score_struct {int(score[0]), score[1], score[2]};
+  environment.look_scores_orientation.insert({key, score_struct});
+}
+
 }  // namespace utility
 }  // namespace miic

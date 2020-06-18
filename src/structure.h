@@ -4,6 +4,8 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <map>
+#include <set>
 
 namespace miic {
 namespace structure {
@@ -76,6 +78,28 @@ struct Edge {
   short int status_init;  // Status after initialization.
   short int status_prev;  // Status in the previous iteration.
   std::shared_ptr<EdgeSharedInfo> shared_info;
+};
+
+struct EdgeKey {
+  int           x;
+  int           y;
+  std::set<int> Ui;
+  
+  bool operator<(const EdgeKey& other) const {
+      if ( std::min(x, y) == std::min(other.x, other.y) ) {
+        if ( std::max(x, y) == std::max(other.x, other.y) ) {
+          return Ui < other.Ui;
+        }
+        return std::max(x, y) < std::max(other.x, other.y);
+      }
+      return std::min(x, y) < std::min(other.x, other.y);
+  }
+};
+
+struct ScoreValue {
+  int    n_samples;
+  double I_xyzUi;
+  double cplx;
 };
 
 struct MemorySpace {
@@ -187,6 +211,8 @@ struct Environment {
   int initbins;
   double* looklog;
   double* lookH;
+  std::map<EdgeKey, double> look_scores;
+  std::map<EdgeKey, ScoreValue> look_scores_orientation;
 
   double* noise_vec;
 };
@@ -194,7 +220,9 @@ struct Environment {
 }  // namespace structure_impl
 using structure_impl::Edge;
 using structure_impl::EdgeID;
+using structure_impl::EdgeKey;
 using structure_impl::EdgeSharedInfo;
+using structure_impl::ScoreValue;
 using structure_impl::Environment;
 using structure_impl::ExecutionTime;
 using structure_impl::MemorySpace;

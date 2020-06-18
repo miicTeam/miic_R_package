@@ -48,7 +48,13 @@ double* computeEnsInformationContinuous_Orientation(Environment& environment,
 
   double* res_new;
   res_new = new double[3];
+  res_new[0] = -1;
   int z = myZi[0];
+
+  lookupScore(posArray, myNbrUi, z, res_new, environment);
+  if(res_new[0] != -1) {
+    return res_new;
+  }
 
   // Mark rows containing NAs and count the number of complete samples
   //vector with zero or one according if the sample at position i contains NA or not
@@ -121,6 +127,7 @@ double* computeEnsInformationContinuous_Orientation(Environment& environment,
   printf("\n");
 #endif  // _MY_DEBUG_NEW
 
+  saveScore(posArray, myNbrUi, z, res_new, environment);
   return res_new;
 }
 
@@ -136,13 +143,18 @@ void computeContributingScores(Environment& environment, int* ziContPosIdx,
   else
     z = myZi[ziContPosIdx[iz]];
 
+  double output_score = lookupScore(posArray, myNbrUi, z, environment);
+  if(output_score != -1) {
+    scoresZ[iz] = output_score;
+    return;
+  }
+
   // Mark rows containing NAs and count the number of complete samples
   vector <int> sample_is_not_NA(environment.n_samples);
   vector <int> NAs_count(environment.n_samples);
   uint samplesNotNA = count_non_NAs(myNbrUi, sample_is_not_NA,
     NAs_count, posArray, environment, z);
 
-  double output_score;
   if (samplesNotNA <= 2) {
     output_score = -DBL_MAX;
   } else {
@@ -226,6 +238,7 @@ void computeContributingScores(Environment& environment, int* ziContPosIdx,
     }
   }  // jump cond no statistics
 
+  saveScore(posArray, myNbrUi, z, output_score, environment);
   scoresZ[iz] = output_score;
 }
 
@@ -297,9 +310,9 @@ double* computeEnsInformationContinuous(Environment& environment, int* myCond,
     }
   } else {  // if nbrZi>0 : iteration part
     res_new = new double[3];
-    res_new[2] = -DBL_MAX;
-    res_new[1] = -1;
     res_new[0] = environment.n_samples;
+    res_new[1] = -1;
+    res_new[2] = -DBL_MAX;
     double* res;
 
     int z;

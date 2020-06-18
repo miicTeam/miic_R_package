@@ -121,7 +121,9 @@ List reconstruct(DataFrame input_data, List arg_list) {
 
   long double spentTime = (get_wall_time() - startTime);
   environment.exec_time.init = spentTime;
-  if (environment.verbose) {
+  environment.exec_time.init_iter = spentTime;
+  environment.exec_time.iter = 0;
+  if (environment.verbose == true) {
     std::cout << "\n# ----> First contributing node elapsed time:" << spentTime
               << "sec\n\n";
   }
@@ -159,8 +161,7 @@ List reconstruct(DataFrame input_data, List arg_list) {
 
       long double spentTime = (get_wall_time() - startTime);
       environment.exec_time.iter = spentTime;
-      environment.exec_time.init_iter =
-          environment.exec_time.init + environment.exec_time.iter;
+      environment.exec_time.init_iter += spentTime;
     }
 
     startTime = get_wall_time();

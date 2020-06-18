@@ -63,6 +63,15 @@ bool filter_NAs(int nbrUi, std::vector<int> &AllLevels, std::vector<int> &cnt,
 
 bool checkInterrupt(bool check = true);
 
+double lookupScore(int* posArray, int nbrUi, int z,
+  structure::Environment& environment);
+void lookupScore(int* posArray, int nbrUi, int z, double* score,
+  structure::Environment& environment);
+void saveScore(int* posArray, int nbrUi, int z, double score,
+    structure::Environment& environment);
+void saveScore(int* posArray, int nbrUi, int z, double* score,
+    structure::Environment& environment);
+
 class EdgeSorter {
   const structure::Environment& env;
 
