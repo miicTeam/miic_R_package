@@ -135,11 +135,8 @@ struct Environment {
   double* c2terms;
   double** cterms;
   double** lookchoose;
-  int* columnAsContinuous;
-  vector<int> cntVarVec;
+  vector<int> is_continuous;
   int* oneLineMatrix;
-
-  string myVersion;
 
   uint numNodes;
   uint numSamples;
@@ -149,10 +146,6 @@ struct Environment {
   vector<EdgeID*> noMoreAddress;
   int numSearchMore;
   int numNoMore;
-
-  int typeOfData;
-  int atLeastOneContinuous;
-  int atLeastTwoDiscrete;
 
   Node* nodes;
   Edge** edges;

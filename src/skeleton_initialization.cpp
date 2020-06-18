@@ -26,8 +26,8 @@ using namespace miic::utility;
 int initEdgeElt(Environment& environment, int i, int j, MemorySpace& m) {
   // Compute the mutual information and the corresponding CPLX
   double* res = NULL;
-  if (environment.columnAsContinuous[i] == 0 &&
-      environment.columnAsContinuous[j] == 0) {
+  if (!environment.is_continuous[i] &&
+      !environment.is_continuous[j]) {
     res = computeEnsInformationNew(
         environment, NULL, 0, NULL, 0, -1, i, j, environment.cplx, m);
     environment.edges[i][j].shared_info->Ixy_ui = res[1];

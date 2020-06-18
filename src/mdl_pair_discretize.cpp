@@ -271,13 +271,13 @@ extern "C" SEXP mydiscretizeMutual(SEXP RmyDist1, SEXP RmyDist2, SEXP RflatU,
   environment.dataNumeric = dataNumeric;
   environment.dataNumericIdx = dataNumericIdx;
   environment.allLevels = AllLevels;
-  environment.columnAsContinuous = new int[nbrU+2];
+  environment.is_continuous.resize(nbrU+2);
 
   // Declare tables_red
-  int* posArray = new int[nbrU + 2];
+  vector<int> posArray(nbrU + 2);
   for (i = 0; i < (nbrU + 2); i++) {
     posArray[i] = i;
-    environment.columnAsContinuous[i] = cnt_vec[i];
+    environment.is_continuous[i] = cnt_vec[i];
   }
 
   // Mark rows containing NAs and count the number of complete samples
@@ -321,7 +321,6 @@ extern "C" SEXP mydiscretizeMutual(SEXP RmyDist1, SEXP RmyDist2, SEXP RflatU,
   delete[] dataNumericIdx;
 
   delete[] AllLevels;
-  delete[] posArray;
 
   int niterations = 0;
   double max_res_ef;

@@ -59,9 +59,9 @@ void getSStructure(Environment& environment, const int posX, const int posY,
   double* res = NULL;
   double Is = -1;
   double Cs = -1;
-  if (environment.columnAsContinuous[posX] == 0 &&
-      environment.columnAsContinuous[posZ] == 0 &&
-      environment.columnAsContinuous[posY] == 0) {
+  if (!environment.is_continuous[posX] &&
+      !environment.is_continuous[posZ] &&
+      !environment.is_continuous[posY]) {
     res = computeEnsInformationNew(environment, ui, u.size(), zi, z.size(), -1,
         posX, posZ, environment.cplx, environment.m);
 

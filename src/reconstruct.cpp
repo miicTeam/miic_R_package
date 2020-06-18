@@ -34,14 +34,13 @@ List empty_results() {
   return (result);
 }
 
-extern "C" SEXP reconstruct(SEXP inputDataR, SEXP typeOfDataR, SEXP cntVarR,
-    SEXP numNodesR, SEXP nThreadsR, SEXP edgefileR, SEXP blackBoxR, SEXP effNR,
-    SEXP cplxR, SEXP etaR, SEXP hvsR, SEXP isLatentR, SEXP isTplReuseR,
-    SEXP isK23R, SEXP isDegeneracyR, SEXP orientationR, SEXP propagationR,
-    SEXP isNoInitEtaR, SEXP confidenceShuffleR, SEXP confidenceThresholdR,
-    SEXP sampleWeightsR, SEXP consistentR, SEXP testDistR, SEXP verboseR) {
+extern "C" SEXP reconstruct(SEXP inputDataR, SEXP cntVarR, SEXP numNodesR,
+    SEXP nThreadsR, SEXP edgefileR, SEXP blackBoxR, SEXP effNR, SEXP cplxR,
+    SEXP etaR, SEXP hvsR, SEXP isLatentR, SEXP isTplReuseR, SEXP isK23R,
+    SEXP isDegeneracyR, SEXP orientationR, SEXP propagationR, SEXP isNoInitEtaR,
+    SEXP confidenceShuffleR, SEXP confidenceThresholdR, SEXP sampleWeightsR,
+    SEXP consistentR, SEXP testDistR, SEXP verboseR) {
   Environment environment;
-  environment.myVersion = "V79";
 
   environment.numNodes = Rcpp::as<int>(numNodesR);
   environment.nThreads = Rcpp::as<int>(nThreadsR);
@@ -55,7 +54,6 @@ extern "C" SEXP reconstruct(SEXP inputDataR, SEXP typeOfDataR, SEXP cntVarR,
   environment.vectorData = Rcpp::as<vector<string> >(inputDataR);
 
   environment.effN = Rcpp::as<int>(effNR);
-  environment.typeOfData = Rcpp::as<int>(typeOfDataR);
   environment.halfVStructures = Rcpp::as<int>(hvsR);
 
   string cplx_flag = Rcpp::as<string>(cplxR);
@@ -86,7 +84,7 @@ extern "C" SEXP reconstruct(SEXP inputDataR, SEXP typeOfDataR, SEXP cntVarR,
   environment.numberShuffles = Rcpp::as<int>(confidenceShuffleR);
 
   environment.sampleWeightsVec = Rcpp::as<vector<double> >(sampleWeightsR);
-  environment.cntVarVec = Rcpp::as<vector<int> >(cntVarR);
+  environment.is_continuous = Rcpp::as<vector<int> >(cntVarR);
 
   environment.isVerbose = Rcpp::as<bool>(verboseR);
 

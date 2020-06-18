@@ -9,7 +9,7 @@ namespace utility {
 void createMemorySpace(structure::Environment&, structure::MemorySpace&);
 void deleteMemorySpace(structure::Environment&, structure::MemorySpace&);
 void deleteStruct(structure::Environment&);
-void readData(structure::Environment&);
+bool readData(structure::Environment&);
 bool parseCommandLine(structure::Environment&, int, char**);
 void setEnvironment(structure::Environment&);
 void setNumberLevels(structure::Environment&);
@@ -24,15 +24,15 @@ void transformToFactors(structure::Environment&, int);
 void transformToFactorsContinuous(structure::Environment&, int);
 void transformToFactorsContinuousIdx(structure::Environment&, int);
 void sort2arraysConfidence(int len, int a[], int brr[]);
-bool allVariablesDiscrete(int* array, int* posArray, int num);
 void sort2arrays(int len, int a[], int brr[], int bridge[]);
 double get_wall_time();
 double ramanujan(int n);
 int printProgress(double percentage, double startTime, int prg_numSearchMore);
 // KL divergence functions
-double compute_kl_divergence(int* posArray, structure::Environment& environment,
-    int samplesNotNA, const std::vector<int> &AllLevels_red,
-    const std::vector<int> &sample_is_not_NA);
+double compute_kl_divergence(const std::vector<int>& posArray,
+    structure::Environment& environment, int samplesNotNA,
+    const std::vector<int>& AllLevels_red,
+    const std::vector<int>& sample_is_not_NA);
 
 double kl(double** freqs1, double** freqs2, int nrows, int ncols);
 double kl(int** counts1, double** freqs2, int nrows, int ncols);
@@ -49,16 +49,16 @@ void getJointSpace(structure::Environment&, int i, int j, double** jointSpace,
 int getNumSamples_nonNA(structure::Environment&, int i, int j);
 
 unsigned int count_non_NAs(int nbrUi, std::vector<int> &sample_is_not_NA,
-    std::vector<int> &NAs_count, int* posArray, 
+    std::vector<int> &NAs_count, const std::vector<int>& posArray,
     structure::Environment& environment, int z=-1);
 
 bool filter_NAs(int nbrUi, std::vector<int> &AllLevels, std::vector<int> &cnt,
-    std::vector<int> &posArray_red, int* posArray,
+    std::vector<int> &posArray_red, const std::vector<int>& posArray,
     std::vector<std::vector<int> > &dataNumeric,
-    std::vector<std::vector<int> > &dataNumericIdx, 
-    std::vector<double> &sample_weights, 
-    const std::vector<int> &sample_is_not_NA, 
-    const std::vector<int> &NAs_count, 
+    std::vector<std::vector<int> > &dataNumericIdx,
+    std::vector<double> &sample_weights,
+    const std::vector<int> &sample_is_not_NA,
+    const std::vector<int> &NAs_count,
     structure::Environment& environment, int z=-1);
 
 bool checkInterrupt(bool check = true);

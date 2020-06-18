@@ -10,7 +10,7 @@
 #' indirect paths, and assesses edge-specific confidences from randomization of
 #' available data. The remaining edges are then oriented based on the signature
 #' of causality in observational data.
-#' 
+#'
 #' The method relies on an information theoretic based (conditional) independence
 #' test which is described in (Verny \emph{et al.}, PLoS Comp. Bio. 2017),
 #' (Cabeli \emph{et al.}, PLoS Comp. Bio. 2020). It deals with both categorical
@@ -19,10 +19,10 @@
 #' treated as continuous, or character / factor columns which will be treated
 #' as categorical. For further details on the optimal discretization method and
 #' the conditional independence test, see the function discretizeMutual.
-#' 
+#'
 #' @seealso \code{\link{discretizeMutual}} for optimal discretization and
 #' (conditional) independence test.
-#' 
+#'
 #' @references
 #' \itemize{
 #' \item Verny et al., \emph{PLoS Comp. Bio. 2017.  https://doi.org/10.1371/journal.pcbi.1005662
@@ -283,9 +283,7 @@ miic <- function(inputData,
                  consistent = c("no", "orientation", "skeleton"),
                  verbose = FALSE) {
   res <- NULL
-  skeleton <- TRUE
 
-  #### Check the input arguments
   if (is.null(inputData)) {
     stop("The input data file is required")
   }
@@ -293,24 +291,27 @@ miic <- function(inputData,
   if (!is.data.frame(inputData)) {
     stop("The input data is not a dataframe")
   }
+  # Remove rows with only NAs
+  inputData <- inputData[rowSums(is.na(inputData)) != ncol(inputData), ]
+  if (length(inputData) == 0) {
+    stop("The input data is empty or contains only NAs")
+  }
 
   effnAnalysis <- miic.evaluate.effn(inputData, plot = F)
   if (effnAnalysis$neff < 0.5 * nrow(inputData)) {
     if (effnAnalysis$exponential_decay) {
       warning(
         paste0(
-          "Your samples in the datasets seem to be correlated! We ",
-          "suggest to re run the method specifying ",
-          effnAnalysis$neff,
-          " in the neff parameter. See the ",
-          "autocorrelation plot for more details."
+          "The samples in the datasets seem to be correlated! ",
+          "Try specify ", effnAnalysis$neff, " in the neff parameter. ",
+          "See the autocorrelation plot for more details."
         )
       )
     } else {
       warning(
         paste0(
-          "Your samples in the datasets seem to be correlated but ",
-          "the correlation decay is not exponential. Are your ",
+          "The samples in the datasets seem to be correlated and ",
+          "the correlation decay is not exponential. Are the ",
           "samples correlated in some way? See the autocorrelation ",
           "plot for more details."
         )
@@ -375,17 +376,10 @@ miic <- function(inputData,
       )
     )
   }
-  # edges
+  # skip skeleton step when edges are present
+  skeleton <- TRUE
   if (!is.null(edges)) {
     skeleton <- FALSE
-    if (length(colnames(edges)) != 10) {
-      stop(
-        paste0(
-          "The edges data frame is not correct. The required data ",
-          "frame is the $edges output of the miic method"
-        )
-      )
-    }
   }
 
   # propagation
@@ -411,11 +405,11 @@ miic <- function(inputData,
       print("WARNING: Category order file will be ignored!")
       categoryOrder <- NULL
     }
-    for(row in 1:nrow(categoryOrder)){
-      col = as.character(categoryOrder[row,"var_names"])
-      if(categoryOrder[row,"var_type"] == 0 && is_column_cnt[[col]]){
-        inputData[,col] = factor(inputData[,col])
-        is_column_cnt[[col]] = F
+    for (row in 1:nrow(categoryOrder)) {
+      col <- as.character(categoryOrder[row, "var_names"])
+      if (categoryOrder[row, "var_type"] == 0) {
+        inputData[, col] <- factor(inputData[, col])
+        is_column_cnt[[col]] <- F
       }
     }
   }
@@ -459,13 +453,6 @@ miic <- function(inputData,
       ))
     }
   }
-  typeOfData <- 0 # Assume all discrete
-  if (any(is_column_cnt)) {
-    typeOfData <- 2 # Mixed if any are continuous
-    if (all(is_column_cnt)) {
-      typeOfData <- 1 # All continuous
-    }
-  }
 
   err_code <- checkInput(inputData, "miic")
   if (err_code != "0") {
@@ -490,7 +477,6 @@ miic <- function(inputData,
         confidenceThreshold = confidenceThreshold,
         verbose = verbose,
         cntVar = is_column_cnt,
-        typeOfData = typeOfData,
         sampleWeights = sampleWeights,
         testMAR = testMAR,
         consistent = consistent

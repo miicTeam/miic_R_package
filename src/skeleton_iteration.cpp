@@ -42,14 +42,6 @@ class sorterNoMore {
   }
 };
 
-bool areallUiDiscrete(Environment& environment, vector<int> uis, int size) {
-  for (int i = 0; i < size; i++) {
-    if (environment.columnAsContinuous[uis[i]] != 0) return false;
-  }
-
-  return true;
-}
-
 bool SortFunction1(
     const EdgeID* a, const EdgeID* b, const Environment& environment) {
   return environment.edges[a->i][a->j].shared_info->Rxyz_ui >
@@ -283,11 +275,10 @@ bool skeletonIteration(Environment& environment) {
     topEdgeElt->z_name_idx = -1;
 
     double* v = NULL;
-    if (environment.columnAsContinuous[posX] == 0 &&
-        environment.columnAsContinuous[posY] == 0 &&
-        areallUiDiscrete(environment,
-            environment.edges[posX][posY].shared_info->ui_vect_idx,
-            environment.edges[posX][posY].shared_info->ui_vect_idx.size())) {
+    if (!environment.is_continuous[posX] && !environment.is_continuous[posY] &&
+        std::all_of(topEdgeElt->ui_vect_idx.cbegin(),
+            topEdgeElt->ui_vect_idx.cend(),
+            [&environment](int i) { return !environment.is_continuous[i]; })) {
       v = computeEnsInformationNew(environment,
           &environment.edges[posX][posY].shared_info->ui_vect_idx[0],
           environment.edges[posX][posY].shared_info->ui_vect_idx.size(), NULL,

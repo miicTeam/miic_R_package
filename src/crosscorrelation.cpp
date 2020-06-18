@@ -38,52 +38,9 @@ void transformToFactors(uint numSamples,
   }
 }
 
-bool setArrayValuesInt1(int* array, int length, int value) {
-  for (int i = 0; i < length; i++) array[i] = value;
-  return true;
-}
-
-int removeRowsAllNA(int numSamples, uint numNodes,
-    std::vector<std::vector<std::string> >& data) {
-  int* indexNA = new int[numSamples];
-  setArrayValuesInt1(indexNA, numSamples, -1);
-  int pos = 0;
-  for (int i = 0; i < numSamples; i++) {
-    bool isNA = true;
-    for (uint j = 0; j < numNodes && isNA; j++) {
-      if ((data[i][j].compare("NA") != 0) && (data[i][j].compare("") != 0)) {
-        isNA = false;
-      }
-    }
-    if (!isNA) {
-      indexNA[pos] = i;
-      pos++;
-    }
-  }
-  // if there are rows of NA value
-  if (pos != 0) {
-    // correct variable numSamples, save the values
-    pos = 0;
-    for (int i = 0; i < numSamples; i++) {
-      if (indexNA[i] != -1) {
-        for (uint j = 0; j < numNodes; j++) {
-          data[pos][j] = data[indexNA[i]][j];
-        }
-        pos++;
-      }
-    }
-    numSamples = pos;
-  }
-
-  delete[] indexNA;
-
-  return numSamples;
-}
-
 // Read input and fill all structures
 double** reading_input(int& row_num, int col_num,
     std::vector<std::string> vectorData, vector<vector<string> >& state) {
-  bool isNA = false;
   vector<string> vec;
   // convert input data
   for (int i = 0; i < (int)vectorData.size(); i++) {
@@ -98,17 +55,6 @@ double** reading_input(int& row_num, int col_num,
     }
   }
   state.push_back(vec);
-  for (int i = 0; i < row_num; i++) {
-    for (int j = 0; j < col_num; j++) {
-      if ((state[i][j].compare("NA") == 0) || (state[i][j].compare("") == 0)) {
-        isNA = true;
-      }
-    }
-  }
-  if (isNA) {
-    // Remove the lines that are all 'NA'
-    row_num = removeRowsAllNA(row_num, col_num, state);
-  }
 
   double** dataNumeric = new double*[row_num];
   for (int pos = 0; pos < row_num; pos++) {
@@ -193,7 +139,6 @@ extern "C" SEXP evaluateEffn(
   List result = List::create(
       _["correlation"] = correlationV,
       _["neff"]        = Neff
-      //_["scores"]    = outScore
   );
 
   for (int pos = 0; pos < sample_num; pos++) delete[] dataNumeric[pos];

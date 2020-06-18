@@ -112,13 +112,6 @@ double kl(int* count1, int* count2, int n1, int n2, int nlevels) {
   return (kl_div);
 }
 
-bool allVariablesDiscrete(int* array, int* posArray, int num) {
-  for (int i = 0; i < num; i++) {
-    if (array[posArray[i]] == 1) return false;
-  }
-  return true;
-}
-
 class sort_indices {
  private:
   int* mparr;
@@ -179,10 +172,10 @@ vector<vector<int>> getAdjMatrix(const Environment& env) {
 }
 
 void createMemorySpace(Environment& environment, MemorySpace& m) {
-  if (environment.atLeastTwoDiscrete) {
+  if (std::count(environment.is_continuous.begin(),
+          environment.is_continuous.end(), 0) > 1) {
     uint maxLevel = 0;
     for (uint i = 0; i < environment.numNodes; i++) {
-      //if (environment.columnAsContinuous[i] == 0 &&
       if (environment.allLevels[i] > maxLevel)
         maxLevel = environment.allLevels[i];
     }
@@ -222,7 +215,8 @@ void createMemorySpace(Environment& environment, MemorySpace& m) {
     m.bridge = (int*)calloc(sampleSize + 2, sizeof(int));
   }
   // continuous part
-  if (environment.atLeastOneContinuous) {
+  if (std::any_of(environment.is_continuous.begin(),
+          environment.is_continuous.end(), [](int i) { return i == 1; })) {
     m.sample_is_not_NA = (int*)new int[environment.numSamples];
     m.NAs_count = (int*)new int[environment.numSamples];
     m.dataNumericIdx_red = (int**)new int*[(MAX_NBRUI + 3)];
@@ -239,10 +233,11 @@ void createMemorySpace(Environment& environment, MemorySpace& m) {
 }
 
 void deleteMemorySpace(Environment& environment, MemorySpace& m) {
-  if (environment.atLeastTwoDiscrete) {
+  if (std::count(environment.is_continuous.begin(),
+          environment.is_continuous.end(), 0) > 1) {
     uint maxLevel = 0;
     for (uint i = 0; i < environment.numNodes; i++) {
-      if (environment.columnAsContinuous[i] == 0 &&
+      if (!environment.is_continuous[i] &&
           environment.allLevels[i] > maxLevel)
         maxLevel = environment.allLevels[i];
     }
@@ -273,7 +268,8 @@ void deleteMemorySpace(Environment& environment, MemorySpace& m) {
     free(m.Nx);
   }
   // cotinuous part
-  if (environment.atLeastOneContinuous) {
+  if (std::any_of(environment.is_continuous.begin(),
+          environment.is_continuous.end(), [](int i) { return i == 1; })) {
     delete[] m.sample_is_not_NA;
     delete[] m.NAs_count;
     delete[] m.AllLevels_red;
@@ -387,7 +383,7 @@ bool setArrayValuesInt(int* array, int length, int value) {
   return true;
 }
 
-bool readData(Environment& environment, bool& isNA) {
+bool readData(Environment& environment) {
   vector<string> vec;
   environment.nodes = new Node[environment.numNodes];
 
@@ -417,54 +413,6 @@ bool readData(Environment& environment, bool& isNA) {
   // set maxbin coarse
   environment.maxbins = 50;
 
-  return true;
-}
-
-bool removeRowsAllNA(Environment& environment) {
-  if (environment.isVerbose) cout << "# Removing NA rows\n";
-
-  int* indexNA = new int[environment.numSamples];
-  setArrayValuesInt(indexNA, environment.numSamples, -1);
-
-  int pos = 0;
-  for (uint i = 0; i < environment.numSamples; i++) {
-    bool isNA = true;
-    for (uint j = 0; j < environment.numNodes && isNA; j++) {
-      if ((environment.data[i][j].compare("NA") != 0) &&
-          (environment.data[i][j].compare("") != 0)) {
-        isNA = false;
-      }
-    }
-    if (!isNA) {
-      indexNA[pos] = i;
-      pos++;
-    }
-  }
-
-  if (environment.isVerbose)
-    cout << "-------->Number of NA rows: " << pos << "\n";
-  cout << "environment.numSamples :" << environment.numSamples << endl;
-
-  // if there are rows of NA value
-  if (pos != 0) {
-    // correct variable numSamples
-
-    // save the values
-    int pos = 0;
-    for (uint i = 0; i < environment.numSamples; i++) {
-      if (indexNA[i] != -1) {
-        for (uint j = 0; j < environment.numNodes; j++) {
-          environment.data[pos][j] = environment.data[indexNA[i]][j];
-        }
-        pos++;
-      }
-    }
-    environment.numSamples = pos;
-    if (environment.effN > pos) {
-      environment.effN = pos;
-    }
-  }
-  // cout << "environment.numSamples :" << environment.numSamples << endl;
   return true;
 }
 
@@ -670,8 +618,8 @@ double** getJointFreqs(
 
 void getJointMixed(Environment& environment, int i, int j, int* mixedDiscrete,
     double* mixedContinuous, int* curr_sample_is_not_NA) {
-  int discrete_pos = environment.columnAsContinuous[i] == 0 ? i : j;
-  int continuous_pos = environment.columnAsContinuous[i] == 1 ? i : j;
+  int discrete_pos = environment.is_continuous[i] ? j : i;
+  int continuous_pos = environment.is_continuous[i] ? i : j;
 
   // Fill marginal distributions
   int numSamples_nonNA = 0;
@@ -702,24 +650,21 @@ void getJointMixed(Environment& environment, int i, int j, int* mixedDiscrete,
 }
 
 void readFileType(Environment& environment) {
-  for (uint pos = 0; pos < environment.numNodes; pos++) {
-    environment.columnAsContinuous[pos] = environment.cntVarVec[pos];
-  }
-  if (environment.typeOfData != 0) {
-    environment.dataDouble = new double*[environment.numSamples];
+  if (std::all_of(environment.is_continuous.begin(),
+          environment.is_continuous.end(), [](int i) { return i == 0; }))
+    return;
 
-    for (uint i = 0; i < environment.numSamples; i++) {
-      environment.dataDouble[i] = new double[environment.numNodes];
-      for (uint j = 0; j < environment.numNodes; j++) {
-        if ((environment.columnAsContinuous[j] == 1) ||
-            (environment.columnAsContinuous[j] == 1)) {
-          if ((environment.data[i][j].compare("NA") == 0) ||
-              (environment.data[i][j].compare("") == 0)) {
-            environment.dataDouble[i][j] =
-                std::numeric_limits<double>::quiet_NaN();
-          } else {
-            environment.dataDouble[i][j] = atof(environment.data[i][j].c_str());
-          }
+  environment.dataDouble = new double*[environment.numSamples];
+  for (uint i = 0; i < environment.numSamples; i++) {
+    environment.dataDouble[i] = new double[environment.numNodes];
+    for (uint j = 0; j < environment.numNodes; j++) {
+      if (environment.is_continuous[j]) {
+        if (environment.data[i][j].compare("NA") == 0 ||
+            environment.data[i][j].compare("") == 0) {
+          environment.dataDouble[i][j] =
+              std::numeric_limits<double>::quiet_NaN();
+        } else {
+          environment.dataDouble[i][j] = atof(environment.data[i][j].c_str());
         }
       }
     }
@@ -732,23 +677,8 @@ void setEnvironment(Environment& environment) {
   environment.searchMoreAddress.clear();
   environment.numSearchMore = 0;
 
-  environment.atLeastTwoDiscrete = 0;
-  environment.atLeastOneContinuous = 0;
-
-  bool isNA = false;
-
-  readData(environment, isNA);
-
-  if (isNA) removeRowsAllNA(environment);
-
-  environment.columnAsContinuous = new int[environment.numNodes];
-  if (environment.typeOfData == 0) {
-    for (uint i = 0; i < environment.numNodes; i++) {
-      environment.columnAsContinuous[i] = 0;
-    }
-  } else {
-    readFileType(environment);
-  }
+  readData(environment);
+  readFileType(environment);
 
   // Set the effN if not already done
   if (environment.effN == -1 || environment.effN > (int)environment.numSamples)
@@ -769,17 +699,6 @@ void setEnvironment(Environment& environment) {
     }
   }
 
-  int count = 0;
-  for (uint i = 0; i < environment.numNodes; i++) {
-    if (environment.columnAsContinuous[i] == 0) count++;
-  }
-  if (count > 1) environment.atLeastTwoDiscrete = 1;
-
-  for (uint i = 0; i < environment.numNodes; i++) {
-    if (environment.columnAsContinuous[i] == 1)
-      environment.atLeastOneContinuous = 1;
-  }
-
   // create the data matrix for factors
   environment.dataNumeric = new int*[environment.numSamples];
   for (uint i = 0; i < environment.numSamples; i++) {
@@ -787,7 +706,9 @@ void setEnvironment(Environment& environment) {
   }
 
   // for continuous
-  if (environment.atLeastOneContinuous) {
+  auto any_continuous = std::any_of(environment.is_continuous.begin(),
+      environment.is_continuous.end(), [](int i) { return i == 1; });
+  if (any_continuous) {
     // create the data matrix for factors indexes
     environment.dataNumericIdx = new int*[environment.numNodes];
     for (uint i = 0; i < environment.numNodes; i++) {
@@ -799,7 +720,7 @@ void setEnvironment(Environment& environment) {
 
   // transform to factors
   for (uint i = 0; i < environment.numNodes; i++) {
-    if (environment.columnAsContinuous[i] == 0)
+    if (!environment.is_continuous[i])
       transformToFactors(environment, i);
     else
       transformToFactorsContinuous(environment,
@@ -808,9 +729,9 @@ void setEnvironment(Environment& environment) {
   }
 
   // for continuous
-  if (environment.atLeastOneContinuous) {
+  if (any_continuous) {
     for (uint j = 0; j < environment.numNodes; j++) {
-      if (environment.columnAsContinuous[j] != 0) {
+      if (environment.is_continuous[j]) {
         transformToFactorsContinuousIdx(environment, j);
         transformToFactors(environment, j);  // update environment.dataNumeric
                                              // taking into account repetition
@@ -829,7 +750,6 @@ void setEnvironment(Environment& environment) {
   environment.initbins = std::min(30, int(0.5 + cbrt(environment.numSamples)));
 
   // for mixed
-  // if(environment.atLeastOneContinuous){
   // create the log(j) lookup table with j=0..numSamples;
   environment.looklog = new double[environment.numSamples + 2];
   environment.looklog[0] = 0.0;
@@ -892,9 +812,9 @@ void setEnvironment(Environment& environment) {
 
   for (uint i = 0; i < environment.numNodes; i++) {
     for (uint j = 0; j < environment.numNodes; j++) {
-      if ((environment.columnAsContinuous[i] == 0 &&
+      if ((!environment.is_continuous[i] &&
               environment.allLevels[i] == environment.numSamples) ||
-          (environment.columnAsContinuous[j] == 0 &&
+          (!environment.is_continuous[j] &&
               environment.allLevels[j] == environment.numSamples)) {
         // If a node is discrete with as many levels as there are samples, its
         // information with other nodes is null.
@@ -1024,16 +944,16 @@ double compute_kl_divergence_continuous(vector<vector<double> > space1,
   return (D);
 }
 
-double compute_kl_divergence(int* posArray, Environment& environment,
-    int samplesNotNA, const vector<int> &AllLevels_red,
-    const vector<int> &sample_is_not_NA) {
+double compute_kl_divergence(const vector<int>& posArray,
+    Environment& environment, int samplesNotNA,
+    const vector<int>& AllLevels_red, const vector<int>& sample_is_not_NA) {
   int current_samplesNotNA =
       getNumSamples_nonNA(environment, posArray[0], posArray[1]);
   double kldiv = 0;
 
   // 1 - XY discrete
-  if (environment.columnAsContinuous[posArray[0]] == 0 &&
-      environment.columnAsContinuous[posArray[1]] == 0) {
+  if (!environment.is_continuous[posArray[0]] &&
+      !environment.is_continuous[posArray[1]]) {
 
     // Joint freqs X,Y before adding the new contributor (with the current
     // conditioning Us)
@@ -1054,8 +974,8 @@ double compute_kl_divergence(int* posArray, Environment& environment,
     }
     delete[] freqs2;
     delete[] jointFreqs;
-  } else if (environment.columnAsContinuous[posArray[0]] == 1 &&
-             environment.columnAsContinuous[posArray[1]] == 1) {
+  } else if (environment.is_continuous[posArray[0]] &&
+             environment.is_continuous[posArray[1]]) {
     // 2 - XY continuous
     // Retrieve marginal distibutions with the current conditioning Us
     vector<vector<double> > joint_base(current_samplesNotNA, vector<double>(2));
@@ -1101,7 +1021,7 @@ double compute_kl_divergence(int* posArray, Environment& environment,
   } else {
     // 3 - One discrete and one continuous
     int discrete_pos, continuous_pos, discrete_pos_binary, continuous_pos_binary;
-    if (environment.columnAsContinuous[posArray[0]] == 0) {
+    if (!environment.is_continuous[posArray[0]]) {
       discrete_pos_binary = 0;
       continuous_pos_binary = 1;
     } else {
@@ -1219,7 +1139,7 @@ int sign(double val) {
  * sample_is_not_NA and NAs_count
  */
 uint count_non_NAs(int nbrUi, vector<int> &sample_is_not_NA,
-    vector<int> &NAs_count, int* posArray,
+    vector<int> &NAs_count, const vector<int>& posArray,
     Environment& environment, int z){
 
   uint samplesNotNA = 0;
@@ -1262,13 +1182,11 @@ uint count_non_NAs(int nbrUi, vector<int> &sample_is_not_NA,
  * \a dataNumericIdx contains the continuous ranks of the reduced data
  * \a sample_weights contains the individual sample weights of the reduced data
  */
-bool filter_NAs(int nbrUi, vector<int> &AllLevels, vector<int> &cnt,
-    vector<int> &posArray_red, int* posArray, vector<vector<int> > &dataNumeric,
-    vector<vector<int> > &dataNumericIdx, vector<double> &sample_weights,
-    const vector<int> &sample_is_not_NA,
-    const vector<int> &NAs_count,
-    Environment& environment, int z) {
-
+bool filter_NAs(int nbrUi, vector<int>& AllLevels, vector<int>& cnt,
+    vector<int>& posArray_red, const vector<int>& posArray,
+    vector<vector<int>>& dataNumeric, vector<vector<int>>& dataNumericIdx,
+    vector<double>& sample_weights, const vector<int>& sample_is_not_NA,
+    const vector<int>& NAs_count, Environment& environment, int z) {
   int k1, k2, nnr, prev_val, si, old_val, new_val, updated_discrete_level;
   int column;
   bool flag_sample_weights(false);
@@ -1283,7 +1201,7 @@ bool filter_NAs(int nbrUi, vector<int> &AllLevels, vector<int> &cnt,
       column = z;
     }
     posArray_red[j] = j;
-    cnt[j] = environment.columnAsContinuous[column];
+    cnt[j] = environment.is_continuous[column];
 
     k1 = 0; // position in the full data
     k2 = 0; // position in the reduced data

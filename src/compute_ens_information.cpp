@@ -32,8 +32,8 @@ using std::vector;
 double* computeEnsInformationContinuous_Orientation(Environment& environment,
     int* myCond, int myNbrUi, int* myZi, const int myVarIdxX,
     const int myVarIdxY, const int cplx, MemorySpace& m) {
-  int* posArray = new int[2 + environment.edges[myVarIdxX][myVarIdxY]
-                                  .shared_info->ui_vect_idx.size()];
+  vector<int> posArray(2 + environment.edges[myVarIdxX][myVarIdxY]
+                                  .shared_info->ui_vect_idx.size());
   posArray[0] = myVarIdxX;
   posArray[1] = myVarIdxY;
 
@@ -125,8 +125,8 @@ double* computeEnsInformationContinuous_Orientation(Environment& environment,
 }
 
 void computeContributingScores(Environment& environment, int* ziContPosIdx,
-    int iz, int* myZi, int myNbrUi, uint numSamples_nonNA, int* posArray,
-    double* scoresZ, MemorySpace m) {
+    int iz, int* myZi, int myNbrUi, uint numSamples_nonNA,
+    const vector<int>& posArray, double* scoresZ, MemorySpace m) {
   // progressive data rank with repetition for same values
 
   int cplx = environment.cplx;
@@ -232,8 +232,8 @@ void computeContributingScores(Environment& environment, int* ziContPosIdx,
 double* computeEnsInformationContinuous(Environment& environment, int* myCond,
     int myNbrUi, int* myZi, uint myNbrZi, int myZiPos, const int myVarIdxX,
     const int myVarIdxY, const int cplx, MemorySpace& m) {
-  int* posArray = new int[2 + environment.edges[myVarIdxX][myVarIdxY]
-                                  .shared_info->ui_vect_idx.size()];
+  vector<int> posArray(2 + environment.edges[myVarIdxX][myVarIdxY]
+                                  .shared_info->ui_vect_idx.size());
   posArray[0] = myVarIdxX;
   posArray[1] = myVarIdxY;
 
@@ -307,13 +307,13 @@ double* computeEnsInformationContinuous(Environment& environment, int* myCond,
 
     // If x, y and uis are discrete we can put togheter all zi that are discrete
     // in a vector and evaluate them in one shot as discrete.
-    if (allVariablesDiscrete(
-            environment.columnAsContinuous, posArray, (myNbrUi + 2))) {
+    if (std::all_of(posArray.cbegin(), posArray.cend(),
+            [&environment](int i) { return !environment.is_continuous[i]; })) {
       // search for z that are discrete
       int countZDiscrete = 0;
       for (uint iz = 0; iz < myNbrZi; iz++) {
         z = myZi[iz];
-        if (environment.columnAsContinuous[z] == 0) countZDiscrete++;
+        if (!environment.is_continuous[z]) countZDiscrete++;
       }
 
       if (countZDiscrete > 0) {
@@ -322,7 +322,7 @@ double* computeEnsInformationContinuous(Environment& environment, int* myCond,
         int pos = 0;
         for (uint iz = 0; iz < myNbrZi; iz++) {
           z = myZi[iz];
-          if (environment.columnAsContinuous[z] == 0) {
+          if (!environment.is_continuous[z]) {
             zz[pos] = z;
             posZi[pos] = iz;
             pos++;
@@ -347,7 +347,7 @@ double* computeEnsInformationContinuous(Environment& environment, int* myCond,
         pos = 0;
         for (uint iz = 0; iz < myNbrZi; iz++) {
           z = myZi[iz];
-          if (environment.columnAsContinuous[z] == 1) {
+          if (environment.is_continuous[z]) {
             ziContPosIdx[pos] = iz;
             pos++;
           }
@@ -397,8 +397,6 @@ double* computeEnsInformationContinuous(Environment& environment, int* myCond,
     if (ziContPosIdx != NULL) delete[] ziContPosIdx;
   }
 
-  delete[] posArray;
-
   for (int i = 0; i < nbrRetValues; i++) {
     if (res_new[i] > -0.0000000001 && res_new[i] < 0.0000000001) {
       res_new[i] = 0.0;
@@ -426,9 +424,8 @@ double* computeEnsInformationContinuous(Environment& environment, int* myCond,
 double* computeEnsInformationNew(Environment& environment, int* myCond,
     int myNbrUi, int* myZi, int myNbrZi, int myZiPos, const int myVarIdxX,
     const int myVarIdxY, const int cplx, MemorySpace& m) {
-
-  int* posArray = new int[2 + environment.edges[myVarIdxX][myVarIdxY]
-                                  .shared_info->ui_vect_idx.size()];
+  vector<int> posArray(2 + environment.edges[myVarIdxX][myVarIdxY]
+                                  .shared_info->ui_vect_idx.size());
   posArray[0] = myVarIdxX;
   posArray[1] = myVarIdxY;
 
@@ -484,8 +481,6 @@ double* computeEnsInformationNew(Environment& environment, int* myCond,
   printf("\n");
 #endif  // _MY_DEBUG_NEW
 
-  delete[] posArray;
-
   return res_new;
 }
 
@@ -521,7 +516,8 @@ void SearchForNewContributingNodeAndItsRank(
 
   double* vect = NULL;
 
-  if (environment.typeOfData == 0) {
+  if (std::all_of(environment.is_continuous.begin(),
+          environment.is_continuous.end(), [](int i) { return i == 0; })) {
     vect = computeEnsInformationNew(environment, ui, info->ui_vect_idx.size(),
         zi, info->zi_vect_idx.size(), info->ui_vect_idx.size() + 2, posX, posY,
         argEnsInfo, m);
@@ -548,7 +544,7 @@ void SearchForNewContributingNodeAndItsRank(
            << " < Rxyz_ui = " << info->Rxyz_ui << "\n";
     }
 
-  } else if (environment.typeOfData == 2 || environment.typeOfData == 1) {
+  } else {
     vect = computeEnsInformationContinuous(environment, ui,
         info->ui_vect_idx.size(), zi, info->zi_vect_idx.size(),
         info->ui_vect_idx.size() + 2, posX, posY, argEnsInfo, m);

@@ -1,4 +1,3 @@
-library(scales)
 summarizeResults <- function(observations = NULL, results = NULL,
                              true_edges = NULL, state_order = NULL,
                              verbose = FALSE) {

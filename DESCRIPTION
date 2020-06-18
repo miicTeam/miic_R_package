@@ -19,6 +19,7 @@ Imports:
         igraph,
         bnlearn,
         ppcor,
+        scales,
         stats,
         Rcpp
 Suggests:

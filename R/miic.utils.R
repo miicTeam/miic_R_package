@@ -1,19 +1,3 @@
-isContinuous <- function(tmpArray) {
-  nbLevels <- unique(tmpArray)
-  nbSamples <- length(tmpArray)
-  if (length(nbLevels) >= 0.8 * nbSamples |
-    length(nbLevels) >= 100) {
-    print(paste(
-      "VARIABLE CONTINUOUS LIKE:",
-      length(nbLevels),
-      "different levels"
-    ))
-    return(1)
-  } else {
-    return(0)
-  }
-}
-
 checkInput <- function(dataFile, method) {
   errCode <- "0"
   isCnt_test <- 0
@@ -24,7 +8,7 @@ checkInput <- function(dataFile, method) {
   if (grepl("#", str) | grepl("&", str) | grepl("'", str)) {
     errCode <- "111"
   } else {
-    isCnt_test <- 0 # sum(apply( dataFile, 2, isContinuous ))
+    isCnt_test <- 0
 
     if (method == "miic" &
       length(unique(dataFile[1, ])) != ncol(dataFile)) {
@@ -41,7 +25,6 @@ checkInput <- function(dataFile, method) {
   }
   return(errCode)
 }
-
 
 checkTrueEdges <- function(edgesFile) {
   errCode <- "0"

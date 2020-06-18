@@ -76,7 +76,9 @@ vector<vector<string> > miic::reconstruction::confidenceCut(
   for (uint i = 0; i < environment.numSamples; i++)
     safe_state[i] = new int[environment.numNodes];
 
-  if (environment.atLeastOneContinuous == 1) {
+  auto any_continuous = std::any_of(environment.is_continuous.begin(),
+      environment.is_continuous.end(), [](int i) { return i == 1; });
+  if (any_continuous) {
     safe_stateIdx = new int*[environment.numNodes];
     for (uint i = 0; i < environment.numNodes; i++)
       safe_stateIdx[i] = new int[environment.numSamples];
@@ -94,7 +96,7 @@ vector<vector<string> > miic::reconstruction::confidenceCut(
   for (uint i = 0; i < environment.numSamples; i++) {
     for (uint j = 0; j < environment.numNodes; j++) {
       safe_state[i][j] = environment.dataNumeric[i][j];
-      if (environment.columnAsContinuous[j] == 1)
+      if (environment.is_continuous[j])
         safe_stateIdx[j][i] = environment.dataNumericIdx[j][i];
     }
     if (environment.sampleWeightsVec[0] == -1) {
@@ -125,7 +127,7 @@ vector<vector<string> > miic::reconstruction::confidenceCut(
       if (nodes_toShf[col] == 1) {
         uint row2 = 0;
         shuffle_lookup(lookup, lookup2, environment.numSamples);
-        if (environment.columnAsContinuous[col] != 0) {
+        if (environment.is_continuous[col]) {
           for (uint i = 0; i < environment.numSamples; i++) {
             lookup2[i] = i;
           }
@@ -137,14 +139,14 @@ vector<vector<string> > miic::reconstruction::confidenceCut(
         }
 
         for (uint row = 0; row < environment.numSamples; row++) {
-          if (environment.columnAsContinuous[col] != 0) {
+          if (environment.is_continuous[col]) {
             if (environment.dataNumeric[lookup2[row]][col] != -1) {
               environment.dataNumericIdx[col][row2] = lookup2[row];
               row2++;
             }
           }
         }
-        if (environment.columnAsContinuous[col] != 0) {
+        if (environment.is_continuous[col]) {
           while (row2 < environment.numSamples) {
             environment.dataNumericIdx[col][row2] = -1;
             row2++;
@@ -168,8 +170,8 @@ vector<vector<string> > miic::reconstruction::confidenceCut(
       Y = inferredEdges_tab[i][1];
 
       double* res;
-      if (environment.columnAsContinuous[X] == 0 &&
-          environment.columnAsContinuous[Y] == 0) {
+      if (!environment.is_continuous[X] &&
+          !environment.is_continuous[Y]) {
         // discrete case
         res = computeEnsInformationNew(environment, NULL, 0, NULL, 0, -1, X, Y,
             environment.cplx, environment.m);
@@ -256,7 +258,7 @@ vector<vector<string> > miic::reconstruction::confidenceCut(
     }
   }
 
-  if (environment.atLeastOneContinuous) {
+  if (any_continuous) {
     // Create the data matrix for factors indexes
     for (uint i = 0; i < environment.numNodes; i++) {
       for (uint j = 0; j < environment.numSamples; j++)
@@ -264,7 +266,7 @@ vector<vector<string> > miic::reconstruction::confidenceCut(
     }
 
     for (uint j = 0; j < environment.numNodes; j++) {
-      if (environment.columnAsContinuous[j] != 0) {
+      if (environment.is_continuous[j]) {
         transformToFactorsContinuous(environment, j);
         transformToFactorsContinuousIdx(environment, j);
         transformToFactors(environment, j);

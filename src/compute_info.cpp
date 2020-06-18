@@ -23,6 +23,7 @@ namespace computation {
 using uint = unsigned int;
 using namespace miic::structure;
 using namespace miic::utility;
+using std::vector;
 
 double lnfactorial(int n, double* looklog) {
   double z = 0;
@@ -118,11 +119,11 @@ double computeLogC(int N, int r, double* looklog, double** cterms) {
   return logC;
 }
 
-double* getAllInfoNEW(int* ptrAllData, uint* ptrAllLevels, int* ptrVarIdx,
-    int nbrUi, int* ptrZiIdx, int nbrZi, int ziPos, int sampleSize,
-    int sampleSizeEff, int modCplx, int k23, double* looklog, double* c2terms,
-    MemorySpace* memory, double* weights, double** freqs1,
-    bool testDistribution) {
+double* getAllInfoNEW(int* ptrAllData, uint* ptrAllLevels,
+    const vector<int>& ptrVarIdx, int nbrUi, int* ptrZiIdx, int nbrZi,
+    int ziPos, int sampleSize, int sampleSizeEff, int modCplx, int k23,
+    double* looklog, double* c2terms, MemorySpace* memory, double* weights,
+    double** freqs1, bool testDistribution) {
   int randomrescaling = 1;
   float r, rr;
 
