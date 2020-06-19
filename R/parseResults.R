@@ -225,9 +225,9 @@ compute_partial_correlation <- function(summary, observations, state_order) {
       rownames(state_order) <- state_order$var_names
       # Convert ordered categorical features to integers
       observations[, col] <- factor(observations[, col])
-      ordered_levels <- unlist(strsplit(
-        state_order[state_order$var_names == col, "levels_increasing_order"], ","
-      ))
+      ordered_levels <- as.character(
+        state_order[state_order$var_names == col, "levels_increasing_order"])
+      ordered_levels <- unlist(strsplit(ordered_levels, ","))
       # levels(observations[,col]) = ordered_levels
       observations[, col] <- ordered(observations[, col], ordered_levels)
       observations[, col] <- as.numeric(observations[, col])
