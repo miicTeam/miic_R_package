@@ -157,7 +157,6 @@ using reconstruction_impl::CycleTracker;
 bool skeletonInitialization(structure::Environment&);
 bool firstStepIteration(structure::Environment&, BCC&);
 bool skeletonIteration(structure::Environment&);
-bool reconstruct(structure::Environment&, std::string, double, int, char*[]);
 std::vector<std::vector<std::string> > confidenceCut(structure::Environment&);
 
 }  // namespace reconstruction

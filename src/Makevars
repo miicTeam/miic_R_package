@@ -1,6 +1,5 @@
-## Use the R_HOME indirection to support installations of multiple R version
-PKG_LIBS     = `$(R_HOME)/bin/Rscript -e "Rcpp:::LdFlags()"` $(SHLIB_OPENMP_CFLAGS)
-PKG_CXXFLAGS = -I. -I../inst/include $(SHLIB_OPENMP_CFLAGS)
-PKG_CCFLAGS  = -I. -I../inst/include $(SHLIB_OPENMP_CFLAGS)
-
+# openmp support
+PKG_CXXFLAGS = $(SHLIB_OPENMP_CXXFLAGS)
+PKG_LIBS     = $(SHLIB_OPENMP_CXXFLAGS)
+# Require C++14
 CXX_STD = CXX14

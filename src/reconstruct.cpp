@@ -17,16 +17,14 @@
 #include "structure.h"
 #include "utilities.h"
 
-namespace miic {
-namespace reconstruction {
-
 using uint = unsigned int;
 using Rcpp::_;
 using Rcpp::List;
 using std::string;
 using std::vector;
-using namespace structure;
-using namespace utility;
+using namespace miic::reconstruction;
+using namespace miic::structure;
+using namespace miic::utility;
 
 List empty_results() {
   List result;
@@ -34,7 +32,8 @@ List empty_results() {
   return (result);
 }
 
-extern "C" SEXP reconstruct(SEXP inputDataR, SEXP cntVarR, SEXP numNodesR,
+// [[Rcpp::export]]
+List reconstruct(SEXP inputDataR, SEXP cntVarR, SEXP numNodesR,
     SEXP nThreadsR, SEXP edgefileR, SEXP blackBoxR, SEXP effNR, SEXP cplxR,
     SEXP etaR, SEXP hvsR, SEXP isLatentR, SEXP isTplReuseR, SEXP isK23R,
     SEXP isDegeneracyR, SEXP orientationR, SEXP propagationR, SEXP isNoInitEtaR,
@@ -252,6 +251,9 @@ extern "C" SEXP reconstruct(SEXP inputDataR, SEXP cntVarR, SEXP numNodesR,
 
   return result;
 }
+
+namespace miic {
+namespace reconstruction {
 
 bool CycleTracker::hasCycle() {
   uint n_edge = env_.numNoMore;

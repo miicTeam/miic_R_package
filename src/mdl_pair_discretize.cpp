@@ -105,7 +105,8 @@ void transformToFactorsContinuousIdx(
   }
 }
 
-extern "C" SEXP mydiscretizeMutual(SEXP RmyDist1, SEXP RmyDist2, SEXP RflatU,
+// [[Rcpp::export]]
+List mydiscretizeMutual(SEXP RmyDist1, SEXP RmyDist2, SEXP RflatU,
     SEXP RnbrU, SEXP RmaxBins, SEXP Rinitbin, SEXP Rcplx, SEXP Rcnt_vec,
     SEXP Rnlevels, SEXP ReffN, SEXP RsampleWeights) {
   vector<double> myDist1Vec = Rcpp::as<vector<double> >(RmyDist1);

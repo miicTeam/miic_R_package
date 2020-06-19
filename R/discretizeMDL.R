@@ -36,8 +36,7 @@ discretizeMDL <- function(myDist = NULL, maxbins = 20) {
     stop("The input data file is required")
   }
   if (base::requireNamespace("Rcpp", quietly = TRUE)) {
-    result <-
-      .Call("mydiscretizeMDL", myDist, maxbins, PACKAGE = "miic")
+    result <- mydiscretizeMDL(myDist, maxbins)
   }
   result
 }

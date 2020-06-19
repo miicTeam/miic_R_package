@@ -113,9 +113,9 @@ int crosscorrelation(const int row_num, const int col_num,
   return neff;
 }
 
-// Evaluate the effective number of samples in the dataset/ This function deals
-// with R
-extern "C" SEXP evaluateEffn(
+// Evaluate the effective number of samples in the dataset
+// [[Rcpp::export]]
+List evaluateEffn(
     SEXP inputDataR, SEXP variable_numR, SEXP sample_numR) {
   vector<double> correlationV;
   std::vector<std::string> vectorData;

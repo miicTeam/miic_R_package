@@ -24,13 +24,7 @@ miic.evaluate.effn <- function(inputData = NULL, plot = T) {
     )))
   )
   if (base::requireNamespace("Rcpp", quietly = TRUE)) {
-    result <-
-      .Call("evaluateEffn",
-        inData,
-        ncol(inputData),
-        nrow(inputData),
-        PACKAGE = "miic"
-      )
+    result <- evaluateEffn(inData, ncol(inputData), nrow(inputData))
   }
   if (length(which(result$correlation > 0)) == length(result$correlation)) {
     fit1 <- MASS::fitdistr(result$correlation, "exponential")

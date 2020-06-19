@@ -57,8 +57,7 @@ miic.reconstruct <- function(inputData = NULL,
   hvs <- 0
   cntVar <- as.numeric(cntVar)
   if (base::requireNamespace("Rcpp", quietly = TRUE)) {
-    res <- .Call(
-      "reconstruct",
+    res <- reconstruct(
       inData,
       cntVar,
       n_node,
@@ -81,8 +80,7 @@ miic.reconstruct <- function(inputData = NULL,
       sampleWeights,
       consistent,
       testMAR,
-      verbose,
-      PACKAGE = "miic"
+      verbose
     )
     if (res$interrupted) {
       return(list(interrupted = TRUE))

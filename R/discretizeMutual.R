@@ -294,9 +294,7 @@ discretizeMutual <- function(X,
 
   # Call cpp code
   if (base::requireNamespace("Rcpp", quietly = TRUE)) {
-    rescpp <-
-      .Call(
-        "mydiscretizeMutual",
+    rescpp <- mydiscretizeMutual(
         X,
         Y,
         flatU,
@@ -307,8 +305,7 @@ discretizeMutual <- function(X,
         cnt_vec,
         nlevels,
         Neff,
-        sample_weights,
-        PACKAGE = "miic"
+        sample_weights
       )
   }
   niterations <- nrow(rescpp$cutpointsmatrix) / maxbins
