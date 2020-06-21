@@ -17,7 +17,9 @@ miic.reconstruct <- function(input_data = NULL,
                                "no",
                                "orientation",
                                "skeleton"
-                             )) {
+                             ),
+                             max_iteration = max_iteration
+                             ) {
   var_names <- colnames(input_data)
 
   if (!is.null(black_box)) {
@@ -41,6 +43,7 @@ miic.reconstruct <- function(input_data = NULL,
     "is_continuous" = as.numeric(is_continuous),
     "is_k23" = TRUE,
     "latent" = latent,
+    "max_iteration" = max_iteration,
     "n_eff" = n_eff,
     "n_shuffles" = n_shuffles,
     "n_threads" = n_threads,

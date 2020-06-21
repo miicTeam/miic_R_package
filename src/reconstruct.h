@@ -67,9 +67,6 @@ class BCC {
 // iteration.
 class CycleTracker {
  private:
-  // Max number of iterations to track.
-  static constexpr uint max_iter_size = 1000;
-
   struct Iteration {
     uint index;
     // key: index of edge
@@ -118,7 +115,7 @@ class CycleTracker {
 
   Environment& env_;
   IterationList iterations_;
-  uint n_saved = 0;  // Number of saving operations performed
+  int n_saved = 0;  // Number of saving operations performed
   // key: number of edges in the graph
   // value: index of iteration
   std::multimap<uint, uint> edge_index_map_;

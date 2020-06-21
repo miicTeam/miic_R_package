@@ -66,6 +66,7 @@ List reconstruct(DataFrame input_data, List arg_list) {
   if (consistent_flag.compare("orientation") == 0)
     environment.consistent = 1;
   if (consistent_flag.compare("skeleton") == 0) environment.consistent = 2;
+  environment.max_iteration = as<int>(arg_list["max_iteration"]);
 
   std::string latent_flag = as<std::string>(arg_list["latent"]);
   environment.latent = false;
@@ -270,8 +271,9 @@ bool CycleTracker::hasCycle() {
   for (auto it = range.first; it != range.second; ++it)
     iter_indices.push_back(it->second + 1);
   saveIteration();
-  if (n_saved > max_iter_size) {
-    std::cout << "Max number of iterations reached: " << max_iter_size << '\n';
+  if (n_saved > env_.max_iteration) {
+    std::cout << "Max number of iterations reached: " << env_.max_iteration
+              << '\n';
     return true;
   }
   if (no_cycle_found) return false;

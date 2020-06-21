@@ -43,7 +43,7 @@
 #' the one in the \emph{input_data} data frame.
 #'
 #' @param n_eff [a positive integer]
-#' The N samples given in the \emph{inputdata} data frame are expected
+#' The N samples given in the \emph{input_data} data frame are expected
 #' to be independent. In case of correlated samples such as in time series or
 #' Monte Carlo sampling approaches, the effective number of independent samples
 #' \emph{n_eff} can be estimated using the decay of the autocorrelation function
@@ -128,6 +128,10 @@
 #' if "skeleton": iterate over skeleton step to get a consistent skeleton, then
 #' orient edges and discard inconsistent orientations to ensure consistency of
 #' the network.
+#'
+#' @param max_iteration [a positive integer] When the \emph{consistent} parameter
+#' is set to "skeleton" or "orientation", the maximum number of iterations
+#' allowed when trying to find a consistent graph. Set to 100 by default.
 #'
 #' @param verbose [a boolean value] If TRUE, debugging output is printed.
 #'
@@ -281,6 +285,7 @@ miic <- function(input_data,
                  sample_weights = NULL,
                  test_mar = TRUE,
                  consistent = c("no", "orientation", "skeleton"),
+                 max_iteration = 100,
                  verbose = FALSE) {
   res <- NULL
 
@@ -469,7 +474,8 @@ miic <- function(input_data,
         is_continuous = is_continuous,
         sample_weights = sample_weights,
         test_mar = test_mar,
-        consistent = consistent
+        consistent = consistent,
+        max_iteration = max_iteration
       )
     if (res$interrupted) {
       stop("Interupted by user")

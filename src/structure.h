@@ -127,6 +127,9 @@ struct Environment {
   // 1: skeleton consistent
   // 2: orientation consistent
   int consistent;
+  // when consistent > 0, the maximum number of iterations allowed when trying
+  // to find a consistent graph.
+  int max_iteration;
   double** data_double;
   int** iterative_cuts;
   vector<double> sample_weights;
