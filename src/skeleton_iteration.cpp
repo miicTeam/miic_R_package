@@ -58,27 +58,27 @@ class sorter1 {
   }
 };
 
-template <bool isLatent = false>
+template <bool latent = false>
 void searchAndSetZi(
     Environment& environment, const uint posX, const uint posY) {
   // Search candidate nodes for the separation set of X and Y
   int numZiPos = 0;
-  for (uint c = 0; c < environment.numNodes; c++) {
+  for (uint c = 0; c < environment.n_nodes; c++) {
     if (c == posX || c == posY) continue;
-    if (!isLatent && !environment.edges[posX][c].status_prev &&
+    if (!latent && !environment.edges[posX][c].status_prev &&
         !environment.edges[posY][c].status_prev)
       continue;
     environment.edges[posX][posY].shared_info->zi_vect_idx.push_back(c);
     numZiPos++;
   }
 
-  if (environment.isVerbose)
+  if (environment.verbose)
     cout << "The number of neighbours is: " << numZiPos << endl;
 }
 
 void searchAndSetZi(
     Environment& environment, const uint posX, const uint posY) {
-  if (environment.isLatent)
+  if (environment.latent)
     return searchAndSetZi<true>(environment, posX, posY);
   else
     return searchAndSetZi<false>(environment, posX, posY);
@@ -91,27 +91,27 @@ bool firstStepIteration(Environment& environment, BCC& bcc) {
   // During first step iteration, search for U contributors is not
   // parallelizable see flag "parallelizable" in
   // computeEnsInformationContinuous() l. 1118 in computeEnsInformation.cpp
-  environment.firstIterationDone = false;
+  environment.first_iter_done = false;
 
-  for (unsigned i = 0; i < environment.searchMoreAddress.size(); i++)
-    delete environment.searchMoreAddress[i];
+  for (unsigned i = 0; i < environment.unsettled_list.size(); i++)
+    delete environment.unsettled_list[i];
 
-  for (unsigned i = 0; i < environment.noMoreAddress.size(); i++)
-    delete environment.noMoreAddress[i];
+  for (unsigned i = 0; i < environment.connected_list.size(); i++)
+    delete environment.connected_list[i];
 
-  environment.noMoreAddress.clear();
-  environment.searchMoreAddress.clear();
+  environment.connected_list.clear();
+  environment.unsettled_list.clear();
 
-  // create and fill the searchMoreAddress struct, that keep track of i and j
+  // create and fill the unsettled_list struct, that keep track of i and j
   // positions of searchMore Edges
   environment.numSearchMore = 0;
   environment.numNoMore = 0;
-  for (uint i = 0; i < environment.numNodes - 1; i++) {
-    for (uint j = i + 1; j < environment.numNodes; j++) {
+  for (uint i = 0; i < environment.n_nodes - 1; i++) {
+    for (uint j = i + 1; j < environment.n_nodes; j++) {
       // Do dot consider edges removed with unconditional independence
       if (!environment.edges[i][j].status) continue;
       environment.edges[i][j].shared_info->reset();
-      environment.searchMoreAddress.emplace_back(new EdgeID(i, j));
+      environment.unsettled_list.emplace_back(new EdgeID(i, j));
       environment.numSearchMore++;
     }
   }
@@ -121,28 +121,28 @@ bool firstStepIteration(Environment& environment, BCC& bcc) {
   int prg_numSearchMore = -1;
   cout << "First round of conditional independences :\n";
   if (environment.numSearchMore > 0) {
-    if (environment.isVerbose == true)
+    if (environment.verbose)
       cout << "\n# -> searchMore edges, to get zi and noMore...\n";
 
     for (int i = 0; i < environment.numSearchMore; i++) {
-      int posX = environment.searchMoreAddress[i]->i;
-      int posY = environment.searchMoreAddress[i]->j;
-      if (environment.isVerbose) {
+      int posX = environment.unsettled_list[i]->i;
+      int posY = environment.unsettled_list[i]->j;
+      if (environment.verbose) {
         cout << "\n# --------------------\n# ----> EDGE: "
              << environment.nodes[posX].name << "--"
              << environment.nodes[posY].name << "\n# --------------------";
       }
-      if (environment.consistentPhase)
+      if (environment.consistent > 0)
         bcc.set_candidate_z(posX, posY);
       else
         searchAndSetZi(environment, posX, posY);
     }
 
-    if (environment.isVerbose) {
+    if (environment.verbose) {
       cout << "SEARCH OF BEST Z: ";
     }
 
-    environment.execTime.startTimeInit = get_wall_time();
+    environment.exec_time.start_time_init = get_wall_time();
 #ifdef _OPENMP
 #pragma omp parallel for shared(interrupt) firstprivate(threadnum) \
     schedule(dynamic)
@@ -155,13 +155,13 @@ bool firstStepIteration(Environment& environment, BCC& bcc) {
       threadnum = omp_get_thread_num();
 #endif
       if (threadnum == 0) {
-        if (checkInterrupt(i / environment.nThreads % 2 == 0)) {
+        if (checkInterrupt(i / environment.n_threads % 2 == 0)) {
           interrupt = true;
         }
       }
-      int posX = environment.searchMoreAddress[i]->i;
-      int posY = environment.searchMoreAddress[i]->j;
-      if (environment.isVerbose)
+      int posX = environment.unsettled_list[i]->i;
+      int posY = environment.unsettled_list[i]->j;
+      if (environment.verbose)
         cout << "##  "
              << "XY: " << environment.nodes[posX].name << " "
              << environment.nodes[posY].name << "\n\n";
@@ -171,23 +171,23 @@ bool firstStepIteration(Environment& environment, BCC& bcc) {
             environment, posX, posY, environment.memoryThreads[threadnum]);
       }
       // Dynamic thread allocation makes it so we can't know the end point of
-      // thread 0, on average it will be numSearchMore - nThreads/2
+      // thread 0, on average it will be numSearchMore - n_threads/2
       if (threadnum == 0)
         prg_numSearchMore = printProgress(
-            1.0 * i / (environment.numSearchMore - environment.nThreads / 2),
-            environment.execTime.startTimeInit, prg_numSearchMore);
+            1.0 * i / (environment.numSearchMore - environment.n_threads / 2),
+            environment.exec_time.start_time_init, prg_numSearchMore);
     }
     // Print finished progress bar
     prg_numSearchMore = printProgress(
-        1.0, environment.execTime.startTimeInit, prg_numSearchMore);
+        1.0, environment.exec_time.start_time_init, prg_numSearchMore);
 
     if (interrupt) return false;
 
     for (int i = 0; i < environment.numSearchMore; i++) {
-      int posX = environment.searchMoreAddress[i]->i;
-      int posY = environment.searchMoreAddress[i]->j;
+      int posX = environment.unsettled_list[i]->i;
+      int posY = environment.unsettled_list[i]->j;
       if (environment.edges[posX][posY].shared_info->z_name_idx != -1) {
-        if (environment.isVerbose) {
+        if (environment.verbose) {
           cout << "## ------!!--> Update the edge element in 'searchMore': "
                << environment
                       .nodes[environment.edges[posX][posY]
@@ -198,32 +198,31 @@ bool firstStepIteration(Environment& environment, BCC& bcc) {
                << " is a good zi candidate\n";
         }
       } else {
-        if (environment.isVerbose) {
+        if (environment.verbose) {
           cout << "## ------!!--> Remove the edge element from searchMore.\n## "
                   "------!!--> Add edge to 'noMore' (no good zi candidate)\n";
         }
-        // Put this edge element to "noMore"
-        environment.noMoreAddress.push_back(environment.searchMoreAddress[i]);
+        // Move this edge element to "noMore"
+        environment.connected_list.push_back(environment.unsettled_list[i]);
         environment.numNoMore++;
-        // Remove the element from searchMore
-        environment.searchMoreAddress.erase(
-            environment.searchMoreAddress.begin() + i);
+        environment.unsettled_list.erase(
+            environment.unsettled_list.begin() + i);
         environment.numSearchMore--;
         i--;
         // Update the status
         environment.edges[posX][posY].shared_info->connected = 1;
       }
-      if (environment.isVerbose) cout << "\n";
+      if (environment.verbose) cout << "\n";
     }
 
     if (checkInterrupt()) {
       return false;
     }
     // sort the ranks
-    std::sort(environment.searchMoreAddress.begin(),
-        environment.searchMoreAddress.end(), sorter1(environment));
+    std::sort(environment.unsettled_list.begin(),
+        environment.unsettled_list.end(), sorter1(environment));
   }
-  environment.firstIterationDone = true;
+  environment.first_iter_done = true;
   return (true);
 }
 
@@ -231,11 +230,11 @@ bool skeletonIteration(Environment& environment) {
   int iIteration_count = 0;
   int max = 0;
 
-  if (environment.isVerbose)
+  if (environment.verbose)
     cout << "Number of numSearchMore: " << environment.numSearchMore << endl;
 
   cout << "\nSkeleton iteration :\n";
-  environment.execTime.startTimeIter = get_wall_time();
+  environment.exec_time.start_time_iter = get_wall_time();
   int start_numSearchMore = environment.numSearchMore;
 
   int prg_numSearchMore = -1;
@@ -245,26 +244,26 @@ bool skeletonIteration(Environment& environment) {
       return (false);
     }
     iIteration_count++;
-    if (environment.isVerbose) {
+    if (environment.verbose) {
       cout << "\n# Iteration " << iIteration_count << "\n";
     }
     // Get the first edge
-    int posX = environment.searchMoreAddress[max]->i;
-    int posY = environment.searchMoreAddress[max]->j;
+    int posX = environment.unsettled_list[max]->i;
+    int posY = environment.unsettled_list[max]->j;
 
-    if (environment.isVerbose)
+    if (environment.verbose)
       cout << "Pos x : " << posX << " , pos y: " << posY << endl;
 
     auto topEdgeElt = environment.edges[posX][posY].shared_info;
 
-    if (environment.isVerbose) cout << "# Before adding new zi to {ui}: ";
+    if (environment.verbose) cout << "# Before adding new zi to {ui}: ";
 
     // Keep the previous z.name for this edge
     std::string accepted_z_name =
         environment.nodes[topEdgeElt->z_name_idx].name;
 
     // Reinit ui.vect, z.name, zi.vect, z.name.idx
-    if (environment.isVerbose) {
+    if (environment.verbose) {
       cout << "# DO: Add new zi to {ui}: " << topEdgeElt->z_name_idx << endl;
     }
     // move top z_name_idx from zi_vect to ui_vect
@@ -302,31 +301,31 @@ bool skeletonIteration(Environment& environment) {
 
     double topEdgeElt_kxy_ui = topEdgeElt->cplx;
 
-    if (environment.isDegeneracy)
+    if (environment.degenerate)
       topEdgeElt_kxy_ui =
           topEdgeElt->cplx + (topEdgeElt->ui_vect_idx.size() * log(3));
 
     int nRemainingEdges = environment.numSearchMore + environment.numNoMore;
 
-    if (environment.isVerbose) {
+    if (environment.verbose) {
       cout << "# --> nbrEdges L = " << nRemainingEdges << "\n";
-      cout << "# --> nbrProp P = " << environment.numNodes << "\n\n";
+      cout << "# --> nbrProp P = " << environment.n_nodes << "\n\n";
       cout << "topEdgeElt->Ixy_ui " << topEdgeElt->Ixy_ui << "\n";
       cout << "topEdgeElt_kxy_ui " << topEdgeElt_kxy_ui << "\n";
-      cout << "environment.logEta " << environment.logEta << "\n";
+      cout << "environment.log_eta " << environment.log_eta << "\n";
       cout << "IsPhantom? "
-           << (topEdgeElt->Ixy_ui - topEdgeElt_kxy_ui - environment.logEta <= 0)
+           << (topEdgeElt->Ixy_ui - topEdgeElt_kxy_ui - environment.log_eta <= 0)
            << endl;
     }
-    if (topEdgeElt->Ixy_ui - topEdgeElt_kxy_ui - environment.logEta <= 0) {
-      if (environment.isVerbose) {
+    if (topEdgeElt->Ixy_ui - topEdgeElt_kxy_ui - environment.log_eta <= 0) {
+      if (environment.verbose) {
         cout << "# PHANTOM" << environment.nodes[posX].name << ","
              << environment.nodes[posY].name << "\n";
       }
 
       // Move this edge from the list searchMore to phantom
-      environment.searchMoreAddress.erase(
-          environment.searchMoreAddress.begin() + max);
+      environment.unsettled_list.erase(
+          environment.unsettled_list.begin() + max);
       environment.numSearchMore--;
 
       // Set the connection to 0 on the adj matrix
@@ -338,7 +337,7 @@ bool skeletonIteration(Environment& environment) {
       // Reinit Rxyz_ui
       topEdgeElt->Rxyz_ui = environment.thresPc;
 
-      if (environment.isVerbose) {
+      if (environment.verbose) {
         cout << "# Do SearchForNewContributingNodeAndItsRank\n";
       }
 
@@ -347,7 +346,7 @@ bool skeletonIteration(Environment& environment) {
             environment, posX, posY, environment.m);
       }
 
-      if (environment.isVerbose) {
+      if (environment.verbose) {
         if (environment.edges[posX][posY].shared_info->z_name_idx == -1)
           cout << "# See topEdgeElt[['z.name']]: NA\n";
         else
@@ -359,20 +358,20 @@ bool skeletonIteration(Environment& environment) {
       }
       //// Update the information about the edge
       if (topEdgeElt->z_name_idx != -1) {
-        if (environment.isVerbose) {
+        if (environment.verbose) {
           cout << "# Do update myAllEdges$searchMore\n";
         }
         // myGv$allEdges[["searchMore"]][[topEdgeElt[["key"]]]] = topEdgeElt
 
       } else {
-        if (environment.isVerbose) {
+        if (environment.verbose) {
           cout << "# Do update myAllEdges$noMore\n";
         }
         //// Move this edge from the list searchMore to noMore
-        environment.noMoreAddress.push_back(environment.searchMoreAddress[max]);
+        environment.connected_list.push_back(environment.unsettled_list[max]);
         environment.numNoMore++;
-        environment.searchMoreAddress.erase(
-            environment.searchMoreAddress.begin() + max);
+        environment.unsettled_list.erase(
+            environment.unsettled_list.begin() + max);
         environment.numSearchMore--;
         //// Update the status of the edge
         topEdgeElt->connected = 1;
@@ -381,33 +380,30 @@ bool skeletonIteration(Environment& environment) {
 
     //// Sort all pairs xy with a contributing node z in decreasing order of
     /// their ranks, R(xy;z| )
-    if (environment.isVerbose) {
+    if (environment.verbose) {
       cout << "# Do Sort all pairs by Rxyz_ui\n";
     }
 
     max = 0;
     for (int i = 0; i < environment.numSearchMore; i++) {
       if (environment
-              .edges[environment.searchMoreAddress[i]->i]
-                    [environment.searchMoreAddress[i]->j]
+              .edges[environment.unsettled_list[i]->i]
+                    [environment.unsettled_list[i]->j]
               .shared_info->Rxyz_ui >
           environment
-              .edges[environment.searchMoreAddress[max]->i]
-                    [environment.searchMoreAddress[max]->j]
+              .edges[environment.unsettled_list[max]->i]
+                    [environment.unsettled_list[max]->j]
               .shared_info->Rxyz_ui)
         max = i;
     }
-    // cout << 1.0*(start_numSearchMore -
-    // environment.numSearchMore)/(start_numSearchMore-1) << "\t" <<
-    // prg_numSearchMore << "\n" << flush;
     prg_numSearchMore =
         printProgress(1.0 * (start_numSearchMore - environment.numSearchMore) /
                           (start_numSearchMore),
-            environment.execTime.startTimeIter, prg_numSearchMore);
+            environment.exec_time.start_time_iter, prg_numSearchMore);
   }
   cout << "\n";
-  std::sort(environment.noMoreAddress.begin(), environment.noMoreAddress.end(),
-      sorterNoMore(environment));
+  std::sort(environment.connected_list.begin(),
+      environment.connected_list.end(), sorterNoMore(environment));
   return (true);
 }
 
@@ -437,11 +433,11 @@ void BCC::bcc_aux(int u, int& time, vector<int>& parent, vector<int>& lowest,
   // @param vector<int> depth Time when each vertex is visited in the dfs
   // search.
   // @param stack<pair<int> > st Stack for the dfs search.
-  int numNodes = environment.numNodes;
+  int n_nodes = environment.n_nodes;
   int children = 0;
   depth[u] = lowest[u] = ++time;
 
-  for (int v = 0; v < numNodes; v++) {
+  for (int v = 0; v < n_nodes; v++) {
     // graph maybe (partially) directed, whereas biconnected component
     // concerns only the skeleton
     if (!environment.edges[u][v].status && !environment.edges[v][u].status)
@@ -480,11 +476,11 @@ void BCC::bcc() {
   // Biconnected components decomposition of the graph contained in the
   // environment, allowing for search of candidate vertices for separation.
   int time = 0;
-  int numNodes = environment.numNodes;
-  vector<int> depth(numNodes, -1), lowest(numNodes, -1), parent(numNodes, -1);
+  int n_nodes = environment.n_nodes;
+  vector<int> depth(n_nodes, -1), lowest(n_nodes, -1), parent(n_nodes, -1);
   std::stack<std::pair<int, int> > st;
 
-  for (int u = 0; u < numNodes; u++) {
+  for (int u = 0; u < n_nodes; u++) {
     if (depth[u] == -1) bcc_aux(u, time, parent, lowest, depth, st);
 
     if (!st.empty()) {
@@ -529,8 +525,8 @@ void BCC::bcc() {
     }
   }
 
-  for (int i = 0; i < numNodes; i++) {
-    for (int j = 0; j < numNodes; j++) {
+  for (int i = 0; i < n_nodes; i++) {
+    for (int j = 0; j < n_nodes; j++) {
       if (i == j) continue;
       degree_of[i] += environment.edges[i][j].shared_info->connected;
     }
@@ -542,8 +538,8 @@ vector<int> BCC::bc_tree_bfs(int start, int end) const {
   //
   // @param int start, end Starting, ending nodes.
   // @return Path as a vector of node indices.
-  int numNodes = bc_tree_adj_list.size();
-  vector<int> visited(numNodes, 0);
+  int n_nodes = bc_tree_adj_list.size();
+  vector<int> visited(n_nodes, 0);
 
   std::queue<std::pair<int, vector<int> > > bfs_queue;
   bfs_queue.push(std::make_pair(start, vector<int>{start}));
@@ -605,7 +601,7 @@ void BCC::set_candidate_z(int x, int y) {
       inserter(vect_z, vect_z.begin());
   set<int> set_z = get_candidate_z(x, y);
   copy_if(set_z.begin(), set_z.end(), insert_it, [this, x, y](int i) {
-    return (environment.isLatent || environment.edges[i][x].status_prev > 0 ||
+    return (environment.latent || environment.edges[i][x].status_prev > 0 ||
             environment.edges[i][y].status_prev > 0);
   });
 }

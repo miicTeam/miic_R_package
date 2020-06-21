@@ -29,25 +29,25 @@
 #' \item Cabeli et al., \emph{PLoS Comp. Bio. 2020.  https://doi.org/10.1371/journal.pcbi.1007866
 #' }
 #'
-#' @param inputData [a data frame]
+#' @param input_data [a data frame]
 #' A data frame that contains the observational data. Each
 #' column corresponds to one variable and each row is a sample that gives the
 #' values for all the observed variables. The column names correspond to the
 #' names of the observed variables. Numeric columns will be treated as continuous
 #' values, factors and character as categorical.
 #'
-#' @param blackBox [a data frame]
+#' @param black_box [a data frame]
 #' An optional data frame containing the
 #' pairs of variables that should be considered as independent. Each row contains
 #' one column for each of the two variables. The variable name must correspond to
-#' the one in the \emph{inputData} data frame.
+#' the one in the \emph{input_data} data frame.
 #'
-#' @param neff [a positive integer]
+#' @param n_eff [a positive integer]
 #' The N samples given in the \emph{inputdata} data frame are expected
 #' to be independent. In case of correlated samples such as in time series or
 #' Monte Carlo sampling approaches, the effective number of independent samples
-#' \emph{neff} can be estimated using the decay of the autocorrelation function
-#' (Verny \emph{et al.}, PLoS Comp. Bio. 2017). This \emph{effective} number \emph{neff}
+#' \emph{n_eff} can be estimated using the decay of the autocorrelation function
+#' (Verny \emph{et al.}, PLoS Comp. Bio. 2017). This \emph{effective} number \emph{n_eff}
 #' of \emph{independent} samples can be provided using this parameter.
 #'
 #' @param cplx [a string; \emph{c("nml", "mdl")}]
@@ -61,9 +61,9 @@
 #' Normalized Maximum Likelihood (NML) criterion can be used (set the option with "nml").
 #' The default is "nml" (see Affeldt \emph{et al.}, UAI 2015).
 #'
-#' @param latent [a string; \emph{c("no", "yes", "ort")}]
+#' @param latent [a string; \emph{c("no", "yes", "orientation")}]
 #' When set to "yes", the network reconstruction is taking into account hidden (latent)
-#' variables. When set to "ort", latent variables are not considered during the skeleton
+#' variables. When set to "orientation", latent variables are not considered during the skeleton
 #' reconstruction but allows bi-directed edges during the orientation. Dependence
 #' between two observed variables due to a latent variable is indicated with a '6' in
 #' the adjacency matrix and in the network edges.summary and by a bi-directed edge
@@ -82,12 +82,12 @@
 #' propagated to downstream undirected edges in unshielded triples following
 #' the orientation method
 #'
-#' @param categoryOrder [a data frame] An optional data frame giving information
+#' @param state_order [a data frame] An optional data frame giving information
 #' about how to order the various states of categorical variables. It will be
 #' used to compute the signs of the edges (using partial correlation coefficient)
 #' by sorting each variable’s levels accordingly to the given category order.
 #'
-#' @param trueEdges [a data frame]  An optional data frame containing all the
+#' @param true_edges [a data frame]  An optional data frame containing all the
 #' true edges of the graph. Each line corresponds to one edge.
 #'
 #' @param edges [a data frame] The miic$edges object returned by an execution
@@ -95,25 +95,25 @@
 #' object is provided, the skeleton step will not be done, and the required
 #' orientation will be performed using this edges data frame.
 #'
-#' @param confidenceShuffle [a positive integer] The number of shufflings of
+#' @param n_shuffles [a positive integer] The number of shufflings of
 #' the original dataset in order to evaluate the edge specific confidence
 #' ratio of all inferred edges.
 #'
-#' @param confidenceThreshold [a positive floating point] The threshold used
+#' @param conf_threshold [a positive floating point] The threshold used
 #' to filter the less probable edges following the skeleton step. See Verny
 #' \emph{et al.}, PLoS Comp. Bio. 2017.
 #'
 #' @param confList [a data frame] An optional data frame containing the
 #' confFile data frame returned by a miic execution. It is useful when a
 #' second run of the same input data set has to be performed with a different
-#' confidence threshold and the same confidenceShuffle value. In
+#' confidence threshold and the same n_shuffles value. In
 #' this way the computations based on the randomized dataset do not need to
 #' be performed again, and the values in this data frame are used instead.
 #'
-#' @param sampleWeights [a numeric vector]
+#' @param sample_weights [a numeric vector]
 #' An optional vector containing the weight of each observation.
 #'
-#' @param testMAR [a boolean value]
+#' @param test_mar [a boolean value]
 #' If set to TRUE, distributions with missing values will be tested with Kullback-Leibler
 #' divergence : conditioning variables for the given link \eqn{X\arrow Y}\eqn{Z} will be
 #' considered only if the divergence between the full distribution and the non-missing
@@ -131,8 +131,8 @@
 #'
 #' @param verbose [a boolean value] If TRUE, debugging output is printed.
 #'
-#' @param nThreads [a positive integer]
-#' When set greater than 1, nThreads parallel threads will be used for computation. Make sure
+#' @param n_threads [a positive integer]
+#' When set greater than 1, n_threads parallel threads will be used for computation. Make sure
 #' your compiler is compatible with openmp if you wish to use multithreading.
 #'
 #' @return A \emph{miic-like} object that contains:
@@ -218,8 +218,8 @@
 #'
 #' # execute MIIC (reconstruct graph)
 #' miic.res <- miic(
-#'   inputData = hematoData, latent = "yes",
-#'   confidenceShuffle = 10, confidenceThreshold = 0.001
+#'   input_data = hematoData, latent = "yes",
+#'   n_shuffles = 10, conf_threshold = 0.001
 #' )
 #'
 #' # plot graph
@@ -236,8 +236,8 @@
 #' data(cosmicCancer_stateOrder)
 #' # execute MIIC (reconstruct graph)
 #' miic.res <- miic(
-#'   inputData = cosmicCancer, categoryOrder = cosmicCancer_stateOrder, latent = "yes",
-#'   confidenceShuffle = 100, confidenceThreshold = 0.001
+#'   input_data = cosmicCancer, state_order = cosmicCancer_stateOrder, latent = "yes",
+#'   n_shuffles = 100, conf_threshold = 0.001
 #' )
 #'
 #' # plot graph
@@ -252,8 +252,8 @@
 #' data(ohno_stateOrder)
 #' # execute MIIC (reconstruct graph)
 #' miic.res <- miic(
-#'   inputData = ohno, latent = "yes", categoryOrder = ohno_stateOrder,
-#'   confidenceShuffle = 100, confidenceThreshold = 0.001
+#'   input_data = ohno, latent = "yes", state_order = ohno_stateOrder,
+#'   n_shuffles = 100, conf_threshold = 0.001
 #' )
 #'
 #' # plot graph
@@ -264,46 +264,46 @@
 #' miic.write.network.cytoscape(g = miic.res, file = file.path(tempdir(), "temp"))
 #' }
 #'
-miic <- function(inputData,
-                 categoryOrder = NULL,
-                 trueEdges = NULL,
-                 blackBox = NULL,
-                 nThreads = 1,
+miic <- function(input_data,
+                 state_order = NULL,
+                 true_edges = NULL,
+                 black_box = NULL,
+                 n_threads = 1,
                  cplx = c("nml", "mdl"),
                  orientation = TRUE,
                  propagation = TRUE,
-                 latent = c("no", "yes", "ort"),
-                 neff = -1,
+                 latent = c("no", "yes", "orientation"),
+                 n_eff = -1,
                  edges = NULL,
-                 confidenceShuffle = 0,
-                 confidenceThreshold = 0,
+                 n_shuffles = 0,
+                 conf_threshold = 0,
                  confList = NULL,
-                 sampleWeights = NULL,
-                 testMAR = TRUE,
+                 sample_weights = NULL,
+                 test_mar = TRUE,
                  consistent = c("no", "orientation", "skeleton"),
                  verbose = FALSE) {
   res <- NULL
 
-  if (is.null(inputData)) {
+  if (is.null(input_data)) {
     stop("The input data file is required")
   }
 
-  if (!is.data.frame(inputData)) {
+  if (!is.data.frame(input_data)) {
     stop("The input data is not a dataframe")
   }
   # Remove rows with only NAs
-  inputData <- inputData[rowSums(is.na(inputData)) != ncol(inputData), ]
-  if (length(inputData) == 0) {
+  input_data <- input_data[rowSums(is.na(input_data)) != ncol(input_data), ]
+  if (length(input_data) == 0) {
     stop("The input data is empty or contains only NAs")
   }
 
-  effnAnalysis <- miic.evaluate.effn(inputData, plot = F)
-  if (effnAnalysis$neff < 0.5 * nrow(inputData)) {
+  effnAnalysis <- miic.evaluate.effn(input_data, plot = F)
+  if (effnAnalysis$n_eff < 0.5 * nrow(input_data)) {
     if (effnAnalysis$exponential_decay) {
       warning(
         paste0(
           "The samples in the datasets seem to be correlated! ",
-          "Try specify ", effnAnalysis$neff, " in the neff parameter. ",
+          "Try specify ", effnAnalysis$n_eff, " in the n_eff parameter. ",
           "See the autocorrelation plot for more details."
         )
       )
@@ -318,12 +318,6 @@ miic <- function(inputData,
       )
     }
   }
-
-  # if (!is.null(trueEdges)) {
-  #   if (length(which(!c(as.vector(trueEdges[,1]), as.vector(trueEdges[,2])) %in% colnames(inputData))) > 0){
-  #     stop("True edges file does not correspond to the input data matrix. Please check node names.")
-  #   }
-  # }
 
   cplx <- tryCatch(
     {
@@ -368,7 +362,7 @@ miic <- function(inputData,
   consistent <- match.arg(consistent)
 
 
-  if (neff > nrow(inputData)) {
+  if (n_eff > nrow(input_data)) {
     stop(
       paste0(
         "The number of effective samples cannot be greater than the ",
@@ -382,12 +376,10 @@ miic <- function(inputData,
     skeleton <- FALSE
   }
 
-  # propagation
   if (propagation != TRUE && propagation != FALSE) {
     stop("The propagation type is not correct. Allowed types are TRUE or FALSE")
   }
 
-  # orientation
   if (orientation != TRUE && orientation != FALSE) {
     stop("The orientation type is not correct. Allowed types are TRUE or FALSE")
   }
@@ -396,30 +388,30 @@ miic <- function(inputData,
     cat("START miic...\n")
   }
 
-  is_column_cnt <- sapply(inputData, is.numeric)
+  is_continuous <- sapply(input_data, is.numeric)
   # Use the "state order" file to convert discrete numerical variables to factors
-  if (!is.null(categoryOrder)) {
-    err_code <- checkStateOrder(categoryOrder, inputData)
+  if (!is.null(state_order)) {
+    err_code <- checkStateOrder(state_order, input_data)
     if (err_code != "0") {
       print(errorCodeToString(err_code))
       print("WARNING: Category order file will be ignored!")
-      categoryOrder <- NULL
+      state_order <- NULL
     }
-    for (row in 1:nrow(categoryOrder)) {
-      col <- as.character(categoryOrder[row, "var_names"])
-      if (categoryOrder[row, "var_type"] == 0) {
-        inputData[, col] <- factor(inputData[, col])
-        is_column_cnt[[col]] <- F
+    for (row in 1:nrow(state_order)) {
+      col <- as.character(state_order[row, "var_names"])
+      if (state_order[row, "var_type"] == 0) {
+        input_data[, col] <- factor(input_data[, col])
+        is_continuous[[col]] <- F
       }
     }
   }
   # Check the number of unique values of continuous and discrete variables
-  for (col in colnames(inputData)) {
-    unique_values <- length(unique(inputData[[col]][!is.na(inputData[[col]])]))
-    if (is_column_cnt[[col]] &&
-      (unique_values <= 40) && (nrow(inputData) > 40)) {
-      if (is_column_cnt[[col]] &&
-        (unique_values <= 2) && (nrow(inputData) > 40)) {
+  for (col in colnames(input_data)) {
+    unique_values <- length(unique(input_data[[col]][!is.na(input_data[[col]])]))
+    if (is_continuous[[col]] &&
+      (unique_values <= 40) && (nrow(input_data) > 40)) {
+      if (is_continuous[[col]] &&
+        (unique_values <= 2) && (nrow(input_data) > 40)) {
         # Less than 3 unique values does not make sense for a continuous variable
         stop(
           paste0(
@@ -443,8 +435,8 @@ miic <- function(inputData,
         )
       )
     }
-    if ((!is_column_cnt[[col]]) &&
-      (unique_values >= 40) && (nrow(inputData) > 40)) {
+    if ((!is_continuous[[col]]) &&
+      (unique_values >= 40) && (nrow(input_data) > 40)) {
       warning(paste0(
         col,
         " is treated as discrete but has many levels (",
@@ -454,7 +446,7 @@ miic <- function(inputData,
     }
   }
 
-  err_code <- checkInput(inputData, "miic")
+  err_code <- checkInput(input_data, "miic")
   if (err_code != "0") {
     print(errorCodeToString(err_code))
   } else {
@@ -463,22 +455,20 @@ miic <- function(inputData,
     }
     res <-
       miic.reconstruct(
-        inputData = inputData,
-        stateOrder = categoryOrder,
-        nThreads = nThreads,
+        input_data = input_data,
+        n_threads = n_threads,
         cplx = cplx,
         latent = latent,
-        effN = neff,
-        blackBox = blackBox,
-        confidenceShuffle = confidenceShuffle,
-        edges = edges,
+        n_eff = n_eff,
+        black_box = black_box,
+        n_shuffles = n_shuffles,
         orientation = orientation,
         propagation = propagation,
-        confidenceThreshold = confidenceThreshold,
+        conf_threshold = conf_threshold,
         verbose = verbose,
-        cntVar = is_column_cnt,
-        sampleWeights = sampleWeights,
-        testMAR = testMAR,
+        is_continuous = is_continuous,
+        sample_weights = sample_weights,
+        test_mar = test_mar,
         consistent = consistent
       )
     if (res$interrupted) {
@@ -488,22 +478,20 @@ miic <- function(inputData,
       cat("\t# -> END reconstruction...\n\t# --------\n")
     }
 
-    if (!is.null(trueEdges)) {
-      err_code <- checkTrueEdges(trueEdges)
+    if (!is.null(true_edges)) {
+      err_code <- checkTrueEdges(true_edges)
       if (err_code != "0") {
         print(errorCodeToString(err_code))
         print("WARNING: True edges file will be ignored!")
-        trueEdges <- NULL
+        true_edges <- NULL
       }
     }
 
-    # Summarize the results
-    # --------
     res$all.edges.summary <- summarizeResults(
-      observations = inputData,
+      observations = input_data,
       results = res,
-      true_edges = trueEdges,
-      state_order = categoryOrder,
+      true_edges = true_edges,
+      state_order = state_order,
       verbose = verbose
     )
   }

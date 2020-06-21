@@ -19,6 +19,8 @@
 
 using uint = unsigned int;
 using Rcpp::_;
+using Rcpp::as;
+using Rcpp::DataFrame;
 using Rcpp::List;
 using std::string;
 using std::vector;
@@ -33,59 +35,57 @@ List empty_results() {
 }
 
 // [[Rcpp::export]]
-List reconstruct(SEXP inputDataR, SEXP cntVarR, SEXP numNodesR,
-    SEXP nThreadsR, SEXP edgefileR, SEXP blackBoxR, SEXP effNR, SEXP cplxR,
-    SEXP etaR, SEXP hvsR, SEXP isLatentR, SEXP isTplReuseR, SEXP isK23R,
-    SEXP isDegeneracyR, SEXP orientationR, SEXP propagationR, SEXP isNoInitEtaR,
-    SEXP confidenceShuffleR, SEXP confidenceThresholdR, SEXP sampleWeightsR,
-    SEXP consistentR, SEXP testDistR, SEXP verboseR) {
+List reconstruct(DataFrame input_data, List arg_list) {
   Environment environment;
 
-  environment.numNodes = Rcpp::as<int>(numNodesR);
-  environment.nThreads = Rcpp::as<int>(nThreadsR);
+  environment.data = as<vector<vector<string>>>(input_data);
+  auto var_names = as<vector<string>>(arg_list["var_names"]);
+  std::transform(var_names.begin(), var_names.end(),
+      std::back_inserter(environment.nodes),
+      [](string name) { return Node(name); });
+  environment.is_continuous = as<vector<int>>(arg_list["is_continuous"]);
+  environment.n_nodes = environment.is_continuous.size();
+  environment.n_threads = as<int>(arg_list["n_threads"]);
 #ifdef _OPENMP
-  int threads = environment.nThreads;
+  int threads = environment.n_threads;
   if (threads < 0) threads = omp_get_num_procs();
   omp_set_num_threads(threads);
 #endif
 
-  environment.testDistribution = Rcpp::as<bool>(testDistR);
-  environment.vectorData = Rcpp::as<vector<string> >(inputDataR);
+  environment.test_mar = as<bool>(arg_list["test_mar"]);
 
-  environment.effN = Rcpp::as<int>(effNR);
-  environment.halfVStructures = Rcpp::as<int>(hvsR);
+  environment.n_eff = as<int>(arg_list["n_eff"]);
+  environment.half_v_structure = as<int>(arg_list["half_v_structure"]);
 
-  string cplx_flag = Rcpp::as<string>(cplxR);
+  string cplx_flag = as<string>(arg_list["cplx"]);
   environment.cplx = 1;  // use nml complexity by default
   if (cplx_flag.compare("mdl") == 0) environment.cplx = 0;
 
-  std::string consistent_flag = Rcpp::as<std::string>(consistentR);
-  environment.consistentPhase = 0;
+  std::string consistent_flag = as<std::string>(arg_list["consistent"]);
+  environment.consistent = 0;
   if (consistent_flag.compare("orientation") == 0)
-    environment.consistentPhase = 1;
-  if (consistent_flag.compare("skeleton") == 0) environment.consistentPhase = 2;
+    environment.consistent = 1;
+  if (consistent_flag.compare("skeleton") == 0) environment.consistent = 2;
 
-  std::string latent_flag = Rcpp::as<std::string>(isLatentR);
-  environment.isLatent = false;
-  environment.isLatentOnlyOrientation = false;
-  if (latent_flag.compare("yes") == 0) environment.isLatent = true;
+  std::string latent_flag = as<std::string>(arg_list["latent"]);
+  environment.latent = false;
+  environment.latent_orientation = false;
+  if (latent_flag.compare("yes") == 0) environment.latent = true;
   if (latent_flag.compare("ort") == 0)
-    environment.isLatentOnlyOrientation = true;
+    environment.latent_orientation = true;
 
-  environment.isTplReuse = Rcpp::as<bool>(isTplReuseR);
-  environment.isK23 = Rcpp::as<bool>(isK23R);
-  environment.isDegeneracy = Rcpp::as<bool>(isDegeneracyR);
-  bool orientation_phase = Rcpp::as<bool>(orientationR);
-  environment.isPropagation = Rcpp::as<bool>(propagationR);
-  environment.isNoInitEta = Rcpp::as<bool>(isNoInitEtaR);
+  environment.is_k23 = as<bool>(arg_list["is_k23"]);
+  environment.degenerate = as<bool>(arg_list["degenerate"]);
+  bool orientation_phase = as<bool>(arg_list["orientation"]);
+  environment.propagation = as<bool>(arg_list["propagation"]);
+  environment.no_init_eta = as<bool>(arg_list["no_init_eta"]);
 
-  environment.confidenceThreshold = Rcpp::as<double>(confidenceThresholdR);
-  environment.numberShuffles = Rcpp::as<int>(confidenceShuffleR);
+  environment.n_shuffles = as<int>(arg_list["n_shuffles"]);
+  environment.conf_threshold = as<double>(arg_list["conf_threshold"]);
 
-  environment.sampleWeightsVec = Rcpp::as<vector<double> >(sampleWeightsR);
-  environment.is_continuous = Rcpp::as<vector<int> >(cntVarR);
+  environment.sample_weights = as<vector<double>>(arg_list["sample_weights"]);
 
-  environment.isVerbose = Rcpp::as<bool>(verboseR);
+  environment.verbose = as<bool>(arg_list["verbose"]);
 
   double startTime;
 
@@ -98,13 +98,13 @@ List reconstruct(SEXP inputDataR, SEXP cntVarR, SEXP numNodesR,
   // set the environment
   srand(0);
   setEnvironment(environment);
-  vector<string> v(Rcpp::as<vector<string> >(blackBoxR));
+  vector<string> v(as<vector<string>>(arg_list["black_box"]));
   if (v.size() > 1) readBlackbox(v, environment);
 
   startTime = get_wall_time();
 
-  environment.memoryThreads = new MemorySpace[environment.nThreads];
-  for (uint i = 0; i < environment.nThreads; i++) {
+  environment.memoryThreads = new MemorySpace[environment.n_threads];
+  for (uint i = 0; i < environment.n_threads; i++) {
     createMemorySpace(environment, environment.memoryThreads[i]);
   }
   createMemorySpace(environment, environment.m);
@@ -119,8 +119,8 @@ List reconstruct(SEXP inputDataR, SEXP cntVarR, SEXP numNodesR,
   }
 
   long double spentTime = (get_wall_time() - startTime);
-  environment.execTime.init = spentTime;
-  if (environment.isVerbose == true) {
+  environment.exec_time.init = spentTime;
+  if (environment.verbose) {
     std::cout << "\n# ----> First contributing node elapsed time:" << spentTime
               << "sec\n\n";
   }
@@ -130,11 +130,11 @@ List reconstruct(SEXP inputDataR, SEXP cntVarR, SEXP numNodesR,
   vector<vector<string> > confVect;
   vector<vector<string> > orientations;
   do {
-    if (environment.consistentPhase) bcc.analyse();
+    if (environment.consistent > 0) bcc.analyse();
     // Save the neighbours in the status_prev structure
     // and revert to the structure at the moment of initialization
-    for (uint i = 0; i < environment.numNodes; i++) {
-      for (uint j = 0; j < environment.numNodes; j++) {
+    for (uint i = 0; i < environment.n_nodes; i++) {
+      for (uint j = 0; j < environment.n_nodes; j++) {
         environment.edges[i][j].status_prev = environment.edges[i][j].status;
         environment.edges[i][j].status = environment.edges[i][j].status_init;
       }
@@ -143,12 +143,12 @@ List reconstruct(SEXP inputDataR, SEXP cntVarR, SEXP numNodesR,
     if (!firstStepIteration(environment, bcc)) return empty_results();
 
     if (environment.numNoMore == 0 && environment.numSearchMore == 0) {
-      if (environment.isVerbose == true)
+      if (environment.verbose)
         std::cout << "# ------| Only phantom edges found.\n";
     } else if (environment.numSearchMore > 0) {
       // Search for other Contributing node(s) (possible only for the edges
       /// still in 'searchMore', ie. 2)
-      if (environment.isVerbose == true) {
+      if (environment.verbose) {
         std::cout << "\n# ---- Other Contributing node(s) ----\n\n";
       }
       startTime = get_wall_time();
@@ -157,31 +157,31 @@ List reconstruct(SEXP inputDataR, SEXP cntVarR, SEXP numNodesR,
       if (!skeletonIteration(environment)) return (empty_results());
 
       long double spentTime = (get_wall_time() - startTime);
-      environment.execTime.iter = spentTime;
-      environment.execTime.initIter =
-          environment.execTime.init + environment.execTime.iter;
+      environment.exec_time.iter = spentTime;
+      environment.exec_time.init_iter =
+          environment.exec_time.init + environment.exec_time.iter;
     }
 
     startTime = get_wall_time();
-    if (environment.numberShuffles > 0) {
+    if (environment.n_shuffles > 0) {
       std::cout << "Computing confidence cut with permutations..." << std::flush;
       confVect = confidenceCut(environment);
       long double spentTime = (get_wall_time() - startTime);
-      environment.execTime.cut = spentTime;
+      environment.exec_time.cut = spentTime;
       std::cout << " done." << std::endl;
     } else {
-      environment.execTime.cut = 0;
+      environment.exec_time.cut = 0;
     }
     // Oriente edges for non-consistent/orientation consistent algorithm
     if (orientation_phase && environment.numNoMore > 0 &&
-        environment.consistentPhase <= 1) {
+        environment.consistent <= 1) {
       orientations = orientationProbability(environment);
     }
     std::cout << "Number of edges: " << environment.numNoMore << std::endl;
-  } while (environment.consistentPhase && !cycle_tracker.hasCycle());
+  } while (environment.consistent > 0 && !cycle_tracker.hasCycle());
 
   int union_n_edges = 0;
-  for (uint i = 1; i < environment.numNodes; i++) {
+  for (uint i = 1; i < environment.n_nodes; i++) {
     for (uint j = 0; j < i; j++) {
       if (environment.edges[i][j].status) {
         union_n_edges++;
@@ -191,20 +191,20 @@ List reconstruct(SEXP inputDataR, SEXP cntVarR, SEXP numNodesR,
   environment.numNoMore = union_n_edges;
 
   // skeleton consistent algorithm
-  if (environment.numNoMore > 0 && environment.consistentPhase == 2) {
+  if (environment.numNoMore > 0 && environment.consistent == 2) {
     orientations = orientationProbability(environment);
     // Check inconsistency after orientation, add undirected edge to
     // pairs with inconsistent conditional independence.
     bcc.analyse();
     uint n_inconsistency = 0;
     std::vector<std::pair<uint, uint> > inconsistent_edges;
-    for (uint i = 1; i < environment.numNodes; i++) {
+    for (uint i = 1; i < environment.n_nodes; i++) {
       for (uint j = 0; j < i; j++) {
         const Edge& edge = environment.edges[i][j];
         if (edge.status ||
             bcc.is_consistent(i, j, edge.shared_info->ui_vect_idx))
           continue;
-        if (environment.isVerbose) {
+        if (environment.verbose) {
           std::cout << environment.nodes[i].name << ",\t"
                     << environment.nodes[j].name << "\t| "
                     << toNameString(environment, edge.shared_info->ui_vect_idx)
@@ -224,10 +224,10 @@ List reconstruct(SEXP inputDataR, SEXP cntVarR, SEXP numNodesR,
   }
 
   vector<double> time;
-  time.push_back(environment.execTime.init);
-  time.push_back(environment.execTime.iter);
-  time.push_back(environment.execTime.cut);
-  time.push_back(environment.execTime.initIter + environment.execTime.cut);
+  time.push_back(environment.exec_time.init);
+  time.push_back(environment.exec_time.iter);
+  time.push_back(environment.exec_time.cut);
+  time.push_back(environment.exec_time.init_iter + environment.exec_time.cut);
 
   List result;
   result = List::create(
@@ -236,14 +236,14 @@ List reconstruct(SEXP inputDataR, SEXP cntVarR, SEXP numNodesR,
       _["orientations.prob"] = orientations,
       _["time"]              = time,
       _["interrupted"]       = false);
-  if (environment.numberShuffles > 0) {
+  if (environment.n_shuffles > 0) {
     result.push_back(confVect, "confData");
   }
-  if (environment.consistentPhase) {
+  if (environment.consistent > 0) {
     result.push_back(cycle_tracker.adj_matrices, "adj_matrices");
   }
 
-  for (uint i = 0; i < environment.nThreads; i++) {
+  for (uint i = 0; i < environment.n_threads; i++) {
     deleteMemorySpace(environment, environment.memoryThreads[i]);
   }
   deleteMemorySpace(environment, environment.m);
@@ -283,7 +283,7 @@ bool CycleTracker::hasCycle() {
   // and simpler syntax, at the cost of extra memory trace and (possible) extra
   // time complexity (in practice there are very few changes between each pair
   // of iterations).
-  std::vector<int> changed(env_.numNodes * (env_.numNodes - 1) / 2, 0);
+  std::vector<int> changed(env_.n_nodes * (env_.n_nodes - 1) / 2, 0);
   // backtracking over iteration to get changed_edges
   int cycle_size = 0;
   for (const auto& iter : iterations_) {

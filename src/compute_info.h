@@ -12,7 +12,7 @@ double* getAllInfoNEW(int* ptrAllData, unsigned int* ptrAllLevels,
     const std::vector<int>& ptrVarIdx, int nbrUi, int* ptrZiIdx, int nbrZi,
     int ziPos, int sampleSize, int sampleSizeEff, int modCplx, int k23,
     double* looklog, double* c2terms, structure::MemorySpace* memory,
-    double* weights, double** freqs1, bool testDistribution);
+    std::vector<double> weights, double** freqs1, bool test_mar);
 double lnfactorial(int n, double* looklog);
 double logchoose(int n, int k, double* looklog);
 double logchoose(int n, int k, double* looklog, double** lookchoose);

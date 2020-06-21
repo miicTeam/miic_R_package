@@ -52,9 +52,9 @@ double* computeEnsInformationContinuous_Orientation(Environment& environment,
 
   // Mark rows containing NAs and count the number of complete samples
   //vector with zero or one according if the sample at position i contains NA or not
-  vector <int> sample_is_not_NA(environment.numSamples);
+  vector <int> sample_is_not_NA(environment.n_samples);
   //vector with the number of rows containing NAs seen at rank i
-  vector <int> NAs_count(environment.numSamples);
+  vector <int> NAs_count(environment.n_samples);
   uint samplesNotNA = count_non_NAs(myNbrUi, sample_is_not_NA,
     NAs_count, posArray, environment, z);
 
@@ -125,7 +125,7 @@ double* computeEnsInformationContinuous_Orientation(Environment& environment,
 }
 
 void computeContributingScores(Environment& environment, int* ziContPosIdx,
-    int iz, int* myZi, int myNbrUi, uint numSamples_nonNA,
+    int iz, int* myZi, int myNbrUi, uint n_samples_nonNA,
     const vector<int>& posArray, double* scoresZ, MemorySpace m) {
   // progressive data rank with repetition for same values
 
@@ -137,8 +137,8 @@ void computeContributingScores(Environment& environment, int* ziContPosIdx,
     z = myZi[ziContPosIdx[iz]];
 
   // Mark rows containing NAs and count the number of complete samples
-  vector <int> sample_is_not_NA(environment.numSamples);
-  vector <int> NAs_count(environment.numSamples);
+  vector <int> sample_is_not_NA(environment.n_samples);
+  vector <int> NAs_count(environment.n_samples);
   uint samplesNotNA = count_non_NAs(myNbrUi, sample_is_not_NA,
     NAs_count, posArray, environment, z);
 
@@ -169,15 +169,15 @@ void computeContributingScores(Environment& environment, int* ziContPosIdx,
           environment, posArray[0], posArray[1], sample_is_not_NA);
 
       double* res = getAllInfoNEW(environment.oneLineMatrix,
-          environment.allLevels, posArray, myNbrUi, zz, 1, -1,
-          environment.numSamples, environment.effN, cplx, environment.isK23,
+          environment.levels, posArray, myNbrUi, zz, 1, -1,
+          environment.n_samples, environment.n_eff, cplx, environment.is_k23,
           environment.looklog, environment.c2terms, &m,
-          environment.sampleWeights, jointFreqs, environment.testDistribution);
+          environment.sample_weights, jointFreqs, environment.test_mar);
 
       output_score = res[6];
       delete[] res;
 
-      for (uint level0 = 0; level0 < environment.allLevels[posArray[0]];
+      for (uint level0 = 0; level0 < environment.levels[posArray[0]];
            level0++)
         delete[] jointFreqs[level0];
       delete[] jointFreqs;
@@ -186,7 +186,7 @@ void computeContributingScores(Environment& environment, int* ziContPosIdx,
     } else {
       // we do not want to add a z if x or y have only one bin
       bool ok = true;  // ok : do we compute I or return 0?
-      if (samplesNotNA < environment.numSamples) {
+      if (samplesNotNA < environment.n_samples) {
         std::set<int> s;
         for (uint i = 0; i < 2 && ok; i++) {
           s.clear();
@@ -200,7 +200,7 @@ void computeContributingScores(Environment& environment, int* ziContPosIdx,
           }
         }
 
-        if (environment.testDistribution && numSamples_nonNA != samplesNotNA) {
+        if (environment.test_mar && n_samples_nonNA != samplesNotNA) {
           double kldiv = compute_kl_divergence(posArray, environment,
               samplesNotNA, AllLevels_red, sample_is_not_NA);
           double cplxMdl = log(samplesNotNA);
@@ -253,8 +253,8 @@ double* computeEnsInformationContinuous(Environment& environment, int* myCond,
 
     // TODO : speedup by only removing NAs for marked columns
     // Mark rows containing NAs and count the number of complete samples
-    vector <int> sample_is_not_NA(environment.numSamples);
-    vector <int> NAs_count(environment.numSamples);
+    vector <int> sample_is_not_NA(environment.n_samples);
+    vector <int> NAs_count(environment.n_samples);
     uint samplesNotNA = count_non_NAs(myNbrUi, sample_is_not_NA,
       NAs_count, posArray, environment);
 
@@ -271,8 +271,8 @@ double* computeEnsInformationContinuous(Environment& environment, int* myCond,
       vector<int> cnt_red(myNbrUi+2);
       vector<int> posArray_red(myNbrUi+2);
       vector<double> sample_weights_red(samplesNotNA);
-      vector<vector<int> > dataNumeric_red((myNbrUi+2), vector<int> (samplesNotNA));  
-      vector<vector<int> > dataNumericIdx_red((myNbrUi+2), vector<int> (samplesNotNA));  
+      vector<vector<int> > dataNumeric_red((myNbrUi+2), vector<int> (samplesNotNA));
+      vector<vector<int> > dataNumericIdx_red((myNbrUi+2), vector<int> (samplesNotNA));
 
       bool flag_sample_weights = filter_NAs(myNbrUi, AllLevels_red, cnt_red,
         posArray_red, posArray, dataNumeric_red, dataNumericIdx_red,
@@ -299,7 +299,7 @@ double* computeEnsInformationContinuous(Environment& environment, int* myCond,
     res_new = new double[3];
     res_new[2] = -DBL_MAX;
     res_new[1] = -1;
-    res_new[0] = environment.numSamples;
+    res_new[0] = environment.n_samples;
     double* res;
 
     int z;
@@ -330,13 +330,13 @@ double* computeEnsInformationContinuous(Environment& environment, int* myCond,
         }
         double** jointFreqs = getJointFreqs(
             environment, posArray[0], posArray[1]);
-        res = getAllInfoNEW(environment.oneLineMatrix, environment.allLevels,
-            posArray, myNbrUi, zz, countZDiscrete, -1, environment.numSamples,
-            environment.effN, cplx, environment.isK23, environment.looklog,
-            environment.c2terms, &m, environment.sampleWeights, jointFreqs,
-            environment.testDistribution);
+        res = getAllInfoNEW(environment.oneLineMatrix, environment.levels,
+            posArray, myNbrUi, zz, countZDiscrete, -1, environment.n_samples,
+            environment.n_eff, cplx, environment.is_k23, environment.looklog,
+            environment.c2terms, &m, environment.sample_weights, jointFreqs,
+            environment.test_mar);
 
-        for (uint level0 = 0; level0 < environment.allLevels[posArray[0]];
+        for (uint level0 = 0; level0 < environment.levels[posArray[0]];
              level0++)
           delete[] jointFreqs[level0];
         delete[] jointFreqs;
@@ -366,7 +366,7 @@ double* computeEnsInformationContinuous(Environment& environment, int* myCond,
     double* scoresZ = new double[myNbrZi];
 #ifdef _OPENMP
     bool parallelizable =
-        environment.firstIterationDone && myNbrZi > environment.nThreads;
+        environment.first_iter_done && myNbrZi > environment.n_threads;
 #pragma omp parallel for if (parallelizable)
 #endif
     for (uint iz = 0; iz < myNbrZi; iz++) {
@@ -375,10 +375,10 @@ double* computeEnsInformationContinuous(Environment& environment, int* myCond,
       if (parallelizable)
         privateM = environment.memoryThreads[omp_get_thread_num()];
 #endif
-      int numSamples_nonNA =
+      int n_samples_nonNA =
           getNumSamples_nonNA(environment, posArray[0], posArray[1]);
       computeContributingScores(environment, ziContPosIdx, iz, myZi, myNbrUi,
-          numSamples_nonNA, posArray, scoresZ, privateM);
+          n_samples_nonNA, posArray, scoresZ, privateM);
     }  // parallel for on z
 
     for (uint iz = 0; iz < myNbrZi; iz++) {  // find optimal z
@@ -445,12 +445,12 @@ double* computeEnsInformationNew(Environment& environment, int* myCond,
       getJointFreqs(environment, posArray[0], posArray[1]);
 
   double* res_new = getAllInfoNEW(environment.oneLineMatrix,
-      environment.allLevels, posArray, myNbrUi, myZi, myNbrZi, myZiPos,
-      environment.numSamples, environment.effN, cplx, environment.isK23,
-      environment.looklog, environment.c2terms, &m, environment.sampleWeights,
-      jointFreqs, environment.testDistribution);
+      environment.levels, posArray, myNbrUi, myZi, myNbrZi, myZiPos,
+      environment.n_samples, environment.n_eff, cplx, environment.is_k23,
+      environment.looklog, environment.c2terms, &m, environment.sample_weights,
+      jointFreqs, environment.test_mar);
 
-  for (uint level0 = 0; level0 < environment.allLevels[posArray[0]]; level0++)
+  for (uint level0 = 0; level0 < environment.levels[posArray[0]]; level0++)
     delete[] jointFreqs[level0];
   delete[] jointFreqs;
 
@@ -487,7 +487,8 @@ double* computeEnsInformationNew(Environment& environment, int* myCond,
 void SearchForNewContributingNodeAndItsRank(
     Environment& environment, const int posX, const int posY, MemorySpace& m) {
   auto info = environment.edges[posX][posY].shared_info;
-  if (!environment.isLatent)
+  if (!environment.latent) {
+    // remove zi that is not connected to neither x nor y
     info->zi_vect_idx.erase(
         std::remove_if(info->zi_vect_idx.begin(), info->zi_vect_idx.end(),
             [&environment, &posX, &posY](int z) {
@@ -495,6 +496,7 @@ void SearchForNewContributingNodeAndItsRank(
                      !environment.edges[posY][z].status;
             }),
         info->zi_vect_idx.end());
+  }
   if (info->zi_vect_idx.empty())
     return;
 
@@ -512,7 +514,7 @@ void SearchForNewContributingNodeAndItsRank(
     zi = &info->zi_vect_idx[0];
 
   int argEnsInfo = -1;
-  if (environment.isK23 == true) argEnsInfo = environment.cplx;
+  if (environment.is_k23 == true) argEnsInfo = environment.cplx;
 
   double* vect = NULL;
 
@@ -522,7 +524,7 @@ void SearchForNewContributingNodeAndItsRank(
         zi, info->zi_vect_idx.size(), info->ui_vect_idx.size() + 2, posX, posY,
         argEnsInfo, m);
     if (vect[6] - info->Rxyz_ui > 0) {
-      if (environment.isVerbose) {
+      if (environment.verbose) {
         cout << "\n"
              << posX << "    " << posY << "# -----> possible zi: "
              << environment
@@ -539,7 +541,7 @@ void SearchForNewContributingNodeAndItsRank(
       info->Rxyz_ui = vect[6];
       free(vect);
 
-    } else if (environment.isVerbose) {
+    } else if (environment.verbose) {
       cout << "# --!!--> Rxyz_ui.tmp = " << vect[6]
            << " < Rxyz_ui = " << info->Rxyz_ui << "\n";
     }
@@ -549,7 +551,7 @@ void SearchForNewContributingNodeAndItsRank(
         info->ui_vect_idx.size(), zi, info->zi_vect_idx.size(),
         info->ui_vect_idx.size() + 2, posX, posY, argEnsInfo, m);
     if (vect[2] - info->Rxyz_ui > 0) {
-      if (environment.isVerbose) {
+      if (environment.verbose) {
         cout << "\n"
              << posX << " " << posY << " # -----> possible zi: "
              << environment.nodes[info->zi_vect_idx[vect[1]]].name << "("
@@ -562,7 +564,7 @@ void SearchForNewContributingNodeAndItsRank(
       info->z_name_idx = vect[1];
       info->Rxyz_ui = vect[2];
 
-    } else if (environment.isVerbose) {
+    } else if (environment.verbose) {
       cout << "# --!!--> Rxyz_ui.tmp = " << vect[2]
            << " < Rxyz_ui = " << info->Rxyz_ui << "\n";
     }

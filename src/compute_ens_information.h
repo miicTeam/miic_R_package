@@ -7,7 +7,7 @@ namespace miic {
 namespace computation {
 
 void computeContributingScores(structure::Environment&, int* ziContPosIdx,
-    int iz, int* myZi, int myNbrUi, unsigned int numSamples_nonNA,
+    int iz, int* myZi, int myNbrUi, unsigned int n_samples_nonNA,
     const std::vector<int>& posArray, double* scoresZ,
     structure::MemorySpace m);
 double* computeEnsInformationNew(structure::Environment&, int*, int, int*, int,

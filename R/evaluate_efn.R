@@ -1,7 +1,7 @@
 #' Evaluate the effective number of samples
 #' @description This function evaluates the effective number of samples in a dataset.
 #'
-#' @param inputData [a data frame]
+#' @param input_data [a data frame]
 #' A data frame that contains the observational data. Each
 #' column corresponds to one variable and each row is a sample that gives the
 #' values for all the observed variables. The column names correspond to the
@@ -11,20 +11,26 @@
 #' @export
 #' @useDynLib miic
 
-miic.evaluate.effn <- function(inputData = NULL, plot = T) {
+miic.evaluate.effn <- function(input_data = NULL, plot = T) {
   result <- list()
   #### Check the input arguments
-  if (is.null(inputData)) {
+  if (is.null(input_data)) {
     stop("The input data file is required")
   }
-  inData <- c(
-    colnames(inputData),
-    as.vector(as.character(t(
-      as.matrix(inputData)
-    )))
-  )
+  if (!is.data.frame(input_data)) {
+    stop("The input data is not a dataframe")
+  }
+  # Remove rows with only NAs
+  input_data <- input_data[rowSums(is.na(input_data)) != ncol(input_data), ]
+  if (length(input_data) == 0) {
+    stop("The input data is empty or contains only NAs")
+  }
+
   if (base::requireNamespace("Rcpp", quietly = TRUE)) {
-    result <- evaluateEffn(inData, ncol(inputData), nrow(inputData))
+    cpp_input <- data.frame(t(sapply(input_data, as.character)),
+                            stringsAsFactors = FALSE)
+    # Call C++ function
+    result <- evaluateEffn(cpp_input)
   }
   if (length(which(result$correlation > 0)) == length(result$correlation)) {
     fit1 <- MASS::fitdistr(result$correlation, "exponential")

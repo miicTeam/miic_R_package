@@ -48,9 +48,9 @@ vector<vector<string> > miic::reconstruction::confidenceCut(
   int** safe_state;
   int** safe_stateIdx;
 
-  int* lookup = new int[environment.numSamples];
-  int* lookup2 = new int[environment.numSamples];
-  for (uint i = 0; i < environment.numSamples; i++) lookup[i] = i;
+  int* lookup = new int[environment.n_samples];
+  int* lookup2 = new int[environment.n_samples];
+  for (uint i = 0; i < environment.n_samples; i++) lookup[i] = i;
 
   double noMore = environment.numNoMore;
   // Allocate the true edges table
@@ -61,8 +61,8 @@ vector<vector<string> > miic::reconstruction::confidenceCut(
 
   int pos = 0;
 
-  for (uint i = 0; i < environment.numNodes - 1; i++) {
-    for (uint j = i + 1; j < environment.numNodes; j++) {
+  for (uint i = 0; i < environment.n_nodes - 1; i++) {
+    for (uint j = i + 1; j < environment.n_nodes; j++) {
       if (environment.edges[i][j].status) {
         inferredEdges_tab[pos][0] = i;
         inferredEdges_tab[pos][1] = j;
@@ -72,44 +72,28 @@ vector<vector<string> > miic::reconstruction::confidenceCut(
   }
 
   // Create a back up of the data, for later randomization
-  safe_state = new int*[environment.numSamples];
-  for (uint i = 0; i < environment.numSamples; i++)
-    safe_state[i] = new int[environment.numNodes];
+  safe_state = new int*[environment.n_samples];
+  for (uint i = 0; i < environment.n_samples; i++)
+    safe_state[i] = new int[environment.n_nodes];
 
   auto any_continuous = std::any_of(environment.is_continuous.begin(),
       environment.is_continuous.end(), [](int i) { return i == 1; });
   if (any_continuous) {
-    safe_stateIdx = new int*[environment.numNodes];
-    for (uint i = 0; i < environment.numNodes; i++)
-      safe_stateIdx[i] = new int[environment.numSamples];
+    safe_stateIdx = new int*[environment.n_nodes];
+    for (uint i = 0; i < environment.n_nodes; i++)
+      safe_stateIdx[i] = new int[environment.n_samples];
   }
   // copy to safe state
-  float p;
-  double* safe_weights;
-  if (environment.sampleWeightsVec[0] == -1) {
-    if (environment.effN != (int)environment.numSamples) {
-      p = environment.effN * 1.0 / environment.numSamples;
-      safe_weights = new double[environment.numSamples];
-    }
-  }
-
-  for (uint i = 0; i < environment.numSamples; i++) {
-    for (uint j = 0; j < environment.numNodes; j++) {
-      safe_state[i][j] = environment.dataNumeric[i][j];
+  for (uint i = 0; i < environment.n_samples; i++) {
+    for (uint j = 0; j < environment.n_nodes; j++) {
+      safe_state[i][j] = environment.data_numeric[i][j];
       if (environment.is_continuous[j])
-        safe_stateIdx[j][i] = environment.dataNumericIdx[j][i];
-    }
-    if (environment.sampleWeightsVec[0] == -1) {
-      // re-init weigths
-      if (environment.effN != (int)environment.numSamples) {
-        safe_weights[i] = environment.sampleWeights[i];
-        environment.sampleWeights[i] = p;
-      }
+        safe_stateIdx[j][i] = environment.data_numeric_idx[j][i];
     }
   }
 
-  int* nodes_toShf = new int[environment.numNodes];
-  for (uint i = 0; i < environment.numNodes; i++) nodes_toShf[i] = 0;
+  int* nodes_toShf = new int[environment.n_nodes];
+  for (uint i = 0; i < environment.n_nodes; i++) nodes_toShf[i] = 0;
   // indexes of nodes to shuffle
   for (int i = 0; i < environment.numNoMore; i++) {
     nodes_toShf[inferredEdges_tab[i][0]] = 1;
@@ -121,44 +105,44 @@ vector<vector<string> > miic::reconstruction::confidenceCut(
   int* ptrVarIdx = new int[2];
 
   // loop on the number of shuffling
-  for (int nb = 1; nb <= environment.numberShuffles; nb++) {
+  for (int nb = 1; nb <= environment.n_shuffles; nb++) {
     // Shuffle the dataset only for the variables present in nodes_toShf
-    for (uint col = 0; col < environment.numNodes; col++) {
+    for (uint col = 0; col < environment.n_nodes; col++) {
       if (nodes_toShf[col] == 1) {
         uint row2 = 0;
-        shuffle_lookup(lookup, lookup2, environment.numSamples);
+        shuffle_lookup(lookup, lookup2, environment.n_samples);
         if (environment.is_continuous[col]) {
-          for (uint i = 0; i < environment.numSamples; i++) {
+          for (uint i = 0; i < environment.n_samples; i++) {
             lookup2[i] = i;
           }
 
-          sort2arraysConfidence(environment.numSamples, lookup, lookup2);
+          sort2arraysConfidence(environment.n_samples, lookup, lookup2);
         }
-        for (uint row = 0; row < environment.numSamples; row++) {
-          environment.dataNumeric[row][col] = safe_state[lookup[row]][col];
+        for (uint row = 0; row < environment.n_samples; row++) {
+          environment.data_numeric[row][col] = safe_state[lookup[row]][col];
         }
 
-        for (uint row = 0; row < environment.numSamples; row++) {
+        for (uint row = 0; row < environment.n_samples; row++) {
           if (environment.is_continuous[col]) {
-            if (environment.dataNumeric[lookup2[row]][col] != -1) {
-              environment.dataNumericIdx[col][row2] = lookup2[row];
+            if (environment.data_numeric[lookup2[row]][col] != -1) {
+              environment.data_numeric_idx[col][row2] = lookup2[row];
               row2++;
             }
           }
         }
         if (environment.is_continuous[col]) {
-          while (row2 < environment.numSamples) {
-            environment.dataNumericIdx[col][row2] = -1;
+          while (row2 < environment.n_samples) {
+            environment.data_numeric_idx[col][row2] = -1;
             row2++;
           }
         }
       }
     }
 
-    for (uint i = 0; i < environment.numSamples; i++) {
-      for (uint j = 0; j < environment.numNodes; j++) {
-        environment.oneLineMatrix[j * environment.numSamples + i] =
-            environment.dataNumeric[i][j];
+    for (uint i = 0; i < environment.n_samples; i++) {
+      for (uint j = 0; j < environment.n_nodes; j++) {
+        environment.oneLineMatrix[j * environment.n_samples + i] =
+            environment.data_numeric[i][j];
       }
     }
 
@@ -196,7 +180,7 @@ vector<vector<string> > miic::reconstruction::confidenceCut(
   }
   // evaluate the average confidence
   for (int nb = 0; nb < environment.numNoMore; nb++) {
-    confVect[nb] /= environment.numberShuffles;
+    confVect[nb] /= environment.n_shuffles;
   }
   // put values > 1 to 1
   for (int nb = 0; nb < environment.numNoMore; nb++)
@@ -211,7 +195,7 @@ vector<vector<string> > miic::reconstruction::confidenceCut(
     confidence = exp(-(environment.edges[X][Y].shared_info->Ixy_ui -
                        environment.edges[X][Y].shared_info->cplx));
     confVect[i] = confidence / confVect[i];
-    if (confVect[i] > environment.confidenceThreshold) {
+    if (confVect[i] > environment.conf_threshold) {
       environment.edges[X][Y].shared_info->connected = 0;
       environment.edges[X][Y].status = 0;
       environment.edges[Y][X].status = 0;
@@ -220,17 +204,17 @@ vector<vector<string> > miic::reconstruction::confidenceCut(
   }
   std::cout << "# -- number of edges cut: " << toDelete.size() << "\n";
   // Delete from vector
-  environment.noMoreAddress.clear();
+  environment.connected_list.clear();
   for (int i = 0; i < environment.numNoMore; i++) {
     if (!(std::find(toDelete.begin(), toDelete.end(), i) != toDelete.end())) {
       int X = inferredEdges_tab[i][0];
       int Y = inferredEdges_tab[i][1];
-      environment.noMoreAddress.emplace_back(new EdgeID(X, Y));
+      environment.connected_list.emplace_back(new EdgeID(X, Y));
     }
   }
 
-  for (uint X = 0; X < environment.numNodes - 1; X++) {
-    for (uint Y = X + 1; Y < environment.numNodes; Y++) {
+  for (uint X = 0; X < environment.n_nodes - 1; X++) {
+    for (uint Y = X + 1; Y < environment.n_nodes; Y++) {
       if (environment.edges[X][Y].status == -2 ||
           environment.edges[X][Y].status == 2 ||
           environment.edges[X][Y].status == 6) {
@@ -240,32 +224,27 @@ vector<vector<string> > miic::reconstruction::confidenceCut(
     }
   }
   // Copy data back
-  for (uint i = 0; i < environment.numSamples; i++) {
-    if (environment.sampleWeightsVec[0] == -1) {
-      if (environment.effN != (int)environment.numSamples)
-        environment.sampleWeights[i] = safe_weights[i];
-    }
-
-    for (uint j = 0; j < environment.numNodes; j++) {
-      environment.dataNumeric[i][j] = safe_state[i][j];
+  for (uint i = 0; i < environment.n_samples; i++) {
+    for (uint j = 0; j < environment.n_nodes; j++) {
+      environment.data_numeric[i][j] = safe_state[i][j];
     }
   }
 
-  for (uint i = 0; i < environment.numSamples; i++) {
-    for (uint j = 0; j < environment.numNodes; j++) {
-      environment.oneLineMatrix[j * environment.numSamples + i] =
-          environment.dataNumeric[i][j];
+  for (uint i = 0; i < environment.n_samples; i++) {
+    for (uint j = 0; j < environment.n_nodes; j++) {
+      environment.oneLineMatrix[j * environment.n_samples + i] =
+          environment.data_numeric[i][j];
     }
   }
 
   if (any_continuous) {
     // Create the data matrix for factors indexes
-    for (uint i = 0; i < environment.numNodes; i++) {
-      for (uint j = 0; j < environment.numSamples; j++)
-        environment.dataNumericIdx[i][j] = -1;
+    for (uint i = 0; i < environment.n_nodes; i++) {
+      for (uint j = 0; j < environment.n_samples; j++)
+        environment.data_numeric_idx[i][j] = -1;
     }
 
-    for (uint j = 0; j < environment.numNodes; j++) {
+    for (uint j = 0; j < environment.n_nodes; j++) {
       if (environment.is_continuous[j]) {
         transformToFactorsContinuous(environment, j);
         transformToFactorsContinuousIdx(environment, j);
@@ -274,23 +253,17 @@ vector<vector<string> > miic::reconstruction::confidenceCut(
     }
   }  // End copy data back
 
-  std::sort(environment.noMoreAddress.begin(), environment.noMoreAddress.end(),
-      sorterNoMore2(environment));
-  environment.numNoMore = environment.noMoreAddress.size();
+  std::sort(environment.connected_list.begin(),
+      environment.connected_list.end(), sorterNoMore2(environment));
+  environment.numNoMore = environment.connected_list.size();
 
   delete[] ptrVarIdx;
 
-  for (uint i = 0; i < environment.numSamples; i++) delete safe_state[i];
+  for (uint i = 0; i < environment.n_samples; i++) delete safe_state[i];
   delete[] safe_state;
 
   delete[] lookup;
   delete[] lookup2;
-
-  if (environment.sampleWeightsVec[0] == -1) {
-    if (environment.effN != (int)environment.numSamples) {
-      delete[] safe_weights;
-    }
-  }
   delete[] nodes_toShf;
 
   vector<vector<string> > confVect1;

@@ -40,10 +40,10 @@ class BCC {
  public:
   BCC(Environment& env)
       : environment(env),
-        is_cp(env.numNodes, 0),
-        degree_of(env.numNodes, 0),
-        bc_tree_rep(env.numNodes, -1),
-        bcc_set_indices(env.numNodes, set<int>()) {}
+        is_cp(env.n_nodes, 0),
+        degree_of(env.n_nodes, 0),
+        bc_tree_rep(env.n_nodes, -1),
+        bcc_set_indices(env.n_nodes, set<int>()) {}
 
   void analyse() {
     // Reset members
@@ -78,8 +78,8 @@ class CycleTracker {
     std::vector<int> adj_matrix_1d;
 
     Iteration(const Environment& env, uint i)
-        : index(i), adj_matrix_1d(env.numNodes * env.numNodes, 0) {
-      int n_node(env.numNodes);
+        : index(i), adj_matrix_1d(env.n_nodes * env.n_nodes, 0) {
+      int n_node(env.n_nodes);
       for (int i = 0; i < n_node; ++i) {
         for (int j = 0; j < n_node; ++j) {
           adj_matrix_1d[j + i * n_node] = env.edges[i][j].status;

@@ -9,140 +9,97 @@
 #include <map>
 #include <sstream>
 
-#define FIRSTLINE 0    // keep at 0
-#define FIRSTCOLUMN 0  // 1=first column corresponds to sample name/number
-using namespace std;
 using namespace Rcpp;
 using uint = unsigned int;
+using std::string;
+using std::vector;
 
 // Transform data to factors
-void transformToFactors(uint numSamples,
-    std::vector<std::vector<std::string> > data, double** dataNumeric, int i) {
+void transformToFactors(const vector<vector<string>>& data,
+    vector<vector<double>>& data_numeric, int i) {
   // create a dictionary to store the factors of the strings
-  map<string, int> myMap;
+  std::map<string, int> myMap;
   // clean the dictionary since it is used column by column
   myMap.clear();
   myMap["NA"] = -1;
   myMap[""] = -1;
   int factor = 0;
 
-  for (uint j = 0; j < numSamples; j++) {
-    map<string, int>::iterator it = myMap.find(data[j][i]);
+  for (uint j = 0; j < data.size(); j++) {
+    auto it = myMap.find(data[j][i]);
     if (it != myMap.end()) {
-      dataNumeric[j][i] = it->second;
+      data_numeric[j][i] = it->second;
     } else {
       myMap[data[j][i]] = factor;
-      dataNumeric[j][i] = factor;
+      data_numeric[j][i] = factor;
       factor++;
     }
   }
 }
 
-// Read input and fill all structures
-double** reading_input(int& row_num, int col_num,
-    std::vector<std::string> vectorData, vector<vector<string> >& state) {
-  vector<string> vec;
-  // convert input data
-  for (int i = 0; i < (int)vectorData.size(); i++) {
-    if (i >= col_num) {
-      if (i % col_num == 0) {
-        if (i != col_num) {
-          state.push_back(vec);
-          vec.clear();
-        }
-      }
-      vec.push_back(vectorData[i]);
-    }
-  }
-  state.push_back(vec);
-
-  double** dataNumeric = new double*[row_num];
-  for (int pos = 0; pos < row_num; pos++) {
-    dataNumeric[pos] = new double[col_num];
-  }
-
-  for (int i = 0; i < col_num; i++) {
-    transformToFactors(row_num, state, dataNumeric, i);
-  }
-
-  return dataNumeric;
-}
-
 // Evaluate the effective number of samples in the dataset
-int crosscorrelation(const int row_num, const int col_num,
-    double** configuration, vector<double>& correlationV, int c_max) {
+int crosscorrelation(const vector<vector<double>>& data_numeric,
+    vector<double>& correlation, int c_max) {
+  int n_rows = data_numeric.size();
+  int n_cols = data_numeric[0].size();
+  vector<double> corr(c_max);
+  vector<double> mean_conf(n_cols);
+
+  int shift = 0;
+  for (int k = 0; k < n_cols; k++) {
+    mean_conf[k] = 0.0;
+    for (int i = shift; i < n_rows; i++) {
+      mean_conf[k] = mean_conf[k] + data_numeric[i][k];
+    }
+    mean_conf[k] = mean_conf[k] * 1.0 / (n_rows - shift);
+  }
+
   double sumk, sumi, norm;
-  double* Corr = new double[c_max];
-  double* meanconf = new double[col_num];
-
-  int i, k, c, neff;
-  int start = 0, shift = 0;
-
-  for (k = FIRSTCOLUMN; k < col_num; k++) {
-    meanconf[k] = 0.0;
-    for (i = shift + FIRSTLINE; i < row_num; i++) {
-      meanconf[k] = meanconf[k] + configuration[i][k];
-    }
-    meanconf[k] = meanconf[k] * 1.0 / (row_num - shift - FIRSTLINE);
-  }
-
-  // c=0 : a configuration is equal to itself
-  for (c = start; c < c_max; c++) {
+  // c=0 : a data_numeric is equal to itself
+  for (int c = 0; c < c_max; c++) {
     sumi = 0;
-    for (i = shift + FIRSTLINE; i < row_num - c; i++) {
+    for (int i = shift; i < n_rows - c; i++) {
       sumk = 0;
-      for (k = FIRSTCOLUMN; k < col_num; k++) {
-        sumk = sumk + (configuration[i][k] - meanconf[k]) *
-                          (configuration[i + c][k] - meanconf[k]);
+      for (int k = 0; k < n_cols; k++) {
+        sumk += (data_numeric[i][k] - mean_conf[k]) *
+                (data_numeric[i + c][k] - mean_conf[k]);
       }
-      sumk = sumk / (col_num - FIRSTCOLUMN);
-      sumi = sumi + sumk;
+      sumk /= n_cols;
+      sumi += sumk;
     }
-    sumi = sumi / (row_num - c - shift - FIRSTLINE);
-    if (c == start) norm = sumi;
-    Corr[c] = sumi / norm;
+    sumi /= (n_rows - c - shift);
+    if (c == 0) norm = sumi;
+    corr[c] = sumi / norm;
 
-    correlationV.push_back(Corr[c]);
+    correlation.push_back(corr[c]);
   }
 
-  neff = floor(0.5 + row_num * (1 - Corr[1]) / (1 + Corr[1]));
+  int n_eff = floor(0.5 + n_rows * (1 - corr[1]) / (1 + corr[1]));
 
-  delete[] Corr;
-  delete[] meanconf;
-
-  return neff;
+  return n_eff;
 }
 
 // Evaluate the effective number of samples in the dataset
 // [[Rcpp::export]]
-List evaluateEffn(
-    SEXP inputDataR, SEXP variable_numR, SEXP sample_numR) {
-  vector<double> correlationV;
-  std::vector<std::string> vectorData;
-  std::vector<std::vector<std::string> > state;
+List evaluateEffn(DataFrame input_data) {
+  auto data = as<vector<vector<string>>>(input_data);
+  int n_samples = data.size();
+  int n_nodes = data[0].size();
+  vector<vector<double>> data_numeric(n_samples, vector<double>(n_nodes));
 
-  vectorData = Rcpp::as<vector<string> >(inputDataR);
+  for (int i = 0; i < n_nodes; i++) {
+    transformToFactors(data, data_numeric, i);
+  }
 
-  int variable_num = Rcpp::as<int>(variable_numR);
-  int sample_num = Rcpp::as<int>(sample_numR);
+  vector<double> correlation;
+  int c_max = 30;
+  int n_eff = crosscorrelation(data_numeric, correlation, c_max);
 
-  int Neff, c_max = 30;
-
-  double** dataNumeric =
-      reading_input(sample_num, variable_num, vectorData, state);
-  //  Compute crosscorrelation C(c) and identify R:
-  Neff = crosscorrelation(
-      sample_num, variable_num, dataNumeric, correlationV, c_max);
-
-  if (Neff > sample_num) Neff = sample_num;
+  if (n_eff > n_samples) n_eff = n_samples;
 
   List result = List::create(
-      _["correlation"] = correlationV,
-      _["neff"]        = Neff
+      _["correlation"] = correlation,
+      _["n_eff"]       = n_eff
   );
-
-  for (int pos = 0; pos < sample_num; pos++) delete[] dataNumeric[pos];
-  delete[] dataNumeric;
-
   return result;
 }

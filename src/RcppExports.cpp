@@ -6,15 +6,13 @@
 using namespace Rcpp;
 
 // evaluateEffn
-List evaluateEffn(SEXP inputDataR, SEXP variable_numR, SEXP sample_numR);
-RcppExport SEXP _miic_evaluateEffn(SEXP inputDataRSEXP, SEXP variable_numRSEXP, SEXP sample_numRSEXP) {
+List evaluateEffn(DataFrame input_data);
+RcppExport SEXP _miic_evaluateEffn(SEXP input_dataSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< SEXP >::type inputDataR(inputDataRSEXP);
-    Rcpp::traits::input_parameter< SEXP >::type variable_numR(variable_numRSEXP);
-    Rcpp::traits::input_parameter< SEXP >::type sample_numR(sample_numRSEXP);
-    rcpp_result_gen = Rcpp::wrap(evaluateEffn(inputDataR, variable_numR, sample_numR));
+    Rcpp::traits::input_parameter< DataFrame >::type input_data(input_dataSEXP);
+    rcpp_result_gen = Rcpp::wrap(evaluateEffn(input_data));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -52,44 +50,23 @@ BEGIN_RCPP
 END_RCPP
 }
 // reconstruct
-List reconstruct(SEXP inputDataR, SEXP cntVarR, SEXP numNodesR, SEXP nThreadsR, SEXP edgefileR, SEXP blackBoxR, SEXP effNR, SEXP cplxR, SEXP etaR, SEXP hvsR, SEXP isLatentR, SEXP isTplReuseR, SEXP isK23R, SEXP isDegeneracyR, SEXP orientationR, SEXP propagationR, SEXP isNoInitEtaR, SEXP confidenceShuffleR, SEXP confidenceThresholdR, SEXP sampleWeightsR, SEXP consistentR, SEXP testDistR, SEXP verboseR);
-RcppExport SEXP _miic_reconstruct(SEXP inputDataRSEXP, SEXP cntVarRSEXP, SEXP numNodesRSEXP, SEXP nThreadsRSEXP, SEXP edgefileRSEXP, SEXP blackBoxRSEXP, SEXP effNRSEXP, SEXP cplxRSEXP, SEXP etaRSEXP, SEXP hvsRSEXP, SEXP isLatentRSEXP, SEXP isTplReuseRSEXP, SEXP isK23RSEXP, SEXP isDegeneracyRSEXP, SEXP orientationRSEXP, SEXP propagationRSEXP, SEXP isNoInitEtaRSEXP, SEXP confidenceShuffleRSEXP, SEXP confidenceThresholdRSEXP, SEXP sampleWeightsRSEXP, SEXP consistentRSEXP, SEXP testDistRSEXP, SEXP verboseRSEXP) {
+List reconstruct(DataFrame input_data, List arg_list);
+RcppExport SEXP _miic_reconstruct(SEXP input_dataSEXP, SEXP arg_listSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< SEXP >::type inputDataR(inputDataRSEXP);
-    Rcpp::traits::input_parameter< SEXP >::type cntVarR(cntVarRSEXP);
-    Rcpp::traits::input_parameter< SEXP >::type numNodesR(numNodesRSEXP);
-    Rcpp::traits::input_parameter< SEXP >::type nThreadsR(nThreadsRSEXP);
-    Rcpp::traits::input_parameter< SEXP >::type edgefileR(edgefileRSEXP);
-    Rcpp::traits::input_parameter< SEXP >::type blackBoxR(blackBoxRSEXP);
-    Rcpp::traits::input_parameter< SEXP >::type effNR(effNRSEXP);
-    Rcpp::traits::input_parameter< SEXP >::type cplxR(cplxRSEXP);
-    Rcpp::traits::input_parameter< SEXP >::type etaR(etaRSEXP);
-    Rcpp::traits::input_parameter< SEXP >::type hvsR(hvsRSEXP);
-    Rcpp::traits::input_parameter< SEXP >::type isLatentR(isLatentRSEXP);
-    Rcpp::traits::input_parameter< SEXP >::type isTplReuseR(isTplReuseRSEXP);
-    Rcpp::traits::input_parameter< SEXP >::type isK23R(isK23RSEXP);
-    Rcpp::traits::input_parameter< SEXP >::type isDegeneracyR(isDegeneracyRSEXP);
-    Rcpp::traits::input_parameter< SEXP >::type orientationR(orientationRSEXP);
-    Rcpp::traits::input_parameter< SEXP >::type propagationR(propagationRSEXP);
-    Rcpp::traits::input_parameter< SEXP >::type isNoInitEtaR(isNoInitEtaRSEXP);
-    Rcpp::traits::input_parameter< SEXP >::type confidenceShuffleR(confidenceShuffleRSEXP);
-    Rcpp::traits::input_parameter< SEXP >::type confidenceThresholdR(confidenceThresholdRSEXP);
-    Rcpp::traits::input_parameter< SEXP >::type sampleWeightsR(sampleWeightsRSEXP);
-    Rcpp::traits::input_parameter< SEXP >::type consistentR(consistentRSEXP);
-    Rcpp::traits::input_parameter< SEXP >::type testDistR(testDistRSEXP);
-    Rcpp::traits::input_parameter< SEXP >::type verboseR(verboseRSEXP);
-    rcpp_result_gen = Rcpp::wrap(reconstruct(inputDataR, cntVarR, numNodesR, nThreadsR, edgefileR, blackBoxR, effNR, cplxR, etaR, hvsR, isLatentR, isTplReuseR, isK23R, isDegeneracyR, orientationR, propagationR, isNoInitEtaR, confidenceShuffleR, confidenceThresholdR, sampleWeightsR, consistentR, testDistR, verboseR));
+    Rcpp::traits::input_parameter< DataFrame >::type input_data(input_dataSEXP);
+    Rcpp::traits::input_parameter< List >::type arg_list(arg_listSEXP);
+    rcpp_result_gen = Rcpp::wrap(reconstruct(input_data, arg_list));
     return rcpp_result_gen;
 END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_miic_evaluateEffn", (DL_FUNC) &_miic_evaluateEffn, 3},
+    {"_miic_evaluateEffn", (DL_FUNC) &_miic_evaluateEffn, 1},
     {"_miic_mydiscretizeMDL", (DL_FUNC) &_miic_mydiscretizeMDL, 2},
     {"_miic_mydiscretizeMutual", (DL_FUNC) &_miic_mydiscretizeMutual, 11},
-    {"_miic_reconstruct", (DL_FUNC) &_miic_reconstruct, 23},
+    {"_miic_reconstruct", (DL_FUNC) &_miic_reconstruct, 2},
     {NULL, NULL, 0}
 };
 

@@ -122,8 +122,8 @@ double computeLogC(int N, int r, double* looklog, double** cterms) {
 double* getAllInfoNEW(int* ptrAllData, uint* ptrAllLevels,
     const vector<int>& ptrVarIdx, int nbrUi, int* ptrZiIdx, int nbrZi,
     int ziPos, int sampleSize, int sampleSizeEff, int modCplx, int k23,
-    double* looklog, double* c2terms, MemorySpace* memory, double* weights,
-    double** freqs1, bool testDistribution) {
+    double* looklog, double* c2terms, MemorySpace* memory,
+    vector<double> weights, double** freqs1, bool test_mar) {
   int randomrescaling = 1;
   float r, rr;
 
@@ -841,7 +841,7 @@ double* getAllInfoNEW(int* ptrAllData, uint* ptrAllLevels,
             nbrLevCorrect[j] = s.size();
           }
 
-          if (testDistribution) {
+          if (test_mar) {
             int** counts2 = new int*[ptrAllLevels[ptrVarIdx[0]]];
             for (uint j = 0; j < ptrAllLevels[ptrVarIdx[0]]; j++){
               counts2[j] = new int[ptrAllLevels[ptrVarIdx[1]]];

@@ -43,7 +43,7 @@ int initEdgeElt(Environment& environment, int i, int j, MemorySpace& m) {
     delete[] res;
   }
 
-  if (environment.isVerbose) {
+  if (environment.verbose) {
     std::cout << "# --> Ixy_ui = "
               << environment.edges[i][j].shared_info->Ixy_ui /
                      environment.edges[i][j].shared_info->Nxy_ui
@@ -53,24 +53,24 @@ int initEdgeElt(Environment& environment, int i, int j, MemorySpace& m) {
               << "\n"
               << "# --> Nxy_ui = "
               << environment.edges[i][j].shared_info->Nxy_ui << "\n"
-              << "# --> nbrProp P = " << environment.numNodes << "\n";
+              << "# --> nbrProp P = " << environment.n_nodes << "\n";
   }
 
   double myTest = 0;
   std::string category;
-  environment.edges[i][j].shared_info->mutInfo =
+  environment.edges[i][j].shared_info->Ixy =
       environment.edges[i][j].shared_info->Ixy_ui;
-  environment.edges[i][j].shared_info->cplx_noU =
+  environment.edges[i][j].shared_info->cplx_no_u =
       environment.edges[i][j].shared_info->cplx;
   environment.edges[i][j].shared_info->Nxy =
       environment.edges[i][j].shared_info->Nxy_ui;
 
-  if (environment.isNoInitEta)
+  if (environment.no_init_eta)
     myTest = environment.edges[i][j].shared_info->Ixy_ui -
              environment.edges[i][j].shared_info->cplx;
   else
     myTest = environment.edges[i][j].shared_info->Ixy_ui -
-             environment.edges[i][j].shared_info->cplx - environment.logEta;
+             environment.edges[i][j].shared_info->cplx - environment.log_eta;
 
   if (myTest <= 0) {
     // Unconditional independence
@@ -85,7 +85,7 @@ int initEdgeElt(Environment& environment, int i, int j, MemorySpace& m) {
     category = "searchMore";
   }
 
-  if (environment.isVerbose)
+  if (environment.verbose)
     std::cout << "# --> Category = " << category << "\n";
 
   return environment.edges[i][j].status;
@@ -93,11 +93,11 @@ int initEdgeElt(Environment& environment, int i, int j, MemorySpace& m) {
 
 bool miic::reconstruction::skeletonInitialization(Environment& environment) {
   environment.oneLineMatrix =
-      new int[environment.numSamples * environment.numNodes];
-  for (uint i = 0; i < environment.numSamples; i++) {
-    for (uint j = 0; j < environment.numNodes; j++) {
-      environment.oneLineMatrix[j * environment.numSamples + i] =
-          environment.dataNumeric[i][j];
+      new int[environment.n_samples * environment.n_nodes];
+  for (uint i = 0; i < environment.n_samples; i++) {
+    for (uint j = 0; j < environment.n_nodes; j++) {
+      environment.oneLineMatrix[j * environment.n_samples + i] =
+          environment.data_numeric[i][j];
     }
   }
 
@@ -111,7 +111,7 @@ bool miic::reconstruction::skeletonInitialization(Environment& environment) {
 #pragma omp parallel for shared(interrupt) firstprivate(threadnum) \
     schedule(dynamic)
 #endif
-  for (uint i = 0; i < environment.numNodes - 1; i++) {
+  for (uint i = 0; i < environment.n_nodes - 1; i++) {
     if (interrupt) {
       continue;  // will continue until out of for loop
     }
@@ -121,8 +121,8 @@ bool miic::reconstruction::skeletonInitialization(Environment& environment) {
     if (checkInterrupt(threadnum == 0)) {
       interrupt = true;
     }
-    for (uint j = i + 1; j < environment.numNodes && !interrupt; j++) {
-      if (environment.isVerbose) {
+    for (uint j = i + 1; j < environment.n_nodes && !interrupt; j++) {
+      if (environment.verbose) {
         std::cout << "\n# Edge " << environment.nodes[i].name << ","
                   << environment.nodes[j].name << "\n";
       }
@@ -141,8 +141,8 @@ bool miic::reconstruction::skeletonInitialization(Environment& environment) {
   }
   if (interrupt) return false;
   std::cout << " done.\n";
-  for (uint i = 0; i < environment.numNodes; i++) {
-    for (uint j = 0; j < environment.numNodes; j++) {
+  for (uint i = 0; i < environment.n_nodes; i++) {
+    for (uint j = 0; j < environment.n_nodes; j++) {
       environment.edges[i][j].status_init = environment.edges[i][j].status;
     }
   }

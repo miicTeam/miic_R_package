@@ -243,20 +243,12 @@ List mydiscretizeMutual(SEXP RmyDist1, SEXP RmyDist2, SEXP RflatU,
   miic::structure::Environment environment;
 
 
-  environment.sampleWeightsVec = Rcpp::as<vector<double> >(RsampleWeights);
-  environment.sampleWeights = new double[n];
-  if (environment.sampleWeightsVec[0] != -1) {
-    for (int i = 0; i < n; i++) {
-      environment.sampleWeights[i] = environment.sampleWeightsVec[i];
-    }
-  } else {
-    for (int i = 0; i < n; i++) {
-      if (effN == n)
-        environment.sampleWeights[i] = 1;
-      else
-        environment.sampleWeights[i] =
-            (effN * 1.0) / n;
-    }
+  environment.sample_weights = Rcpp::as<vector<double>>(RsampleWeights);
+  if (environment.sample_weights.empty()) {
+    double uniform_weight(1);
+    if (effN != n)
+      uniform_weight = (effN * 1.0) / n;
+    environment.sample_weights.resize(n, uniform_weight);
   }
 
   environment.maxbins = maxbins;
@@ -267,11 +259,11 @@ List mydiscretizeMutual(SEXP RmyDist1, SEXP RmyDist2, SEXP RflatU,
   environment.c2terms = c2terms;
   environment.lookchoose = lookchoose;
   environment.cplx = cplx;
-  environment.effN = effN;
-  environment.numSamples = n;
-  environment.dataNumeric = dataNumeric;
-  environment.dataNumericIdx = dataNumericIdx;
-  environment.allLevels = AllLevels;
+  environment.n_eff = effN;
+  environment.n_samples = n;
+  environment.data_numeric = dataNumeric;
+  environment.data_numeric_idx = dataNumericIdx;
+  environment.levels = AllLevels;
   environment.is_continuous.resize(nbrU+2);
 
   // Declare tables_red
@@ -282,9 +274,9 @@ List mydiscretizeMutual(SEXP RmyDist1, SEXP RmyDist2, SEXP RflatU,
   }
 
   // Mark rows containing NAs and count the number of complete samples
-  vector <int> sample_is_not_NA(environment.numSamples);
-  vector <int> NAs_count(environment.numSamples);
-  uint samplesNotNA = count_non_NAs(nbrU, sample_is_not_NA,
+  vector<int> sample_nonNA(environment.n_samples);
+  vector<int> NAs_count(environment.n_samples);
+  uint samplesNotNA = count_non_NAs(nbrU, sample_nonNA,
     NAs_count, posArray, environment);
 
   // Allocate data reducted *_red without rows containing NAs
@@ -293,12 +285,12 @@ List mydiscretizeMutual(SEXP RmyDist1, SEXP RmyDist2, SEXP RflatU,
   vector<int> cnt_red(nbrU+2);
   vector<int> posArray_red(nbrU+2);
   vector<double> sample_weights_red(samplesNotNA);
-  vector<vector<int> > dataNumeric_red(nbrU+2, vector<int> (samplesNotNA));  
-  vector<vector<int> > dataNumericIdx_red(nbrU+2, vector<int> (samplesNotNA));  
+  vector<vector<int> > dataNumeric_red(nbrU+2, vector<int> (samplesNotNA));
+  vector<vector<int> > dataNumericIdx_red(nbrU+2, vector<int> (samplesNotNA));
 
   bool flag_sample_weights = filter_NAs(nbrU, AllLevels_red, cnt_red,
     posArray_red, posArray, dataNumeric_red, dataNumericIdx_red,
-    sample_weights_red, sample_is_not_NA, NAs_count,
+    sample_weights_red, sample_nonNA, NAs_count,
     environment);
 
   int** iterative_cuts = (int**)calloc(STEPMAX + 1, sizeof(int*));

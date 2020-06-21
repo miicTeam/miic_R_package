@@ -1,87 +1,62 @@
-miic.reconstruct <- function(inputData = NULL,
-                             cntVar = NULL,
-                             blackBox = NULL,
-                             stateOrder = NULL,
-                             nThreads = nThreads,
-                             effN = -1,
+miic.reconstruct <- function(input_data = NULL,
+                             is_continuous = NULL,
+                             black_box = NULL,
+                             n_threads = n_threads,
+                             n_eff = -1,
                              cplx = c("nml", "mdl"),
                              eta = 1,
-                             latent = c("no", "yes", "ort"),
-                             confidenceShuffle = 0,
-                             edges = NULL,
+                             latent = c("no", "yes", "orientation"),
+                             n_shuffles = 0,
                              orientation = TRUE,
                              propagation = TRUE,
-                             confidenceThreshold = 0,
+                             conf_threshold = 0,
                              verbose = FALSE,
-                             sampleWeights = NULL,
-                             testMAR = TRUE,
+                             sample_weights = NULL,
+                             test_mar = TRUE,
                              consistent = c(
                                "no",
                                "orientation",
                                "skeleton"
                              )) {
-  isTplReuse <- TRUE
-  isK23 <- TRUE
-  isDegeneracy <- FALSE
-  isNoInitEta <- FALSE
+  var_names <- colnames(input_data)
 
-  n_node <- length(inputData)
+  if (!is.null(black_box)) {
+    black_box <- as.vector(as.character(t(as.matrix(black_box))))
+  } else {
+    black_box <- character()  # pass to cpp as empty vector<string>
+  }
 
-  inData <- c(
-    colnames(inputData),
-    as.vector(as.character(t(
-      as.matrix(inputData)
-    )))
+  if (is.null(sample_weights)) {
+    sample_weights <- numeric(0)  # pass to cpp as empty vector<double>
+  }
+
+  arg_list <- list(
+    "black_box" = black_box,
+    "conf_threshold" = conf_threshold,
+    "consistent" = consistent,
+    "cplx" = cplx,
+    "degenerate" = FALSE,
+    "eta" = eta,
+    "half_v_structure" = 0,
+    "is_continuous" = as.numeric(is_continuous),
+    "is_k23" = TRUE,
+    "latent" = latent,
+    "n_eff" = n_eff,
+    "n_shuffles" = n_shuffles,
+    "n_threads" = n_threads,
+    "no_init_eta" = FALSE,
+    "orientation" = orientation,
+    "propagation" = propagation,
+    "sample_weights" = sample_weights,
+    "test_mar" = test_mar,
+    "var_names" = var_names,
+    "verbose" = verbose
   )
-  if (!is.null(blackBox)) {
-    bB <- as.vector(as.character(t(as.matrix(blackBox))))
-  } else {
-    bB <- c("")
-  }
-
-  if (!is.null(edges)) {
-    edges <- as.vector(as.character(t(as.matrix(blackBox))))
-  } else {
-    edges <- c("")
-  }
-
-  if (!is.null(stateOrder)) {
-    stateOrder <- as.vector(as.character(t(as.matrix(stateOrder))))
-  } else {
-    stateOrder <- c("")
-  }
-
-  if (is.null(sampleWeights)) {
-    sampleWeights <- c(-1, rep(0, nrow(inputData) - 1))
-  }
-  hvs <- 0
-  cntVar <- as.numeric(cntVar)
   if (base::requireNamespace("Rcpp", quietly = TRUE)) {
-    res <- reconstruct(
-      inData,
-      cntVar,
-      n_node,
-      nThreads,
-      edges,
-      bB,
-      effN,
-      cplx,
-      eta,
-      hvs,
-      latent,
-      isTplReuse,
-      isK23,
-      isDegeneracy,
-      orientation,
-      propagation,
-      isNoInitEta,
-      confidenceShuffle,
-      confidenceThreshold,
-      sampleWeights,
-      consistent,
-      testMAR,
-      verbose
-    )
+    cpp_input <- data.frame(t(sapply(input_data, as.character)),
+                            stringsAsFactors = FALSE)
+    # Call C++ function
+    res <- reconstruct(cpp_input, arg_list)
     if (res$interrupted) {
       return(list(interrupted = TRUE))
     }
@@ -102,9 +77,9 @@ miic.reconstruct <- function(inputData = NULL,
   res$edges <- df
 
   #  adj_matrix
-  res$adj_matrix <- matrix(unlist(res$adj_matrix), nrow = n_node, byrow = TRUE)
-  colnames(res$adj_matrix) <- colnames(inputData)
-  rownames(res$adj_matrix) <- colnames(inputData)
+  res$adj_matrix <- matrix(unlist(res$adj_matrix), nrow = length(input_data), byrow = TRUE)
+  colnames(res$adj_matrix) <- var_names
+  rownames(res$adj_matrix) <- var_names
 
   # adj_matrices (when consistent parameter is turned on)
   if (length(res$adj_matrices) > 0) {
@@ -112,7 +87,7 @@ miic.reconstruct <- function(inputData = NULL,
                                ncol = length(res$adj_matrices))
   }
 
-  if (confidenceShuffle > 0) {
+  if (n_shuffles > 0) {
     # create the data frame for the confidence file
     confData <- res$confData
     a <- (length(confData[[1]]) + 1)

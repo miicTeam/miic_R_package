@@ -15,17 +15,18 @@ using std::string;
 using std::vector;
 
 struct EdgeSharedInfo {
-  vector<int> ui_vect_idx;  // Indice of separating nodes
-  // Indice of candidate nodes contributing to the conditional independence
+  // Indices of separating nodes
+  vector<int> ui_vect_idx;
+  // Indices of candidate nodes contributing to the conditional independence
   vector<int> zi_vect_idx;
   int z_name_idx = -1;  // Index of the last best contributor
   double Rxyz_ui = 0;   // Score of the best contributor
   double Ixy_ui = 0;
   double cplx = 0;
   int Nxy_ui = -1;
-  short int connected = 1;  // 1 or 0. An edge is by default connceted.
-  double mutInfo = 0;       // Mutual information without conditioning
-  double cplx_noU = 0;      // Complexity without conditioning
+  short int connected = 1;  // 1 or 0. An edge is by default connected.
+  double Ixy = 0;           // Mutual information without conditioning
+  double cplx_no_u = 0;     // Complexity without conditioning
   int Nxy = -1;             // Count of joint factors without NA
 
   EdgeSharedInfo() = default;
@@ -35,8 +36,8 @@ struct EdgeSharedInfo {
     ui_vect_idx.clear();
     z_name_idx = -1;
     Rxyz_ui = 0;
-    Ixy_ui = mutInfo;
-    cplx = cplx_noU;
+    Ixy_ui = Ixy;
+    cplx = cplx_no_u;
     Nxy_ui = Nxy;
     connected = 1;
   }
@@ -45,8 +46,8 @@ struct EdgeSharedInfo {
     ui_vect_idx.clear();
     z_name_idx = -1;
     Rxyz_ui = 0;
-    Ixy_ui = mutInfo;
-    cplx = cplx_noU;
+    Ixy_ui = Ixy;
+    cplx = cplx_no_u;
     Nxy_ui = Nxy;
     connected = 1;
   }
@@ -54,6 +55,7 @@ struct EdgeSharedInfo {
 
 struct Node {
   string name;
+  Node(string name) : name(name) {}
 };
 
 struct EdgeID {
@@ -77,7 +79,7 @@ struct Edge {
 };
 
 struct MemorySpace {
-  int maxlevel;
+  int max_level;
   int** sample;
   int** sortedSample;
   int** Opt_sortedSample;
@@ -106,11 +108,11 @@ struct MemorySpace {
 };
 
 struct ExecutionTime {
-  double startTimeInit;
-  double startTimeIter;
+  double start_time_init;
+  double start_time_iter;
   long double init;
   long double iter;
-  long double initIter;
+  long double init_iter;
   long double ort;
   long double cut;
   long double ort_after_cut;
@@ -119,16 +121,19 @@ struct ExecutionTime {
 
 // Structure for all the needed parameters (input plus state variables)
 struct Environment {
-  ExecutionTime execTime;
-  int consistentPhase;
-  double** dataDouble;
+  ExecutionTime exec_time;
+  // level of consistency required for the graph
+  // 0: no consistency requirement
+  // 1: skeleton consistent
+  // 2: orientation consistent
+  int consistent;
+  double** data_double;
   int** iterative_cuts;
-  double* sampleWeights;
-  vector<double> sampleWeightsVec;
+  vector<double> sample_weights;
   bool flag_sample_weights;
-
-  bool testDistribution;
-  uint nThreads;
+  // whether or not do MAR (Missing at random) test using KL-divergence
+  bool test_mar;
+  uint n_threads;
   MemorySpace m;
   MemorySpace* memoryThreads;
 
@@ -138,41 +143,41 @@ struct Environment {
   vector<int> is_continuous;
   int* oneLineMatrix;
 
-  uint numNodes;
-  uint numSamples;
-  bool firstIterationDone;
-
-  vector<EdgeID*> searchMoreAddress;
-  vector<EdgeID*> noMoreAddress;
+  uint n_nodes;
+  uint n_samples;
+  // if firstStepIteration is done
+  bool first_iter_done = false;
+  // List of ids of edge whose status is not yet determined
+  vector<EdgeID*> unsettled_list;
+  // List of ids of edge whose status is sure to be connected
+  vector<EdgeID*> connected_list;
   int numSearchMore;
   int numNoMore;
 
-  Node* nodes;
+  vector<Node> nodes;
   Edge** edges;
-  vector<string> vectorData;
-  vector<vector<string> > data;
-  int** dataNumeric;
-  int** dataNumericIdx;
-  uint* allLevels;
+  vector<vector<string>> data;
+  int** data_numeric;
+  int** data_numeric_idx;
+  uint* levels;
 
-  double logEta;
+  double log_eta = 0;
 
-  bool isDegeneracy;             // -d parameter
-  bool isVerbose;                // -v parameter
-  bool isLatent;                 // -l parameter
-  bool isLatentOnlyOrientation;  // -l parameter
-  bool isNoInitEta;              // -f parameter
-  bool isK23;  // -k parameter
-  bool isPropagation;
+  bool degenerate;
+  bool verbose;
+  bool latent;
+  bool latent_orientation;
+  bool no_init_eta = false;
+  bool is_k23;
+  bool propagation;
 
-  int isTplReuse;  // -r parameter
   int cplx;
-  int halfVStructures;
+  int half_v_structure;
 
-  int numberShuffles;          // -s parameter
-  double confidenceThreshold;  // -e parameter
+  int n_shuffles;
+  double conf_threshold;
 
-  int effN;  // -n parameter
+  int n_eff;
   int thresPc;
 
   int maxbins;
@@ -180,7 +185,7 @@ struct Environment {
   double* looklog;
   double* lookH;
 
-  double* noiseVec;
+  double* noise_vec;
 };
 
 }  // namespace structure_impl

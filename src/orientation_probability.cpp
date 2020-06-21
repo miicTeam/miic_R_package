@@ -27,9 +27,8 @@ using namespace miic::computation;
 using namespace miic::structure;
 using namespace miic::utility;
 
-void getSStructure(Environment& environment, const int posX, const int posY,
-    const int posZ, bool isVerbose, vector<vector<int> >& allTpl,
-    vector<double>& allI3) {
+void getStructure(Environment& environment, const int posX, const int posY,
+    const int posZ, vector<vector<int>>& allTpl, vector<double>& allI3) {
   // Check if xk belongs to the {ui} of the base
   vector<int> u(environment.edges[posX][posZ].shared_info->ui_vect_idx);
   if (environment.edges[posX][posZ].shared_info->ui_vect_idx.size() > 0) {
@@ -67,8 +66,8 @@ void getSStructure(Environment& environment, const int posX, const int posY,
 
     Is = res[7];
     Cs = res[8];
-    if (environment.isK23) {
-      if (environment.isDegeneracy) {
+    if (environment.is_k23) {
+      if (environment.degenerate) {
         Cs += log(3);
       }
       // to fit eq(20) and eq(22) in BMC Bioinfo 2016
@@ -79,8 +78,8 @@ void getSStructure(Environment& environment, const int posX, const int posY,
         zi, posX, posZ, environment.cplx, environment.m);
     Is = res[1];
     Cs = res[2];
-    if (environment.isK23) {
-      if (environment.isDegeneracy) {
+    if (environment.is_k23) {
+      if (environment.degenerate) {
         Cs += log(3);
       }
       // I(x;y;z|ui) - cplx(x;y;z|ui)
@@ -98,28 +97,27 @@ vector<vector<string> > orientationProbability(Environment& environment) {
   vector<vector<int> > allTpl;
   vector<double> allI3;
   double* ptrRetProbValues;
-  bool isVerbose = environment.isVerbose;
   // GET ALL TPL that could be V/NON-V-STRUCTURES #######
-  for (uint pos = 0; pos < environment.noMoreAddress.size(); pos++) {
-    int posX = environment.noMoreAddress[pos]->i;
-    int posY = environment.noMoreAddress[pos]->j;
+  for (uint pos = 0; pos < environment.connected_list.size(); pos++) {
+    int posX = environment.connected_list[pos]->i;
+    int posY = environment.connected_list[pos]->j;
     // Prepare a list that will contain the neighbors of "x" and the neighbors
     // of "y"
     vector<int> neighboursX;
     vector<int> neighboursY;
 
-    for (uint i = pos + 1; i < environment.noMoreAddress.size(); i++) {
-      int posX1 = environment.noMoreAddress[i]->i;
-      int posY1 = environment.noMoreAddress[i]->j;
+    for (uint i = pos + 1; i < environment.connected_list.size(); i++) {
+      int posX1 = environment.connected_list[i]->i;
+      int posY1 = environment.connected_list[i]->j;
       if (posY1 == posX && !environment.edges[posY][posX1].status)
         neighboursX.push_back(posX1);
       else if (posY1 == posY && !environment.edges[posX][posX1].status)
         neighboursY.push_back(posX1);
     }
 
-    for (uint i = pos + 1; i < environment.noMoreAddress.size(); i++) {
-      int posX1 = environment.noMoreAddress[i]->i;
-      int posY1 = environment.noMoreAddress[i]->j;
+    for (uint i = pos + 1; i < environment.connected_list.size(); i++) {
+      int posX1 = environment.connected_list[i]->i;
+      int posY1 = environment.connected_list[i]->j;
       if (posX1 == posX && !environment.edges[posY][posY1].status)
         neighboursX.push_back(posY1);
       else if (posX1 == posY && !environment.edges[posX][posY1].status)
@@ -132,14 +130,12 @@ vector<vector<string> > orientationProbability(Environment& environment) {
 
     for (int i = 0; i < sizeX; i++) {
       // Get the structure if any
-      getSStructure(
-          environment, posY, posX, neighboursX[i], isVerbose, allTpl, allI3);
+      getStructure(environment, posY, posX, neighboursX[i], allTpl, allI3);
     }
     // iterate on neighbours of y
     for (int i = 0; i < sizeY; i++) {
       //// Get the structure if any
-      getSStructure(
-          environment, posX, posY, neighboursY[i], isVerbose, allTpl, allI3);
+      getStructure(environment, posX, posY, neighboursY[i], allTpl, allI3);
     }
   }
 
@@ -153,15 +149,14 @@ vector<vector<string> > orientationProbability(Environment& environment) {
   // Compute the arrowhead probability of each edge endpoint
   int myNbrTpl = allTpl.size();
   if (myNbrTpl > 0) {
-    int propag = 0;
-    if (environment.isPropagation) propag = 1;
     int degeneracy = 0;
-    if (environment.isDegeneracy) degeneracy = 1;
+    if (environment.degenerate) degeneracy = 1;
     int latent = 0;
-    if (environment.isLatent || environment.isLatentOnlyOrientation) latent = 1;
+    if (environment.latent || environment.latent_orientation) latent = 1;
 
     ptrRetProbValues = getOrientTplLVDegPropag(myNbrTpl, oneLineMatrixallTpl,
-        &allI3[0], latent, degeneracy, propag, environment.halfVStructures);
+        &allI3[0], latent, degeneracy, environment.propagation,
+        environment.half_v_structure);
     // update ptrRetProbValues for possible inconsistencies
     std::map<string, double> probabsMap;
     string s;
