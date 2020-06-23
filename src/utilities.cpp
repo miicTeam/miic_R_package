@@ -1208,8 +1208,9 @@ bool filter_NAs(int nbrUi, vector<int>& AllLevels, vector<int>& cnt,
   return(flag_sample_weights);
 }
 
-double lookupScore(int* posArray, int nbrUi, int z, Environment& environment) {
-    std::set<int> Ui_set (posArray + 2, posArray + nbrUi + 2);
+double lookupScore(const vector<int> &posArray, int nbrUi, int z,
+    Environment& environment) {
+  std::set<int> Ui_set (posArray.begin() + 2, posArray.begin() + nbrUi + 2);
   Ui_set.insert(z);
   EdgeKey key {posArray[0], posArray[1], Ui_set};
   double score = -1.0;
@@ -1220,9 +1221,9 @@ double lookupScore(int* posArray, int nbrUi, int z, Environment& environment) {
   return(score);
 }
 
-void lookupScore(int* posArray, int nbrUi, int z, double* res,
+void lookupScore(const vector<int> &posArray, int nbrUi, int z, double* res,
     Environment& environment) {
-  std::set<int> Ui_set (posArray + 2, posArray + nbrUi + 2);
+  std::set<int> Ui_set (posArray.begin() + 2, posArray.begin() + nbrUi + 2);
   Ui_set.insert(z);
   EdgeKey key {posArray[0], posArray[1], Ui_set};
 
@@ -1234,17 +1235,17 @@ void lookupScore(int* posArray, int nbrUi, int z, double* res,
   return;
 }
 
-void saveScore(int* posArray, int nbrUi, int z, double score,
+void saveScore(const vector<int> &posArray, int nbrUi, int z, double score,
     Environment& environment) {
-  std::set<int> Ui_set (posArray+2,posArray+nbrUi+2);
+  std::set<int> Ui_set (posArray.begin() + 2, posArray.begin() + nbrUi + 2);
   Ui_set.insert(z);
   EdgeKey key {posArray[0], posArray[1], Ui_set};
   environment.look_scores.insert({key, score});
 }
 
-void saveScore(int* posArray, int nbrUi, int z, double* score,
+void saveScore(const vector<int> &posArray, int nbrUi, int z, double* score,
     Environment& environment) {
-  std::set<int> Ui_set (posArray+2,posArray+nbrUi+2);
+  std::set<int> Ui_set (posArray.begin() + 2, posArray.begin() + nbrUi + 2);
   Ui_set.insert(z);
   EdgeKey key {posArray[0], posArray[1], Ui_set};
   ScoreValue score_struct {int(score[0]), score[1], score[2]};
