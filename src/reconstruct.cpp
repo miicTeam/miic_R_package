@@ -72,7 +72,7 @@ List reconstruct(DataFrame input_data, List arg_list) {
   environment.latent = false;
   environment.latent_orientation = false;
   if (latent_flag.compare("yes") == 0) environment.latent = true;
-  if (latent_flag.compare("ort") == 0)
+  if (latent_flag.compare("orientation") == 0)
     environment.latent_orientation = true;
 
   environment.is_k23 = as<bool>(arg_list["is_k23"]);

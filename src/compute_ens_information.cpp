@@ -95,7 +95,7 @@ double* computeEnsInformationContinuous_Orientation(Environment& environment,
       res_new[1] = res[1];  // I(x;y;z|u)
       res_new[2] = res[2];  // cplx I(x;y;z|u)
 
-      free(res);
+      delete[] res;
     }
 
   }  // jump cond no sufficient statistics

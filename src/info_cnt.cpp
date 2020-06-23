@@ -428,7 +428,7 @@ double* compute_Ixy_alg1(vector<vector<int> > data, vector<vector<int> > sortidx
   // Find the best initial conditions with the same number of bins (equalfreq)
   // on all continuous variables.
   double max_res = -DBL_MAX;
-  int max_initbins;
+  int max_initbins = initbins;
   int min_unique_values = n;
   for (l = 0; l < 2; l++) {
     if (ptr_cnt[ptrVarIdx[l]] == 1)

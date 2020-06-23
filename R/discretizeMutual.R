@@ -277,7 +277,7 @@ discretizeMutual <- function(X,
   }
 
   if (is.null(sample_weights)) {
-    sample_weights <- rep(-1, length(X))
+    sample_weights <- rep(1, length(X))
   }
 
   # Number of unique values for each input
