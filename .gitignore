@@ -1,9 +1,16 @@
+# RStudio
+.Rproj
 .Rproj.user
+# R
 .Rhistory
 .RData
 .Ruserdata
 .Rbuildignore
+# CXX
 src/*.o
 src/*.so
 src/*.dll
 src/miic.so
+# clangd
+src/.clangd/
+compile_commands.json
