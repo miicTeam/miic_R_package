@@ -20,7 +20,6 @@
 namespace miic {
 namespace reconstruction {
 
-using uint = unsigned int;
 using std::string;
 using std::vector;
 using namespace miic::computation;
@@ -33,7 +32,7 @@ void getStructure(Environment& environment, const int posX, const int posY,
   vector<int> u(environment.edges[posX][posZ].shared_info->ui_list);
   if (environment.edges[posX][posZ].shared_info->ui_list.size() > 0) {
     // Remove xk from the {ui} if needed
-    for (uint i = 0;
+    for (size_t i = 0;
          i < environment.edges[posX][posZ].shared_info->ui_list.size(); i++) {
       if (u[i] == posY) {
         u.erase(u.begin() + i);
@@ -97,7 +96,7 @@ vector<vector<string> > orientationProbability(Environment& environment) {
   vector<double> allI3;
   double* ptrRetProbValues;
   // GET ALL TPL that could be V/NON-V-STRUCTURES #######
-  for (uint pos = 0; pos < environment.connected_list.size(); pos++) {
+  for (size_t pos = 0; pos < environment.connected_list.size(); pos++) {
     int posX = environment.connected_list[pos]->i;
     int posY = environment.connected_list[pos]->j;
     // Prepare a list that will contain the neighbors of "x" and the neighbors
@@ -105,7 +104,7 @@ vector<vector<string> > orientationProbability(Environment& environment) {
     vector<int> neighboursX;
     vector<int> neighboursY;
 
-    for (uint i = pos + 1; i < environment.connected_list.size(); i++) {
+    for (size_t i = pos + 1; i < environment.connected_list.size(); i++) {
       int posX1 = environment.connected_list[i]->i;
       int posY1 = environment.connected_list[i]->j;
       if (posY1 == posX && !environment.edges[posY][posX1].status)
@@ -114,7 +113,7 @@ vector<vector<string> > orientationProbability(Environment& environment) {
         neighboursY.push_back(posX1);
     }
 
-    for (uint i = pos + 1; i < environment.connected_list.size(); i++) {
+    for (size_t i = pos + 1; i < environment.connected_list.size(); i++) {
       int posX1 = environment.connected_list[i]->i;
       int posY1 = environment.connected_list[i]->j;
       if (posX1 == posX && !environment.edges[posY][posY1].status)
@@ -139,7 +138,7 @@ vector<vector<string> > orientationProbability(Environment& environment) {
   }
 
   int* oneLineMatrixallTpl = new int[allTpl.size() * 3];
-  for (uint i = 0; i < allTpl.size(); i++) {
+  for (size_t i = 0; i < allTpl.size(); i++) {
     for (int j = 0; j < 3; j++) {
       oneLineMatrixallTpl[j * allTpl.size() + i] = allTpl[i][j];
       allTpl[i][j]--;
@@ -159,7 +158,7 @@ vector<vector<string> > orientationProbability(Environment& environment) {
     // update ptrRetProbValues for possible inconsistencies
     std::map<string, double> probabsMap;
     string s;
-    for (uint i = 0; i < allTpl.size(); i++) {
+    for (size_t i = 0; i < allTpl.size(); i++) {
       // 0 -> 1
       s = environment.nodes[allTpl[i][0]].name +
           environment.nodes[allTpl[i][1]].name;
@@ -213,7 +212,7 @@ vector<vector<string> > orientationProbability(Environment& environment) {
         }
       }
     }
-    for (uint i = 0; i < allTpl.size(); i++) {
+    for (size_t i = 0; i < allTpl.size(); i++) {
       s = environment.nodes[allTpl[i][0]].name +
           environment.nodes[allTpl[i][1]].name;
       ptrRetProbValues[i + (1 * allTpl.size())] = probabsMap.find(s)->second;
@@ -244,7 +243,7 @@ vector<vector<string> > orientationProbability(Environment& environment) {
 
     orientations.push_back(vec);
 
-    for (uint i = 0; i < allTpl.size(); i++) {
+    for (size_t i = 0; i < allTpl.size(); i++) {
       vec.clear();
       int error = 0;
       int info_sign = round(allI3[i] - 0.5);
@@ -299,7 +298,7 @@ vector<vector<string> > orientationProbability(Environment& environment) {
   vector<double> myProba;
   //// UPDATE ADJ MATRIX
   if (myNbrTpl > 0) {
-    for (uint i = 0; i < allTpl.size(); i++) {
+    for (size_t i = 0; i < allTpl.size(); i++) {
       myProba.clear();
       myProba.push_back(ptrRetProbValues[i + (0 * allTpl.size())]);
       myProba.push_back(ptrRetProbValues[i + (1 * allTpl.size())]);

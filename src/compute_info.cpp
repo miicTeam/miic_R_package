@@ -20,7 +20,6 @@
 namespace miic {
 namespace computation {
 
-using uint = unsigned int;
 using namespace miic::structure;
 using namespace miic::utility;
 using std::vector;
@@ -119,11 +118,11 @@ double computeLogC(int N, int r, double* looklog, double** cterms) {
   return logC;
 }
 
-double* getAllInfoNEW(int* ptrAllData, uint* ptrAllLevels,
+double* getAllInfoNEW(int* ptrAllData, int* ptrAllLevels,
     const vector<int>& ptrVarIdx, int nbrUi, int* ptrZiIdx, int nbrZi,
     int ziPos, int sampleSize, int sampleSizeEff, int modCplx, int k23,
     double* looklog, double* c2terms, MemorySpace* memory,
-    vector<double> weights, double** freqs1, bool test_mar) {
+    const vector<double>& weights, double** freqs1, bool test_mar) {
   int randomrescaling = 1;
   float r, rr;
 
@@ -843,9 +842,9 @@ double* getAllInfoNEW(int* ptrAllData, uint* ptrAllLevels,
 
           if (test_mar) {
             int** counts2 = new int*[ptrAllLevels[ptrVarIdx[0]]];
-            for (uint j = 0; j < ptrAllLevels[ptrVarIdx[0]]; j++){
+            for (int j = 0; j < ptrAllLevels[ptrVarIdx[0]]; j++){
               counts2[j] = new int[ptrAllLevels[ptrVarIdx[1]]];
-              for(uint k = 0; k < ptrAllLevels[ptrVarIdx[1]]; k++){
+              for(int k = 0; k < ptrAllLevels[ptrVarIdx[1]]; k++){
                 counts2[j][k] = 0;
               }
             }
@@ -863,7 +862,7 @@ double* getAllInfoNEW(int* ptrAllData, uint* ptrAllLevels,
 
             if (kldiv < 1) isGoodCandidate = false;
 
-            for (uint j = 0; j < ptrAllLevels[ptrVarIdx[0]]; j++)
+            for (int j = 0; j < ptrAllLevels[ptrVarIdx[0]]; j++)
               delete[] counts2[j];
             delete[] counts2;
           }

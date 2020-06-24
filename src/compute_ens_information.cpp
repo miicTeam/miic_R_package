@@ -22,7 +22,6 @@ namespace computation {
 
 using namespace miic::structure;
 using namespace miic::utility;
-using uint = unsigned int;
 using std::cout;
 using std::endl;
 using std::vector;
@@ -61,7 +60,7 @@ double* computeEnsInformationContinuous_Orientation(Environment& environment,
   vector <int> sample_is_not_NA(environment.n_samples);
   //vector with the number of rows containing NAs seen at rank i
   vector <int> NAs_count(environment.n_samples);
-  uint samplesNotNA = count_non_NAs(myNbrUi, sample_is_not_NA,
+  int samplesNotNA = count_non_NAs(myNbrUi, sample_is_not_NA,
     NAs_count, posArray, environment, z);
 
   if (samplesNotNA <= 2) {  // not sufficient statistics
@@ -132,7 +131,7 @@ double* computeEnsInformationContinuous_Orientation(Environment& environment,
 }
 
 void computeContributingScores(Environment& environment, int* ziContPosIdx,
-    int iz, int* myZi, int myNbrUi, uint n_samples_nonNA,
+    int iz, int* myZi, int myNbrUi, int n_samples_nonNA,
     const vector<int>& posArray, double* scoresZ, MemorySpace m) {
   // progressive data rank with repetition for same values
 
@@ -152,7 +151,7 @@ void computeContributingScores(Environment& environment, int* ziContPosIdx,
   // Mark rows containing NAs and count the number of complete samples
   vector <int> sample_is_not_NA(environment.n_samples);
   vector <int> NAs_count(environment.n_samples);
-  uint samplesNotNA = count_non_NAs(myNbrUi, sample_is_not_NA,
+  int samplesNotNA = count_non_NAs(myNbrUi, sample_is_not_NA,
     NAs_count, posArray, environment, z);
 
   if (samplesNotNA <= 2) {
@@ -189,7 +188,7 @@ void computeContributingScores(Environment& environment, int* ziContPosIdx,
       output_score = res[6];
       delete[] res;
 
-      for (uint level0 = 0; level0 < environment.levels[posArray[0]];
+      for (int level0 = 0; level0 < environment.levels[posArray[0]];
            level0++)
         delete[] jointFreqs[level0];
       delete[] jointFreqs;
@@ -200,9 +199,9 @@ void computeContributingScores(Environment& environment, int* ziContPosIdx,
       bool ok = true;  // ok : do we compute I or return 0?
       if (samplesNotNA < environment.n_samples) {
         std::set<int> s;
-        for (uint i = 0; i < 2 && ok; i++) {
+        for (int i = 0; i < 2 && ok; i++) {
           s.clear();
-          for (uint j = 0; j < samplesNotNA; j++) {
+          for (int j = 0; j < samplesNotNA; j++) {
             s.insert(dataNumeric_red[i][j]);
           }
 
@@ -243,7 +242,7 @@ void computeContributingScores(Environment& environment, int* ziContPosIdx,
 }
 
 double* computeEnsInformationContinuous(Environment& environment, int* myCond,
-    int myNbrUi, int* myZi, uint myNbrZi, int myZiPos, const int myVarIdxX,
+    int myNbrUi, int* myZi, int myNbrZi, int myZiPos, const int myVarIdxX,
     const int myVarIdxY, const int cplx, MemorySpace& m) {
   vector<int> posArray(
       2 + environment.edges[myVarIdxX][myVarIdxY].shared_info->ui_list.size());
@@ -268,7 +267,7 @@ double* computeEnsInformationContinuous(Environment& environment, int* myCond,
     // Mark rows containing NAs and count the number of complete samples
     vector <int> sample_is_not_NA(environment.n_samples);
     vector <int> NAs_count(environment.n_samples);
-    uint samplesNotNA = count_non_NAs(myNbrUi, sample_is_not_NA,
+    int samplesNotNA = count_non_NAs(myNbrUi, sample_is_not_NA,
       NAs_count, posArray, environment);
 
     if (samplesNotNA <= 2) {
@@ -324,7 +323,7 @@ double* computeEnsInformationContinuous(Environment& environment, int* myCond,
             [&environment](int i) { return !environment.is_continuous[i]; })) {
       // search for z that are discrete
       int countZDiscrete = 0;
-      for (uint iz = 0; iz < myNbrZi; iz++) {
+      for (int iz = 0; iz < myNbrZi; iz++) {
         z = myZi[iz];
         if (!environment.is_continuous[z]) countZDiscrete++;
       }
@@ -333,7 +332,7 @@ double* computeEnsInformationContinuous(Environment& environment, int* myCond,
         int* posZi = new int[countZDiscrete];
         int* zz = new int[countZDiscrete];
         int pos = 0;
-        for (uint iz = 0; iz < myNbrZi; iz++) {
+        for (int iz = 0; iz < myNbrZi; iz++) {
           z = myZi[iz];
           if (!environment.is_continuous[z]) {
             zz[pos] = z;
@@ -349,7 +348,7 @@ double* computeEnsInformationContinuous(Environment& environment, int* myCond,
             environment.c2terms, &m, environment.sample_weights, jointFreqs,
             environment.test_mar);
 
-        for (uint level0 = 0; level0 < environment.levels[posArray[0]];
+        for (int level0 = 0; level0 < environment.levels[posArray[0]];
              level0++)
           delete[] jointFreqs[level0];
         delete[] jointFreqs;
@@ -358,7 +357,7 @@ double* computeEnsInformationContinuous(Environment& environment, int* myCond,
         // keep in ziContPos only the position of the continuous variables
         ziContPosIdx = new int[myNbrZi - countZDiscrete];
         pos = 0;
-        for (uint iz = 0; iz < myNbrZi; iz++) {
+        for (int iz = 0; iz < myNbrZi; iz++) {
           z = myZi[iz];
           if (environment.is_continuous[z]) {
             ziContPosIdx[pos] = iz;
@@ -382,7 +381,7 @@ double* computeEnsInformationContinuous(Environment& environment, int* myCond,
         environment.first_iter_done && myNbrZi > environment.n_threads;
 #pragma omp parallel for if (parallelizable)
 #endif
-    for (uint iz = 0; iz < myNbrZi; iz++) {
+    for (int iz = 0; iz < myNbrZi; iz++) {
       MemorySpace privateM = m;
 #ifdef _OPENMP
       if (parallelizable)
@@ -394,7 +393,7 @@ double* computeEnsInformationContinuous(Environment& environment, int* myCond,
           n_samples_nonNA, posArray, scoresZ, privateM);
     }  // parallel for on z
 
-    for (uint iz = 0; iz < myNbrZi; iz++) {  // find optimal z
+    for (int iz = 0; iz < myNbrZi; iz++) {  // find optimal z
       if (scoresZ[iz] > res_new[2]) {
         res_new[2] = scoresZ[iz];
         if (ziContPosIdx == NULL) {
@@ -463,7 +462,7 @@ double* computeEnsInformationNew(Environment& environment, int* myCond,
       environment.looklog, environment.c2terms, &m, environment.sample_weights,
       jointFreqs, environment.test_mar);
 
-  for (uint level0 = 0; level0 < environment.levels[posArray[0]]; level0++)
+  for (int level0 = 0; level0 < environment.levels[posArray[0]]; level0++)
     delete[] jointFreqs[level0];
   delete[] jointFreqs;
 

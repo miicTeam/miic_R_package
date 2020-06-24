@@ -9,7 +9,6 @@
 #include "structure.h"
 #include "utilities.h"
 
-using uint = unsigned int;
 using std::string;
 using std::vector;
 using namespace miic::computation;
@@ -50,7 +49,7 @@ vector<vector<string> > miic::reconstruction::confidenceCut(
 
   int* lookup = new int[environment.n_samples];
   int* lookup2 = new int[environment.n_samples];
-  for (uint i = 0; i < environment.n_samples; i++) lookup[i] = i;
+  for (int i = 0; i < environment.n_samples; i++) lookup[i] = i;
 
   double noMore = environment.numNoMore;
   // Allocate the true edges table
@@ -61,8 +60,8 @@ vector<vector<string> > miic::reconstruction::confidenceCut(
 
   int pos = 0;
 
-  for (uint i = 0; i < environment.n_nodes - 1; i++) {
-    for (uint j = i + 1; j < environment.n_nodes; j++) {
+  for (int i = 0; i < environment.n_nodes - 1; i++) {
+    for (int j = i + 1; j < environment.n_nodes; j++) {
       if (environment.edges[i][j].status) {
         inferredEdges_tab[pos][0] = i;
         inferredEdges_tab[pos][1] = j;
@@ -73,19 +72,19 @@ vector<vector<string> > miic::reconstruction::confidenceCut(
 
   // Create a back up of the data, for later randomization
   safe_state = new int*[environment.n_samples];
-  for (uint i = 0; i < environment.n_samples; i++)
+  for (int i = 0; i < environment.n_samples; i++)
     safe_state[i] = new int[environment.n_nodes];
 
   auto any_continuous = std::any_of(environment.is_continuous.begin(),
       environment.is_continuous.end(), [](int i) { return i == 1; });
   if (any_continuous) {
     safe_stateIdx = new int*[environment.n_nodes];
-    for (uint i = 0; i < environment.n_nodes; i++)
+    for (int i = 0; i < environment.n_nodes; i++)
       safe_stateIdx[i] = new int[environment.n_samples];
   }
   // copy to safe state
-  for (uint i = 0; i < environment.n_samples; i++) {
-    for (uint j = 0; j < environment.n_nodes; j++) {
+  for (int i = 0; i < environment.n_samples; i++) {
+    for (int j = 0; j < environment.n_nodes; j++) {
       safe_state[i][j] = environment.data_numeric[i][j];
       if (environment.is_continuous[j])
         safe_stateIdx[j][i] = environment.data_numeric_idx[j][i];
@@ -93,7 +92,7 @@ vector<vector<string> > miic::reconstruction::confidenceCut(
   }
 
   int* nodes_toShf = new int[environment.n_nodes];
-  for (uint i = 0; i < environment.n_nodes; i++) nodes_toShf[i] = 0;
+  for (int i = 0; i < environment.n_nodes; i++) nodes_toShf[i] = 0;
   // indexes of nodes to shuffle
   for (int i = 0; i < environment.numNoMore; i++) {
     nodes_toShf[inferredEdges_tab[i][0]] = 1;
@@ -107,22 +106,22 @@ vector<vector<string> > miic::reconstruction::confidenceCut(
   // loop on the number of shuffling
   for (int nb = 1; nb <= environment.n_shuffles; nb++) {
     // Shuffle the dataset only for the variables present in nodes_toShf
-    for (uint col = 0; col < environment.n_nodes; col++) {
+    for (int col = 0; col < environment.n_nodes; col++) {
       if (nodes_toShf[col] == 1) {
-        uint row2 = 0;
+        int row2 = 0;
         shuffle_lookup(lookup, lookup2, environment.n_samples);
         if (environment.is_continuous[col]) {
-          for (uint i = 0; i < environment.n_samples; i++) {
+          for (int i = 0; i < environment.n_samples; i++) {
             lookup2[i] = i;
           }
 
           sort2arraysConfidence(environment.n_samples, lookup, lookup2);
         }
-        for (uint row = 0; row < environment.n_samples; row++) {
+        for (int row = 0; row < environment.n_samples; row++) {
           environment.data_numeric[row][col] = safe_state[lookup[row]][col];
         }
 
-        for (uint row = 0; row < environment.n_samples; row++) {
+        for (int row = 0; row < environment.n_samples; row++) {
           if (environment.is_continuous[col]) {
             if (environment.data_numeric[lookup2[row]][col] != -1) {
               environment.data_numeric_idx[col][row2] = lookup2[row];
@@ -139,8 +138,8 @@ vector<vector<string> > miic::reconstruction::confidenceCut(
       }
     }
 
-    for (uint i = 0; i < environment.n_samples; i++) {
-      for (uint j = 0; j < environment.n_nodes; j++) {
+    for (int i = 0; i < environment.n_samples; i++) {
+      for (int j = 0; j < environment.n_nodes; j++) {
         environment.oneLineMatrix[j * environment.n_samples + i] =
             environment.data_numeric[i][j];
       }
@@ -213,8 +212,8 @@ vector<vector<string> > miic::reconstruction::confidenceCut(
     }
   }
 
-  for (uint X = 0; X < environment.n_nodes - 1; X++) {
-    for (uint Y = X + 1; Y < environment.n_nodes; Y++) {
+  for (int X = 0; X < environment.n_nodes - 1; X++) {
+    for (int Y = X + 1; Y < environment.n_nodes; Y++) {
       if (environment.edges[X][Y].status == -2 ||
           environment.edges[X][Y].status == 2 ||
           environment.edges[X][Y].status == 6) {
@@ -224,14 +223,14 @@ vector<vector<string> > miic::reconstruction::confidenceCut(
     }
   }
   // Copy data back
-  for (uint i = 0; i < environment.n_samples; i++) {
-    for (uint j = 0; j < environment.n_nodes; j++) {
+  for (int i = 0; i < environment.n_samples; i++) {
+    for (int j = 0; j < environment.n_nodes; j++) {
       environment.data_numeric[i][j] = safe_state[i][j];
     }
   }
 
-  for (uint i = 0; i < environment.n_samples; i++) {
-    for (uint j = 0; j < environment.n_nodes; j++) {
+  for (int i = 0; i < environment.n_samples; i++) {
+    for (int j = 0; j < environment.n_nodes; j++) {
       environment.oneLineMatrix[j * environment.n_samples + i] =
           environment.data_numeric[i][j];
     }
@@ -239,12 +238,12 @@ vector<vector<string> > miic::reconstruction::confidenceCut(
 
   if (any_continuous) {
     // Create the data matrix for factors indexes
-    for (uint i = 0; i < environment.n_nodes; i++) {
-      for (uint j = 0; j < environment.n_samples; j++)
+    for (int i = 0; i < environment.n_nodes; i++) {
+      for (int j = 0; j < environment.n_samples; j++)
         environment.data_numeric_idx[i][j] = -1;
     }
 
-    for (uint j = 0; j < environment.n_nodes; j++) {
+    for (int j = 0; j < environment.n_nodes; j++) {
       if (environment.is_continuous[j]) {
         transformToFactorsContinuous(environment, j);
         transformToFactorsContinuousIdx(environment, j);
@@ -259,7 +258,7 @@ vector<vector<string> > miic::reconstruction::confidenceCut(
 
   delete[] ptrVarIdx;
 
-  for (uint i = 0; i < environment.n_samples; i++) delete safe_state[i];
+  for (int i = 0; i < environment.n_samples; i++) delete safe_state[i];
   delete[] safe_state;
 
   delete[] lookup;

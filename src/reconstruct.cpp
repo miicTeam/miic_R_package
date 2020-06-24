@@ -17,7 +17,6 @@
 #include "structure.h"
 #include "utilities.h"
 
-using uint = unsigned int;
 using Rcpp::_;
 using Rcpp::as;
 using Rcpp::DataFrame;
@@ -105,7 +104,7 @@ List reconstruct(DataFrame input_data, List arg_list) {
   startTime = get_wall_time();
 
   environment.memoryThreads = new MemorySpace[environment.n_threads];
-  for (uint i = 0; i < environment.n_threads; i++) {
+  for (int i = 0; i < environment.n_threads; i++) {
     createMemorySpace(environment, environment.memoryThreads[i]);
   }
   createMemorySpace(environment, environment.m);
@@ -136,8 +135,8 @@ List reconstruct(DataFrame input_data, List arg_list) {
     if (environment.consistent > 0) bcc.analyse();
     // Save the neighbours in the status_prev structure
     // and revert to the structure at the moment of initialization
-    for (uint i = 0; i < environment.n_nodes; i++) {
-      for (uint j = 0; j < environment.n_nodes; j++) {
+    for (int i = 0; i < environment.n_nodes; i++) {
+      for (int j = 0; j < environment.n_nodes; j++) {
         environment.edges[i][j].status_prev = environment.edges[i][j].status;
         environment.edges[i][j].status = environment.edges[i][j].status_init;
       }
@@ -183,8 +182,8 @@ List reconstruct(DataFrame input_data, List arg_list) {
   } while (environment.consistent > 0 && !cycle_tracker.hasCycle());
 
   int union_n_edges = 0;
-  for (uint i = 1; i < environment.n_nodes; i++) {
-    for (uint j = 0; j < i; j++) {
+  for (int i = 1; i < environment.n_nodes; i++) {
+    for (int j = 0; j < i; j++) {
       if (environment.edges[i][j].status) {
         union_n_edges++;
       }
@@ -198,10 +197,10 @@ List reconstruct(DataFrame input_data, List arg_list) {
     // Check inconsistency after orientation, add undirected edge to
     // pairs with inconsistent conditional independence.
     bcc.analyse();
-    uint n_inconsistency = 0;
-    std::vector<std::pair<uint, uint> > inconsistent_edges;
-    for (uint i = 1; i < environment.n_nodes; i++) {
-      for (uint j = 0; j < i; j++) {
+    int n_inconsistency = 0;
+    std::vector<std::pair<int, int> > inconsistent_edges;
+    for (int i = 1; i < environment.n_nodes; i++) {
+      for (int j = 0; j < i; j++) {
         const Edge& edge = environment.edges[i][j];
         if (edge.status || bcc.is_consistent(i, j, edge.shared_info->ui_list))
           continue;
@@ -244,7 +243,7 @@ List reconstruct(DataFrame input_data, List arg_list) {
     result.push_back(cycle_tracker.adj_matrices, "adj_matrices");
   }
 
-  for (uint i = 0; i < environment.n_threads; i++) {
+  for (int i = 0; i < environment.n_threads; i++) {
     deleteMemorySpace(environment, environment.memoryThreads[i]);
   }
   deleteMemorySpace(environment, environment.m);
@@ -257,7 +256,7 @@ namespace miic {
 namespace reconstruction {
 
 bool CycleTracker::hasCycle() {
-  uint n_edge = env_.numNoMore;
+  int n_edge = env_.numNoMore;
   // Before saving the current iteration, search among previous iterations
   // those with the same number of edges
   auto range = edge_index_map_.equal_range(n_edge);
@@ -267,7 +266,7 @@ bool CycleTracker::hasCycle() {
   // same number of edges as the current iteration #8, and each of them is a
   // possible start point of a cycle, therefore #2, #4, #7 are the corresponding
   // possible end points of the cycle (#8 #7 ... #2), (#8 #7 ... #4), (#8 #7).
-  std::deque<uint> iter_indices;
+  std::deque<int> iter_indices;
   for (auto it = range.first; it != range.second; ++it)
     iter_indices.push_back(it->second + 1);
   saveIteration();
@@ -278,9 +277,9 @@ bool CycleTracker::hasCycle() {
   }
   if (no_cycle_found) return false;
   // Backtracking requires starting from the largest index first
-  std::sort(iter_indices.begin(), iter_indices.end(), std::greater<uint>());
+  std::sort(iter_indices.begin(), iter_indices.end(), std::greater<int>());
   // Set of edges that are to be marked as connected and undirected
-  std::set<uint> edges_union;
+  std::set<int> edges_union;
   // Check if an edge is changed. vector is chosen over map for quicker access
   // and simpler syntax, at the cost of extra memory trace and (possible) extra
   // time complexity (in practice there are very few changes between each pair
@@ -294,20 +293,20 @@ bool CycleTracker::hasCycle() {
       edges_union.insert(k.first);
       // compare edge status in the previous iteration against the latest edge
       // status
-      std::pair<uint, uint> p = getEdgeIndex2D(k.first);
+      std::pair<int, int> p = getEdgeIndex2D(k.first);
       changed[k.first] = (k.second != env_.edges[p.first][p.second].status);
     }
     if (iter.index != iter_indices.front()) continue;
     iter_indices.pop_front();
     // if any edge has been changed
     if (std::any_of(
-            changed.begin(), changed.end(), [](uint j) { return j != 0; })) {
+            changed.begin(), changed.end(), [](int j) { return j != 0; })) {
       // no cycle
       if (iter_indices.empty()) return false;
       continue;
     }
     for (auto& k : edges_union) {
-      std::pair<uint, uint> p = getEdgeIndex2D(k);
+      std::pair<int, int> p = getEdgeIndex2D(k);
       env_.edges[p.first][p.second].status = 1;
       env_.edges[p.second][p.first].status = 1;
       env_.edges[p.first][p.second].shared_info->setUndirected();

@@ -12,7 +12,6 @@ namespace structure {
 
 namespace structure_impl {
 
-using uint = unsigned int;
 using std::string;
 using std::vector;
 
@@ -61,9 +60,9 @@ struct Node {
 };
 
 struct EdgeID {
-  uint i, j;
+  int i, j;
   EdgeID() = delete;
-  EdgeID(uint i, uint j) : i(i), j(j) {}
+  EdgeID(int i, int j) : i(i), j(j) {}
 };
 
 struct Edge {
@@ -167,7 +166,7 @@ struct Environment {
   bool flag_sample_weights;
   // whether or not do MAR (Missing at random) test using KL-divergence
   bool test_mar;
-  uint n_threads;
+  int n_threads;
   MemorySpace m;
   MemorySpace* memoryThreads;
 
@@ -177,8 +176,8 @@ struct Environment {
   vector<int> is_continuous;
   int* oneLineMatrix;
 
-  uint n_nodes;
-  uint n_samples;
+  int n_nodes;
+  int n_samples;
   // if firstStepIteration is done
   bool first_iter_done = false;
   // List of ids of edge whose status is not yet determined
@@ -193,7 +192,7 @@ struct Environment {
   vector<vector<string>> data;
   int** data_numeric;
   int** data_numeric_idx;
-  uint* levels;
+  int* levels;
 
   double log_eta = 0;
 

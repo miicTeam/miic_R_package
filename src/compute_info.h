@@ -8,11 +8,11 @@ namespace computation {
 
 double computeLogC(int N, int r, double* looklog, double* c2terms);
 double computeLogC(int N, int r, double* looklog, double** cterms);
-double* getAllInfoNEW(int* ptrAllData, unsigned int* ptrAllLevels,
+double* getAllInfoNEW(int* ptrAllData, int* ptrAllLevels,
     const std::vector<int>& ptrVarIdx, int nbrUi, int* ptrZiIdx, int nbrZi,
     int ziPos, int sampleSize, int sampleSizeEff, int modCplx, int k23,
     double* looklog, double* c2terms, structure::MemorySpace* memory,
-    std::vector<double> weights, double** freqs1, bool test_mar);
+    const std::vector<double>& weights, double** freqs1, bool test_mar);
 double lnfactorial(int n, double* looklog);
 double logchoose(int n, int k, double* looklog);
 double logchoose(int n, int k, double* looklog, double** lookchoose);

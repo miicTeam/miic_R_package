@@ -15,8 +15,6 @@ namespace reconstruction {
 namespace reconstruction_impl {
 using std::set;
 using std::vector;
-using uint = unsigned int;
-using edge_index_1d = uint;
 
 using structure::Environment;
 
@@ -68,13 +66,13 @@ class BCC {
 class CycleTracker {
  private:
   struct Iteration {
-    uint index;
+    int index;
     // key: index of edge
     // value: status of edge in the previous iteration
-    std::map<uint, int> changed_edges;
+    std::map<int, int> changed_edges;
     std::vector<int> adj_matrix_1d;
 
-    Iteration(const Environment& env, uint i)
+    Iteration(const Environment& env, int i)
         : index(i), adj_matrix_1d(env.n_nodes * env.n_nodes, 0) {
       int n_node(env.n_nodes);
       for (int i = 0; i < n_node; ++i) {
@@ -103,7 +101,7 @@ class CycleTracker {
     void add(Iteration&& i) {
       iteration_list_.push_front(std::move(i));
     }
-    Iteration& get(uint i) { return iteration_list_[i]; }
+    Iteration& get(int i) { return iteration_list_[i]; }
 
     size_t size() { return iteration_list_.size(); }
 
@@ -118,12 +116,12 @@ class CycleTracker {
   int n_saved = 0;  // Number of saving operations performed
   // key: number of edges in the graph
   // value: index of iteration
-  std::multimap<uint, uint> edge_index_map_;
+  std::multimap<int, int> edge_index_map_;
 
   void saveIteration() {
-    uint n_edge = env_.numNoMore;
+    int n_edge = env_.numNoMore;
     // Index of the iteration starting from 0
-    uint index = n_saved++;
+    int index = n_saved++;
     edge_index_map_.insert(std::make_pair(n_edge, index));
     // skip the first iteration as its previous step is the initial graph
     if (index != 0) iterations_.add(Iteration(env_, index));
@@ -132,14 +130,14 @@ class CycleTracker {
  public:
   CycleTracker(Environment& env) : env_(env) {}
   // convert lower triangular indices to 1d index
-  static edge_index_1d getEdgeIndex1D(uint i, uint j) {
+  static int getEdgeIndex1D(int i, int j) {
     return (j < i ? j + i * (i - 1) / 2 : i + j * (j - 1) / 2);
   }
   // convert 1d index to lower triangular indices
-  std::pair<uint, uint> getEdgeIndex2D(uint k) {
+  std::pair<int, int> getEdgeIndex2D(int k) {
     // floor is equivalent to a int cast for positive number
-    uint i = (uint)(0.5 + std::sqrt(0.25 + 2 * k));
-    uint j = k - i * (i - 1) / 2;
+    int i = static_cast<int>(0.5 + std::sqrt(0.25 + 2 * k));
+    int j = k - i * (i - 1) / 2;
     return std::make_pair(i, j);
   }
   // check if a cycle exists between the current and the past iterations

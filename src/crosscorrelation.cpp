@@ -10,7 +10,6 @@
 #include <sstream>
 
 using namespace Rcpp;
-using uint = unsigned int;
 using std::string;
 using std::vector;
 
@@ -25,7 +24,7 @@ void transformToFactors(const vector<vector<string>>& data,
   myMap[""] = -1;
   int factor = 0;
 
-  for (uint j = 0; j < data.size(); j++) {
+  for (size_t j = 0; j < data.size(); j++) {
     auto it = myMap.find(data[j][i]);
     if (it != myMap.end()) {
       data_numeric[j][i] = it->second;

@@ -28,7 +28,6 @@
 namespace miic {
 namespace computation {
 
-using uint = unsigned int;
 using std::min;
 using std::vector;
 using namespace miic::structure;
@@ -139,7 +138,7 @@ void optfun_onerun_kmdl_coarse(vector<int> sortidx_var, vector<int> data, int nb
     bool flag_sample_weights, Environment& environment) {
   int coarse = ceil(1.0 * nnr / environment.maxbins);  // step coarse graining
   if (coarse < 1) coarse = 1;
-  uint np = ceil(1.0 * nnr / coarse);  // number of possible cuts
+  int np = ceil(1.0 * nnr / coarse);  // number of possible cuts
 
   // temp variables to memorize optimization cuts
   vector<int> memory_cuts_idx(np);  // indexes of the cuts (1..np)
@@ -162,30 +161,30 @@ void optfun_onerun_kmdl_coarse(vector<int> sortidx_var, vector<int> data, int nb
   vector<double> H_kj(nbrV);
   vector<double> Hk_kj(nbrV);
 
-  vector<vector<uint> > counts(nbrV);
+  vector<vector<int> > counts(nbrV);
   for (int m = 0; m < nbrV; m++) {
     counts[m].resize(r[m]);
   }
 
-  Grid2d<uint> coarse_counts_marginal(np, r[1], 0);
-  Grid2d<uint> coarse_counts_joint(np, r[0], 0);
+  Grid2d<int> coarse_counts_marginal(np, r[1], 0);
+  Grid2d<int> coarse_counts_joint(np, r[0], 0);
 
-  vector<vector<uint> > counts_k(nbrV);
+  vector<vector<int> > counts_k(nbrV);
   for (int m = 0; m < nbrV; m++) {
     counts_k[m].resize(r[m]);
   }
-  uint weighted_count;
+  int weighted_count;
 
   vector<bool> check_repet(n);
   for (int i = 0; i < (n - 1); i++) {
     check_repet[i] = (data[sortidx_var[i + 1]] != data[sortidx_var[i]]);
   }
 
-  vector<uint> n_values(np);
+  vector<int> n_values(np);
   vector<double> sum_sample_weights(np);
   int ir(0);  // Iterator on non repeated values
-  uint level_marginal(0), level_joint(0);
-  for (uint i = 0; i < np; i++) {
+  int level_marginal(0), level_joint(0);
+  for (int i = 0; i < np; i++) {
     ir = 0;  // iterator on not repeated values
     if (flag_sample_weights && i > 0)
       sum_sample_weights[i] = sum_sample_weights[i - 1];
@@ -216,7 +215,7 @@ void optfun_onerun_kmdl_coarse(vector<int> sortidx_var, vector<int> data, int nb
   njforward = 0;  // iterator on values
 
   // moving j over the np possible cuts
-  for (uint j = 0; j < np; j++) {  // j=1...n-1
+  for (int j = 0; j < np; j++) {  // j=1...n-1
 
     njforward = n_values[j];
     ef_nj = sum_sample_weights[j];
@@ -277,7 +276,7 @@ void optfun_onerun_kmdl_coarse(vector<int> sortidx_var, vector<int> data, int nb
     memory_cuts_idx[j] = 0;
     memory_cuts_pos[j] = 0;
 
-    for (uint k = 0; k < j; k++) {  // k=1...n-2 possible cuts
+    for (int k = 0; k < j; k++) {  // k=1...n-2 possible cuts
 
       nkforward = n_values[k];
       ef_nk = sum_sample_weights[j] - sum_sample_weights[k];
@@ -1369,8 +1368,9 @@ double* compute_mi_cond_alg1(vector<vector<int> > data, vector<vector<int> > sor
 // res[0]=Rscore
 // res[1]=N*Ixyz
 // res[2]=N*kxyz
-double* compute_Rscore_Ixyz_alg5(vector<vector<int> > data, vector<vector<int> > sortidx, vector<int> AllLevels,
-    vector<int> ptr_cnt, vector<int> ptrVarIdx, int nbrUi, int ptrZiIdx, int n,
+double* compute_Rscore_Ixyz_alg5(vector<vector<int> > data,
+    vector<vector<int> > sortidx, vector<int> AllLevels, vector<int> ptr_cnt,
+    vector<int> ptrVarIdx, int nbrUi, int ptrZiIdx, int n,
     vector<double> sample_weights, bool flag_sample_weights,
     Environment& environment, bool saveIterations) {
   int maxbins = environment.maxbins;

@@ -17,7 +17,6 @@
 #include "structure.h"
 #include "utilities.h"
 
-using uint = unsigned int;
 using namespace miic::computation;
 using namespace miic::structure;
 using namespace miic::utility;
@@ -94,8 +93,8 @@ int initEdgeElt(Environment& environment, int i, int j, MemorySpace& m) {
 bool miic::reconstruction::skeletonInitialization(Environment& environment) {
   environment.oneLineMatrix =
       new int[environment.n_samples * environment.n_nodes];
-  for (uint i = 0; i < environment.n_samples; i++) {
-    for (uint j = 0; j < environment.n_nodes; j++) {
+  for (int i = 0; i < environment.n_samples; i++) {
+    for (int j = 0; j < environment.n_nodes; j++) {
       environment.oneLineMatrix[j * environment.n_samples + i] =
           environment.data_numeric[i][j];
     }
@@ -111,7 +110,7 @@ bool miic::reconstruction::skeletonInitialization(Environment& environment) {
 #pragma omp parallel for shared(interrupt) firstprivate(threadnum) \
     schedule(dynamic)
 #endif
-  for (uint i = 0; i < environment.n_nodes - 1; i++) {
+  for (int i = 0; i < environment.n_nodes - 1; i++) {
     if (interrupt) {
       continue;  // will continue until out of for loop
     }
@@ -121,7 +120,7 @@ bool miic::reconstruction::skeletonInitialization(Environment& environment) {
     if (checkInterrupt(threadnum == 0)) {
       interrupt = true;
     }
-    for (uint j = i + 1; j < environment.n_nodes && !interrupt; j++) {
+    for (int j = i + 1; j < environment.n_nodes && !interrupt; j++) {
       if (environment.verbose) {
         std::cout << "\n# Edge " << environment.nodes[i].name << ","
                   << environment.nodes[j].name << "\n";
@@ -141,8 +140,8 @@ bool miic::reconstruction::skeletonInitialization(Environment& environment) {
   }
   if (interrupt) return false;
   std::cout << " done.\n";
-  for (uint i = 0; i < environment.n_nodes; i++) {
-    for (uint j = 0; j < environment.n_nodes; j++) {
+  for (int i = 0; i < environment.n_nodes; i++) {
+    for (int j = 0; j < environment.n_nodes; j++) {
       environment.edges[i][j].status_init = environment.edges[i][j].status;
     }
   }

@@ -17,7 +17,6 @@
 #include "structure.h"
 #include "utilities.h"
 
-using uint = unsigned int;
 using std::cout;
 using std::endl;
 using std::vector;
@@ -60,10 +59,10 @@ class sorter1 {
 
 template <bool latent = false>
 void searchAndSetZi(
-    Environment& environment, const uint posX, const uint posY) {
+    Environment& environment, const int posX, const int posY) {
   // Search candidate nodes for the separation set of X and Y
   int numZiPos = 0;
-  for (uint c = 0; c < environment.n_nodes; c++) {
+  for (int c = 0; c < environment.n_nodes; c++) {
     if (c == posX || c == posY) continue;
     if (!latent && !environment.edges[posX][c].status_prev &&
         !environment.edges[posY][c].status_prev)
@@ -77,7 +76,7 @@ void searchAndSetZi(
 }
 
 void searchAndSetZi(
-    Environment& environment, const uint posX, const uint posY) {
+    Environment& environment, const int posX, const int posY) {
   if (environment.latent)
     return searchAndSetZi<true>(environment, posX, posY);
   else
@@ -106,8 +105,8 @@ bool firstStepIteration(Environment& environment, BCC& bcc) {
   // positions of searchMore Edges
   environment.numSearchMore = 0;
   environment.numNoMore = 0;
-  for (uint i = 0; i < environment.n_nodes - 1; i++) {
-    for (uint j = i + 1; j < environment.n_nodes; j++) {
+  for (int i = 0; i < environment.n_nodes - 1; i++) {
+    for (int j = i + 1; j < environment.n_nodes; j++) {
       // Do dot consider edges removed with unconditional independence
       if (!environment.edges[i][j].status) continue;
       environment.edges[i][j].shared_info->reset();
@@ -580,13 +579,13 @@ std::set<int> BCC::get_candidate_z(int x, int y) const {
 
       const set<int>& bcc_set = bcc_list[bc_tree_inverse_index[node]];
       copy_if(bcc_set.begin(), bcc_set.end(), insert_it,
-          [this, x, y](int i) { return i != x && i != y; });
+          [x, y](int i) { return i != x && i != y; });
     }
     return set_z;
   } else {
     const set<int>& bcc_set = bcc_list[common_bcc[0]];
     copy_if(bcc_set.begin(), bcc_set.end(), insert_it,
-        [this, x, y](int i) { return i != x && i != y; });
+        [x, y](int i) { return i != x && i != y; });
     return set_z;
   }
 }

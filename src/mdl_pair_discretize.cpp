@@ -30,7 +30,6 @@ using namespace Rcpp;
 using namespace miic::computation;
 using namespace miic::structure;
 using namespace miic::utility;
-using uint = unsigned int;
 
 // Dealing with input variables
 void transformToFactorsContinuous(
@@ -179,7 +178,7 @@ List mydiscretizeMutual(SEXP RmyDist1, SEXP RmyDist2, SEXP RflatU,
     }
   }
   // AllLevels
-  uint* AllLevels = new uint[nbrU + 2];
+  int* AllLevels = new int[nbrU + 2];
   for (i = 0; i < (nbrU + 2); i++) {
     AllLevels[i] = nlevels[i];
   }
@@ -276,7 +275,7 @@ List mydiscretizeMutual(SEXP RmyDist1, SEXP RmyDist2, SEXP RflatU,
   // Mark rows containing NAs and count the number of complete samples
   vector<int> sample_nonNA(environment.n_samples);
   vector<int> NAs_count(environment.n_samples);
-  uint samplesNotNA = count_non_NAs(nbrU, sample_nonNA,
+  int samplesNotNA = count_non_NAs(nbrU, sample_nonNA,
     NAs_count, posArray, environment);
 
   // Allocate data reducted *_red without rows containing NAs

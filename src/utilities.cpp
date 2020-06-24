@@ -26,7 +26,6 @@
 namespace miic {
 namespace utility {
 
-using uint = unsigned int;
 using std::cout;
 using std::endl;
 using std::pair;
@@ -162,8 +161,8 @@ void sort2arraysConfidence(int len, int a[], int brr[]) {
 
 vector<vector<int>> getAdjMatrix(const Environment& env) {
   vector<vector<int>> adj_matrix(env.n_nodes, vector<int>(env.n_nodes, 0));
-  for (uint i = 1; i < env.n_nodes; i++) {
-    for (uint j = 0; j < i; j++) {
+  for (int i = 1; i < env.n_nodes; i++) {
+    for (int j = 0; j < i; j++) {
       adj_matrix[i][j] = env.edges[i][j].status;
       adj_matrix[j][i] = env.edges[j][i].status;
     }
@@ -174,8 +173,8 @@ vector<vector<int>> getAdjMatrix(const Environment& env) {
 void createMemorySpace(Environment& environment, MemorySpace& m) {
   if (std::count(environment.is_continuous.begin(),
           environment.is_continuous.end(), 0) > 1) {
-    uint max_level = 0;
-    for (uint i = 0; i < environment.n_nodes; i++) {
+    int max_level = 0;
+    for (int i = 0; i < environment.n_nodes; i++) {
       if (environment.levels[i] > max_level)
         max_level = environment.levels[i];
     }
@@ -235,8 +234,8 @@ void createMemorySpace(Environment& environment, MemorySpace& m) {
 void deleteMemorySpace(Environment& environment, MemorySpace& m) {
   if (std::count(environment.is_continuous.begin(),
           environment.is_continuous.end(), 0) > 1) {
-    uint max_level = 0;
-    for (uint i = 0; i < environment.n_nodes; i++) {
+    int max_level = 0;
+    for (int i = 0; i < environment.n_nodes; i++) {
       if (!environment.is_continuous[i] &&
           environment.levels[i] > max_level)
         max_level = environment.levels[i];
@@ -288,11 +287,11 @@ void deleteStruct(Environment& environment) {
   for (auto& address : environment.connected_list) delete address;
   delete[] environment.oneLineMatrix;
   delete[] environment.levels;
-  for (uint i = 0; i < environment.n_samples; i++)
+  for (int i = 0; i < environment.n_samples; i++)
     delete[] environment.data_numeric[i];
   delete[] environment.data_numeric;
   delete[] environment.c2terms;
-  for (uint i = 0; i < environment.n_nodes; i++) delete[] environment.edges[i];
+  for (int i = 0; i < environment.n_nodes; i++) delete[] environment.edges[i];
   delete[] environment.edges;
 }
 
@@ -312,18 +311,18 @@ string toNameString(const Environment& env, const vector<int>& vec) {
 bool readBlackbox(vector<string> v, Environment& environment) {
   string s1, s2;
   int posX, posY;
-  for (uint pos = 0; pos < v.size(); pos++) {
+  for (size_t pos = 0; pos < v.size(); pos++) {
     posX = -1;
     posY = -1;
 
     s1 = v[pos];
-    for (uint i = 0; i < environment.n_nodes; i++) {
+    for (int i = 0; i < environment.n_nodes; i++) {
       if (environment.nodes[i].name.compare(s1) == 0) posX = i;
     }
 
     pos++;
     s2 = v[pos];
-    for (uint i = 0; i < environment.n_nodes; i++) {
+    for (int i = 0; i < environment.n_nodes; i++) {
       if (environment.nodes[i].name.compare(s2) == 0) posY = i;
     }
 
@@ -340,8 +339,8 @@ vector<vector<string>> getEdgesInfoTable(Environment& env) {
   vector<vector<string>> table;
 
   vector<EdgeID> edge_list;
-  for (uint i = 0; i < env.n_nodes - 1; i++) {
-    for (uint j = i + 1; j < env.n_nodes; j++) {
+  for (int i = 0; i < env.n_nodes - 1; i++) {
+    for (int j = i + 1; j < env.n_nodes; j++) {
       edge_list.emplace_back(EdgeID(i, j));
     }
   }
@@ -394,7 +393,7 @@ void transformToFactors(Environment& environment, int i) {
   myMap[""] = -1;
   int factor = 0;
 
-  for (uint j = 0; j < environment.n_samples; j++) {
+  for (int j = 0; j < environment.n_samples; j++) {
     std::map<string, int>::iterator it = myMap.find(environment.data[j][i]);
     if (it != myMap.end()) {
       environment.data_numeric[j][i] = it->second;
@@ -416,7 +415,7 @@ void transformToFactorsContinuous(Environment& environment, int i) {
   myMap.clear();
 
   vector<double> clmn;
-  for (uint j = 0; j < environment.n_samples; j++) {
+  for (int j = 0; j < environment.n_samples; j++) {
     string entry = environment.data[j][i];
     if (entry.compare("NA") != 0 && entry.compare("") != 0)
       clmn.push_back(atof(entry.c_str()));
@@ -424,11 +423,11 @@ void transformToFactorsContinuous(Environment& environment, int i) {
 
   sort(clmn.begin(), clmn.end());
 
-  for (uint j = 0; j < clmn.size(); j++) {
+  for (size_t j = 0; j < clmn.size(); j++) {
     myMap.insert(pair<double, int>(clmn[j], j));
   }
 
-  for (uint j = 0; j < environment.n_samples; j++) {
+  for (int j = 0; j < environment.n_samples; j++) {
     string entry = environment.data[j][i];
     if (entry.compare("NA") != 0 && entry.compare("") != 0) {
       environment.data_numeric[j][i] = myMap.find(atof(entry.c_str()))->second;
@@ -459,7 +458,7 @@ void transformToFactorsContinuousIdx(Environment& environment, int i) {
   myMap.clear();
 
   int entry;
-  for (uint j = 0; j < environment.n_samples; j++) {
+  for (int j = 0; j < environment.n_samples; j++) {
     entry = environment.data_numeric[j][i];
     if (entry != -1) myMap[entry] = j;
   }
@@ -474,11 +473,11 @@ void transformToFactorsContinuousIdx(Environment& environment, int i) {
 
 // Set the number of levels for each node (the maximum level of each column)
 void setNumberLevels(Environment& environment) {
-  environment.levels = new uint[environment.n_nodes];
+  environment.levels = new int[environment.n_nodes];
   int max;
-  for (uint i = 0; i < environment.n_nodes; i++) {
+  for (int i = 0; i < environment.n_nodes; i++) {
     max = 0;
-    for (uint j = 0; j < environment.n_samples; j++) {
+    for (int j = 0; j < environment.n_samples; j++) {
       if (environment.data_numeric[j][i] > max)
         max = environment.data_numeric[j][i];
     }
@@ -489,12 +488,12 @@ void setNumberLevels(Environment& environment) {
 int getNumSamples_nonNA(Environment& environment, int i, int j) {
   bool sampleOk;
   int n_samples_nonNA = 0;
-  for (uint k = 0; k < environment.n_samples; k++) {
+  for (int k = 0; k < environment.n_samples; k++) {
     sampleOk = true;
     if (environment.data_numeric[k][i] != -1 &&
         environment.data_numeric[k][j] != -1) {
-      for (uint u = 0; u < environment.edges[i][j].shared_info->ui_list.size();
-           u++) {
+      for (size_t u = 0;
+           u < environment.edges[i][j].shared_info->ui_list.size(); u++) {
         if (environment.data_numeric[k][environment.edges[i][j]
                                             .shared_info->ui_list[u]] == -1) {
           sampleOk = false;
@@ -512,13 +511,13 @@ void getJointSpace(Environment& environment, int i, int j,
     vector<vector<double> >& jointSpace, int* curr_sample_is_not_NA) {
   int n_samples_nonNA = 0;
   bool sampleOk;
-  for (uint k = 0; k < environment.n_samples; k++) {
+  for (int k = 0; k < environment.n_samples; k++) {
     sampleOk = true;
     curr_sample_is_not_NA[k] = 0;
     if (environment.data_numeric[k][i] != -1 &&
         environment.data_numeric[k][j] != -1) {
-      for (uint u = 0; u < environment.edges[i][j].shared_info->ui_list.size();
-           u++) {
+      for (size_t u = 0;
+           u < environment.edges[i][j].shared_info->ui_list.size(); u++) {
         if (environment.data_numeric[k][environment.edges[i][j]
                                             .shared_info->ui_list[u]] == -1) {
           sampleOk = false;
@@ -538,22 +537,22 @@ double** getJointFreqs(
     Environment& environment, int i, int j,
     const vector<int> &sample_is_not_NA) {
   double** jointFreqs = new double*[environment.levels[i]];
-  for (uint k = 0; k < environment.levels[i]; k++) {
+  for (int k = 0; k < environment.levels[i]; k++) {
     jointFreqs[k] = new double[environment.levels[j]];
-    for (uint l = 0; l < environment.levels[j]; l++) {
+    for (int l = 0; l < environment.levels[j]; l++) {
       jointFreqs[k][l] = 0;
     }
   }
 
   int n_samples_nonNA(0);
   bool sampleOk;
-  for (uint k = 0; k < environment.n_samples; k++) {
+  for (int k = 0; k < environment.n_samples; k++) {
     sampleOk = true;
     if(sample_is_not_NA.empty()){
       // Check if any value is NA in X,Y or the Us
       if (environment.data_numeric[k][i] != -1 &&
           environment.data_numeric[k][j] != -1) {
-        for (uint u = 0;
+        for (size_t u = 0;
              u < environment.edges[i][j].shared_info->ui_list.size(); u++) {
           if (environment.data_numeric[k][environment.edges[i][j]
                                               .shared_info->ui_list[u]] == -1)
@@ -573,8 +572,8 @@ double** getJointFreqs(
     }
   }
 
-  for (uint k = 0; k < environment.levels[i]; k++)
-    for (uint l = 0; l < environment.levels[j]; l++)
+  for (int k = 0; k < environment.levels[i]; k++)
+    for (int l = 0; l < environment.levels[j]; l++)
       jointFreqs[k][l] /= n_samples_nonNA;
 
   return (jointFreqs);
@@ -588,13 +587,13 @@ void getJointMixed(Environment& environment, int i, int j, int* mixedDiscrete,
   // Fill marginal distributions
   int n_samples_nonNA = 0;
   bool sampleOk;
-  for (uint k = 0; k < environment.n_samples; k++) {
+  for (int k = 0; k < environment.n_samples; k++) {
     sampleOk = true;
     curr_sample_is_not_NA[k] = 0;
     if (environment.data_numeric[k][i] != -1 &&
         environment.data_numeric[k][j] != -1) {
-      for (uint u = 0; u < environment.edges[i][j].shared_info->ui_list.size();
-           u++) {
+      for (size_t u = 0;
+           u < environment.edges[i][j].shared_info->ui_list.size(); u++) {
         if (environment.data_numeric[k][environment.edges[i][j]
                                             .shared_info->ui_list[u]] == -1) {
           sampleOk = false;
@@ -618,9 +617,9 @@ void readFileType(Environment& environment) {
     return;
 
   environment.data_double = new double*[environment.n_samples];
-  for (uint i = 0; i < environment.n_samples; i++) {
+  for (int i = 0; i < environment.n_samples; i++) {
     environment.data_double[i] = new double[environment.n_nodes];
-    for (uint j = 0; j < environment.n_nodes; j++) {
+    for (int j = 0; j < environment.n_nodes; j++) {
       if (environment.is_continuous[j]) {
         if (environment.data[i][j].compare("NA") == 0 ||
             environment.data[i][j].compare("") == 0) {
@@ -656,7 +655,7 @@ void setEnvironment(Environment& environment) {
 
   // create the data matrix for factors
   environment.data_numeric = new int*[environment.n_samples];
-  for (uint i = 0; i < environment.n_samples; i++) {
+  for (int i = 0; i < environment.n_samples; i++) {
     environment.data_numeric[i] = new int[environment.n_nodes];
   }
 
@@ -666,15 +665,15 @@ void setEnvironment(Environment& environment) {
   if (any_continuous) {
     // create the data matrix for factors indexes
     environment.data_numeric_idx = new int*[environment.n_nodes];
-    for (uint i = 0; i < environment.n_nodes; i++) {
+    for (int i = 0; i < environment.n_nodes; i++) {
       environment.data_numeric_idx[i] = new int[environment.n_samples];
-      for (uint j = 0; j < environment.n_samples; j++)
+      for (int j = 0; j < environment.n_samples; j++)
         environment.data_numeric_idx[i][j] = -1;
     }
   }
 
   // transform to factors
-  for (uint i = 0; i < environment.n_nodes; i++) {
+  for (int i = 0; i < environment.n_nodes; i++) {
     if (!environment.is_continuous[i])
       transformToFactors(environment, i);
     else
@@ -685,7 +684,7 @@ void setEnvironment(Environment& environment) {
 
   // for continuous
   if (any_continuous) {
-    for (uint j = 0; j < environment.n_nodes; j++) {
+    for (int j = 0; j < environment.n_nodes; j++) {
       if (environment.is_continuous[j]) {
         transformToFactorsContinuousIdx(environment, j);
         transformToFactors(environment, j);  // update environment.data_numeric
@@ -698,7 +697,7 @@ void setEnvironment(Environment& environment) {
   setNumberLevels(environment);
   // create the 1000 entries to store c2 values
   environment.c2terms = new double[environment.n_samples + 1];
-  for (uint i = 0; i < environment.n_samples + 1; i++) {
+  for (int i = 0; i < environment.n_samples + 1; i++) {
     environment.c2terms[i] = -1;
   }
 
@@ -708,13 +707,13 @@ void setEnvironment(Environment& environment) {
   // create the log(j) lookup table with j=0..n_samples;
   environment.looklog = new double[environment.n_samples + 2];
   environment.looklog[0] = 0.0;
-  for (uint i = 1; i < environment.n_samples + 2; i++) {
+  for (int i = 1; i < environment.n_samples + 2; i++) {
     environment.looklog[i] = log(1.0 * i);
   }
 
   environment.lookH = new double[environment.n_samples + 2];
   environment.lookH[0] = 0.0;
-  for (uint i = 1; i < environment.n_samples + 2; i++) {
+  for (int i = 1; i < environment.n_samples + 2; i++) {
     // environment.lookH[i] =
     // i*environment.looklog[i]-(i+1)*environment.looklog[(i+1)];
     environment.lookH[i] = i * environment.looklog[i];
@@ -727,7 +726,7 @@ void setEnvironment(Environment& environment) {
   environment.cterms = new double*[ncol];
   for (int K = 0; K < (ncol); K++) {
     environment.cterms[K] = new double[environment.n_samples + 1];
-    for (uint i = 0; i < (environment.n_samples + 1); i++) {
+    for (int i = 0; i < (environment.n_samples + 1); i++) {
       if (K == 1)
         environment.cterms[K][i] = 0;
       else if (i == 0)
@@ -736,7 +735,7 @@ void setEnvironment(Environment& environment) {
         environment.cterms[K][i] = -1;
     }
   }
-  for (uint i = 0; i < (environment.n_samples + 1); i++) {
+  for (int i = 0; i < (environment.n_samples + 1); i++) {
     computeLogC(i, 2, environment.looklog,
         environment.cterms);  // Initialize the c2 terms
   }
@@ -744,7 +743,7 @@ void setEnvironment(Environment& environment) {
   environment.lookchoose = new double*[ncol];
   for (int K = 0; K < (ncol); K++) {
     environment.lookchoose[K] = new double[environment.n_samples + 1];
-    for (uint i = 0; i < (environment.n_samples + 1); i++) {
+    for (int i = 0; i < (environment.n_samples + 1); i++) {
       environment.lookchoose[K][i] = -1;
     }
   }
@@ -755,11 +754,11 @@ void setEnvironment(Environment& environment) {
   // create the edge structure and keep track of how many searchMore we have
   environment.edges = new Edge*[environment.n_nodes];
 
-  for (uint i = 0; i < environment.n_nodes; i++)
+  for (int i = 0; i < environment.n_nodes; i++)
     environment.edges[i] = new Edge[environment.n_nodes];
 
-  for (uint i = 0; i < environment.n_nodes; i++) {
-    for (uint j = 0; j < environment.n_nodes; j++) {
+  for (int i = 0; i < environment.n_nodes; i++) {
+    for (int j = 0; j < environment.n_nodes; j++) {
       if ((!environment.is_continuous[i] &&
               environment.levels[i] == environment.n_samples) ||
           (!environment.is_continuous[j] &&
@@ -776,13 +775,13 @@ void setEnvironment(Environment& environment) {
     }
   }
 
-  for (uint i = 0; i < environment.n_nodes; i++) {
+  for (int i = 0; i < environment.n_nodes; i++) {
     environment.edges[i][i].status = 0;
     environment.edges[i][i].status_prev = 0;
   }
 
   environment.noise_vec = new double[2 * environment.n_samples];
-  for (uint i = 0; i < 2 * environment.n_samples; i++) {
+  for (int i = 0; i < 2 * environment.n_samples; i++) {
     environment.noise_vec[i] =
         std::rand() / ((RAND_MAX + 1u) / MAGNITUDE_TIES) - MAGNITUDE_TIES / 2;
   }
@@ -916,7 +915,7 @@ double compute_kl_divergence(const vector<int>& posArray,
                                environment.levels[posArray[0]],
                                environment.levels[posArray[1]]);
 
-    for (uint j = 0; j < environment.levels[posArray[0]]; j++) {
+    for (int j = 0; j < environment.levels[posArray[0]]; j++) {
       delete[] freqs2[j];
       delete[] jointFreqs[j];
     }
@@ -933,7 +932,7 @@ double compute_kl_divergence(const vector<int>& posArray,
 
     int* map_samples = new int[current_samplesNotNA];
     int i_map = 0;
-    for (uint i = 0; i < environment.n_samples; i++) {
+    for (int i = 0; i < environment.n_samples; i++) {
       if (curr_sample_is_not_NA[i] == 1) {  // sample i is present in X;Y|U
         map_samples[i_map] = 0;
         if (sample_is_not_NA[i] == 1) {  // sample i is also present in X;Y|U,Z
@@ -944,7 +943,7 @@ double compute_kl_divergence(const vector<int>& posArray,
     }
     vector<vector<double> > joint_nonNA(samplesNotNA, vector<double>(2));
     int i_nonNA = 0;
-    for (uint i = 0; i < environment.n_samples; i++) {
+    for (int i = 0; i < environment.n_samples; i++) {
       if (sample_is_not_NA[i] == 1) {
         for (int k = 0; k < 2; k++) {
           joint_nonNA[i_nonNA][k] = environment.data_double[i][posArray[k]];
@@ -1000,7 +999,7 @@ double compute_kl_divergence(const vector<int>& posArray,
     for (int i = 0; i < current_samplesNotNA; i++) {
       count_base[mixedDiscrete[i]]++;
     }
-    for (uint i = 0; i < environment.n_samples; i++) {
+    for (int i = 0; i < environment.n_samples; i++) {
       // Make sure to use environment data so that the levels match (may be
       // recoded in reduced data)
       if(sample_is_not_NA[i])
@@ -1011,7 +1010,7 @@ double compute_kl_divergence(const vector<int>& posArray,
     for (int level = 0; level < n_discrete_levels; level++) {
       int* map_level = new int[count_base[level]];
       int i_level = 0;
-      for (uint i = 0; i < environment.n_samples; i++) {
+      for (int i = 0; i < environment.n_samples; i++) {
         if (environment.data_numeric[i][discrete_pos] == level) {
           if (curr_sample_is_not_NA[i]) {
             map_level[i_level] = 0;
@@ -1034,7 +1033,7 @@ double compute_kl_divergence(const vector<int>& posArray,
       vector<vector<double> > continuous_nonNA(
           count_nonNA[level], vector<double>(1));
       int i_level_nonNA = 0;
-      for (uint i = 0; i < environment.n_samples; i++) {
+      for (int i = 0; i < environment.n_samples; i++) {
         if (sample_is_not_NA[i] == 1 &&
             environment.data_numeric[i][discrete_pos] == level) {
           continuous_nonNA[i_level_nonNA][0] =
@@ -1086,14 +1085,14 @@ int sign(double val) {
  * \return The number of non NA samples and modifies the vectors
  * sample_is_not_NA and NAs_count
  */
-uint count_non_NAs(int nbrUi, vector<int> &sample_is_not_NA,
+int count_non_NAs(int nbrUi, vector<int> &sample_is_not_NA,
     vector<int> &NAs_count, const vector<int>& posArray,
     Environment& environment, int z){
 
-  uint samplesNotNA = 0;
+  int samplesNotNA = 0;
   bool is_NA;
 
-  for (uint i = 0; i < environment.n_samples; i++) {
+  for (int i = 0; i < environment.n_samples; i++) {
     sample_is_not_NA[i] = 1;
     if (i != 0)
       NAs_count[i] = NAs_count[i - 1];
@@ -1159,7 +1158,7 @@ bool filter_NAs(int nbrUi, vector<int>& AllLevels, vector<int>& cnt,
     new_val = 0;
     updated_discrete_level = 0;
 
-    for (uint i = 0; i < environment.n_samples; i++) {
+    for (int i = 0; i < environment.n_samples; i++) {
 
       if (sample_is_not_NA[i] == 1) {
         // Row at index i does not contain any NA
