@@ -68,7 +68,7 @@ void searchAndSetZi(
     if (!latent && !environment.edges[posX][c].status_prev &&
         !environment.edges[posY][c].status_prev)
       continue;
-    environment.edges[posX][posY].shared_info->zi_vect_idx.push_back(c);
+    environment.edges[posX][posY].shared_info->zi_list.push_back(c);
     numZiPos++;
   }
 
@@ -165,7 +165,7 @@ bool firstStepIteration(Environment& environment, BCC& bcc) {
         cout << "##  "
              << "XY: " << environment.nodes[posX].name << " "
              << environment.nodes[posY].name << "\n\n";
-      if (environment.edges[posX][posY].shared_info->zi_vect_idx.size() > 0) {
+      if (environment.edges[posX][posY].shared_info->zi_list.size() > 0) {
         // Search for new contributing node and its rank
         SearchForNewContributingNodeAndItsRank(
             environment, posX, posY, environment.memoryThreads[threadnum]);
@@ -190,10 +190,9 @@ bool firstStepIteration(Environment& environment, BCC& bcc) {
         if (environment.verbose) {
           cout << "## ------!!--> Update the edge element in 'searchMore': "
                << environment
-                      .nodes[environment.edges[posX][posY]
-                                 .shared_info
-                                 ->zi_vect_idx[environment.edges[posX][posY]
-                                                   .shared_info->z_name_idx]]
+                      .nodes[environment.edges[posX][posY].shared_info->zi_list
+                                 [environment.edges[posX][posY]
+                                         .shared_info->z_name_idx]]
                       .name
                << " is a good zi candidate\n";
         }
@@ -267,21 +266,19 @@ bool skeletonIteration(Environment& environment) {
       cout << "# DO: Add new zi to {ui}: " << topEdgeElt->z_name_idx << endl;
     }
     // move top z_name_idx from zi_vect to ui_vect
-    topEdgeElt->ui_vect_idx.push_back(
-        topEdgeElt->zi_vect_idx[topEdgeElt->z_name_idx]);
-    topEdgeElt->zi_vect_idx.erase(
-        topEdgeElt->zi_vect_idx.begin() + topEdgeElt->z_name_idx);
+    topEdgeElt->ui_list.push_back(topEdgeElt->zi_list[topEdgeElt->z_name_idx]);
+    topEdgeElt->zi_list.erase(
+        topEdgeElt->zi_list.begin() + topEdgeElt->z_name_idx);
     topEdgeElt->z_name_idx = -1;
 
     double* v = NULL;
     if (!environment.is_continuous[posX] && !environment.is_continuous[posY] &&
-        std::all_of(topEdgeElt->ui_vect_idx.cbegin(),
-            topEdgeElt->ui_vect_idx.cend(),
+        std::all_of(topEdgeElt->ui_list.cbegin(), topEdgeElt->ui_list.cend(),
             [&environment](int i) { return !environment.is_continuous[i]; })) {
       v = computeEnsInformationNew(environment,
-          &environment.edges[posX][posY].shared_info->ui_vect_idx[0],
-          environment.edges[posX][posY].shared_info->ui_vect_idx.size(), NULL,
-          0, -1, posX, posY, environment.cplx, environment.m);
+          &environment.edges[posX][posY].shared_info->ui_list[0],
+          environment.edges[posX][posY].shared_info->ui_list.size(), NULL, 0,
+          -1, posX, posY, environment.cplx, environment.m);
 
       topEdgeElt->Ixy_ui = v[1];
       topEdgeElt->Nxy_ui = v[0];
@@ -289,9 +286,9 @@ bool skeletonIteration(Environment& environment) {
       free(v);
     } else {
       v = computeEnsInformationContinuous(environment,
-          &environment.edges[posX][posY].shared_info->ui_vect_idx[0],
-          environment.edges[posX][posY].shared_info->ui_vect_idx.size(), NULL,
-          0, -1, posX, posY, environment.cplx, environment.m);
+          &environment.edges[posX][posY].shared_info->ui_list[0],
+          environment.edges[posX][posY].shared_info->ui_list.size(), NULL, 0,
+          -1, posX, posY, environment.cplx, environment.m);
       topEdgeElt->Nxy_ui = v[0];
       topEdgeElt->Ixy_ui = v[1];
       topEdgeElt->cplx = v[2];
@@ -303,7 +300,7 @@ bool skeletonIteration(Environment& environment) {
 
     if (environment.degenerate)
       topEdgeElt_kxy_ui =
-          topEdgeElt->cplx + (topEdgeElt->ui_vect_idx.size() * log(3));
+          topEdgeElt->cplx + (topEdgeElt->ui_list.size() * log(3));
 
     int nRemainingEdges = environment.numSearchMore + environment.numNoMore;
 
@@ -341,7 +338,7 @@ bool skeletonIteration(Environment& environment) {
         cout << "# Do SearchForNewContributingNodeAndItsRank\n";
       }
 
-      if (topEdgeElt->zi_vect_idx.size() > 0) {
+      if (topEdgeElt->zi_list.size() > 0) {
         SearchForNewContributingNodeAndItsRank(
             environment, posX, posY, environment.m);
       }
@@ -351,8 +348,7 @@ bool skeletonIteration(Environment& environment) {
           cout << "# See topEdgeElt[['z.name']]: NA\n";
         else
           cout << "# See topEdgeElt[['z.name']]: "
-               << environment
-                      .nodes[topEdgeElt->zi_vect_idx[topEdgeElt->z_name_idx]]
+               << environment.nodes[topEdgeElt->zi_list[topEdgeElt->z_name_idx]]
                       .name
                << "\n";
       }
@@ -596,7 +592,7 @@ std::set<int> BCC::get_candidate_z(int x, int y) const {
 }
 
 void BCC::set_candidate_z(int x, int y) {
-  vector<int>& vect_z = environment.edges[x][y].shared_info->zi_vect_idx;
+  vector<int>& vect_z = environment.edges[x][y].shared_info->zi_list;
   std::insert_iterator<vector<int> > insert_it =
       inserter(vect_z, vect_z.begin());
   set<int> set_z = get_candidate_z(x, y);

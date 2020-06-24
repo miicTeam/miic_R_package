@@ -32,8 +32,8 @@ using std::vector;
 double* computeEnsInformationContinuous_Orientation(Environment& environment,
     int* myCond, int myNbrUi, int* myZi, const int myVarIdxX,
     const int myVarIdxY, const int cplx, MemorySpace& m) {
-  vector<int> posArray(2 + environment.edges[myVarIdxX][myVarIdxY]
-                                  .shared_info->ui_vect_idx.size());
+  vector<int> posArray(
+      2 + environment.edges[myVarIdxX][myVarIdxY].shared_info->ui_list.size());
   posArray[0] = myVarIdxX;
   posArray[1] = myVarIdxY;
 
@@ -245,8 +245,8 @@ void computeContributingScores(Environment& environment, int* ziContPosIdx,
 double* computeEnsInformationContinuous(Environment& environment, int* myCond,
     int myNbrUi, int* myZi, uint myNbrZi, int myZiPos, const int myVarIdxX,
     const int myVarIdxY, const int cplx, MemorySpace& m) {
-  vector<int> posArray(2 + environment.edges[myVarIdxX][myVarIdxY]
-                                  .shared_info->ui_vect_idx.size());
+  vector<int> posArray(
+      2 + environment.edges[myVarIdxX][myVarIdxY].shared_info->ui_list.size());
   posArray[0] = myVarIdxX;
   posArray[1] = myVarIdxY;
 
@@ -437,8 +437,8 @@ double* computeEnsInformationContinuous(Environment& environment, int* myCond,
 double* computeEnsInformationNew(Environment& environment, int* myCond,
     int myNbrUi, int* myZi, int myNbrZi, int myZiPos, const int myVarIdxX,
     const int myVarIdxY, const int cplx, MemorySpace& m) {
-  vector<int> posArray(2 + environment.edges[myVarIdxX][myVarIdxY]
-                                  .shared_info->ui_vect_idx.size());
+  vector<int> posArray(
+      2 + environment.edges[myVarIdxX][myVarIdxY].shared_info->ui_list.size());
   posArray[0] = myVarIdxX;
   posArray[1] = myVarIdxY;
 
@@ -502,29 +502,28 @@ void SearchForNewContributingNodeAndItsRank(
   auto info = environment.edges[posX][posY].shared_info;
   if (!environment.latent) {
     // remove zi that is not connected to neither x nor y
-    info->zi_vect_idx.erase(
-        std::remove_if(info->zi_vect_idx.begin(), info->zi_vect_idx.end(),
+    info->zi_list.erase(
+        std::remove_if(info->zi_list.begin(), info->zi_list.end(),
             [&environment, &posX, &posY](int z) {
               return !environment.edges[posX][z].status &&
                      !environment.edges[posY][z].status;
             }),
-        info->zi_vect_idx.end());
+        info->zi_list.end());
   }
-  if (info->zi_vect_idx.empty())
-    return;
+  if (info->zi_list.empty()) return;
 
   int* ui;
   int* zi;
 
-  if (info->ui_vect_idx.empty())
+  if (info->ui_list.empty())
     ui = NULL;
   else
-    ui = &info->ui_vect_idx[0];
+    ui = &info->ui_list[0];
 
-  if (info->zi_vect_idx.empty())
+  if (info->zi_list.empty())
     zi = NULL;
   else
-    zi = &info->zi_vect_idx[0];
+    zi = &info->zi_list[0];
 
   int argEnsInfo = -1;
   if (environment.is_k23 == true) argEnsInfo = environment.cplx;
@@ -533,16 +532,16 @@ void SearchForNewContributingNodeAndItsRank(
 
   if (std::all_of(environment.is_continuous.begin(),
           environment.is_continuous.end(), [](int i) { return i == 0; })) {
-    vect = computeEnsInformationNew(environment, ui, info->ui_vect_idx.size(),
-        zi, info->zi_vect_idx.size(), info->ui_vect_idx.size() + 2, posX, posY,
-        argEnsInfo, m);
+    vect = computeEnsInformationNew(environment, ui, info->ui_list.size(), zi,
+        info->zi_list.size(), info->ui_list.size() + 2, posX, posY, argEnsInfo,
+        m);
     if (vect[6] - info->Rxyz_ui > 0) {
       if (environment.verbose) {
         cout << "\n"
              << posX << "    " << posY << "# -----> possible zi: "
              << environment
                     .nodes[environment.edges[posX][posY]
-                               .shared_info->zi_vect_idx[vect[3]]]
+                               .shared_info->zi_list[vect[3]]]
                     .name
              << "(" << vect[6] << " > " << info->Rxyz_ui << ")\n";
       }
@@ -561,14 +560,14 @@ void SearchForNewContributingNodeAndItsRank(
 
   } else {
     vect = computeEnsInformationContinuous(environment, ui,
-        info->ui_vect_idx.size(), zi, info->zi_vect_idx.size(),
-        info->ui_vect_idx.size() + 2, posX, posY, argEnsInfo, m);
+        info->ui_list.size(), zi, info->zi_list.size(),
+        info->ui_list.size() + 2, posX, posY, argEnsInfo, m);
     if (vect[2] - info->Rxyz_ui > 0) {
       if (environment.verbose) {
         cout << "\n"
              << posX << " " << posY << " # -----> possible zi: "
-             << environment.nodes[info->zi_vect_idx[vect[1]]].name << "("
-             << vect[2] << " > " << info->Rxyz_ui << ")\n";
+             << environment.nodes[info->zi_list[vect[1]]].name << "(" << vect[2]
+             << " > " << info->Rxyz_ui << ")\n";
       }
 
       // The order matters: set first the z.name.idx, than get the corresponding

@@ -203,13 +203,12 @@ List reconstruct(DataFrame input_data, List arg_list) {
     for (uint i = 1; i < environment.n_nodes; i++) {
       for (uint j = 0; j < i; j++) {
         const Edge& edge = environment.edges[i][j];
-        if (edge.status ||
-            bcc.is_consistent(i, j, edge.shared_info->ui_vect_idx))
+        if (edge.status || bcc.is_consistent(i, j, edge.shared_info->ui_list))
           continue;
         if (environment.verbose) {
           std::cout << environment.nodes[i].name << ",\t"
                     << environment.nodes[j].name << "\t| "
-                    << toNameString(environment, edge.shared_info->ui_vect_idx)
+                    << toNameString(environment, edge.shared_info->ui_list)
                     << std::endl;
         }
         inconsistent_edges.emplace_back(i, j);

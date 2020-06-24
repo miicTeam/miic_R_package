@@ -17,11 +17,11 @@ using std::string;
 using std::vector;
 
 struct EdgeSharedInfo {
-  // Indices of separating nodes
-  vector<int> ui_vect_idx;
-  // Indices of candidate nodes contributing to the conditional independence
-  vector<int> zi_vect_idx;
-  int z_name_idx = -1;  // Index of the last best contributor
+  // {ui}: indices of separating nodes
+  vector<int> ui_list;
+  // {zi}: indices of candidate conditioning nodes
+  vector<int> zi_list;
+  int z_name_idx = -1;  // Index of the last best contributor in zi_list
   double Rxyz_ui = 0;   // Score of the best contributor
   double Ixy_ui = 0;
   double cplx = 0;
@@ -34,8 +34,8 @@ struct EdgeSharedInfo {
   EdgeSharedInfo() = default;
   // Remove knowledge about all contributing nodes.
   void reset() {
-    zi_vect_idx.clear();
-    ui_vect_idx.clear();
+    zi_list.clear();
+    ui_list.clear();
     z_name_idx = -1;
     Rxyz_ui = 0;
     Ixy_ui = Ixy;
@@ -45,7 +45,7 @@ struct EdgeSharedInfo {
   }
 
   void setUndirected() {
-    ui_vect_idx.clear();
+    ui_list.clear();
     z_name_idx = -1;
     Rxyz_ui = 0;
     Ixy_ui = Ixy;

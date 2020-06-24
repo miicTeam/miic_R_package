@@ -30,12 +30,11 @@ using namespace miic::utility;
 void getStructure(Environment& environment, const int posX, const int posY,
     const int posZ, vector<vector<int>>& allTpl, vector<double>& allI3) {
   // Check if xk belongs to the {ui} of the base
-  vector<int> u(environment.edges[posX][posZ].shared_info->ui_vect_idx);
-  if (environment.edges[posX][posZ].shared_info->ui_vect_idx.size() > 0) {
+  vector<int> u(environment.edges[posX][posZ].shared_info->ui_list);
+  if (environment.edges[posX][posZ].shared_info->ui_list.size() > 0) {
     // Remove xk from the {ui} if needed
     for (uint i = 0;
-         i < environment.edges[posX][posZ].shared_info->ui_vect_idx.size();
-         i++) {
+         i < environment.edges[posX][posZ].shared_info->ui_list.size(); i++) {
       if (u[i] == posY) {
         u.erase(u.begin() + i);
         break;

@@ -359,9 +359,9 @@ vector<vector<string>> getEdgesInfoTable(Environment& env) {
         env.nodes[j].name,
         info->z_name_idx == -1
           ? "NA"
-          : env.nodes[info->zi_vect_idx[info->z_name_idx]].name,
-        toNameString(env, info->ui_vect_idx),
-        toNameString(env, info->zi_vect_idx),
+          : env.nodes[info->zi_list[info->z_name_idx]].name,
+        toNameString(env, info->ui_list),
+        toNameString(env, info->zi_list),
         std::to_string(info->Ixy),
         std::to_string(info->Ixy_ui),
         std::to_string(info->cplx),
@@ -493,11 +493,10 @@ int getNumSamples_nonNA(Environment& environment, int i, int j) {
     sampleOk = true;
     if (environment.data_numeric[k][i] != -1 &&
         environment.data_numeric[k][j] != -1) {
-      for (uint u = 0;
-           u < environment.edges[i][j].shared_info->ui_vect_idx.size(); u++) {
+      for (uint u = 0; u < environment.edges[i][j].shared_info->ui_list.size();
+           u++) {
         if (environment.data_numeric[k][environment.edges[i][j]
-                                           .shared_info->ui_vect_idx[u]] ==
-            -1) {
+                                            .shared_info->ui_list[u]] == -1) {
           sampleOk = false;
         }
       }
@@ -518,11 +517,10 @@ void getJointSpace(Environment& environment, int i, int j,
     curr_sample_is_not_NA[k] = 0;
     if (environment.data_numeric[k][i] != -1 &&
         environment.data_numeric[k][j] != -1) {
-      for (uint u = 0;
-           u < environment.edges[i][j].shared_info->ui_vect_idx.size(); u++) {
+      for (uint u = 0; u < environment.edges[i][j].shared_info->ui_list.size();
+           u++) {
         if (environment.data_numeric[k][environment.edges[i][j]
-                                           .shared_info->ui_vect_idx[u]] ==
-            -1) {
+                                            .shared_info->ui_list[u]] == -1) {
           sampleOk = false;
         }
       }
@@ -556,9 +554,9 @@ double** getJointFreqs(
       if (environment.data_numeric[k][i] != -1 &&
           environment.data_numeric[k][j] != -1) {
         for (uint u = 0;
-            u < environment.edges[i][j].shared_info->ui_vect_idx.size(); u++) {
+             u < environment.edges[i][j].shared_info->ui_list.size(); u++) {
           if (environment.data_numeric[k][environment.edges[i][j]
-                                            .shared_info->ui_vect_idx[u]] == -1)
+                                              .shared_info->ui_list[u]] == -1)
             sampleOk = false;
         }
       }
@@ -595,11 +593,10 @@ void getJointMixed(Environment& environment, int i, int j, int* mixedDiscrete,
     curr_sample_is_not_NA[k] = 0;
     if (environment.data_numeric[k][i] != -1 &&
         environment.data_numeric[k][j] != -1) {
-      for (uint u = 0;
-           u < environment.edges[i][j].shared_info->ui_vect_idx.size(); u++) {
+      for (uint u = 0; u < environment.edges[i][j].shared_info->ui_list.size();
+           u++) {
         if (environment.data_numeric[k][environment.edges[i][j]
-                                           .shared_info->ui_vect_idx[u]] ==
-            -1) {
+                                            .shared_info->ui_list[u]] == -1) {
           sampleOk = false;
         }
       }
