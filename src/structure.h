@@ -86,13 +86,13 @@ struct EdgeKey {
   std::set<int> Ui;
   
   bool operator<(const EdgeKey& other) const {
-      if ( std::min(x, y) == std::min(other.x, other.y) ) {
-        if ( std::max(x, y) == std::max(other.x, other.y) ) {
-          return Ui < other.Ui;
-        }
-        return std::max(x, y) < std::max(other.x, other.y);
+    if ( std::min(x, y) == std::min(other.x, other.y) ) {
+      if ( std::max(x, y) == std::max(other.x, other.y) ) {
+        return Ui < other.Ui;
       }
-      return std::min(x, y) < std::min(other.x, other.y);
+      return std::max(x, y) < std::max(other.x, other.y);
+    }
+    return std::min(x, y) < std::min(other.x, other.y);
   }
 };
 

@@ -160,7 +160,7 @@ List reconstruct(DataFrame input_data, List arg_list) {
       if (!skeletonIteration(environment)) return (empty_results());
 
       long double spentTime = (get_wall_time() - startTime);
-      environment.exec_time.iter = spentTime;
+      environment.exec_time.iter += spentTime;
       environment.exec_time.init_iter += spentTime;
     }
 
@@ -169,7 +169,7 @@ List reconstruct(DataFrame input_data, List arg_list) {
       std::cout << "Computing confidence cut with permutations..." << std::flush;
       confVect = confidenceCut(environment);
       long double spentTime = (get_wall_time() - startTime);
-      environment.exec_time.cut = spentTime;
+      environment.exec_time.cut += spentTime;
       std::cout << " done." << std::endl;
     } else {
       environment.exec_time.cut = 0;

@@ -1208,9 +1208,9 @@ bool filter_NAs(int nbrUi, vector<int>& AllLevels, vector<int>& cnt,
   return(flag_sample_weights);
 }
 
-double lookupScore(const vector<int> &posArray, int nbrUi, int z,
+double lookupScore(const vector<int>& posArray, int nbrUi, int z,
     Environment& environment) {
-  std::set<int> Ui_set (posArray.begin() + 2, posArray.begin() + nbrUi + 2);
+  std::set<int> Ui_set(posArray.cbegin() + 2, posArray.cbegin() + 2 + nbrUi);
   Ui_set.insert(z);
   EdgeKey key {posArray[0], posArray[1], Ui_set};
   double score = -1.0;
@@ -1221,9 +1221,9 @@ double lookupScore(const vector<int> &posArray, int nbrUi, int z,
   return(score);
 }
 
-void lookupScore(const vector<int> &posArray, int nbrUi, int z, double* res,
+void lookupScore(const vector<int>& posArray, int nbrUi, int z, double* res,
     Environment& environment) {
-  std::set<int> Ui_set (posArray.begin() + 2, posArray.begin() + nbrUi + 2);
+  std::set<int> Ui_set(posArray.cbegin() + 2, posArray.cbegin() + 2 + nbrUi);
   Ui_set.insert(z);
   EdgeKey key {posArray[0], posArray[1], Ui_set};
 
@@ -1235,20 +1235,26 @@ void lookupScore(const vector<int> &posArray, int nbrUi, int z, double* res,
   return;
 }
 
-void saveScore(const vector<int> &posArray, int nbrUi, int z, double score,
+void saveScore(const vector<int>& posArray, int nbrUi, int z, double score,
     Environment& environment) {
-  std::set<int> Ui_set (posArray.begin() + 2, posArray.begin() + nbrUi + 2);
+  std::set<int> Ui_set(posArray.cbegin() + 2, posArray.cbegin() + 2 + nbrUi);
   Ui_set.insert(z);
   EdgeKey key {posArray[0], posArray[1], Ui_set};
+  #ifdef _OPENMP
+  #pragma omp critical
+  #endif
   environment.look_scores.insert({key, score});
 }
 
-void saveScore(const vector<int> &posArray, int nbrUi, int z, double* score,
+void saveScore(const vector<int>& posArray, int nbrUi, int z, double* score,
     Environment& environment) {
-  std::set<int> Ui_set (posArray.begin() + 2, posArray.begin() + nbrUi + 2);
+  std::set<int> Ui_set(posArray.cbegin() + 2, posArray.cbegin() + 2 + nbrUi);
   Ui_set.insert(z);
   EdgeKey key {posArray[0], posArray[1], Ui_set};
   ScoreValue score_struct {int(score[0]), score[1], score[2]};
+  #ifdef _OPENMP
+  #pragma omp critical
+  #endif
   environment.look_scores_orientation.insert({key, score_struct});
 }
 
