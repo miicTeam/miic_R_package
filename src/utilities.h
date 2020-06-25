@@ -33,11 +33,15 @@ double compute_kl_divergence(const std::vector<int>& posArray,
     structure::Environment& environment, int samplesNotNA,
     const std::vector<int>& AllLevels_red,
     const std::vector<int>& sample_is_not_NA);
+double compute_kl_divergence_continuous(
+    std::vector<std::vector<double>>& space1,
+    std::vector<std::vector<double>>& space2, int n1, int n2, int ndims, int k,
+    bool* flag_break_ties, int* map_samples, double* noise_vec);
 
 double kl(double** freqs1, double** freqs2, int nrows, int ncols);
 double kl(int** counts1, double** freqs2, int nrows, int ncols);
-double kl(double* freqs1, double* freqs2, int nlevels);
-double kl(int* freqs1, int* freqs2, int n1, int n2, int nlevels);
+double kl(const std::vector<int>& freqs1, const std::vector<int>& freqs2,
+    int n1, int n2);
 
 void getJointMixed(const structure::Environment&, int i, int j,
     int* mixedDiscrete, double* mixedContinuous, int* curr_sample_is_not_NA);
@@ -45,7 +49,7 @@ double** getJointFreqs(const structure::Environment&, int i, int j,
     const std::vector<int>& sample_is_not_NA = std::vector<int>());
 void getJointSpace(const structure::Environment&, int i, int j,
     double** jointSpace, int* curr_sample_is_not_NA);
-int getNumSamples_nonNA(const structure::Environment&, int i, int j);
+int getNumSamplesNonNA(const structure::Environment&, int i, int j);
 
 int count_non_NAs(int nbrUi, std::vector<int> &sample_is_not_NA,
     std::vector<int> &NAs_count, const std::vector<int>& posArray,

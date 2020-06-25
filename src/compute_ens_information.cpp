@@ -388,7 +388,8 @@ double* computeEnsInformationContinuous(Environment& environment, int* myCond,
         privateM = environment.memoryThreads[omp_get_thread_num()];
 #endif
       int n_samples_nonNA =
-          getNumSamples_nonNA(environment, posArray[0], posArray[1]);
+          getNumSamplesNonNA(environment, posArray[0], posArray[1]);
+
       computeContributingScores(environment, ziContPosIdx, iz, myZi, myNbrUi,
           n_samples_nonNA, posArray, scoresZ, privateM);
     }  // parallel for on z

@@ -28,7 +28,6 @@ namespace utility {
 
 using std::cout;
 using std::endl;
-using std::pair;
 using std::string;
 using std::stringstream;
 using std::vector;
@@ -83,32 +82,23 @@ double kl(int** counts1, double** freqs2, int nrows, int ncols) {
   for (int i = 0; i < nrows; i++) delete[] freqs1[i];
   delete[] freqs1;
 
-  return (kl_div);
+  return kl_div;
 }
 
-double kl(double* freqs1, double* freqs2, int nlevels) {
+// count1 and count2 are of the same size (= nlevels of the variable).
+// The space of count1 is a subspace of that of count2.
+// n_samples1&2 are counts of non NA samples.
+double kl(const vector<int>& count1, const vector<int>& count2, int n_samples1,
+    int n_samples2) {
   double kl_div = 0;
-  for (int level = 0; level < nlevels; level++) {
-    if (freqs1[level] != 0) {
-      kl_div += freqs1[level] * log(freqs1[level] / freqs2[level]);
+  for (size_t i = 0; i < count1.size(); ++i) {
+    double freq1 = static_cast<double>(count1[i]) / n_samples1;
+    double freq2 = static_cast<double>(count2[i]) / n_samples2;
+    if (freq1 != 0) {
+      kl_div += freq1 * log(freq1 / freq2);
     }
   }
-  return (kl_div);
-}
-
-double kl(int* count1, int* count2, int n1, int n2, int nlevels) {
-  double* freqs1 = new double[nlevels];
-  double* freqs2 = new double[nlevels];
-
-  for (int level = 0; level < nlevels; level++) {
-    freqs1[level] = 1.0 * count1[level] / n1;
-    freqs2[level] = 1.0 * count2[level] / n2;
-  }
-  double kl_div = kl(freqs1, freqs2, nlevels);
-  delete[] freqs1;
-  delete[] freqs2;
-
-  return (kl_div);
+  return kl_div;
 }
 
 class sort_indices {
@@ -179,7 +169,6 @@ void createMemorySpace(Environment& environment, MemorySpace& m) {
         max_level = environment.levels[i];
     }
     m.max_level = max_level;
-    // cout<< "samples" << environment.n_samples << endl;
     int nrow = environment.n_samples + 1;
     int sampleSize = environment.n_samples;
     int ncol = 7;
@@ -424,7 +413,7 @@ void transformToFactorsContinuous(Environment& environment, int i) {
   sort(clmn.begin(), clmn.end());
 
   for (size_t j = 0; j < clmn.size(); j++) {
-    myMap.insert(pair<double, int>(clmn[j], j));
+    myMap.insert(std::pair<double, int>(clmn[j], j));
   }
 
   for (int j = 0; j < environment.n_samples; j++) {
@@ -482,24 +471,24 @@ void setNumberLevels(Environment& environment) {
   }
 }
 
-int getNumSamples_nonNA(const Environment& environment, int i, int j) {
-  int n_samples_nonNA = 0;
+int getNumSamplesNonNA(const Environment& environment, int i, int j) {
+  int n_samples_non_na = 0;
   for (int k = 0; k < environment.n_samples; k++) {
-    if (SampleHasNoNA(environment, k, i, j)) ++n_samples_nonNA;
+    if (SampleHasNoNA(environment, k, i, j)) ++n_samples_non_na;
   }
-  return n_samples_nonNA;
+  return n_samples_non_na;
 }
 
 void getJointSpace(const Environment& environment, int i, int j,
     vector<vector<double>>& jointSpace, int* curr_sample_is_not_NA) {
-  int n_samples_nonNA = 0;
+  int n_samples_non_na = 0;
   for (int k = 0; k < environment.n_samples; k++) {
     curr_sample_is_not_NA[k] = 0;
     if (SampleHasNoNA(environment, k, i, j)) {
       curr_sample_is_not_NA[k] = 1;
-      jointSpace[n_samples_nonNA][0] = environment.data_double[k][i];
-      jointSpace[n_samples_nonNA][1] = environment.data_double[k][j];
-      n_samples_nonNA++;
+      jointSpace[n_samples_non_na][0] = environment.data_double[k][i];
+      jointSpace[n_samples_non_na][1] = environment.data_double[k][j];
+      n_samples_non_na++;
     }
   }
 }
@@ -514,19 +503,19 @@ double** getJointFreqs(const Environment& environment, int i, int j,
     }
   }
 
-  int n_samples_nonNA = 0;
+  int n_samples_non_na = 0;
   for (int k = 0; k < environment.n_samples; k++) {
     if ((!sample_is_not_NA.empty() && sample_is_not_NA[k]) ||
         (sample_is_not_NA.empty() && SampleHasNoNA(environment, k, i, j))) {
       jointFreqs[environment.data_numeric[k][i]]
                 [environment.data_numeric[k][j]]++;
-      n_samples_nonNA++;
+      n_samples_non_na++;
     }
   }
 
   for (int k = 0; k < environment.levels[i]; k++)
     for (int l = 0; l < environment.levels[j]; l++)
-      jointFreqs[k][l] /= n_samples_nonNA;
+      jointFreqs[k][l] /= n_samples_non_na;
 
   return jointFreqs;
 }
@@ -536,16 +525,16 @@ void getJointMixed(const Environment& environment, int i, int j,
   int discrete_pos = environment.is_continuous[i] ? j : i;
   int continuous_pos = environment.is_continuous[i] ? i : j;
   // Fill marginal distributions
-  int n_samples_nonNA = 0;
+  int n_samples_non_na = 0;
   for (int k = 0; k < environment.n_samples; k++) {
     curr_sample_is_not_NA[k] = 0;
     if (SampleHasNoNA(environment, k, i, j)) {
       curr_sample_is_not_NA[k] = 1;
-      mixedContinuous[n_samples_nonNA] =
+      mixedContinuous[n_samples_non_na] =
           environment.data_double[k][continuous_pos];
-      mixedDiscrete[n_samples_nonNA] =
+      mixedDiscrete[n_samples_non_na] =
           environment.data_numeric[k][discrete_pos];
-      n_samples_nonNA++;
+      n_samples_non_na++;
     }
   }
 }
@@ -771,7 +760,7 @@ int printProgress(double percentage, double startTime, int prg_numSearchMore) {
 // 	-k			: the rank of the nearest neigbhour's distance
 // to return
 using my_kd_tree_t =
-    KDTreeVectorOfVectorsAdaptor<vector<vector<double> >, double>;
+    KDTreeVectorOfVectorsAdaptor<vector<vector<double>>, double>;
 double compute_k_nearest_distance(
     vector<double> point, my_kd_tree_t::index_t* index, int k) {
   vector<size_t> ret_indexes(k);
@@ -784,56 +773,11 @@ double compute_k_nearest_distance(
   return (sqrt(out_dists_sqr[k - 1]));
 }
 
-// Computes the Kullback-Leibler divergence between two joint (2D) distributions
-// of real values based on the KNN estimation (F. Perez-Cruz 2004).
-//
-// <space 1> is the subsampling of <space 2> after removing NAs.
-double compute_kl_divergence_continuous(vector<vector<double> > space1,
-    vector<vector<double> > space2, int n1, int n2, int ndims, int k,
-    bool* flag_break_ties, int* map_samples, double* noise_vec) {
-  double D;
-  double sumlog = 0;
-  double noise;
-  int i_map;
-  for (int j = 0; j < ndims; j++) {
-    i_map = 0;
-    for (int i = 0; i < n2; i++) {
-      if (flag_break_ties[j]) {
-        noise = noise_vec[(j * n2) + i];
-        space2[i][j] += noise;
-        if (map_samples[i] == 1) {
-          space1[i_map][j] += noise;
-          i_map++;
-        }
-      }
-    }
-  }
-  // construct a kd-tree index:
-  // Dimensionality set at run-time (default: L2)
-  my_kd_tree_t mat_index1(ndims, space1, 10);
-  mat_index1.index->buildIndex();
-  my_kd_tree_t mat_index2(ndims, space2, 10);
-  mat_index2.index->buildIndex();
-
-  for (int i = 0; i < n1; i++) {
-    vector<double> point(ndims);
-    for (int j = 0; j < ndims; j++) {
-      point[j] = space1[i][j];
-    }
-
-    sumlog += log(compute_k_nearest_distance(point, mat_index2.index, k) /
-                  compute_k_nearest_distance(point, mat_index1.index, k));
-  }
-  D = ndims * (sumlog / n1) + log(1.0 * (n2 - 1) / (n1 - 1));
-
-  return (D);
-}
-
 double compute_kl_divergence(const vector<int>& posArray,
     Environment& environment, int samplesNotNA,
     const vector<int>& AllLevels_red, const vector<int>& sample_is_not_NA) {
   int current_samplesNotNA =
-      getNumSamples_nonNA(environment, posArray[0], posArray[1]);
+      getNumSamplesNonNA(environment, posArray[0], posArray[1]);
   double kldiv = 0;
 
   // 1 - XY discrete
@@ -879,14 +823,14 @@ double compute_kl_divergence(const vector<int>& posArray,
         i_map++;
       }
     }
-    vector<vector<double> > joint_nonNA(samplesNotNA, vector<double>(2));
-    int i_nonNA = 0;
+    vector<vector<double> > joint_non_na(samplesNotNA, vector<double>(2));
+    int i_non_na = 0;
     for (int i = 0; i < environment.n_samples; i++) {
       if (sample_is_not_NA[i] == 1) {
         for (int k = 0; k < 2; k++) {
-          joint_nonNA[i_nonNA][k] = environment.data_double[i][posArray[k]];
+          joint_non_na[i_non_na][k] = environment.data_double[i][posArray[k]];
         }
-        i_nonNA++;
+        i_non_na++;
       }
     }
     bool* flag_break_ties = new bool[2];
@@ -896,7 +840,7 @@ double compute_kl_divergence(const vector<int>& posArray,
     }
 
     kldiv =
-        samplesNotNA * compute_kl_divergence_continuous(joint_nonNA, joint_base,
+        samplesNotNA * compute_kl_divergence_continuous(joint_non_na, joint_base,
                            samplesNotNA, current_samplesNotNA, 2, KNN_K,
                            flag_break_ties, map_samples, environment.noise_vec);
 
@@ -920,7 +864,7 @@ double compute_kl_divergence(const vector<int>& posArray,
 
     // Retrieve marginal distibutions with the current conditioning Us
     int current_samplesNotNA =
-        getNumSamples_nonNA(environment, posArray[0], posArray[1]);
+        getNumSamplesNonNA(environment, posArray[0], posArray[1]);
     int* mixedDiscrete = new int[current_samplesNotNA];
     double* mixedContinuous = new double[current_samplesNotNA];
     int* curr_sample_is_not_NA = new int[environment.n_samples];
@@ -928,12 +872,8 @@ double compute_kl_divergence(const vector<int>& posArray,
         mixedContinuous, curr_sample_is_not_NA);
 
     // Create count vectors for the discrete variable
-    int* count_base = new int[n_discrete_levels];
-    int* count_nonNA = new int[n_discrete_levels];
-    for (int level = 0; level < n_discrete_levels; level++) {
-      count_base[level] = 0;
-      count_nonNA[level] = 0;
-    }
+    vector<int> count_non_na(n_discrete_levels, 0);
+    vector<int> count_base(n_discrete_levels, 0);
     for (int i = 0; i < current_samplesNotNA; i++) {
       count_base[mixedDiscrete[i]]++;
     }
@@ -941,7 +881,7 @@ double compute_kl_divergence(const vector<int>& posArray,
       // Make sure to use environment data so that the levels match (may be
       // recoded in reduced data)
       if(sample_is_not_NA[i])
-        count_nonNA[environment.data_numeric[i][discrete_pos]]++;
+        count_non_na[environment.data_numeric[i][discrete_pos]]++;
     }
 
     // Compute the sum count(y) * KL(X_nonNA|y || X|y) over all values of Y y
@@ -958,7 +898,7 @@ double compute_kl_divergence(const vector<int>& posArray,
         }
       }
 
-      vector<vector<double> > continuous_base(
+      vector<vector<double>> continuous_base(
           count_base[level], vector<double>(1));
       i_level = 0;
       for (int i = 0; i < current_samplesNotNA; i++) {
@@ -968,15 +908,15 @@ double compute_kl_divergence(const vector<int>& posArray,
         }
       }
 
-      vector<vector<double> > continuous_nonNA(
-          count_nonNA[level], vector<double>(1));
-      int i_level_nonNA = 0;
+      vector<vector<double>> continuous_non_na(
+          count_non_na[level], vector<double>(1));
+      int i_level_non_na = 0;
       for (int i = 0; i < environment.n_samples; i++) {
         if (sample_is_not_NA[i] == 1 &&
             environment.data_numeric[i][discrete_pos] == level) {
-          continuous_nonNA[i_level_nonNA][0] =
+          continuous_non_na[i_level_non_na][0] =
               environment.data_double[i][continuous_pos];
-          i_level_nonNA++;
+          i_level_non_na++;
         }
       }
       bool flag_break_ties[1];
@@ -984,27 +924,25 @@ double compute_kl_divergence(const vector<int>& posArray,
           false || (AllLevels_red[continuous_pos_binary] != samplesNotNA) ||
           (AllLevels_red[continuous_pos_binary] != current_samplesNotNA);
 
-      if (count_nonNA[level] > KNN_K) {
+      if (count_non_na[level] > KNN_K) {
         kldiv += fmax(0,
-            count_nonNA[level] *
-                compute_kl_divergence_continuous(continuous_nonNA,
-                    continuous_base, count_nonNA[level], count_base[level], 1,
+            count_non_na[level] *
+                compute_kl_divergence_continuous(continuous_non_na,
+                    continuous_base, count_non_na[level], count_base[level], 1,
                     KNN_K, flag_break_ties, map_level, environment.noise_vec));
       }
       delete[] map_level;
     }  // level loop
 
     // add KL(Y(!NA) || Y)
-    kldiv += samplesNotNA * kl(count_nonNA, count_base, samplesNotNA,
-                                current_samplesNotNA, n_discrete_levels);
+    kldiv += samplesNotNA *
+             kl(count_non_na, count_base, samplesNotNA, current_samplesNotNA);
 
-    delete[] count_nonNA;
-    delete[] count_base;
     delete[] mixedDiscrete;
     delete[] mixedContinuous;
     delete[] curr_sample_is_not_NA;
   }
-  return (kldiv);
+  return kldiv;
 }
 
 int sign(double val) {
@@ -1016,13 +954,52 @@ int sign(double val) {
     return 0;
 }
 
-/**
- * Counts and marks the rows that contain "NA"s for the edge given by
- * \a posArray ([0] is X, [1] is Y and above are Us) and an optional \a z.
- *
- * \return The number of non NA samples and modifies the vectors
- * sample_is_not_NA and NAs_count
- */
+// Computes the Kullback-Leibler divergence between two joint (2D) distributions
+// of real values based on the KNN estimation (F. Perez-Cruz 2004).
+// <space 1> is the subsampling of <space 2> after removing NAs.
+double compute_kl_divergence_continuous(vector<vector<double>>& space1,
+    vector<vector<double>>& space2, int n1, int n2, int ndims, int k,
+    bool* flag_break_ties, int* map_samples, double* noise_vec) {
+  double sumlog = 0;
+  double noise;
+  int i_map;
+  for (int j = 0; j < ndims; j++) {
+    i_map = 0;
+    for (int i = 0; i < n2; i++) {
+      if (flag_break_ties[j]) {
+        noise = noise_vec[(j * n2) + i];
+        space2[i][j] += noise;
+        if (map_samples[i] == 1) {
+          space1[i_map][j] += noise;
+          i_map++;
+        }
+      }
+    }
+  }
+  // construct a kd-tree index:
+  // Dimensionality set at run-time (default: L2)
+  my_kd_tree_t mat_index1(ndims, space1, 10);
+  mat_index1.index->buildIndex();
+  my_kd_tree_t mat_index2(ndims, space2, 10);
+  mat_index2.index->buildIndex();
+
+  for (int i = 0; i < n1; i++) {
+    vector<double> point(ndims);
+    for (int j = 0; j < ndims; j++) {
+      point[j] = space1[i][j];
+    }
+
+    sumlog += log(compute_k_nearest_distance(point, mat_index2.index, k) /
+                  compute_k_nearest_distance(point, mat_index1.index, k));
+  }
+
+  return ndims * (sumlog / n1) + log(1.0 * (n2 - 1) / (n1 - 1));
+}
+
+// Counts and marks the rows that contain "NA"s for the edge given by
+// \a posArray ([0] is X, [1] is Y and above are Us) and an optional \a z.
+// \return The number of non NA samples and modifies the vectors
+// sample_is_not_NA and NAs_count
 int count_non_NAs(int nbrUi, vector<int> &sample_is_not_NA,
     vector<int> &NAs_count, const vector<int>& posArray,
     Environment& environment, int z){
@@ -1049,7 +1026,7 @@ int count_non_NAs(int nbrUi, vector<int> &sample_is_not_NA,
       samplesNotNA++;
   }
 
-  return(samplesNotNA);
+  return samplesNotNA;
 }
 
 /**
