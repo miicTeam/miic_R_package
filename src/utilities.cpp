@@ -432,11 +432,8 @@ void transformToFactorsContinuous(Environment& environment, int i) {
     if (entry.compare("NA") != 0 && entry.compare("") != 0) {
       environment.data_numeric[j][i] = myMap.find(atof(entry.c_str()))->second;
 
-      typedef std::multimap<double, int>::iterator iterator;
-      std::pair<iterator, iterator> iterpair =
-          myMap.equal_range(atof(entry.c_str()));
-      iterator it = iterpair.first;
-      for (; it != iterpair.second; ++it) {
+      auto iterpair = myMap.equal_range(atof(entry.c_str()));
+      for (auto it = iterpair.first; it != iterpair.second; ++it) {
         if (it->second == environment.data_numeric[j][i]) {
           myMap.erase(it);
           break;
@@ -485,57 +482,30 @@ void setNumberLevels(Environment& environment) {
   }
 }
 
-int getNumSamples_nonNA(Environment& environment, int i, int j) {
-  bool sampleOk;
+int getNumSamples_nonNA(const Environment& environment, int i, int j) {
   int n_samples_nonNA = 0;
   for (int k = 0; k < environment.n_samples; k++) {
-    sampleOk = true;
-    if (environment.data_numeric[k][i] != -1 &&
-        environment.data_numeric[k][j] != -1) {
-      for (size_t u = 0;
-           u < environment.edges[i][j].shared_info->ui_list.size(); u++) {
-        if (environment.data_numeric[k][environment.edges[i][j]
-                                            .shared_info->ui_list[u]] == -1) {
-          sampleOk = false;
-        }
-      }
-      if (sampleOk) {
-        n_samples_nonNA++;
-      }
-    }
+    if (SampleHasNoNA(environment, k, i, j)) ++n_samples_nonNA;
   }
-  return (n_samples_nonNA);
+  return n_samples_nonNA;
 }
 
-void getJointSpace(Environment& environment, int i, int j,
-    vector<vector<double> >& jointSpace, int* curr_sample_is_not_NA) {
+void getJointSpace(const Environment& environment, int i, int j,
+    vector<vector<double>>& jointSpace, int* curr_sample_is_not_NA) {
   int n_samples_nonNA = 0;
-  bool sampleOk;
   for (int k = 0; k < environment.n_samples; k++) {
-    sampleOk = true;
     curr_sample_is_not_NA[k] = 0;
-    if (environment.data_numeric[k][i] != -1 &&
-        environment.data_numeric[k][j] != -1) {
-      for (size_t u = 0;
-           u < environment.edges[i][j].shared_info->ui_list.size(); u++) {
-        if (environment.data_numeric[k][environment.edges[i][j]
-                                            .shared_info->ui_list[u]] == -1) {
-          sampleOk = false;
-        }
-      }
-      if (sampleOk) {
-        curr_sample_is_not_NA[k] = 1;
-        jointSpace[n_samples_nonNA][0] = environment.data_double[k][i];
-        jointSpace[n_samples_nonNA][1] = environment.data_double[k][j];
-        n_samples_nonNA++;
-      }
+    if (SampleHasNoNA(environment, k, i, j)) {
+      curr_sample_is_not_NA[k] = 1;
+      jointSpace[n_samples_nonNA][0] = environment.data_double[k][i];
+      jointSpace[n_samples_nonNA][1] = environment.data_double[k][j];
+      n_samples_nonNA++;
     }
   }
 }
 
-double** getJointFreqs(
-    Environment& environment, int i, int j,
-    const vector<int> &sample_is_not_NA) {
+double** getJointFreqs(const Environment& environment, int i, int j,
+    const vector<int>& sample_is_not_NA) {
   double** jointFreqs = new double*[environment.levels[i]];
   for (int k = 0; k < environment.levels[i]; k++) {
     jointFreqs[k] = new double[environment.levels[j]];
@@ -544,28 +514,10 @@ double** getJointFreqs(
     }
   }
 
-  int n_samples_nonNA(0);
-  bool sampleOk;
+  int n_samples_nonNA = 0;
   for (int k = 0; k < environment.n_samples; k++) {
-    sampleOk = true;
-    if(sample_is_not_NA.empty()){
-      // Check if any value is NA in X,Y or the Us
-      if (environment.data_numeric[k][i] != -1 &&
-          environment.data_numeric[k][j] != -1) {
-        for (size_t u = 0;
-             u < environment.edges[i][j].shared_info->ui_list.size(); u++) {
-          if (environment.data_numeric[k][environment.edges[i][j]
-                                              .shared_info->ui_list[u]] == -1)
-            sampleOk = false;
-        }
-      }
-      else sampleOk = false;
-    }
-    else {
-      // Use the sample_is_not_NA vector
-      sampleOk = sample_is_not_NA[k];
-    }
-    if (sampleOk) {
+    if ((!sample_is_not_NA.empty() && sample_is_not_NA[k]) ||
+        (sample_is_not_NA.empty() && SampleHasNoNA(environment, k, i, j))) {
       jointFreqs[environment.data_numeric[k][i]]
                 [environment.data_numeric[k][j]]++;
       n_samples_nonNA++;
@@ -576,37 +528,24 @@ double** getJointFreqs(
     for (int l = 0; l < environment.levels[j]; l++)
       jointFreqs[k][l] /= n_samples_nonNA;
 
-  return (jointFreqs);
+  return jointFreqs;
 }
 
-void getJointMixed(Environment& environment, int i, int j, int* mixedDiscrete,
-    double* mixedContinuous, int* curr_sample_is_not_NA) {
+void getJointMixed(const Environment& environment, int i, int j,
+    int* mixedDiscrete, double* mixedContinuous, int* curr_sample_is_not_NA) {
   int discrete_pos = environment.is_continuous[i] ? j : i;
   int continuous_pos = environment.is_continuous[i] ? i : j;
-
   // Fill marginal distributions
   int n_samples_nonNA = 0;
-  bool sampleOk;
   for (int k = 0; k < environment.n_samples; k++) {
-    sampleOk = true;
     curr_sample_is_not_NA[k] = 0;
-    if (environment.data_numeric[k][i] != -1 &&
-        environment.data_numeric[k][j] != -1) {
-      for (size_t u = 0;
-           u < environment.edges[i][j].shared_info->ui_list.size(); u++) {
-        if (environment.data_numeric[k][environment.edges[i][j]
-                                            .shared_info->ui_list[u]] == -1) {
-          sampleOk = false;
-        }
-      }
-      if (sampleOk) {
-        curr_sample_is_not_NA[k] = 1;
-        mixedContinuous[n_samples_nonNA] =
-            environment.data_double[k][continuous_pos];
-        mixedDiscrete[n_samples_nonNA] =
-            environment.data_numeric[k][discrete_pos];
-        n_samples_nonNA++;
-      }
+    if (SampleHasNoNA(environment, k, i, j)) {
+      curr_sample_is_not_NA[k] = 1;
+      mixedContinuous[n_samples_nonNA] =
+          environment.data_double[k][continuous_pos];
+      mixedDiscrete[n_samples_nonNA] =
+          environment.data_numeric[k][discrete_pos];
+      n_samples_nonNA++;
     }
   }
 }
@@ -677,18 +616,17 @@ void setEnvironment(Environment& environment) {
     if (!environment.is_continuous[i])
       transformToFactors(environment, i);
     else
-      transformToFactorsContinuous(environment,
-          i);  // update environment.data_numeric not
-               // taking into account repetition
+      // update environment.data_numeric not taking into account repetition
+      transformToFactorsContinuous(environment, i);
   }
 
   // for continuous
   if (any_continuous) {
     for (int j = 0; j < environment.n_nodes; j++) {
       if (environment.is_continuous[j]) {
+        // update environment.data_numeric taking into account repetition
         transformToFactorsContinuousIdx(environment, j);
-        transformToFactors(environment, j);  // update environment.data_numeric
-                                             // taking into account repetition
+        transformToFactors(environment, j);
       }
     }
   }
@@ -1250,6 +1188,15 @@ void saveScore(const vector<int>& posArray, int nbrUi, int z, double* score,
   #pragma omp critical
   #endif
   environment.look_scores_orientation.insert({key, score_struct});
+}
+
+// Check if the row'th sample of node i and j and their ui in ui_list has no NA
+// (-1) in env.data_numeric
+bool SampleHasNoNA(const Environment& env, int row, int i, int j) {
+  const auto& ui_list = env.edges[i][j].shared_info->ui_list;
+  return (env.data_numeric[row][i] != -1 && env.data_numeric[row][j] != -1 &&
+          std::all_of(ui_list.begin(), ui_list.end(),
+              [&env, &row](int u) { return env.data_numeric[row][u] != -1; }));
 }
 
 }  // namespace utility

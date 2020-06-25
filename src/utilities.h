@@ -39,14 +39,13 @@ double kl(int** counts1, double** freqs2, int nrows, int ncols);
 double kl(double* freqs1, double* freqs2, int nlevels);
 double kl(int* freqs1, int* freqs2, int n1, int n2, int nlevels);
 
-void getJointMixed(structure::Environment&, int i, int j, int* mixedDiscrete,
-    double* mixedContinuous, int* curr_sample_is_not_NA);
-double** getJointFreqs(
-    structure::Environment&, int i, int j,
+void getJointMixed(const structure::Environment&, int i, int j,
+    int* mixedDiscrete, double* mixedContinuous, int* curr_sample_is_not_NA);
+double** getJointFreqs(const structure::Environment&, int i, int j,
     const std::vector<int>& sample_is_not_NA = std::vector<int>());
-void getJointSpace(structure::Environment&, int i, int j, double** jointSpace,
-    int* curr_sample_is_not_NA);
-int getNumSamples_nonNA(structure::Environment&, int i, int j);
+void getJointSpace(const structure::Environment&, int i, int j,
+    double** jointSpace, int* curr_sample_is_not_NA);
+int getNumSamples_nonNA(const structure::Environment&, int i, int j);
 
 int count_non_NAs(int nbrUi, std::vector<int> &sample_is_not_NA,
     std::vector<int> &NAs_count, const std::vector<int>& posArray,
@@ -65,12 +64,14 @@ bool checkInterrupt(bool check = true);
 
 double lookupScore(const std::vector<int> &posArray, int nbrUi, int z,
   structure::Environment& environment);
-void lookupScore(const std::vector<int> &posArray, int nbrUi, int z, double* score,
-  structure::Environment& environment);
-void saveScore(const std::vector<int> &posArray, int nbrUi, int z, double score,
+void lookupScore(const std::vector<int>& posArray, int nbrUi, int z,
+    double* score, structure::Environment& environment);
+void saveScore(const std::vector<int>& posArray, int nbrUi, int z, double score,
     structure::Environment& environment);
-void saveScore(const std::vector<int> &posArray, int nbrUi, int z, double* score,
-    structure::Environment& environment);
+void saveScore(const std::vector<int>& posArray, int nbrUi, int z,
+    double* score, structure::Environment& environment);
+
+bool SampleHasNoNA(const structure::Environment& env, int row, int i, int j);
 
 class EdgeSorter {
   const structure::Environment& env;
