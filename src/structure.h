@@ -80,23 +80,30 @@ struct Edge {
   std::shared_ptr<EdgeSharedInfo> shared_info;
 };
 
-struct EdgeKey {
-  int           x;
-  int           y;
+struct CacheInfoKey{
+  std::set<int> xyz;
   std::set<int> Ui;
   
-  bool operator<(const EdgeKey& other) const {
-    if ( std::min(x, y) == std::min(other.x, other.y) ) {
-      if ( std::max(x, y) == std::max(other.x, other.y) ) {
-        return Ui < other.Ui;
-      }
-      return std::max(x, y) < std::max(other.x, other.y);
+  //Two point information constructor : I(X;Y|Ui,Z)
+  CacheInfoKey(int x, int y, const std::set<int>& Ui_) {
+    xyz.insert({x,y});
+    Ui = Ui_;
+  }
+  //Three point information constructor : I(X;Y;Z|Ui)
+  CacheInfoKey(int x, int y, int z, const std::set<int>& Ui_) {
+    xyz.insert({x,y,z});
+    Ui = Ui_;
+  }
+  
+  bool operator<(const CacheInfoKey& other) const {
+    if (xyz == other.xyz) {
+      return Ui < other.Ui;
     }
-    return std::min(x, y) < std::min(other.x, other.y);
+    return xyz < other.xyz;
   }
 };
 
-struct ScoreValue {
+struct CacheScoreValue {
   int    n_samples;
   double I_xyzUi;
   double cplx;
@@ -211,8 +218,8 @@ struct Environment {
   int initbins;
   double* looklog;
   double* lookH;
-  std::map<EdgeKey, double> look_scores;
-  std::map<EdgeKey, ScoreValue> look_scores_orientation;
+  std::map<CacheInfoKey, double> look_scores;
+  std::map<CacheInfoKey, CacheScoreValue> look_scores_orientation;
 
   double* noise_vec;
 };
@@ -220,9 +227,9 @@ struct Environment {
 }  // namespace structure_impl
 using structure_impl::Edge;
 using structure_impl::EdgeID;
-using structure_impl::EdgeKey;
 using structure_impl::EdgeSharedInfo;
-using structure_impl::ScoreValue;
+using structure_impl::CacheInfoKey;
+using structure_impl::CacheScoreValue;
 using structure_impl::Environment;
 using structure_impl::ExecutionTime;
 using structure_impl::MemorySpace;

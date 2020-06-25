@@ -1212,7 +1212,7 @@ double lookupScore(const vector<int>& posArray, int nbrUi, int z,
     Environment& environment) {
   std::set<int> Ui_set(posArray.cbegin() + 2, posArray.cbegin() + 2 + nbrUi);
   Ui_set.insert(z);
-  EdgeKey key {posArray[0], posArray[1], Ui_set};
+  CacheInfoKey key {posArray[0], posArray[1], Ui_set};
   double score = -1.0;
 
   if (environment.look_scores.count(key) != 0){
@@ -1224,8 +1224,7 @@ double lookupScore(const vector<int>& posArray, int nbrUi, int z,
 void lookupScore(const vector<int>& posArray, int nbrUi, int z, double* res,
     Environment& environment) {
   std::set<int> Ui_set(posArray.cbegin() + 2, posArray.cbegin() + 2 + nbrUi);
-  Ui_set.insert(z);
-  EdgeKey key {posArray[0], posArray[1], Ui_set};
+  CacheInfoKey key {posArray[0], posArray[1], z, Ui_set};
 
   if (environment.look_scores_orientation.count(key) != 0){
     res[0] = environment.look_scores_orientation[key].n_samples;
@@ -1239,7 +1238,7 @@ void saveScore(const vector<int>& posArray, int nbrUi, int z, double score,
     Environment& environment) {
   std::set<int> Ui_set(posArray.cbegin() + 2, posArray.cbegin() + 2 + nbrUi);
   Ui_set.insert(z);
-  EdgeKey key {posArray[0], posArray[1], Ui_set};
+  CacheInfoKey key {posArray[0], posArray[1], Ui_set};
   #ifdef _OPENMP
   #pragma omp critical
   #endif
@@ -1249,9 +1248,8 @@ void saveScore(const vector<int>& posArray, int nbrUi, int z, double score,
 void saveScore(const vector<int>& posArray, int nbrUi, int z, double* score,
     Environment& environment) {
   std::set<int> Ui_set(posArray.cbegin() + 2, posArray.cbegin() + 2 + nbrUi);
-  Ui_set.insert(z);
-  EdgeKey key {posArray[0], posArray[1], Ui_set};
-  ScoreValue score_struct {int(score[0]), score[1], score[2]};
+  CacheInfoKey key {posArray[0], posArray[1], z, Ui_set};
+  CacheScoreValue score_struct {int(score[0]), score[1], score[2]};
   #ifdef _OPENMP
   #pragma omp critical
   #endif
