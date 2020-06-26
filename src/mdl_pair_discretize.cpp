@@ -33,11 +33,8 @@ using namespace miic::utility;
 
 // Dealing with input variables
 void transformToFactorsContinuous(
-    double** data, int** dataNumeric, int i, int n) {
+    double** data, vector<vector<int>>& dataNumeric, int i, int n) {
   std::multimap<double, int> myMap;
-
-  // clean the dictionary since it is used column by column
-  myMap.clear();
 
   vector<double> clmn;
   for (int j = 0; j < n; j++) {
@@ -67,7 +64,8 @@ void transformToFactorsContinuous(
   }
 }
 
-void transformToFactors(double** data, int** dataNumeric, int n, int i) {
+void transformToFactors(
+    double** data, vector<vector<int>>& dataNumeric, int n, int i) {
   // create a dictionary to store the factors of the strings
   map<double, int> myMap;
   // clean the dictionary since it is used column by column
@@ -86,8 +84,8 @@ void transformToFactors(double** data, int** dataNumeric, int n, int i) {
   }
 }
 
-void transformToFactorsContinuousIdx(
-    int** dataNumeric, int** dataNumericIdx, int n, int i) {
+void transformToFactorsContinuousIdx(const vector<vector<int>>& dataNumeric,
+    int** dataNumericIdx, int n, int i) {
   map<int, int> myMap;
   // clean the dictionary since it is used column by column
   myMap.clear();
@@ -148,10 +146,7 @@ List mydiscretizeMutual(SEXP RmyDist1, SEXP RmyDist2, SEXP RflatU,
     }
   }
 
-  int** dataNumeric = new int*[n];
-  for (j = 0; j < n; j++) {
-    dataNumeric[j] = new int[nbrU + 2];
-  }
+  vector<vector<int>> dataNumeric(n, vector<int>(nbrU + 2));
   for (i = 0; i < (nbrU + 2); i++) {
     if (cnt_vec[i] == 1)
       // update environment.dataNumeric not taking into account repetition
@@ -301,11 +296,6 @@ List mydiscretizeMutual(SEXP RmyDist1, SEXP RmyDist2, SEXP RflatU,
   double* res = compute_mi_cond_alg1(dataNumeric_red, dataNumericIdx_red,
       AllLevels_red, cnt_red, posArray_red, nbrUi, n, sample_weights_red,
       flag_sample_weights, environment, true);
-
-  for (int i = 0; i < n; i++) {
-    delete[] dataNumeric[i];
-  }
-  delete[] dataNumeric;
 
   for (int i = 0; i < (nbrU + 2); i++) {
     delete[] dataNumericIdx[i];

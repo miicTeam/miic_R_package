@@ -10,7 +10,6 @@
 #include "utilities.h"
 
 using Rcpp::as;
-using std::cout;
 using std::string;
 using std::vector;
 using namespace miic::utility;
@@ -27,6 +26,7 @@ Environment::Environment(
     : data(as<vector<vector<string>>>(input_data)),
       n_samples(data.size()),
       n_nodes(data[0].size()),
+      data_numeric(n_samples, vector<int>(n_nodes)),
       n_eff(as<int>(arg_list["n_eff"])),
       is_continuous(as<vector<int>>(arg_list["is_continuous"])),
       orientation_phase(as<bool>(arg_list["orientation"])),
@@ -76,11 +76,6 @@ Environment::Environment(
   if (n_threads < 0) n_threads = omp_get_num_procs();
   omp_set_num_threads(n_threads);
 #endif
-  // create the data matrix for factors
-  data_numeric = new int*[n_samples];
-  for (int i = 0; i < n_samples; i++) {
-    data_numeric[i] = new int[n_nodes];
-  }
   // for continuous
   auto any_continuous = std::any_of(
       is_continuous.begin(), is_continuous.end(), [](int i) { return i == 1; });
@@ -196,8 +191,6 @@ Environment::Environment(
 }
 
 void Environment::transformToFactors(int i) {
-  if (verbose) cout << "# Transforming matrix to factors\n";
-
   // create a dictionary to store the factors of the strings
   std::map<string, int> myMap;
   myMap["NA"] = -1;
@@ -217,13 +210,7 @@ void Environment::transformToFactors(int i) {
 }
 
 void Environment::transformToFactorsContinuous(int i) {
-  if (verbose)
-    cout << "# Transforming matrix to factors continuous\n";
-
   std::multimap<double, int> myMap;
-
-  // clean the dictionary since it is used column by column
-  myMap.clear();
 
   vector<double> clmn;
   for (int j = 0; j < n_samples; j++) {
@@ -257,9 +244,6 @@ void Environment::transformToFactorsContinuous(int i) {
 }
 
 void Environment::transformToFactorsContinuousIdx(int i) {
-  if (verbose)
-    cout << "# Transforming matrix to factors continuous\n";
-
   std::map<int, int> myMap;
 
   int entry;
@@ -287,6 +271,7 @@ void Environment::setNumberLevels() {
     levels[i] = max + 1;
   }
 }
+
 void Environment::readFileType() {
   if (std::all_of(is_continuous.begin(), is_continuous.end(),
           [](int i) { return i == 0; }))

@@ -19,13 +19,13 @@ using std::vector;
 
 struct Environment {
   vector<vector<string>> data;
+  int n_samples;
+  int n_nodes;
   double** data_double;
-  int** data_numeric;
+  vector<vector<int>> data_numeric;
   int** data_numeric_idx;
   int* oneLineMatrix;
 
-  int n_samples;
-  int n_nodes;
   int n_eff;
   vector<Node> nodes{};
   Edge** edges;
