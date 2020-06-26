@@ -1,6 +1,7 @@
 #ifndef MIIC_COMPUTE_ENS_INFORMATION_H_
 #define MIIC_COMPUTE_ENS_INFORMATION_H_
 
+#include "environment.h"
 #include "structure.h"
 
 namespace miic {

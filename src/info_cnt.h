@@ -7,6 +7,7 @@
 #include <functional>
 #include <vector>
 
+#include "environment.h"
 #include "structure.h"
 
 namespace miic {

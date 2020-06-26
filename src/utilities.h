@@ -1,6 +1,7 @@
 #ifndef MIIC_UTILITIES_H_
 #define MIIC_UTILITIES_H_
 
+#include "environment.h"
 #include "structure.h"
 
 namespace miic {
@@ -8,21 +9,12 @@ namespace utility {
 
 void createMemorySpace(structure::Environment&, structure::MemorySpace&);
 void deleteMemorySpace(structure::Environment&, structure::MemorySpace&);
-void deleteStruct(structure::Environment&);
-bool readData(structure::Environment&);
-bool parseCommandLine(structure::Environment&, int, char**);
-void setEnvironment(structure::Environment&);
-void setNumberLevels(structure::Environment&);
-std::vector<std::vector<std::string> > getEdgesInfoTable(
+std::vector<std::vector<std::string>> getEdgesInfoTable(
     structure::Environment&);
 std::string toNameString(
     const structure::Environment&, const std::vector<int>&);
-bool readBlackbox(std::vector<std::string>, structure::Environment&);
 std::vector<std::vector<int>> getAdjMatrix(const structure::Environment&);
 int sign(double val);
-void transformToFactors(structure::Environment&, int);
-void transformToFactorsContinuous(structure::Environment&, int);
-void transformToFactorsContinuousIdx(structure::Environment&, int);
 void sort2arraysConfidence(int len, int a[], int brr[]);
 void sort2arrays(int len, int a[], int brr[], int bridge[]);
 double get_wall_time();

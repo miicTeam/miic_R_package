@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 
+#include "environment.h"
 #include "structure.h"
 
 namespace miic {

@@ -7,6 +7,7 @@
 #include <set>
 #include <stack>
 
+#include "environment.h"
 #include "structure.h"
 
 namespace miic {

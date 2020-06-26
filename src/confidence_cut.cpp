@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "compute_ens_information.h"
+#include "environment.h"
 #include "reconstruct.h"
 #include "structure.h"
 #include "utilities.h"
@@ -245,9 +246,9 @@ vector<vector<string> > miic::reconstruction::confidenceCut(
 
     for (int j = 0; j < environment.n_nodes; j++) {
       if (environment.is_continuous[j]) {
-        transformToFactorsContinuous(environment, j);
-        transformToFactorsContinuousIdx(environment, j);
-        transformToFactors(environment, j);
+        environment.transformToFactorsContinuous(j);
+        environment.transformToFactorsContinuousIdx(j);
+        environment.transformToFactors(j);
       }
     }
   }  // End copy data back

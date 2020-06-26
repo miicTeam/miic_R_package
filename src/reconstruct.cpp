@@ -9,12 +9,7 @@
 #include <sstream>
 #include <string>
 
-#ifdef _OPENMP
-#include <omp.h>
-#endif
-
 #include "orientation_probability.h"
-#include "structure.h"
 #include "utilities.h"
 
 using Rcpp::_;
@@ -35,73 +30,9 @@ List empty_results() {
 
 // [[Rcpp::export]]
 List reconstruct(DataFrame input_data, List arg_list) {
-  Environment environment;
+  Environment environment(input_data, arg_list);
 
-  environment.data = as<vector<vector<string>>>(input_data);
-  auto var_names = as<vector<string>>(arg_list["var_names"]);
-  std::transform(var_names.begin(), var_names.end(),
-      std::back_inserter(environment.nodes),
-      [](string name) { return Node(name); });
-  environment.is_continuous = as<vector<int>>(arg_list["is_continuous"]);
-  environment.n_nodes = environment.is_continuous.size();
-  environment.n_threads = as<int>(arg_list["n_threads"]);
-#ifdef _OPENMP
-  int threads = environment.n_threads;
-  if (threads < 0) threads = omp_get_num_procs();
-  omp_set_num_threads(threads);
-#endif
-
-  environment.test_mar = as<bool>(arg_list["test_mar"]);
-
-  environment.n_eff = as<int>(arg_list["n_eff"]);
-  environment.half_v_structure = as<int>(arg_list["half_v_structure"]);
-
-  string cplx_flag = as<string>(arg_list["cplx"]);
-  environment.cplx = 1;  // use nml complexity by default
-  if (cplx_flag.compare("mdl") == 0) environment.cplx = 0;
-
-  std::string consistent_flag = as<std::string>(arg_list["consistent"]);
-  environment.consistent = 0;
-  if (consistent_flag.compare("orientation") == 0)
-    environment.consistent = 1;
-  if (consistent_flag.compare("skeleton") == 0) environment.consistent = 2;
-  environment.max_iteration = as<int>(arg_list["max_iteration"]);
-
-  std::string latent_flag = as<std::string>(arg_list["latent"]);
-  environment.latent = false;
-  environment.latent_orientation = false;
-  if (latent_flag.compare("yes") == 0) environment.latent = true;
-  if (latent_flag.compare("orientation") == 0)
-    environment.latent_orientation = true;
-
-  environment.is_k23 = as<bool>(arg_list["is_k23"]);
-  environment.degenerate = as<bool>(arg_list["degenerate"]);
-  bool orientation_phase = as<bool>(arg_list["orientation"]);
-  environment.propagation = as<bool>(arg_list["propagation"]);
-  environment.no_init_eta = as<bool>(arg_list["no_init_eta"]);
-
-  environment.n_shuffles = as<int>(arg_list["n_shuffles"]);
-  environment.conf_threshold = as<double>(arg_list["conf_threshold"]);
-
-  environment.sample_weights = as<vector<double>>(arg_list["sample_weights"]);
-
-  environment.verbose = as<bool>(arg_list["verbose"]);
-
-  double startTime;
-
-  vector<vector<string> > retShuffle;
-  vector<vector<string> > retShuffleAvg;
-  vector<string> shfVec;
-
-  string filePath;
-
-  // set the environment
-  srand(0);
-  setEnvironment(environment);
-  vector<string> v(as<vector<string>>(arg_list["black_box"]));
-  if (v.size() > 1) readBlackbox(v, environment);
-
-  startTime = get_wall_time();
+  double startTime = get_wall_time();
 
   environment.memoryThreads = new MemorySpace[environment.n_threads];
   for (int i = 0; i < environment.n_threads; i++) {
@@ -126,11 +57,10 @@ List reconstruct(DataFrame input_data, List arg_list) {
     std::cout << "\n# ----> First contributing node elapsed time:" << spentTime
               << "sec\n\n";
   }
-  // Run the skeleton iteration phase if consistency is required.
   BCC bcc(environment);
   auto cycle_tracker = CycleTracker(environment);
-  vector<vector<string> > confVect;
-  vector<vector<string> > orientations;
+  vector<vector<string>> confVect;
+  vector<vector<string>> orientations;
   do {
     if (environment.consistent > 0) bcc.analyse();
     // Save the neighbours in the status_prev structure
@@ -174,7 +104,7 @@ List reconstruct(DataFrame input_data, List arg_list) {
       environment.exec_time.cut = 0;
     }
     // Oriente edges for non-consistent/orientation consistent algorithm
-    if (orientation_phase && environment.numNoMore > 0 &&
+    if (environment.orientation_phase && environment.numNoMore > 0 &&
         environment.consistent <= 1) {
       orientations = orientationProbability(environment);
     }
@@ -247,7 +177,6 @@ List reconstruct(DataFrame input_data, List arg_list) {
     deleteMemorySpace(environment, environment.memoryThreads[i]);
   }
   deleteMemorySpace(environment, environment.m);
-  deleteStruct(environment);
 
   return result;
 }

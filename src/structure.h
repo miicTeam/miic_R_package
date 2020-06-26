@@ -1,11 +1,12 @@
 #ifndef MIIC_STRUCTURE_H_
 #define MIIC_STRUCTURE_H_
 
-#include <memory>
+#include <Rcpp.h>
+
+#include <memory>  // std::shared_ptr
+#include <set>
 #include <string>
 #include <vector>
-#include <map>
-#include <set>
 
 namespace miic {
 namespace structure {
@@ -56,7 +57,7 @@ struct EdgeSharedInfo {
 
 struct Node {
   string name;
-  Node(string name) : name(name) {}
+  Node(string name) : name(std::move(name)) {}
 };
 
 struct EdgeID {
@@ -82,7 +83,7 @@ struct Edge {
 struct CacheInfoKey{
   std::set<int> xyz;
   std::set<int> Ui;
-  
+
   //Two point information constructor : I(X;Y|Ui,Z)
   CacheInfoKey(int x, int y, const std::set<int>& Ui_) {
     xyz.insert({x,y});
@@ -93,7 +94,7 @@ struct CacheInfoKey{
     xyz.insert({x,y,z});
     Ui = Ui_;
   }
-  
+
   bool operator<(const CacheInfoKey& other) const {
     if (xyz == other.xyz) {
       return Ui < other.Ui;
@@ -149,87 +150,12 @@ struct ExecutionTime {
   long double total;
 };
 
-// Structure for all the needed parameters (input plus state variables)
-struct Environment {
-  ExecutionTime exec_time;
-  // level of consistency required for the graph
-  // 0: no consistency requirement
-  // 1: skeleton consistent
-  // 2: orientation consistent
-  int consistent;
-  // when consistent > 0, the maximum number of iterations allowed when trying
-  // to find a consistent graph.
-  int max_iteration;
-  double** data_double;
-  int** iterative_cuts;
-  vector<double> sample_weights;
-  bool flag_sample_weights;
-  // whether or not do MAR (Missing at random) test using KL-divergence
-  bool test_mar;
-  int n_threads;
-  MemorySpace m;
-  MemorySpace* memoryThreads;
-
-  double* c2terms;
-  double** cterms;
-  double** lookchoose;
-  vector<int> is_continuous;
-  int* oneLineMatrix;
-
-  int n_nodes;
-  int n_samples;
-  // if firstStepIteration is done
-  bool first_iter_done = false;
-  // List of ids of edge whose status is not yet determined
-  vector<EdgeID*> unsettled_list;
-  // List of ids of edge whose status is sure to be connected
-  vector<EdgeID*> connected_list;
-  int numSearchMore;
-  int numNoMore;
-
-  vector<Node> nodes;
-  Edge** edges;
-  vector<vector<string>> data;
-  int** data_numeric;
-  int** data_numeric_idx;
-  int* levels;
-
-  double log_eta = 0;
-
-  bool degenerate;
-  bool verbose;
-  bool latent;
-  bool latent_orientation;
-  bool no_init_eta = false;
-  bool is_k23;
-  bool propagation;
-
-  int cplx;
-  int half_v_structure;
-
-  int n_shuffles;
-  double conf_threshold;
-
-  int n_eff;
-  int thresPc;
-
-  int maxbins;
-  int initbins;
-  double* looklog;
-  double* lookH;
-  std::map<CacheInfoKey, double> look_scores;
-  std::map<CacheInfoKey, CacheScoreValue> look_scores_orientation;
-
-  double* noise_vec;
-};
-
 }  // namespace structure_impl
+using structure_impl::CacheInfoKey;
+using structure_impl::CacheScoreValue;
 using structure_impl::Edge;
 using structure_impl::EdgeID;
 using structure_impl::EdgeSharedInfo;
-using structure_impl::CacheInfoKey;
-using structure_impl::CacheScoreValue;
-using structure_impl::Environment;
 using structure_impl::ExecutionTime;
 using structure_impl::MemorySpace;
 using structure_impl::Node;
