@@ -217,6 +217,12 @@ discretizeMutual <- function(X,
     X <- X[!NArows]
     Y <- Y[!NArows]
   }
+  if (length(which(!NArows)) < 3) {
+    stop(paste0(
+      "There are only ", length(which(!NArows)),
+      " rows with complete data, not enough non-NA samples."
+    ))
+  }
 
   if (!is.null(matrixU)) {
     for (k in 1:ncol(matrixU)) {

@@ -1575,6 +1575,11 @@ double* compute_Rscore_Ixyz_alg5(vector<vector<int> > data,
   // dpi
   dpi = first - log1p(exp(first - second));
 
+  if(environment.verbose){
+    printf("nv    %.2f = %i * %.2f\n", nv, n, Ik_xyz_u);
+    printf("dpi   %.2f = %.2f - log1p(exp(%.2f - %.2f)) = %.2f - %.2f\n", dpi, first, first, second, first, log1p(exp(first-second)));
+  }
+
   if (dpi < nv) {
     // Pdpi>Pnv => Rscore=Pdpi
     Rscore = dpi;

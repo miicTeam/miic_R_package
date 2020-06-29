@@ -53,7 +53,7 @@ List reconstruct(List input_data, List arg_list) {
   environment.exec_time.init = spentTime;
   environment.exec_time.init_iter = spentTime;
   environment.exec_time.iter = 0;
-  if (environment.verbose == true) {
+  if (environment.verbose) {
     std::cout << "\n# ----> First contributing node elapsed time:" << spentTime
               << "sec\n\n";
   }
