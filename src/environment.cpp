@@ -26,9 +26,11 @@ Environment::Environment(
     : data(as<vector<vector<string>>>(input_data)),
       n_samples(data.size()),
       n_nodes(data[0].size()),
+      data_double(n_nodes),
       data_numeric(n_samples, vector<int>(n_nodes)),
-      n_eff(as<int>(arg_list["n_eff"])),
       is_continuous(as<vector<int>>(arg_list["is_continuous"])),
+      levels(n_nodes),
+      n_eff(as<int>(arg_list["n_eff"])),
       orientation_phase(as<bool>(arg_list["orientation"])),
       propagation(as<bool>(arg_list["propagation"])),
       max_iteration(as<int>(arg_list["max_iteration"])),
@@ -187,7 +189,7 @@ Environment::Environment(
         std::rand() / ((RAND_MAX + 1u) / MAGNITUDE_TIES) - MAGNITUDE_TIES / 2;
   }
 
-  readBlackbox(as<vector<string>>(arg_list["black_box"]));
+  readBlackbox(as<vector<vector<int>>>(arg_list["black_box"]));
 }
 
 void Environment::transformToFactors(int i) {
@@ -261,10 +263,8 @@ void Environment::transformToFactorsContinuousIdx(int i) {
 
 // Set the number of levels for each node (the maximum level of each column)
 void Environment::setNumberLevels() {
-  levels = new int[n_nodes];
-  int max;
   for (int i = 0; i < n_nodes; i++) {
-    max = 0;
+    int max = 0;
     for (int j = 0; j < n_samples; j++) {
       if (data_numeric[j][i] > max) max = data_numeric[j][i];
     }
@@ -273,50 +273,25 @@ void Environment::setNumberLevels() {
 }
 
 void Environment::readFileType() {
-  if (std::all_of(is_continuous.begin(), is_continuous.end(),
-          [](int i) { return i == 0; }))
-    return;
-
-  data_double = new double*[n_samples];
-  for (int i = 0; i < n_samples; i++) {
-    data_double[i] = new double[n_nodes];
-    for (int j = 0; j < n_nodes; j++) {
-      if (is_continuous[j]) {
+  for (int j = 0; j < n_nodes; j++) {
+    if (is_continuous[j]) {
+      data_double[j].resize(n_samples);
+      for (int i = 0; i < n_samples; i++) {
         if (data[i][j].compare("NA") == 0 || data[i][j].compare("") == 0) {
-          data_double[i][j] = std::numeric_limits<double>::quiet_NaN();
+          data_double[j][i] = std::numeric_limits<double>::quiet_NaN();
         } else {
-          data_double[i][j] = atof(data[i][j].c_str());
+          data_double[j][i] = atof(data[i][j].c_str());
         }
       }
     }
   }
 }
 
-void Environment::readBlackbox(const vector<string>& node_list) {
-  if (node_list.size() <= 1)
-    return;
-
-  string s1, s2;
-  int posX, posY;
-  for (size_t pos = 0; pos < node_list.size(); pos++) {
-    posX = -1;
-    posY = -1;
-
-    s1 = node_list[pos];
-    for (int i = 0; i < n_nodes; i++) {
-      if (nodes[i].name.compare(s1) == 0) posX = i;
-    }
-
-    pos++;
-    s2 = node_list[pos];
-    for (int i = 0; i < n_nodes; i++) {
-      if (nodes[i].name.compare(s2) == 0) posY = i;
-    }
-
-    if (posX != -1 && posY != -1) {
-      edges[posX][posY].status = 0;
-      edges[posY][posX].status = 0;
-    }
+void Environment::readBlackbox(const vector<vector<int>>& node_list) {
+  for (const auto& pair : node_list) {
+    auto x = pair[0], y = pair[1];
+      edges[x][y].status = 0;
+      edges[y][x].status = 0;
   }
 }
 

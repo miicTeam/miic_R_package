@@ -22,10 +22,21 @@ miic.reconstruct <- function(input_data = NULL,
                              ) {
   var_names <- colnames(input_data)
 
+  nameToIndex <- function(name, var_indices) {
+    index <- var_indices[name]
+    if (is.na(index))
+      stop(paste0(name, " in the black box does not match names in the input"))
+    else
+      return(index)
+  }
   if (!is.null(black_box)) {
-    black_box <- as.vector(as.character(t(as.matrix(black_box))))
+    # transform var names to var indices
+    var_indices <- c(0: (length(input_data) - 1))
+    names(var_indices) <- var_names
+    black_box[] <- lapply(black_box, nameToIndex, var_indices)
+    black_box <- data.frame(t(black_box))
   } else {
-    black_box <- character()  # pass to cpp as empty vector<string>
+    black_box <- list()  # pass to cpp as empty vector
   }
 
   if (is.null(sample_weights)) {

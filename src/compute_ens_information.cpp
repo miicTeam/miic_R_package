@@ -149,8 +149,8 @@ void computeContributingScores(Environment& environment, int* ziContPosIdx,
   }
 
   // Mark rows containing NAs and count the number of complete samples
-  vector <int> sample_is_not_NA(environment.n_samples);
-  vector <int> NAs_count(environment.n_samples);
+  vector<int> sample_is_not_NA(environment.n_samples);
+  vector<int> NAs_count(environment.n_samples);
   int samplesNotNA = count_non_NAs(myNbrUi, sample_is_not_NA,
     NAs_count, posArray, environment, z);
 

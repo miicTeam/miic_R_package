@@ -118,7 +118,7 @@ double computeLogC(int N, int r, double* looklog, double** cterms) {
   return logC;
 }
 
-double* getAllInfoNEW(int* ptrAllData, int* ptrAllLevels,
+double* getAllInfoNEW(int* ptrAllData, const vector<int>& ptrAllLevels,
     const vector<int>& ptrVarIdx, int nbrUi, int* ptrZiIdx, int nbrZi,
     int ziPos, int sampleSize, int sampleSizeEff, int modCplx, int k23,
     double* looklog, double* c2terms, MemorySpace* memory,

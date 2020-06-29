@@ -172,11 +172,7 @@ List mydiscretizeMutual(SEXP RmyDist1, SEXP RmyDist2, SEXP RflatU,
       transformToFactors(data, dataNumeric, n, i);
     }
   }
-  // AllLevels
-  int* AllLevels = new int[nbrU + 2];
-  for (i = 0; i < (nbrU + 2); i++) {
-    AllLevels[i] = nlevels[i];
-  }
+  vector<int> all_levels(nlevels.cbegin(), nlevels.cbegin() + nbrU + 2);
   // nrbUi
   int nbrUi = nbrU;
   // c2terms
@@ -207,7 +203,7 @@ List mydiscretizeMutual(SEXP RmyDist1, SEXP RmyDist2, SEXP RflatU,
   // Declare the lookup table of the parametric complexity
   int ncol = std::max(maxbins, init_bin) + 1;
   for (int j = 0; j < (nbrU + 2); j++) {
-    if (cnt_vec[j] == 0) ncol = std::max(ncol, int(AllLevels[j] + 1));
+    if (cnt_vec[j] == 0) ncol = std::max(ncol, int(all_levels[j] + 1));
   }
   ncol = 1000;  // combinations of Us can exceed ncol
   double** sc_look = new double*[ncol];
@@ -257,7 +253,7 @@ List mydiscretizeMutual(SEXP RmyDist1, SEXP RmyDist2, SEXP RflatU,
   environment.n_samples = n;
   environment.data_numeric = dataNumeric;
   environment.data_numeric_idx = dataNumericIdx;
-  environment.levels = AllLevels;
+  environment.levels = all_levels;
   environment.is_continuous.resize(nbrU+2);
 
   // Declare tables_red
@@ -302,8 +298,6 @@ List mydiscretizeMutual(SEXP RmyDist1, SEXP RmyDist2, SEXP RflatU,
   }
   delete[] dataNumericIdx;
 
-  delete[] AllLevels;
-
   int niterations = 0;
   double max_res_ef;
   int** iterative_cutpoints = new int*[STEPMAX * maxbins];
@@ -335,7 +329,7 @@ List mydiscretizeMutual(SEXP RmyDist1, SEXP RmyDist2, SEXP RflatU,
   NumericMatrix cutpoints(niterations * maxbins, nbrUi + 2);
   for (i = 0; i < cutpoints.nrow(); i++) {
     for (j = 0; j < (nbrUi + 2); j++) {
-      cutpoints[i + j * cutpoints.nrow()] = iterative_cutpoints[i][j];  //
+      cutpoints[i + j * cutpoints.nrow()] = iterative_cutpoints[i][j];
     }
   }
 

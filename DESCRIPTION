@@ -17,7 +17,6 @@ Maintainer: Nadir Sella <nadir.sella@curie.fr>
 Imports:
         MASS,
         igraph,
-        bnlearn,
         ppcor,
         scales,
         stats,

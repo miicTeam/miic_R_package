@@ -323,14 +323,6 @@ vector<vector<string>> getEdgesInfoTable(Environment& env) {
   return table;
 }
 
-// Initialize all the elements of the array to the given value
-bool setArrayValuesInt(int* array, int length, int value) {
-  for (int i = 0; i < length; i++) {
-    array[i] = value;
-  }
-  return true;
-}
-
 int getNumSamplesNonNA(const Environment& environment, int i, int j) {
   int n_samples_non_na = 0;
   for (int k = 0; k < environment.n_samples; k++) {
@@ -346,8 +338,8 @@ void getJointSpace(const Environment& environment, int i, int j,
     curr_sample_is_not_NA[k] = 0;
     if (SampleHasNoNA(environment, k, i, j)) {
       curr_sample_is_not_NA[k] = 1;
-      jointSpace[n_samples_non_na][0] = environment.data_double[k][i];
-      jointSpace[n_samples_non_na][1] = environment.data_double[k][j];
+      jointSpace[n_samples_non_na][0] = environment.data_double[i][k];
+      jointSpace[n_samples_non_na][1] = environment.data_double[j][k];
       n_samples_non_na++;
     }
   }
@@ -391,7 +383,7 @@ void getJointMixed(const Environment& environment, int i, int j,
     if (SampleHasNoNA(environment, k, i, j)) {
       curr_sample_is_not_NA[k] = 1;
       mixedContinuous[n_samples_non_na] =
-          environment.data_double[k][continuous_pos];
+          environment.data_double[continuous_pos][k];
       mixedDiscrete[n_samples_non_na] =
           environment.data_numeric[k][discrete_pos];
       n_samples_non_na++;
@@ -508,12 +500,12 @@ double compute_kl_divergence(const vector<int>& posArray,
         i_map++;
       }
     }
-    vector<vector<double> > joint_non_na(samplesNotNA, vector<double>(2));
+    vector<vector<double>> joint_non_na(samplesNotNA, vector<double>(2));
     int i_non_na = 0;
     for (int i = 0; i < environment.n_samples; i++) {
       if (sample_is_not_NA[i] == 1) {
         for (int k = 0; k < 2; k++) {
-          joint_non_na[i_non_na][k] = environment.data_double[i][posArray[k]];
+          joint_non_na[i_non_na][k] = environment.data_double[posArray[k]][i];
         }
         i_non_na++;
       }
@@ -600,7 +592,7 @@ double compute_kl_divergence(const vector<int>& posArray,
         if (sample_is_not_NA[i] == 1 &&
             environment.data_numeric[i][discrete_pos] == level) {
           continuous_non_na[i_level_non_na][0] =
-              environment.data_double[i][continuous_pos];
+              environment.data_double[continuous_pos][i];
           i_level_non_na++;
         }
       }

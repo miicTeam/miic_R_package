@@ -21,16 +21,16 @@ struct Environment {
   vector<vector<string>> data;
   int n_samples;
   int n_nodes;
-  double** data_double;
+  vector<vector<double>> data_double;
   vector<vector<int>> data_numeric;
   int** data_numeric_idx;
   int* oneLineMatrix;
 
+  vector<int> is_continuous;
+  vector<int> levels;
   int n_eff;
   vector<Node> nodes{};
   Edge** edges;
-  int* levels;
-  vector<int> is_continuous;
   bool orientation_phase;
   bool propagation;
   // Level of consistency required for the graph
@@ -103,13 +103,12 @@ struct Environment {
   ~Environment() {
     for (auto& address : connected_list) delete address;
     delete[] oneLineMatrix;
-    delete[] levels;
     delete[] c2terms;
     for (int i = 0; i < n_nodes; i++) delete[] edges[i];
     delete[] edges;
   }
 
-  void readBlackbox(const vector<string>&);
+  void readBlackbox(const vector<vector<int>>&);
   void readFileType();
   void setNumberLevels();
   void transformToFactors(int);
