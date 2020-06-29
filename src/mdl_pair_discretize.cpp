@@ -85,7 +85,7 @@ void transformToFactors(
 }
 
 void transformToFactorsContinuousIdx(const vector<vector<int>>& dataNumeric,
-    int** dataNumericIdx, int n, int i) {
+    vector<vector<int>>& dataNumericIdx, int n, int i) {
   map<int, int> myMap;
   // clean the dictionary since it is used column by column
   myMap.clear();
@@ -157,13 +157,7 @@ List mydiscretizeMutual(SEXP RmyDist1, SEXP RmyDist2, SEXP RflatU,
 
   // sortidx for continuous
   // create the data matrix for factors indexes
-  int** dataNumericIdx = new int*[nbrU + 2];
-  for (i = 0; i < (nbrU + 2); i++) {
-    dataNumericIdx[i] = new int[n];
-    for (j = 0; j < n; j++) {
-      dataNumericIdx[i][j] = -1;
-    }
-  }
+  vector<vector<int>> dataNumericIdx(nbrU + 2, vector<int>(n, -1));
 
   for (i = 0; i < (nbrU + 2); i++) {
     if (cnt_vec[i] == 1) {
@@ -292,11 +286,6 @@ List mydiscretizeMutual(SEXP RmyDist1, SEXP RmyDist2, SEXP RflatU,
   double* res = compute_mi_cond_alg1(dataNumeric_red, dataNumericIdx_red,
       AllLevels_red, cnt_red, posArray_red, nbrUi, n, sample_weights_red,
       flag_sample_weights, environment, true);
-
-  for (int i = 0; i < (nbrU + 2); i++) {
-    delete[] dataNumericIdx[i];
-  }
-  delete[] dataNumericIdx;
 
   int niterations = 0;
   double max_res_ef;

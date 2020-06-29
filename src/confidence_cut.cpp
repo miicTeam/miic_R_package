@@ -238,16 +238,9 @@ vector<vector<string> > miic::reconstruction::confidenceCut(
   }
 
   if (any_continuous) {
-    // Create the data matrix for factors indexes
-    for (int i = 0; i < environment.n_nodes; i++) {
-      for (int j = 0; j < environment.n_samples; j++)
-        environment.data_numeric_idx[i][j] = -1;
-    }
-
     for (int j = 0; j < environment.n_nodes; j++) {
       if (environment.is_continuous[j]) {
         environment.transformToFactorsContinuous(j);
-        environment.transformToFactorsContinuousIdx(j);
         environment.transformToFactors(j);
       }
     }

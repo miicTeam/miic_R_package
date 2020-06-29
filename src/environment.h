@@ -23,7 +23,8 @@ struct Environment {
   int n_nodes;
   vector<vector<double>> data_double;
   vector<vector<int>> data_numeric;
-  int** data_numeric_idx;
+  // data_numeric_idx[i] = index of i'th smallest value in data_double
+  vector<vector<int>> data_numeric_idx;
   int* oneLineMatrix;
 
   vector<int> is_continuous;
@@ -113,7 +114,6 @@ struct Environment {
   void setNumberLevels();
   void transformToFactors(int);
   void transformToFactorsContinuous(int);
-  void transformToFactorsContinuousIdx(int);
 };
 
 }  // namespace structure_impl

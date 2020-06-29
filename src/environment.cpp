@@ -28,6 +28,7 @@ Environment::Environment(
       n_nodes(data[0].size()),
       data_double(n_nodes),
       data_numeric(n_samples, vector<int>(n_nodes)),
+      data_numeric_idx(n_nodes, vector<int>(n_samples, -1)),
       is_continuous(as<vector<int>>(arg_list["is_continuous"])),
       levels(n_nodes),
       n_eff(as<int>(arg_list["n_eff"])),
@@ -78,36 +79,14 @@ Environment::Environment(
   if (n_threads < 0) n_threads = omp_get_num_procs();
   omp_set_num_threads(n_threads);
 #endif
-  // for continuous
-  auto any_continuous = std::any_of(
-      is_continuous.begin(), is_continuous.end(), [](int i) { return i == 1; });
-  if (any_continuous) {
-    // create the data matrix for factors indexes
-    data_numeric_idx = new int*[n_nodes];
-    for (int i = 0; i < n_nodes; i++) {
-      data_numeric_idx[i] = new int[n_samples];
-      for (int j = 0; j < n_samples; j++) data_numeric_idx[i][j] = -1;
-    }
-  }
-  // transform to factors
+
   for (int i = 0; i < n_nodes; i++) {
-    if (!is_continuous[i])
-      transformToFactors(i);
-    else
-      // update data_numeric not taking into account repetition
+    if (is_continuous[i]) {
+      // Set data_numeric_idx.
       transformToFactorsContinuous(i);
-  }
-  // for continuous
-  if (any_continuous) {
-    for (int j = 0; j < n_nodes; j++) {
-      if (is_continuous[j]) {
-        // update data_numeric taking into account repetition
-        transformToFactorsContinuousIdx(j);
-        transformToFactors(j);
-      }
     }
+    transformToFactors(i);
   }
-  // Set a variables with all properties name and levels
   setNumberLevels();
   // create the 1000 entries to store c2 values
   c2terms = new double[n_samples + 1];
@@ -211,53 +190,41 @@ void Environment::transformToFactors(int i) {
   }
 }
 
-void Environment::transformToFactorsContinuous(int i) {
+void Environment::transformToFactorsContinuous(int j) {
+  vector<double> column;
+  copy_if(data_double[j].cbegin(), data_double[j].cend(),
+      inserter(column, column.begin()), [](auto k) { return !std::isnan(k); });
+  sort(column.begin(), column.end());
+
   std::multimap<double, int> myMap;
-
-  vector<double> clmn;
-  for (int j = 0; j < n_samples; j++) {
-    string entry = data[j][i];
-    if (entry.compare("NA") != 0 && entry.compare("") != 0)
-      clmn.push_back(atof(entry.c_str()));
+  for (size_t i = 0; i < column.size(); i++) {
+    myMap.insert(std::pair<double, int>(column[i], i));
   }
 
-  sort(clmn.begin(), clmn.end());
-
-  for (size_t j = 0; j < clmn.size(); j++) {
-    myMap.insert(std::pair<double, int>(clmn[j], j));
-  }
-
-  for (int j = 0; j < n_samples; ++j) {
-    string entry = data[j][i];
-    if (entry.compare("NA") != 0 && entry.compare("") != 0) {
-      data_numeric[j][i] = myMap.find(atof(entry.c_str()))->second;
-
-      auto iterpair = myMap.equal_range(atof(entry.c_str()));
-      for (auto it = iterpair.first; it != iterpair.second; ++it) {
-        if (it->second == data_numeric[j][i]) {
+  vector<int> order_list(n_samples);
+  std::transform(data_double[j].cbegin(), data_double[j].cend(),
+      order_list.begin(), [&myMap](auto entry) {
+        if (!std::isnan(entry)) {
+          auto it = myMap.find(entry);
+          auto order = it->second;
           myMap.erase(it);
-          break;
+          return order;
+        } else {
+          return -1;
         }
-      }
-    } else {
-      data_numeric[j][i] = -1;
-    }
-  }
-}
+      });
 
-void Environment::transformToFactorsContinuousIdx(int i) {
-  std::map<int, int> myMap;
+  std::map<int, int> index_map;
 
-  int entry;
-  for (int j = 0; j < n_samples; j++) {
-    entry = data_numeric[j][i];
-    if (entry != -1) myMap[entry] = j;
+  for (int i = 0; i < n_samples; i++) {
+    int entry = order_list[i];
+    if (entry != -1) index_map[entry] = i;
   }
 
-  int j = 0;
-  for (auto it = myMap.begin(); it != myMap.end(); ++it) {
-    data_numeric_idx[i][j] = it->second;
-    ++j;
+  int i = 0;
+  for (auto it = index_map.begin(); it != index_map.end(); ++it) {
+    data_numeric_idx[j][i] = it->second;
+    ++i;
   }
 }
 

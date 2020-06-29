@@ -577,14 +577,14 @@ std::set<int> BCC::get_candidate_z(int x, int y) const {
     for (auto& node : bc_tree_path) {
       if (bc_tree_node_is_cp[node]) continue;
 
-      const set<int>& bcc_set = bcc_list[bc_tree_inverse_index[node]];
-      copy_if(bcc_set.begin(), bcc_set.end(), insert_it,
+      auto& bcc_set = bcc_list[bc_tree_inverse_index[node]];
+      copy_if(bcc_set.cbegin(), bcc_set.cend(), insert_it,
           [x, y](int i) { return i != x && i != y; });
     }
     return set_z;
   } else {
-    const set<int>& bcc_set = bcc_list[common_bcc[0]];
-    copy_if(bcc_set.begin(), bcc_set.end(), insert_it,
+    auto& bcc_set = bcc_list[common_bcc[0]];
+    copy_if(bcc_set.cbegin(), bcc_set.cend(), insert_it,
         [x, y](int i) { return i != x && i != y; });
     return set_z;
   }
@@ -592,8 +592,7 @@ std::set<int> BCC::get_candidate_z(int x, int y) const {
 
 void BCC::set_candidate_z(int x, int y) {
   vector<int>& vect_z = environment.edges[x][y].shared_info->zi_list;
-  std::insert_iterator<vector<int> > insert_it =
-      inserter(vect_z, vect_z.begin());
+  auto insert_it = inserter(vect_z, vect_z.begin());
   set<int> set_z = get_candidate_z(x, y);
   copy_if(set_z.begin(), set_z.end(), insert_it, [this, x, y](int i) {
     return (environment.latent || environment.edges[i][x].status_prev > 0 ||
