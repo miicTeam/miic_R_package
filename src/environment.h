@@ -19,10 +19,10 @@ using std::vector;
 
 struct Environment {
   vector<vector<string>> data;
+  vector<vector<int>> data_numeric;
   int n_samples;
   int n_nodes;
   vector<vector<double>> data_double;
-  vector<vector<int>> data_numeric;
   // data_numeric_idx[i] = index of i'th smallest value in data_double
   vector<vector<int>> data_numeric_idx;
   int* oneLineMatrix;
@@ -38,7 +38,7 @@ struct Environment {
   // 0: no consistency requirement
   // 1: skeleton consistent
   // 2: orientation consistent
-  int consistent {0};
+  int consistent{0};
   // When consistent > 0, the maximum number of iterations allowed when trying
   // to find a consistent graph.
   int max_iteration;
@@ -52,9 +52,9 @@ struct Environment {
   // Whether or not do MAR (Missing at random) test using KL-divergence
   bool test_mar;
   // Complexity mode. 0: mdl 1: nml
-  int cplx {1};
+  int cplx{1};
   // If firstStepIteration is done
-  bool first_iter_done = false;
+  bool first_iter_done{false};
   // List of ids of edge whose status is not yet determined
   vector<EdgeID*> unsettled_list;
   // List of ids of edge whose status is sure to be connected
@@ -76,7 +76,7 @@ struct Environment {
   double log_eta = 0;
   bool is_k23;
   bool degenerate;
-  bool no_init_eta = false;
+  bool no_init_eta{false};
   int half_v_structure;
 
   // Set the probability threshold for the rank if the contribution probability
@@ -98,7 +98,7 @@ struct Environment {
   int n_threads;
   bool verbose;
 
-  Environment(const Rcpp::DataFrame&, const Rcpp::List&);
+  Environment(const Rcpp::List&, const Rcpp::List&);
   Environment() = default;
 
   ~Environment() {
@@ -110,8 +110,6 @@ struct Environment {
   }
 
   void readBlackbox(const vector<vector<int>>&);
-  void readFileType();
-  void setNumberLevels();
   void transformToFactors(int);
   void transformToFactorsContinuous(int);
 };

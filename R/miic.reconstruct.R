@@ -20,8 +20,30 @@ miic.reconstruct <- function(input_data = NULL,
                              ),
                              max_iteration = max_iteration
                              ) {
-  var_names <- colnames(input_data)
+  # Numeric factor matrix, level starts from 0, NA mapped to -1
+  input_factor <- apply(input_data, 2, function(x)
+                        (as.numeric(factor(x, levels = unique(x))) - 1))
+  input_factor[is.na(input_factor)] <- -1
+  max_level_list <- as.numeric(apply(input_factor, 2, max)) + 1
+  input_factor <- data.frame(t(input_factor))
+  # Data list, numeric for continuous columns, empty for others
+  input_double <- list()
+  # Order list, order(column) for continuous columns (index starting from 0, NA
+  # mapped to -1), empty for others
+  input_order <- list()
+  for (i in c(1:length(input_data))) {
+    if (is_continuous[i]) {
+      input_double[[i]] <- as.numeric(input_data[, i])
+      n_NAs <- sum(is.na(input_data[, i]))
+      input_order[[i]] <- c(order(input_data[, i], na.last=NA) - 1,
+                            rep_len(-1, n_NAs))
+    } else {
+      input_double[[i]] <- numeric(0)
+      input_order[[i]] <- numeric(0)
+    }
+  }
 
+  var_names <- colnames(input_data)
   nameToIndex <- function(name, var_indices) {
     index <- var_indices[name]
     if (is.na(index))
@@ -54,6 +76,7 @@ miic.reconstruct <- function(input_data = NULL,
     "is_continuous" = as.numeric(is_continuous),
     "is_k23" = TRUE,
     "latent" = latent,
+    "levels" = max_level_list,
     "max_iteration" = max_iteration,
     "n_eff" = n_eff,
     "n_shuffles" = n_shuffles,
@@ -66,14 +89,12 @@ miic.reconstruct <- function(input_data = NULL,
     "var_names" = var_names,
     "verbose" = verbose
   )
-  if (base::requireNamespace("Rcpp", quietly = TRUE)) {
-    cpp_input <- data.frame(t(sapply(input_data, as.character)),
-                            stringsAsFactors = FALSE)
-    # Call C++ function
-    res <- reconstruct(cpp_input, arg_list)
-    if (res$interrupted) {
-      return(list(interrupted = TRUE))
-    }
+  cpp_input <- list("factor" = input_factor, "double" = input_double,
+                    "order" = input_order)
+  # Call C++ function
+  res <- reconstruct(cpp_input, arg_list)
+  if (res$interrupted) {
+    return(list(interrupted = TRUE))
   }
 
   # R-formalize returned object

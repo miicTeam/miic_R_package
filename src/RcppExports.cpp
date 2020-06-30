@@ -50,12 +50,12 @@ BEGIN_RCPP
 END_RCPP
 }
 // reconstruct
-List reconstruct(DataFrame input_data, List arg_list);
+List reconstruct(List input_data, List arg_list);
 RcppExport SEXP _miic_reconstruct(SEXP input_dataSEXP, SEXP arg_listSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< DataFrame >::type input_data(input_dataSEXP);
+    Rcpp::traits::input_parameter< List >::type input_data(input_dataSEXP);
     Rcpp::traits::input_parameter< List >::type arg_list(arg_listSEXP);
     rcpp_result_gen = Rcpp::wrap(reconstruct(input_data, arg_list));
     return rcpp_result_gen;

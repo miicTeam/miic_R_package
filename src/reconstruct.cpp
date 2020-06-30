@@ -29,7 +29,7 @@ List empty_results() {
 }
 
 // [[Rcpp::export]]
-List reconstruct(DataFrame input_data, List arg_list) {
+List reconstruct(List input_data, List arg_list) {
   Environment environment(input_data, arg_list);
 
   double startTime = get_wall_time();
@@ -165,6 +165,7 @@ List reconstruct(DataFrame input_data, List arg_list) {
       _["edges"]             = getEdgesInfoTable(environment),
       _["orientations.prob"] = orientations,
       _["time"]              = time,
+      _["dnidx"]             = environment.data_numeric_idx,
       _["interrupted"]       = false);
   if (environment.n_shuffles > 0) {
     result.push_back(confVect, "confData");
@@ -213,7 +214,7 @@ bool CycleTracker::hasCycle() {
   // and simpler syntax, at the cost of extra memory trace and (possible) extra
   // time complexity (in practice there are very few changes between each pair
   // of iterations).
-  std::vector<int> changed(env_.n_nodes * (env_.n_nodes - 1) / 2, 0);
+  vector<int> changed(env_.n_nodes * (env_.n_nodes - 1) / 2, 0);
   // backtracking over iteration to get changed_edges
   int cycle_size = 0;
   for (const auto& iter : iterations_) {
@@ -231,8 +232,10 @@ bool CycleTracker::hasCycle() {
     if (std::any_of(
             changed.begin(), changed.end(), [](int j) { return j != 0; })) {
       // no cycle
-      if (iter_indices.empty()) return false;
-      continue;
+      if (iter_indices.empty())
+        return false;
+      else
+        continue;
     }
     for (auto& k : edges_union) {
       std::pair<int, int> p = getEdgeIndex2D(k);

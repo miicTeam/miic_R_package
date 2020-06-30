@@ -22,15 +22,14 @@ namespace miic {
 namespace structure {
 
 Environment::Environment(
-    const Rcpp::DataFrame& input_data, const Rcpp::List& arg_list)
-    : data(as<vector<vector<string>>>(input_data)),
-      n_samples(data.size()),
-      n_nodes(data[0].size()),
-      data_double(n_nodes),
-      data_numeric(n_samples, vector<int>(n_nodes)),
-      data_numeric_idx(n_nodes, vector<int>(n_samples, -1)),
+    const Rcpp::List& input_data, const Rcpp::List& arg_list)
+    : data_numeric(as<vector<vector<int>>>(input_data["factor"])),
+      n_samples(data_numeric.size()),
+      n_nodes(data_numeric[0].size()),
+      data_double(as<vector<vector<double>>>(input_data["double"])),
+      data_numeric_idx(as<vector<vector<int>>>(input_data["order"])),
       is_continuous(as<vector<int>>(arg_list["is_continuous"])),
-      levels(n_nodes),
+      levels(as<vector<int>>(arg_list["levels"])),
       n_eff(as<int>(arg_list["n_eff"])),
       orientation_phase(as<bool>(arg_list["orientation"])),
       propagation(as<bool>(arg_list["propagation"])),
@@ -47,9 +46,6 @@ Environment::Environment(
       n_threads(as<int>(arg_list["n_threads"])),
       verbose(as<bool>(arg_list["verbose"])) {
   srand(0);
-  readFileType();
-  if (n_eff == -1 || n_eff > n_samples)
-    n_eff = n_samples;
   auto var_names = as<vector<string>>(arg_list["var_names"]);
   std::transform(var_names.begin(), var_names.end(), std::back_inserter(nodes),
       [](string name) { return Node(name); });
@@ -68,6 +64,9 @@ Environment::Environment(
 
   if (as<string>(arg_list["cplx"]).compare("mdl") == 0) cplx = 0;
 
+  if (n_eff == -1 || n_eff > n_samples)
+    n_eff = n_samples;
+
   if (sample_weights.empty()) {
     double uniform_weight{1};
     if (n_eff != n_samples)
@@ -79,15 +78,6 @@ Environment::Environment(
   if (n_threads < 0) n_threads = omp_get_num_procs();
   omp_set_num_threads(n_threads);
 #endif
-
-  for (int i = 0; i < n_nodes; i++) {
-    if (is_continuous[i]) {
-      // Set data_numeric_idx.
-      transformToFactorsContinuous(i);
-    }
-    transformToFactors(i);
-  }
-  setNumberLevels();
   // create the 1000 entries to store c2 values
   c2terms = new double[n_samples + 1];
   for (int i = 0; i < n_samples + 1; i++) {
@@ -228,37 +218,12 @@ void Environment::transformToFactorsContinuous(int j) {
   }
 }
 
-// Set the number of levels for each node (the maximum level of each column)
-void Environment::setNumberLevels() {
-  for (int i = 0; i < n_nodes; i++) {
-    int max = 0;
-    for (int j = 0; j < n_samples; j++) {
-      if (data_numeric[j][i] > max) max = data_numeric[j][i];
-    }
-    levels[i] = max + 1;
-  }
-}
-
-void Environment::readFileType() {
-  for (int j = 0; j < n_nodes; j++) {
-    if (is_continuous[j]) {
-      data_double[j].resize(n_samples);
-      for (int i = 0; i < n_samples; i++) {
-        if (data[i][j].compare("NA") == 0 || data[i][j].compare("") == 0) {
-          data_double[j][i] = std::numeric_limits<double>::quiet_NaN();
-        } else {
-          data_double[j][i] = atof(data[i][j].c_str());
-        }
-      }
-    }
-  }
-}
-
 void Environment::readBlackbox(const vector<vector<int>>& node_list) {
   for (const auto& pair : node_list) {
-    auto x = pair[0], y = pair[1];
-      edges[x][y].status = 0;
-      edges[y][x].status = 0;
+    edges[pair[0]][pair[1]].status = 0;
+    edges[pair[0]][pair[1]].status_prev = 0;
+    edges[pair[1]][pair[0]].status = 0;
+    edges[pair[1]][pair[0]].status_prev = 0;
   }
 }
 
