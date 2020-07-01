@@ -25,38 +25,6 @@ using namespace miic::reconstruction;
 using namespace miic::structure;
 using namespace miic::utility;
 
-bool SortFunctionNoMore(
-    const EdgeID* a, const EdgeID* b, const Environment& environment) {
-  return environment.edges[a->i][a->j].shared_info->Ixy_ui >
-         environment.edges[b->i][b->j].shared_info->Ixy_ui;
-}
-
-class sorterNoMore {
-  Environment& environment;
-
- public:
-  sorterNoMore(Environment& env) : environment(env) {}
-  bool operator()(EdgeID const* o1, EdgeID const* o2) const {
-    return SortFunctionNoMore(o1, o2, environment);
-  }
-};
-
-bool SortFunction1(
-    const EdgeID* a, const EdgeID* b, const Environment& environment) {
-  return environment.edges[a->i][a->j].shared_info->Rxyz_ui >
-         environment.edges[b->i][b->j].shared_info->Rxyz_ui;
-}
-
-class sorter1 {
-  Environment& environment;
-
- public:
-  sorter1(Environment& env) : environment(env) {}
-  bool operator()(EdgeID const* o1, EdgeID const* o2) const {
-    return SortFunction1(o1, o2, environment);
-  }
-};
-
 template <bool latent = false>
 void searchAndSetZi(
     Environment& environment, const int posX, const int posY) {
@@ -92,12 +60,6 @@ bool firstStepIteration(Environment& environment, BCC& bcc) {
   // computeEnsInformationContinuous() in computeEnsInformation.cpp
   environment.first_iter_done = false;
 
-  for (unsigned i = 0; i < environment.unsettled_list.size(); i++)
-    delete environment.unsettled_list[i];
-
-  for (unsigned i = 0; i < environment.connected_list.size(); i++)
-    delete environment.connected_list[i];
-
   environment.connected_list.clear();
   environment.unsettled_list.clear();
 
@@ -110,7 +72,7 @@ bool firstStepIteration(Environment& environment, BCC& bcc) {
       // Do dot consider edges removed with unconditional independence
       if (!environment.edges[i][j].status) continue;
       environment.edges[i][j].shared_info->reset();
-      environment.unsettled_list.emplace_back(new EdgeID(i, j));
+      environment.unsettled_list.emplace_back(i, j, environment.edges[i][j]);
       environment.numSearchMore++;
     }
   }
@@ -124,8 +86,8 @@ bool firstStepIteration(Environment& environment, BCC& bcc) {
       cout << "\n# -> searchMore edges, to get zi and noMore...\n";
 
     for (int i = 0; i < environment.numSearchMore; i++) {
-      int posX = environment.unsettled_list[i]->i;
-      int posY = environment.unsettled_list[i]->j;
+      int posX = environment.unsettled_list[i].i;
+      int posY = environment.unsettled_list[i].j;
       if (environment.verbose) {
         cout << "\n# --------------------\n# ----> EDGE: "
              << environment.nodes[posX].name << "--"
@@ -158,8 +120,8 @@ bool firstStepIteration(Environment& environment, BCC& bcc) {
           interrupt = true;
         }
       }
-      int posX = environment.unsettled_list[i]->i;
-      int posY = environment.unsettled_list[i]->j;
+      int posX = environment.unsettled_list[i].i;
+      int posY = environment.unsettled_list[i].j;
       if (environment.verbose)
         cout << "##  "
              << "XY: " << environment.nodes[posX].name << " "
@@ -183,8 +145,8 @@ bool firstStepIteration(Environment& environment, BCC& bcc) {
     if (interrupt) return false;
 
     for (int i = 0; i < environment.numSearchMore; i++) {
-      int posX = environment.unsettled_list[i]->i;
-      int posY = environment.unsettled_list[i]->j;
+      int posX = environment.unsettled_list[i].i;
+      int posY = environment.unsettled_list[i].j;
       if (environment.edges[posX][posY].shared_info->z_name_idx != -1) {
         if (environment.verbose) {
           cout << "## ------!!--> Update the edge element in 'searchMore': "
@@ -217,8 +179,8 @@ bool firstStepIteration(Environment& environment, BCC& bcc) {
       return false;
     }
     // sort the ranks
-    std::sort(environment.unsettled_list.begin(),
-        environment.unsettled_list.end(), sorter1(environment));
+    std::sort(
+        environment.unsettled_list.begin(), environment.unsettled_list.end());
   }
   environment.first_iter_done = true;
   return true;
@@ -246,8 +208,8 @@ bool skeletonIteration(Environment& environment) {
       cout << "\n# Iteration " << iIteration_count << "\n";
     }
     // Get the first edge
-    int posX = environment.unsettled_list[max]->i;
-    int posY = environment.unsettled_list[max]->j;
+    int posX = environment.unsettled_list[max].i;
+    int posY = environment.unsettled_list[max].j;
 
     if (environment.verbose)
       cout << "Pos x : " << posX << " , pos y: " << posY << endl;
@@ -380,12 +342,12 @@ bool skeletonIteration(Environment& environment) {
     max = 0;
     for (int i = 0; i < environment.numSearchMore; i++) {
       if (environment
-              .edges[environment.unsettled_list[i]->i]
-                    [environment.unsettled_list[i]->j]
+              .edges[environment.unsettled_list[i].i]
+                    [environment.unsettled_list[i].j]
               .shared_info->Rxyz_ui >
           environment
-              .edges[environment.unsettled_list[max]->i]
-                    [environment.unsettled_list[max]->j]
+              .edges[environment.unsettled_list[max].i]
+                    [environment.unsettled_list[max].j]
               .shared_info->Rxyz_ui)
         max = i;
     }
@@ -395,8 +357,8 @@ bool skeletonIteration(Environment& environment) {
             environment.exec_time.start_time_iter, prg_numSearchMore);
   }
   cout << "\n";
-  std::sort(environment.connected_list.begin(),
-      environment.connected_list.end(), sorterNoMore(environment));
+  std::sort(
+      environment.connected_list.begin(), environment.connected_list.end());
   return (true);
 }
 

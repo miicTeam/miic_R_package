@@ -57,9 +57,9 @@ struct Environment {
   // If firstStepIteration is done
   bool first_iter_done{false};
   // List of ids of edge whose status is not yet determined
-  vector<EdgeID*> unsettled_list;
+  vector<EdgeID> unsettled_list;
   // List of ids of edge whose status is sure to be connected
-  vector<EdgeID*> connected_list;
+  vector<EdgeID> connected_list;
   int numSearchMore{0};
   int numNoMore{0};
 
@@ -103,7 +103,6 @@ struct Environment {
   Environment() = default;
 
   ~Environment() {
-    for (auto& address : connected_list) delete address;
     delete[] oneLineMatrix;
     delete[] c2terms;
     for (int i = 0; i < n_nodes; i++) delete[] edges[i];

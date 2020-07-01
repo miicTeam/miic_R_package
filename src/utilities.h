@@ -10,7 +10,7 @@ namespace utility {
 void createMemorySpace(structure::Environment&, structure::MemorySpace&);
 void deleteMemorySpace(structure::Environment&, structure::MemorySpace&);
 std::vector<std::vector<std::string>> getEdgesInfoTable(
-    structure::Environment&);
+    const structure::Environment&);
 std::string toNameString(
     const structure::Environment&, const std::vector<int>&);
 std::vector<std::vector<int>> getAdjMatrix(const structure::Environment&);
@@ -59,8 +59,8 @@ bool filter_NAs(int nbrUi, std::vector<int> &AllLevels, std::vector<int> &cnt,
 
 bool checkInterrupt(bool check = true);
 
-double lookupScore(const std::vector<int> &posArray, int nbrUi, int z,
-  structure::Environment& environment);
+double lookupScore(const std::vector<int>& posArray, int nbrUi, int z,
+    structure::Environment& environment);
 void lookupScore(const std::vector<int>& posArray, int nbrUi, int z,
     double* score, structure::Environment& environment);
 void saveScore(const std::vector<int>& posArray, int nbrUi, int z, double score,
@@ -69,27 +69,6 @@ void saveScore(const std::vector<int>& posArray, int nbrUi, int z,
     double* score, structure::Environment& environment);
 
 bool SampleHasNoNA(const structure::Environment& env, int row, int i, int j);
-
-class EdgeSorter {
-  const structure::Environment& env;
-
- public:
-  EdgeSorter(const structure::Environment& env) : env(env) {}
-  bool operator()(
-      const structure::EdgeID& e1, const structure::EdgeID& e2) const {
-    const auto info1 = env.edges[e1.i][e1.j].shared_info;
-    const auto info2 = env.edges[e2.i][e2.j].shared_info;
-    // Prefer connected over non-connected
-    if (info1->connected != info2->connected)
-      return info1->connected > info2->connected;
-    // connected can be 0 or 1
-    if (info1->connected == 0) {
-      return info1->Rxyz_ui > info2->Rxyz_ui;
-    } else {
-      return info1->Ixy_ui > info2->Ixy_ui;
-    }
-  }
-};
 
 }  // namespace utility
 }  // namespace miic

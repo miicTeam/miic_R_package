@@ -60,12 +60,6 @@ struct Node {
   Node(string name) : name(std::move(name)) {}
 };
 
-struct EdgeID {
-  int i, j;
-  EdgeID() = delete;
-  EdgeID(int i, int j) : i(i), j(j) {}
-};
-
 struct Edge {
   // Edge is stored in Edge** edges
   // Status code (suppose edges[X][Y]):
@@ -78,6 +72,31 @@ struct Edge {
   short int status_init;  // Status after initialization.
   short int status_prev;  // Status in the previous iteration.
   std::shared_ptr<EdgeSharedInfo> shared_info;
+};
+
+// Observer of Edge
+class EdgeID {
+ private:
+  std::reference_wrapper<const Edge> edge_;
+
+ public:
+  int i, j;
+  EdgeID() = delete;
+  EdgeID(int i, int j, const Edge& edge) : edge_(edge), i(i), j(j) {}
+  EdgeID(int i, int j, const Edge&&) = delete;  // forbid rvalue
+
+  bool operator<(const EdgeID& rhs) const {
+    const auto info1 = this->edge_.get().shared_info;
+    const auto info2 = rhs.edge_.get().shared_info;
+    //  connected can be 0 or 1, prefer connected over non-connected
+    if (info1->connected != info2->connected)
+      return info1->connected > info2->connected;
+    if (info1->connected) {
+      return info1->Ixy_ui > info2->Ixy_ui;
+    } else {
+      return info1->Rxyz_ui > info2->Rxyz_ui;
+    }
+  }
 };
 
 struct CacheInfoKey{

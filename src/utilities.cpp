@@ -294,16 +294,16 @@ string toNameString(const Environment& env, const vector<int>& vec) {
   }
 }
 
-vector<vector<string>> getEdgesInfoTable(Environment& env) {
+vector<vector<string>> getEdgesInfoTable(const Environment& env) {
   vector<vector<string>> table;
 
   vector<EdgeID> edge_list;
   for (int i = 0; i < env.n_nodes - 1; i++) {
     for (int j = i + 1; j < env.n_nodes; j++) {
-      edge_list.emplace_back(EdgeID(i, j));
+      edge_list.emplace_back(i, j, env.edges[i][j]);
     }
   }
-  std::sort(edge_list.begin(), edge_list.end(), EdgeSorter(env));
+  std::sort(edge_list.begin(), edge_list.end());
 
   table.emplace_back(std::initializer_list<std::string>{"x", "y", "z.name",
       "ai.vect", "zi.vect", "Ixy", "Ixy_ai", "cplx", "Rxyz_ai", "category",

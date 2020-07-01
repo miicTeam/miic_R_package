@@ -97,16 +97,16 @@ vector<vector<string> > orientationProbability(Environment& environment) {
   double* ptrRetProbValues;
   // GET ALL TPL that could be V/NON-V-STRUCTURES #######
   for (size_t pos = 0; pos < environment.connected_list.size(); pos++) {
-    int posX = environment.connected_list[pos]->i;
-    int posY = environment.connected_list[pos]->j;
+    int posX = environment.connected_list[pos].i;
+    int posY = environment.connected_list[pos].j;
     // Prepare a list that will contain the neighbors of "x" and the neighbors
     // of "y"
     vector<int> neighboursX;
     vector<int> neighboursY;
 
     for (size_t i = pos + 1; i < environment.connected_list.size(); i++) {
-      int posX1 = environment.connected_list[i]->i;
-      int posY1 = environment.connected_list[i]->j;
+      int posX1 = environment.connected_list[i].i;
+      int posY1 = environment.connected_list[i].j;
       if (posY1 == posX && !environment.edges[posY][posX1].status)
         neighboursX.push_back(posX1);
       else if (posY1 == posY && !environment.edges[posX][posX1].status)
@@ -114,8 +114,8 @@ vector<vector<string> > orientationProbability(Environment& environment) {
     }
 
     for (size_t i = pos + 1; i < environment.connected_list.size(); i++) {
-      int posX1 = environment.connected_list[i]->i;
-      int posY1 = environment.connected_list[i]->j;
+      int posX1 = environment.connected_list[i].i;
+      int posY1 = environment.connected_list[i].j;
       if (posX1 == posX && !environment.edges[posY][posY1].status)
         neighboursX.push_back(posY1);
       else if (posX1 == posY && !environment.edges[posX][posY1].status)

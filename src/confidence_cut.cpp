@@ -28,22 +28,6 @@ void shuffle_lookup(vector<int>& array, vector<int>& array2, size_t n) {
   }
 }
 
-bool SortFunctionNoMore2(
-    const EdgeID* a, const EdgeID* b, const Environment& environment) {
-  return (environment.edges[a->i][a->j].shared_info->Ixy_ui >
-          environment.edges[b->i][b->j].shared_info->Ixy_ui);
-}
-
-class sorterNoMore2 {
-  Environment& environment;
-
- public:
-  sorterNoMore2(Environment& env) : environment(env) {}
-  bool operator()(EdgeID const* o1, EdgeID const* o2) const {
-    return SortFunctionNoMore2(o1, o2, environment);
-  }
-};
-
 vector<vector<string>> miic::reconstruction::confidenceCut(
     Environment& environment) {
   // Create a back up of the data, for later randomization
@@ -54,12 +38,12 @@ vector<vector<string>> miic::reconstruction::confidenceCut(
   vector<int> lookup2(environment.n_samples);
   for (int i = 0; i < environment.n_samples; i++) lookup[i] = i;
 
-  vector<EdgeID*>& edge_list = environment.connected_list;
+  vector<EdgeID>& edge_list = environment.connected_list;
   int n_connected = edge_list.size();
 
   std::set<int> columns_to_shuffle;
   for (const auto& edge : edge_list) {
-    columns_to_shuffle.insert(edge->i);
+    columns_to_shuffle.insert(edge.i);
   }
 
   vector<double> confVect(n_connected, 0);
@@ -104,8 +88,8 @@ vector<vector<string>> miic::reconstruction::confidenceCut(
     double NIxy_ui, k_xy_ui;
     // evaluate the mutual information for every edge
     for (int i = 0; i < n_connected; i++) {
-      int X = edge_list[i]->i;
-      int Y = edge_list[i]->j;
+      int X = edge_list[i].i;
+      int Y = edge_list[i].j;
       if (!environment.is_continuous[X] && !environment.is_continuous[Y]) {
         // discrete case
         double* res = computeEnsInformationNew(environment, NULL, 0, NULL, 0,
@@ -135,7 +119,7 @@ vector<vector<string>> miic::reconstruction::confidenceCut(
   }
   // remove edges based on confidence cut
   auto to_delete = [&environment, &confVect, &edge_list](auto& id) {
-    int X = id->i, Y = id->j;
+    int X = id.i, Y = id.j;
     auto info = environment.edges[X][Y].shared_info;
     double I_prime_original = info->Ixy_ui - info->cplx;
     auto index = &id - &*begin(edge_list);
@@ -176,16 +160,16 @@ vector<vector<string>> miic::reconstruction::confidenceCut(
     }
   }
 
-  std::sort(environment.connected_list.begin(),
-      environment.connected_list.end(), sorterNoMore2(environment));
+  std::sort(
+      environment.connected_list.begin(), environment.connected_list.end());
   environment.numNoMore = environment.connected_list.size();
 
   vector<vector<string>> res;
   res.emplace_back(std::initializer_list<string>{"x", "y", "confidence_ratio"});
   for (int i = 0; i < n_connected; i++) {
     res.emplace_back(std::initializer_list<string>{
-        environment.nodes[edge_list[i]->i].name,
-        environment.nodes[edge_list[i]->j].name,
+        environment.nodes[edge_list[i].i].name,
+        environment.nodes[edge_list[i].j].name,
         std::to_string(confVect[i])});
   }
   return res;
