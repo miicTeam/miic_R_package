@@ -1,2 +1,3 @@
 ^.*\.Rproj$
+^.*\.vscode$
 ^\.Rproj\.user$

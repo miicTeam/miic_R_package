@@ -15,7 +15,7 @@
 
 #include "KDTreeVectorOfVectorsAdaptor.h"
 #include "compute_info.h"
-#include "nanoflann.hpp"
+#include "nanoflann.h"
 
 // for memory space on continuous data
 #define MAX_NBRUI 10

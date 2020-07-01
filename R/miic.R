@@ -25,8 +25,8 @@
 #'
 #' @references
 #' \itemize{
-#' \item Verny et al., \emph{PLoS Comp. Bio. 2017.  https://doi.org/10.1371/journal.pcbi.1005662
-#' \item Cabeli et al., \emph{PLoS Comp. Bio. 2020.  https://doi.org/10.1371/journal.pcbi.1007866
+#' \item Verny et al., \emph{PLoS Comp. Bio. 2017.}  https://doi.org/10.1371/journal.pcbi.1005662
+#' \item Cabeli et al., \emph{PLoS Comp. Bio. 2020.}  https://doi.org/10.1371/journal.pcbi.1007866
 #' }
 #'
 #' @param input_data [a data frame]
@@ -115,7 +115,7 @@
 #'
 #' @param test_mar [a boolean value]
 #' If set to TRUE, distributions with missing values will be tested with Kullback-Leibler
-#' divergence : conditioning variables for the given link \eqn{X\arrow Y}\eqn{Z} will be
+#' divergence : conditioning variables for the given link \eqn{X\rightarrow Y}\eqn{Z} will be
 #' considered only if the divergence between the full distribution and the non-missing
 #' distribution \eqn{KL(P(X,Y) | P(X,Y)_{!NA})} is low enough (with \eqn{P(X,Y)_{!NA}} as
 #' the joint distribution of \eqn{X} and \eqn{Y} on samples which are not missing on Z.

@@ -7,10 +7,10 @@
 discretizeMutual(
   X,
   Y,
-  matrixU = NULL,
+  matrix_u = NULL,
   maxbins = NULL,
   cplx = "nml",
-  Neff = NULL,
+  n_eff = NULL,
   sample_weights = NULL,
   is_discrete = NULL,
   plot = T
@@ -23,7 +23,7 @@ A vector that contains the observational data of the first variable.}
 \item{Y}{[a vector]
 A vector that contains the observational data of the second variable.}
 
-\item{matrixU}{[a numeric matrix]
+\item{matrix_u}{[a numeric matrix]
 The matrix with the observations of as many columns as conditioning variables.}
 
 \item{maxbins}{[an int]
@@ -35,7 +35,7 @@ The complexity used in the dynamic programming. Either "mdl" for Minimum descrip
 "nml" for Normalized Maximum Likelihood, which is less costly in the finite sample case and
 will allow more bins than mdl.}
 
-\item{Neff}{[an int]
+\item{n_eff}{[an int]
 The number of effective samples. When there is significant autocorrelation in the samples you may
 want to specify a number of effective samples that is lower than the number of points in the distribution.}
 
@@ -45,7 +45,7 @@ precision.}
 
 \item{is_discrete}{[a vector of booleans]
 Specify if each variable is to be treated as discrete (TRUE) or continuous (FALSE) in a
-logical vector of length ncol(matrixU) + 2, in the order [X, Y, U1, U2...]. By default,
+logical vector of length ncol(matrix_u) + 2, in the order [X, Y, U1, U2...]. By default,
 factors and character vectors are treated as discrete, and numerical vectors as continuous.}
 
 \item{plot}{[a boolean]
@@ -53,7 +53,14 @@ Specify if the XY joint space with discretization scheme is to be plotted or not
 ggplot2 and gridExtra).}
 }
 \value{
-
+A list that contains :
+\itemize{
+\item{two vectors containing the cutpoints for each variable : \emph{cutpoints1} corresponds to /emph{myDist1}, /emph{cutpoints2} corresponds to /emph{myDist2}.}
+\item{\emph{niterations} is the number of iterations performed before convergence of the (C)MI estimation.}
+\item{\emph{iterationN}, lists contatining the cutpoint vectors for each iteration.}
+\item{\emph{info} and \emph{infok}, the estimated (C)MI value and (C)MI minus the complexity cost.}
+\item{if $emph{plot} == T, a plot object (requires ggplot2 and gridExtra).}
+}
 }
 \description{
 This function chooses cutpoints in the input distributions by maximizing the mutual
@@ -83,7 +90,7 @@ X <- Z * 2 + rnorm(N, sd = 0.2)
 Y <- Z * 2 + rnorm(N, sd = 0.2)
 res <- discretizeMutual(X, Y, plot = T)
 cat("I(X;Y) = ", res$info)
-res <- discretizeMutual(X, Y, matrixU = matrix(Z, ncol = 1), plot = T)
+res <- discretizeMutual(X, Y, matrix_u = matrix(Z, ncol = 1), plot = T)
 cat("I(X;Y|Z) = ", res$info)
 
 # Conditional independence with categorical conditioning variable
@@ -102,11 +109,15 @@ Y <- runif(N)
 Z <- X + Y + runif(N, sd = 0.1)
 res <- discretizeMutual(X, Y, plot = T)
 cat("I(X;Y) = ", res$info)
-res <- discretizeMutual(X, Y, matrixU = matrix(Z, ncol = 1), plot = T)
+res <- discretizeMutual(X, Y, matrix_u = matrix(Z, ncol = 1), plot = T)
 cat("I(X;Y|Z) = ", res$info)
 }
 
 }
 \references{
-
+\itemize{
+\item Verny et al., \emph{PLoS Comp. Bio. 2017.}  https://doi.org/10.1371/journal.pcbi.1005662
+\item Cabeli et al., \emph{PLoS Comp. Bio. 2020.}  https://doi.org/10.1371/journal.pcbi.1007866
+\item Affeldt et al., \emph{Bioinformatics 2016}
+}
 }
