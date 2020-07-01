@@ -145,8 +145,17 @@ double get_wall_time() {
   return (double)time.tv_sec + (double)time.tv_usec * .000001;
 }
 
-void sort2arraysConfidence(int len, int a[], int brr[]) {
-  std::sort(brr, brr + len, sort_indices(a));
+class sort_confidence {
+ private:
+  const vector<int>& mparr;
+
+ public:
+  sort_confidence(const vector<int>& parr) : mparr(parr) {}
+  bool operator()(int i, int j) const { return mparr[i] < mparr[j]; }
+};
+
+void sort2arraysConfidence(int len, const vector<int>& a, vector<int>& brr) {
+  std::sort(begin(brr), begin(brr) + len, sort_confidence(a));
 }
 
 vector<vector<int>> getAdjMatrix(const Environment& env) {

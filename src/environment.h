@@ -110,8 +110,6 @@ struct Environment {
   }
 
   void readBlackbox(const vector<vector<int>>&);
-  void transformToFactors(int);
-  void transformToFactorsContinuous(int);
 };
 
 }  // namespace structure_impl

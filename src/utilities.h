@@ -15,7 +15,8 @@ std::string toNameString(
     const structure::Environment&, const std::vector<int>&);
 std::vector<std::vector<int>> getAdjMatrix(const structure::Environment&);
 int sign(double val);
-void sort2arraysConfidence(int len, int a[], int brr[]);
+void sort2arraysConfidence(
+    int len, const std::vector<int>& a, std::vector<int>& brr);
 void sort2arrays(int len, int a[], int brr[], int bridge[]);
 double get_wall_time();
 double ramanujan(int n);

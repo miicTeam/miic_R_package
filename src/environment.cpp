@@ -161,63 +161,6 @@ Environment::Environment(
   readBlackbox(as<vector<vector<int>>>(arg_list["black_box"]));
 }
 
-void Environment::transformToFactors(int i) {
-  // create a dictionary to store the factors of the strings
-  std::map<string, int> myMap;
-  myMap["NA"] = -1;
-  myMap[""] = -1;
-  int factor = 0;
-
-  for (int j = 0; j < n_samples; j++) {
-    auto it = myMap.find(data[j][i]);
-    if (it != myMap.end()) {
-      data_numeric[j][i] = it->second;
-    } else {
-      myMap[data[j][i]] = factor;
-      data_numeric[j][i] = factor;
-      factor++;
-    }
-  }
-}
-
-void Environment::transformToFactorsContinuous(int j) {
-  vector<double> column;
-  copy_if(data_double[j].cbegin(), data_double[j].cend(),
-      inserter(column, column.begin()), [](auto k) { return !std::isnan(k); });
-  sort(column.begin(), column.end());
-
-  std::multimap<double, int> myMap;
-  for (size_t i = 0; i < column.size(); i++) {
-    myMap.insert(std::pair<double, int>(column[i], i));
-  }
-
-  vector<int> order_list(n_samples);
-  std::transform(data_double[j].cbegin(), data_double[j].cend(),
-      order_list.begin(), [&myMap](auto entry) {
-        if (!std::isnan(entry)) {
-          auto it = myMap.find(entry);
-          auto order = it->second;
-          myMap.erase(it);
-          return order;
-        } else {
-          return -1;
-        }
-      });
-
-  std::map<int, int> index_map;
-
-  for (int i = 0; i < n_samples; i++) {
-    int entry = order_list[i];
-    if (entry != -1) index_map[entry] = i;
-  }
-
-  int i = 0;
-  for (auto it = index_map.begin(); it != index_map.end(); ++it) {
-    data_numeric_idx[j][i] = it->second;
-    ++i;
-  }
-}
-
 void Environment::readBlackbox(const vector<vector<int>>& node_list) {
   for (const auto& pair : node_list) {
     edges[pair[0]][pair[1]].status = 0;

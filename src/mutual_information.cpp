@@ -94,10 +94,10 @@ void update_datafactors(
 void jointfactors_uiyx(int **datafactors, int dui, int n, int Mui, int *r,
     int **uiyxfactors, int *ruiyx) {
   int df, Pbin_ui;
-  int *datauix = (int *)calloc(n, sizeof(int));
-  int *datauiy = (int *)calloc(n, sizeof(int));
-  int *datauiyx = (int *)calloc(n, sizeof(int));
-  int *dataui = (int *)calloc(n, sizeof(int));
+  vector<int> datauix(n);
+  vector<int> datauiy(n);
+  vector<int> datauiyx(n);
+  vector<int> dataui(n);
 
   int j, jj, l;
   bool tooManyLevels = false;
@@ -116,17 +116,14 @@ void jointfactors_uiyx(int **datafactors, int dui, int n, int Mui, int *r,
   int *vecZeroOnesuix;
   int *vecZeroOnesuiyx;
 
-  int *orderSample_ux;
-  int *orderSample_uyx;
+  vector<int> orderSample_ux(n);
+  vector<int> orderSample_uyx(n);
   // declaration
   if (!tooManyLevels) {
     vecZeroOnesui = (int *)calloc(nbrLevelsJoint + 1, sizeof(int));
     vecZeroOnesuiy = (int *)calloc(nbrLevelsJoint + 1, sizeof(int));
     vecZeroOnesuix = (int *)calloc(nbrLevelsJoint + 1, sizeof(int));
     vecZeroOnesuiyx = (int *)calloc(nbrLevelsJoint + 1, sizeof(int));
-  } else {
-    orderSample_ux = new int[n];
-    orderSample_uyx = new int[n];
   }
 
   for (jj = 0; jj <= n - 1; jj++) {
@@ -253,8 +250,6 @@ void jointfactors_uiyx(int **datafactors, int dui, int n, int Mui, int *r,
     ruiyx[1]++;  // uiy
     ruiyx[2]++;  // uix
     ruiyx[3]++;  // uiyx
-    delete[] orderSample_ux;
-    delete[] orderSample_uyx;
   }
 
 #if _MY_DEBUG_NEW_UI
@@ -273,10 +268,6 @@ void jointfactors_uiyx(int **datafactors, int dui, int n, int Mui, int *r,
         uiyxfactors[2][j], uiyxfactors[3][j]);
   }
 #endif
-  free(datauix);
-  free(datauiy);
-  free(datauiyx);
-  free(dataui);
   if (!tooManyLevels) {
     free(vecZeroOnesui);
     free(vecZeroOnesuiy);
@@ -305,7 +296,7 @@ void jointfactors_u(int **datafactors, int *ptrIdx, int n, int Mui, int *r,
   }
   // update joint datafactors (with gaps) ui and (ui,y)
   int df, Pbin_ui;
-  int *datau = (int *)calloc(n, sizeof(int));
+  vector<int> datau(n, 0);
 
   bool tooManyLevels = false;
 
@@ -316,16 +307,12 @@ void jointfactors_u(int **datafactors, int *ptrIdx, int n, int Mui, int *r,
   }
   // decl
   int *vecZeroOnesui;
-  int *orderSample_u;
+  vector<int> orderSample_u(n);
   if (!tooManyLevels) {
     vecZeroOnesui = (int *)calloc(nbrLevelsJoint + 1, sizeof(int));
-  } else {
-    orderSample_u = new int[n];
   }
 
   for (jj = 0; jj <= n - 1; jj++) {
-    datau[jj] = 0;
-
     Pbin_ui = 1;
     for (l = Mui - 1; l >= 0; l--) {
       df = datafactors[ptrIdx[l]][jj] * Pbin_ui;
@@ -374,10 +361,7 @@ void jointfactors_u(int **datafactors, int *ptrIdx, int n, int Mui, int *r,
       }
       ufactors[ix] = *ru;  // ui
     }
-
     *ru = *ru + 1;
-
-    delete[] orderSample_u;
   }
 
 #if DEBUG_JOINT
@@ -412,7 +396,6 @@ void jointfactors_u(int **datafactors, int *ptrIdx, int n, int Mui, int *r,
   fflush(stdout);
 #endif
 
-  free(datau);
   if (!tooManyLevels) {
     free(vecZeroOnesui);
   }

@@ -89,7 +89,7 @@ namespace reconstruction {
 bool firstStepIteration(Environment& environment, BCC& bcc) {
   // During first step iteration, search for U contributors is not
   // parallelizable see flag "parallelizable" in
-  // computeEnsInformationContinuous() l. 1118 in computeEnsInformation.cpp
+  // computeEnsInformationContinuous() in computeEnsInformation.cpp
   environment.first_iter_done = false;
 
   for (unsigned i = 0; i < environment.unsettled_list.size(); i++)
@@ -221,7 +221,7 @@ bool firstStepIteration(Environment& environment, BCC& bcc) {
         environment.unsettled_list.end(), sorter1(environment));
   }
   environment.first_iter_done = true;
-  return (true);
+  return true;
 }
 
 bool skeletonIteration(Environment& environment) {
@@ -239,7 +239,7 @@ bool skeletonIteration(Environment& environment) {
 
   while (environment.numSearchMore > 0) {
     if (checkInterrupt()) {
-      return (false);
+      return false;
     }
     iIteration_count++;
     if (environment.verbose) {
@@ -314,16 +314,14 @@ bool skeletonIteration(Environment& environment) {
            << endl;
     }
     if (topEdgeElt->Ixy_ui - topEdgeElt_kxy_ui - environment.log_eta <= 0) {
+      // Conditional independence found, remove edge
       if (environment.verbose) {
         cout << "# PHANTOM" << environment.nodes[posX].name << ","
              << environment.nodes[posY].name << "\n";
       }
-
-      // Move this edge from the list searchMore to phantom
       environment.unsettled_list.erase(
           environment.unsettled_list.begin() + max);
       environment.numSearchMore--;
-
       // Set the connection to 0 on the adj matrix
       environment.edges[posX][posY].status = 0;
       environment.edges[posY][posX].status = 0;
@@ -362,19 +360,19 @@ bool skeletonIteration(Environment& environment) {
         if (environment.verbose) {
           cout << "# Do update myAllEdges$noMore\n";
         }
-        //// Move this edge from the list searchMore to noMore
+        // Move this edge from the list searchMore to noMore
         environment.connected_list.push_back(environment.unsettled_list[max]);
         environment.numNoMore++;
         environment.unsettled_list.erase(
             environment.unsettled_list.begin() + max);
         environment.numSearchMore--;
-        //// Update the status of the edge
+        // Update the status of the edge
         topEdgeElt->connected = 1;
       }
     }
 
-    //// Sort all pairs xy with a contributing node z in decreasing order of
-    /// their ranks, R(xy;z| )
+    // Sort all pairs xy with a contributing node z in decreasing order of
+    // their ranks, R(xy;z| )
     if (environment.verbose) {
       cout << "# Do Sort all pairs by Rxyz_ui\n";
     }
@@ -562,7 +560,7 @@ std::set<int> BCC::get_candidate_z(int x, int y) const {
   // Find and set all candidate Z for a given pair of vertices
   // using biconnected components and block-cut tree.
   set<int> set_z;
-  std::insert_iterator<set<int> > insert_it = inserter(set_z, set_z.begin());
+  auto insert_it = inserter(set_z, set_z.begin());
 
   if (degree_of[x] < 1 || degree_of[y] < 1) return set_z;
 
@@ -591,13 +589,13 @@ std::set<int> BCC::get_candidate_z(int x, int y) const {
 }
 
 void BCC::set_candidate_z(int x, int y) {
-  vector<int>& vect_z = environment.edges[x][y].shared_info->zi_list;
-  auto insert_it = inserter(vect_z, vect_z.begin());
-  set<int> set_z = get_candidate_z(x, y);
-  copy_if(set_z.begin(), set_z.end(), insert_it, [this, x, y](int i) {
-    return (environment.latent || environment.edges[i][x].status_prev > 0 ||
-            environment.edges[i][y].status_prev > 0);
-  });
+  auto& vect_z = environment.edges[x][y].shared_info->zi_list;
+  auto set_z = get_candidate_z(x, y);
+  copy_if(set_z.begin(), set_z.end(), back_inserter(vect_z),
+      [this, x, y](int i) {
+        return (environment.latent || environment.edges[i][x].status_prev > 0 ||
+                environment.edges[i][y].status_prev > 0);
+      });
 }
 
 }  // namespace reconstruction

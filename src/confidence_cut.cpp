@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <iostream>
+#include <set>
 #include <vector>
 
 #include "compute_ens_information.h"
@@ -16,7 +17,7 @@ using namespace miic::computation;
 using namespace miic::structure;
 using namespace miic::utility;
 
-void shuffle_lookup(int* array, int* array2, size_t n) {
+void shuffle_lookup(vector<int>& array, vector<int>& array2, size_t n) {
   if (n <= 1) return;
   for (size_t i = 0; i < n - 1; i++) {
     size_t j = i + rand() / (RAND_MAX / (n - i) + 1);
@@ -43,98 +44,52 @@ class sorterNoMore2 {
   }
 };
 
-vector<vector<string> > miic::reconstruction::confidenceCut(
+vector<vector<string>> miic::reconstruction::confidenceCut(
     Environment& environment) {
-  int** safe_state;
-  int** safe_stateIdx;
+  // Create a back up of the data, for later randomization
+  vector<vector<int>> original_data(environment.data_numeric);
+  vector<vector<int>> original_data_idx(environment.data_numeric_idx);
 
-  int* lookup = new int[environment.n_samples];
-  int* lookup2 = new int[environment.n_samples];
+  vector<int> lookup(environment.n_samples);
+  vector<int> lookup2(environment.n_samples);
   for (int i = 0; i < environment.n_samples; i++) lookup[i] = i;
 
-  double noMore = environment.numNoMore;
-  // Allocate the true edges table
-  int** inferredEdges_tab;
-  inferredEdges_tab = new int*[environment.numNoMore];
-  for (int i = 0; i < environment.numNoMore; i++)
-    inferredEdges_tab[i] = new int[2];
+  vector<EdgeID*>& edge_list = environment.connected_list;
+  int n_connected = edge_list.size();
 
-  int pos = 0;
+  std::set<int> columns_to_shuffle;
+  for (const auto& edge : edge_list) {
+    columns_to_shuffle.insert(edge->i);
+  }
 
-  for (int i = 0; i < environment.n_nodes - 1; i++) {
-    for (int j = i + 1; j < environment.n_nodes; j++) {
-      if (environment.edges[i][j].status) {
-        inferredEdges_tab[pos][0] = i;
-        inferredEdges_tab[pos][1] = j;
-        pos++;
+  vector<double> confVect(n_connected, 0);
+  for (int nb = 0; nb < environment.n_shuffles; nb++) {
+    // Shuffle the dataset for selected columns
+    for (auto col : columns_to_shuffle) {
+      int row2 = 0;
+      shuffle_lookup(lookup, lookup2, environment.n_samples);
+      if (environment.is_continuous[col]) {
+        for (int i = 0; i < environment.n_samples; i++) {
+          lookup2[i] = i;
+        }
+        sort2arraysConfidence(environment.n_samples, lookup, lookup2);
       }
-    }
-  }
+      for (int row = 0; row < environment.n_samples; row++) {
+        environment.data_numeric[row][col] = original_data[lookup[row]][col];
+      }
 
-  // Create a back up of the data, for later randomization
-  safe_state = new int*[environment.n_samples];
-  for (int i = 0; i < environment.n_samples; i++)
-    safe_state[i] = new int[environment.n_nodes];
-
-  auto any_continuous = std::any_of(environment.is_continuous.begin(),
-      environment.is_continuous.end(), [](int i) { return i == 1; });
-  if (any_continuous) {
-    safe_stateIdx = new int*[environment.n_nodes];
-    for (int i = 0; i < environment.n_nodes; i++)
-      safe_stateIdx[i] = new int[environment.n_samples];
-  }
-  // copy to safe state
-  for (int i = 0; i < environment.n_samples; i++) {
-    for (int j = 0; j < environment.n_nodes; j++) {
-      safe_state[i][j] = environment.data_numeric[i][j];
-      if (environment.is_continuous[j])
-        safe_stateIdx[j][i] = environment.data_numeric_idx[j][i];
-    }
-  }
-
-  int* nodes_toShf = new int[environment.n_nodes];
-  for (int i = 0; i < environment.n_nodes; i++) nodes_toShf[i] = 0;
-  // indexes of nodes to shuffle
-  for (int i = 0; i < environment.numNoMore; i++) {
-    nodes_toShf[inferredEdges_tab[i][0]] = 1;
-  }
-
-  double* confVect = new double[environment.numNoMore];
-  for (int nb = 0; nb < environment.numNoMore; nb++) confVect[nb] = 0;
-
-  int* ptrVarIdx = new int[2];
-
-  // loop on the number of shuffling
-  for (int nb = 1; nb <= environment.n_shuffles; nb++) {
-    // Shuffle the dataset only for the variables present in nodes_toShf
-    for (int col = 0; col < environment.n_nodes; col++) {
-      if (nodes_toShf[col] == 1) {
-        int row2 = 0;
-        shuffle_lookup(lookup, lookup2, environment.n_samples);
+      for (int row = 0; row < environment.n_samples; row++) {
         if (environment.is_continuous[col]) {
-          for (int i = 0; i < environment.n_samples; i++) {
-            lookup2[i] = i;
-          }
-
-          sort2arraysConfidence(environment.n_samples, lookup, lookup2);
-        }
-        for (int row = 0; row < environment.n_samples; row++) {
-          environment.data_numeric[row][col] = safe_state[lookup[row]][col];
-        }
-
-        for (int row = 0; row < environment.n_samples; row++) {
-          if (environment.is_continuous[col]) {
-            if (environment.data_numeric[lookup2[row]][col] != -1) {
-              environment.data_numeric_idx[col][row2] = lookup2[row];
-              row2++;
-            }
-          }
-        }
-        if (environment.is_continuous[col]) {
-          while (row2 < environment.n_samples) {
-            environment.data_numeric_idx[col][row2] = -1;
+          if (environment.data_numeric[lookup2[row]][col] != -1) {
+            environment.data_numeric_idx[col][row2] = lookup2[row];
             row2++;
           }
+        }
+      }
+      if (environment.is_continuous[col]) {
+        while (row2 < environment.n_samples) {
+          environment.data_numeric_idx[col][row2] = -1;
+          row2++;
         }
       }
     }
@@ -146,72 +101,59 @@ vector<vector<string> > miic::reconstruction::confidenceCut(
       }
     }
 
-    int X, Y;
     double NIxy_ui, k_xy_ui;
     // evaluate the mutual information for every edge
-    for (int i = 0; i < environment.numNoMore; i++) {
-      X = inferredEdges_tab[i][0];
-      Y = inferredEdges_tab[i][1];
-
-      double* res;
-      if (!environment.is_continuous[X] &&
-          !environment.is_continuous[Y]) {
+    for (int i = 0; i < n_connected; i++) {
+      int X = edge_list[i]->i;
+      int Y = edge_list[i]->j;
+      if (!environment.is_continuous[X] && !environment.is_continuous[Y]) {
         // discrete case
-        res = computeEnsInformationNew(environment, NULL, 0, NULL, 0, -1, X, Y,
-            environment.cplx, environment.m);
+        double* res = computeEnsInformationNew(environment, NULL, 0, NULL, 0,
+            -1, X, Y, environment.cplx, environment.m);
         NIxy_ui = res[1];
         k_xy_ui = res[2];
-        free(res);
+        delete res;
       } else {
         // mixed case
-        res = computeEnsInformationContinuous(environment, NULL, 0, NULL, 0, -1,
-            X, Y, environment.cplx, environment.m);
+        double* res = computeEnsInformationContinuous(environment, NULL, 0,
+            NULL, 0, -1, X, Y, environment.cplx, environment.m);
         NIxy_ui = res[1];
         k_xy_ui = res[2];
-        free(res);
+        delete res;
       }
 
-      double ni = NIxy_ui - k_xy_ui;
-      if (ni <= 0) {
-        ni = 0;
+      double I_prime_shuffle = NIxy_ui - k_xy_ui;
+      if (I_prime_shuffle < 0) {
+        I_prime_shuffle = 0;
       }
-      confVect[i] += exp(-ni);
+      confVect[i] += exp(-I_prime_shuffle);  // n_shuffles times
     }
   }
   // evaluate the average confidence
-  for (int nb = 0; nb < environment.numNoMore; nb++) {
-    confVect[nb] /= environment.n_shuffles;
+  for (auto& c : confVect) {
+    c /= environment.n_shuffles;
   }
-  // put values > 1 to 1
-  for (int nb = 0; nb < environment.numNoMore; nb++)
-    if (confVect[nb] > 1) confVect[nb] = 1;
   // remove edges based on confidence cut
-  double confidence;
-  vector<int> toDelete;
-
-  for (int i = 0; i < environment.numNoMore; i++) {
-    int X = inferredEdges_tab[i][0];
-    int Y = inferredEdges_tab[i][1];
-    confidence = exp(-(environment.edges[X][Y].shared_info->Ixy_ui -
-                       environment.edges[X][Y].shared_info->cplx));
-    confVect[i] = confidence / confVect[i];
-    if (confVect[i] > environment.conf_threshold) {
-      environment.edges[X][Y].shared_info->connected = 0;
+  auto to_delete = [&environment, &confVect, &edge_list](auto& id) {
+    int X = id->i, Y = id->j;
+    auto info = environment.edges[X][Y].shared_info;
+    double I_prime_original = info->Ixy_ui - info->cplx;
+    auto index = &id - &*begin(edge_list);
+    // exp(I_shuffle - I_original)
+    confVect[index] = exp(-I_prime_original) / confVect[index];
+    if (confVect[index] > environment.conf_threshold) {
+      info->connected = 0;
       environment.edges[X][Y].status = 0;
       environment.edges[Y][X].status = 0;
-      toDelete.push_back(i);
+      return true;
+    } else {
+      return false;
     }
-  }
-  std::cout << "# -- number of edges cut: " << toDelete.size() << "\n";
-  // Delete from vector
-  environment.connected_list.clear();
-  for (int i = 0; i < environment.numNoMore; i++) {
-    if (!(std::find(toDelete.begin(), toDelete.end(), i) != toDelete.end())) {
-      int X = inferredEdges_tab[i][0];
-      int Y = inferredEdges_tab[i][1];
-      environment.connected_list.emplace_back(new EdgeID(X, Y));
-    }
-  }
+  };
+  edge_list.erase(
+      remove_if(begin(edge_list), end(edge_list), to_delete), end(edge_list));
+  std::cout << "# -- number of edges cut: " << n_connected - edge_list.size()
+            << "\n";
 
   for (int X = 0; X < environment.n_nodes - 1; X++) {
     for (int Y = X + 1; Y < environment.n_nodes; Y++) {
@@ -224,11 +166,8 @@ vector<vector<string> > miic::reconstruction::confidenceCut(
     }
   }
   // Copy data back
-  for (int i = 0; i < environment.n_samples; i++) {
-    for (int j = 0; j < environment.n_nodes; j++) {
-      environment.data_numeric[i][j] = safe_state[i][j];
-    }
-  }
+  environment.data_numeric = std::move(original_data);
+  environment.data_numeric_idx = std::move(original_data_idx);
 
   for (int i = 0; i < environment.n_samples; i++) {
     for (int j = 0; j < environment.n_nodes; j++) {
@@ -237,41 +176,17 @@ vector<vector<string> > miic::reconstruction::confidenceCut(
     }
   }
 
-  if (any_continuous) {
-    for (int j = 0; j < environment.n_nodes; j++) {
-      if (environment.is_continuous[j]) {
-        environment.transformToFactorsContinuous(j);
-        environment.transformToFactors(j);
-      }
-    }
-  }  // End copy data back
-
   std::sort(environment.connected_list.begin(),
       environment.connected_list.end(), sorterNoMore2(environment));
   environment.numNoMore = environment.connected_list.size();
 
-  delete[] ptrVarIdx;
-
-  for (int i = 0; i < environment.n_samples; i++) delete safe_state[i];
-  delete[] safe_state;
-
-  delete[] lookup;
-  delete[] lookup2;
-  delete[] nodes_toShf;
-
-  vector<vector<string> > confVect1;
-  confVect1.emplace_back(
-      std::initializer_list<string>{"x", "y", "confidence_ratio"});
-  for (int i = 0; i < noMore; i++) {
-    confVect1.emplace_back(std::initializer_list<string>{
-        environment.nodes[inferredEdges_tab[i][0]].name,
-        environment.nodes[inferredEdges_tab[i][1]].name,
+  vector<vector<string>> res;
+  res.emplace_back(std::initializer_list<string>{"x", "y", "confidence_ratio"});
+  for (int i = 0; i < n_connected; i++) {
+    res.emplace_back(std::initializer_list<string>{
+        environment.nodes[edge_list[i]->i].name,
+        environment.nodes[edge_list[i]->j].name,
         std::to_string(confVect[i])});
   }
-
-  for (int i = 0; i < noMore; i++) delete inferredEdges_tab[i];
-  delete[] inferredEdges_tab;
-  delete[] confVect;
-
-  return confVect1;
+  return res;
 }
