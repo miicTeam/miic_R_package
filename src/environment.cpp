@@ -44,7 +44,6 @@ Environment::Environment(
       initbins(std::min(30, int(0.5 + cbrt(n_samples)))),
       n_threads(as<int>(arg_list["n_threads"])),
       verbose(as<bool>(arg_list["verbose"])) {
-  srand(0);
   auto var_names = as<vector<string>>(arg_list["var_names"]);
   std::transform(var_names.begin(), var_names.end(), std::back_inserter(nodes),
       [](string name) { return Node(name); });
@@ -153,8 +152,7 @@ Environment::Environment(
 
   noise_vec = new double[2 * n_samples];
   for (int i = 0; i < 2 * n_samples; i++) {
-    noise_vec[i] =
-        std::rand() / ((RAND_MAX + 1u) / MAGNITUDE_TIES) - MAGNITUDE_TIES / 2;
+    noise_vec[i] = R::runif(-MAGNITUDE_TIES, MAGNITUDE_TIES);
   }
 
   readBlackbox(as<vector<vector<int>>>(arg_list["black_box"]));

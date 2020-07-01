@@ -20,7 +20,7 @@ using namespace miic::utility;
 void shuffle_lookup(vector<int>& array, vector<int>& array2, size_t n) {
   if (n <= 1) return;
   for (size_t i = 0; i < n - 1; i++) {
-    size_t j = i + rand() / (RAND_MAX / (n - i) + 1);
+    size_t j = R::runif(0, n-i);
     int t = array[j];
     array[j] = array[i];
     array[i] = t;

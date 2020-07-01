@@ -548,7 +548,7 @@ double* getAllInfoNEW(int* ptrAllData, const vector<int>& ptrAllLevels,
           if (randomrescaling) {
             NNxyui = (int)floor(Pxyui);
             r = Pxyui - NNxyui;
-            rr = (double)rand() / (double)RAND_MAX;
+            rr = R::runif(0,1);
             if (r > rr) NNxyui++;
           }
         } else {
@@ -983,7 +983,7 @@ double* getAllInfoNEW(int* ptrAllData, const vector<int>& ptrAllLevels,
                         if (randomrescaling) {
                           NNxyuizl = (int)floor(Pxyuizl);
                           r = Pxyuizl - NNxyuiz;
-                          rr = (double)rand() / (double)RAND_MAX;
+                          rr = R::runif(0,1);
                           if (r > rr) NNxyuizl++;
                         }
                       } else {
