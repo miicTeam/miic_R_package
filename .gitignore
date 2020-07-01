@@ -1,6 +1,6 @@
 # RStudio
-.Rproj
-.Rproj.user
+*.Rproj
+*.Rproj.user
 # R
 .Rhistory
 .RData
@@ -14,3 +14,4 @@ src/miic.so
 # clangd
 src/.clangd/
 compile_commands.json
+.Rproj.user

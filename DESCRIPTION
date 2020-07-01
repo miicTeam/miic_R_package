@@ -29,7 +29,7 @@ NeedsCompilation: yes
 Encoding: UTF-8
 SystemRequirements: C++14
 LazyData: true
-RoxygenNote: 7.1.0
+RoxygenNote: 7.1.1
 LinkingTo: Rcpp
 Packaged: 2018-04-26 14:26:43 UTC; nadir
 Author: Nadir Sella [aut, cre],

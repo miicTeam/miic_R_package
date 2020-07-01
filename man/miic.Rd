@@ -5,50 +5,51 @@
 \title{MIIC, causal network learning algorithm including latent variables}
 \usage{
 miic(
-  inputData,
-  categoryOrder = NULL,
-  trueEdges = NULL,
-  blackBox = NULL,
-  nThreads = 1,
+  input_data,
+  state_order = NULL,
+  true_edges = NULL,
+  black_box = NULL,
+  n_threads = 1,
   cplx = c("nml", "mdl"),
   orientation = TRUE,
   propagation = TRUE,
-  latent = c("no", "yes", "ort"),
-  neff = -1,
+  latent = c("no", "yes", "orientation"),
+  n_eff = -1,
   edges = NULL,
-  confidenceShuffle = 0,
-  confidenceThreshold = 0,
+  n_shuffles = 0,
+  conf_threshold = 0,
   confList = NULL,
-  sampleWeights = NULL,
-  testMAR = TRUE,
+  sample_weights = NULL,
+  test_mar = TRUE,
   consistent = c("no", "orientation", "skeleton"),
+  max_iteration = 100,
   verbose = FALSE
 )
 }
 \arguments{
-\item{inputData}{[a data frame]
+\item{input_data}{[a data frame]
 A data frame that contains the observational data. Each
 column corresponds to one variable and each row is a sample that gives the
 values for all the observed variables. The column names correspond to the
 names of the observed variables. Numeric columns will be treated as continuous
 values, factors and character as categorical.}
 
-\item{categoryOrder}{[a data frame] An optional data frame giving information
+\item{state_order}{[a data frame] An optional data frame giving information
 about how to order the various states of categorical variables. It will be
 used to compute the signs of the edges (using partial correlation coefficient)
 by sorting each variable’s levels accordingly to the given category order.}
 
-\item{trueEdges}{[a data frame]  An optional data frame containing all the
+\item{true_edges}{[a data frame]  An optional data frame containing all the
 true edges of the graph. Each line corresponds to one edge.}
 
-\item{blackBox}{[a data frame]
+\item{black_box}{[a data frame]
 An optional data frame containing the
 pairs of variables that should be considered as independent. Each row contains
 one column for each of the two variables. The variable name must correspond to
-the one in the \emph{inputData} data frame.}
+the one in the \emph{input_data} data frame.}
 
-\item{nThreads}{[a positive integer]
-When set greater than 1, nThreads parallel threads will be used for computation. Make sure
+\item{n_threads}{[a positive integer]
+When set greater than 1, n_threads parallel threads will be used for computation. Make sure
 your compiler is compatible with openmp if you wish to use multithreading.}
 
 \item{cplx}{[a string; \emph{c("nml", "mdl")}]
@@ -75,20 +76,20 @@ v-structure orientations. Otherwise, the v-structure orientations are
 propagated to downstream undirected edges in unshielded triples following
 the orientation method}
 
-\item{latent}{[a string; \emph{c("no", "yes", "ort")}]
+\item{latent}{[a string; \emph{c("no", "yes", "orientation")}]
 When set to "yes", the network reconstruction is taking into account hidden (latent)
-variables. When set to "ort", latent variables are not considered during the skeleton
+variables. When set to "orientation", latent variables are not considered during the skeleton
 reconstruction but allows bi-directed edges during the orientation. Dependence
 between two observed variables due to a latent variable is indicated with a '6' in
 the adjacency matrix and in the network edges.summary and by a bi-directed edge
 in the (partially) oriented graph.}
 
-\item{neff}{[a positive integer]
-The N samples given in the \emph{inputdata} data frame are expected
+\item{n_eff}{[a positive integer]
+The N samples given in the \emph{input_data} data frame are expected
 to be independent. In case of correlated samples such as in time series or
 Monte Carlo sampling approaches, the effective number of independent samples
-\emph{neff} can be estimated using the decay of the autocorrelation function
-(Verny \emph{et al.}, PLoS Comp. Bio. 2017). This \emph{effective} number \emph{neff}
+\emph{n_eff} can be estimated using the decay of the autocorrelation function
+(Verny \emph{et al.}, PLoS Comp. Bio. 2017). This \emph{effective} number \emph{n_eff}
 of \emph{independent} samples can be provided using this parameter.}
 
 \item{edges}{[a data frame] The miic$edges object returned by an execution
@@ -96,25 +97,25 @@ of the miic function. It represents the result of the skeleton step. If this
 object is provided, the skeleton step will not be done, and the required
 orientation will be performed using this edges data frame.}
 
-\item{confidenceShuffle}{[a positive integer] The number of shufflings of
+\item{n_shuffles}{[a positive integer] The number of shufflings of
 the original dataset in order to evaluate the edge specific confidence
 ratio of all inferred edges.}
 
-\item{confidenceThreshold}{[a positive floating point] The threshold used
+\item{conf_threshold}{[a positive floating point] The threshold used
 to filter the less probable edges following the skeleton step. See Verny
 \emph{et al.}, PLoS Comp. Bio. 2017.}
 
 \item{confList}{[a data frame] An optional data frame containing the
 confFile data frame returned by a miic execution. It is useful when a
 second run of the same input data set has to be performed with a different
-confidence threshold and the same confidenceShuffle value. In
+confidence threshold and the same n_shuffles value. In
 this way the computations based on the randomized dataset do not need to
 be performed again, and the values in this data frame are used instead.}
 
-\item{sampleWeights}{[a numeric vector]
+\item{sample_weights}{[a numeric vector]
 An optional vector containing the weight of each observation.}
 
-\item{testMAR}{[a boolean value]
+\item{test_mar}{[a boolean value]
 If set to TRUE, distributions with missing values will be tested with Kullback-Leibler
 divergence : conditioning variables for the given link \eqn{X\arrow Y}\eqn{Z} will be
 considered only if the divergence between the full distribution and the non-missing
@@ -129,6 +130,10 @@ consistency of the network;
 if "skeleton": iterate over skeleton step to get a consistent skeleton, then
 orient edges and discard inconsistent orientations to ensure consistency of
 the network.}
+
+\item{max_iteration}{[a positive integer] When the \emph{consistent} parameter
+is set to "skeleton" or "orientation", the maximum number of iterations
+allowed when trying to find a consistent graph. Set to 100 by default.}
 
 \item{verbose}{[a boolean value] If TRUE, debugging output is printed.}
 }
@@ -236,8 +241,8 @@ data(hematoData)
 
 # execute MIIC (reconstruct graph)
 miic.res <- miic(
-  inputData = hematoData, latent = "yes",
-  confidenceShuffle = 10, confidenceThreshold = 0.001
+  input_data = hematoData, latent = "yes",
+  n_shuffles = 10, conf_threshold = 0.001
 )
 
 # plot graph
@@ -254,8 +259,8 @@ data(cosmicCancer)
 data(cosmicCancer_stateOrder)
 # execute MIIC (reconstruct graph)
 miic.res <- miic(
-  inputData = cosmicCancer, categoryOrder = cosmicCancer_stateOrder, latent = "yes",
-  confidenceShuffle = 100, confidenceThreshold = 0.001
+  input_data = cosmicCancer, state_order = cosmicCancer_stateOrder, latent = "yes",
+  n_shuffles = 100, conf_threshold = 0.001
 )
 
 # plot graph
@@ -270,8 +275,8 @@ data(ohno)
 data(ohno_stateOrder)
 # execute MIIC (reconstruct graph)
 miic.res <- miic(
-  inputData = ohno, latent = "yes", categoryOrder = ohno_stateOrder,
-  confidenceShuffle = 100, confidenceThreshold = 0.001
+  input_data = ohno, latent = "yes", state_order = ohno_stateOrder,
+  n_shuffles = 100, conf_threshold = 0.001
 )
 
 # plot graph

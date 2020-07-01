@@ -4,10 +4,10 @@
 \alias{miic.evaluate.effn}
 \title{Evaluate the effective number of samples}
 \usage{
-miic.evaluate.effn(inputData = NULL, plot = T)
+miic.evaluate.effn(input_data = NULL, plot = T)
 }
 \arguments{
-\item{inputData}{[a data frame]
+\item{input_data}{[a data frame]
 A data frame that contains the observational data. Each
 column corresponds to one variable and each row is a sample that gives the
 values for all the observed variables. The column names correspond to the
