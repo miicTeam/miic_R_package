@@ -5,17 +5,6 @@
 
 using namespace Rcpp;
 
-// evaluateEffn
-List evaluateEffn(DataFrame input_data);
-RcppExport SEXP _miic_evaluateEffn(SEXP input_dataSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< DataFrame >::type input_data(input_dataSEXP);
-    rcpp_result_gen = Rcpp::wrap(evaluateEffn(input_data));
-    return rcpp_result_gen;
-END_RCPP
-}
 // mydiscretizeMDL
 List mydiscretizeMDL(SEXP RmyDist, SEXP RmaxBins);
 RcppExport SEXP _miic_mydiscretizeMDL(SEXP RmyDistSEXP, SEXP RmaxBinsSEXP) {
@@ -63,7 +52,6 @@ END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_miic_evaluateEffn", (DL_FUNC) &_miic_evaluateEffn, 1},
     {"_miic_mydiscretizeMDL", (DL_FUNC) &_miic_mydiscretizeMDL, 2},
     {"_miic_mydiscretizeMutual", (DL_FUNC) &_miic_mydiscretizeMutual, 11},
     {"_miic_reconstruct", (DL_FUNC) &_miic_reconstruct, 2},

@@ -213,6 +213,7 @@
 #' }
 #' @export
 #' @useDynLib miic
+#' @import Rcpp
 #'
 #' @examples
 #' library(miic)
@@ -300,28 +301,6 @@ miic <- function(input_data,
   input_data <- input_data[rowSums(is.na(input_data)) != ncol(input_data), ]
   if (length(input_data) == 0) {
     stop("The input data is empty or contains only NAs")
-  }
-
-  effnAnalysis <- miic.evaluate.effn(input_data, plot = F)
-  if (effnAnalysis$n_eff < 0.5 * nrow(input_data)) {
-    if (effnAnalysis$exponential_decay) {
-      warning(
-        paste0(
-          "The samples in the datasets seem to be correlated! ",
-          "Try specify ", effnAnalysis$n_eff, " in the n_eff parameter. ",
-          "See the autocorrelation plot for more details."
-        )
-      )
-    } else {
-      warning(
-        paste0(
-          "The samples in the datasets seem to be correlated and ",
-          "the correlation decay is not exponential. Are the ",
-          "samples correlated in some way? See the autocorrelation ",
-          "plot for more details."
-        )
-      )
-    }
   }
 
   cplx <- tryCatch(

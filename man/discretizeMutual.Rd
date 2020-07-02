@@ -84,7 +84,7 @@ Discrete variables can be passed as factors and will be used "as is" to maximize
 library(miic)
 \dontrun{
 N <- 1000
-# Dependence, conditional independence
+# Dependence, conditional independence : X <- Z -> Y
 Z <- runif(N)
 X <- Z * 2 + rnorm(N, sd = 0.2)
 Y <- Z * 2 + rnorm(N, sd = 0.2)
@@ -93,7 +93,7 @@ cat("I(X;Y) = ", res$info)
 res <- discretizeMutual(X, Y, matrix_u = matrix(Z, ncol = 1), plot = T)
 cat("I(X;Y|Z) = ", res$info)
 
-# Conditional independence with categorical conditioning variable
+# Conditional independence with categorical conditioning variable : X <- Z -> Y
 Z <- sample(1:3, N, replace = T)
 X <- -as.numeric(Z == 1) + as.numeric(Z == 2) + 0.2 * rnorm(N)
 Y <- as.numeric(Z == 1) + as.numeric(Z == 2) + 0.2 * rnorm(N)
@@ -103,7 +103,7 @@ res <- miic::discretizeMutual(X, Y, matrix(Z, ncol = 1), is_discrete = c(F, F, T
 cat("I(X;Y|Z) = ", res$info)
 
 
-# Independence, conditional dependence
+# Independence, conditional dependence : X -> Z <- Y
 X <- runif(N)
 Y <- runif(N)
 Z <- X + Y + runif(N, sd = 0.1)
