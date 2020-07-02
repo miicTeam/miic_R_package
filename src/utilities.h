@@ -79,15 +79,12 @@ class EdgeSorter {
       const structure::EdgeID& e1, const structure::EdgeID& e2) const {
     const auto info1 = env.edges[e1.i][e1.j].shared_info;
     const auto info2 = env.edges[e2.i][e2.j].shared_info;
-    // connected can be 1 or 0
+    // Prefer connected over non-connected
     if (info1->connected != info2->connected)
       return info1->connected > info2->connected;
-
+    // connected can be 0 or 1
     if (info1->connected == 0) {
-      if (info1->Rxyz_ui == 0 || info2->Rxyz_ui == 0)
-        return info2->Rxyz_ui != 0;
-      else
-        return info1->Rxyz_ui > info2->Rxyz_ui;
+      return info1->Rxyz_ui > info2->Rxyz_ui;
     } else {
       return info1->Ixy_ui > info2->Ixy_ui;
     }
