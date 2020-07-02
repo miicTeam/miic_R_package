@@ -44,6 +44,7 @@ Environment::Environment(
       maxbins(as<int>(arg_list["max_bins"])),
       initbins(std::min(30, int(0.5 + cbrt(n_samples)))),
       n_threads(as<int>(arg_list["n_threads"])),
+      cache(n_samples),
       verbose(as<bool>(arg_list["verbose"])) {
   auto var_names = as<vector<string>>(arg_list["var_names"]);
   std::transform(var_names.begin(), var_names.end(), std::back_inserter(nodes),
@@ -125,7 +126,6 @@ Environment::Environment(
     }
   }
 
-  // create the edge structure and keep track of how many searchMore we have
   edges = new Edge*[n_nodes];
   for (int i = 0; i < n_nodes; i++)
     edges[i] = new Edge[n_nodes];

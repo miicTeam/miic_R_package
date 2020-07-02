@@ -57,8 +57,7 @@ double logchoose(int n, int k, double* looklog, double** lookchoose) {
 
 double computeLogC(int N, int r, double* looklog, double* c2terms) {
   double C2 = 0;
-  if (r==1)
-    return 0;
+  if (r == 1) return 0;
   if (c2terms[N] != -1)
     C2 = c2terms[N];
   else {

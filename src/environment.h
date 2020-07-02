@@ -7,6 +7,7 @@
 #include <string>
 #include <vector>
 
+#include "computation_cache.h"
 #include "structure.h"
 
 #define N_COL_NML 1000
@@ -17,6 +18,7 @@ namespace structure_impl {
 
 using std::string;
 using std::vector;
+using computation::CompCache;
 
 struct Environment {
   vector<vector<string>> data;
@@ -97,6 +99,7 @@ struct Environment {
 
   ExecutionTime exec_time;
   int n_threads;
+  CompCache cache;
   bool verbose;
 
   Environment(const Rcpp::List&, const Rcpp::List&);

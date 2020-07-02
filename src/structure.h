@@ -16,6 +16,44 @@ namespace structure_impl {
 using std::string;
 using std::vector;
 
+template <typename T>
+struct Grid2d {
+ private:
+  size_t rows_, cols_;
+  vector<T> data_;
+
+ public:
+  Grid2d() = default;
+  Grid2d(size_t rows, size_t cols)
+      : rows_(rows), cols_(cols), data_(rows * cols) {}
+
+  Grid2d(size_t rows, size_t cols, T&& init)
+      : rows_(rows), cols_(cols), data_(rows * cols, init) {}
+
+  Grid2d(const Grid2d&) = default;
+  Grid2d(Grid2d&&) = default;
+  Grid2d& operator=(const Grid2d&) = default;
+  Grid2d& operator=(Grid2d&&) = default;
+
+  T& operator()(size_t row, size_t col) { return data_[row * cols_ + col]; }
+  const T& operator()(size_t row, size_t col) const {
+    return data_[row * cols_ + col];
+  }
+
+  size_t n_rows() { return rows_; }
+  size_t n_cols() { return cols_; }
+
+  auto begin() { return data_.begin(); }
+  auto end() { return data_.end(); }
+  auto cbegin() const { return data_.cbegin(); }
+  auto cend() const { return data_.cend(); }
+
+  auto row_begin(size_t row) { return data_.begin() + row * cols_; }
+  auto row_end(size_t row) { return data_.end() + (row + 1) * cols_; }
+  auto row_cbegin(size_t row) const { return data_.cbegin() + row * cols_; }
+  auto row_cend(size_t row) const { return data_.cend() + (row + 1) * cols_; }
+};
+
 struct EdgeSharedInfo {
   // {ui}: indices of separating nodes
   vector<int> ui_list;
@@ -176,6 +214,7 @@ using structure_impl::Edge;
 using structure_impl::EdgeID;
 using structure_impl::EdgeSharedInfo;
 using structure_impl::ExecutionTime;
+using structure_impl::Grid2d;
 using structure_impl::MemorySpace;
 using structure_impl::Node;
 }  // namespace structure

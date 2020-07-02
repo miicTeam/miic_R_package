@@ -220,8 +220,11 @@ void optfun_onerun_kmdl_coarse(vector<int> sortidx_var, vector<int> data, int nb
     njforward = n_values[j];
     ef_nj = sum_sample_weights[j];
     if (flag_sample_weights) efN_factor = ef_nj / njforward;
-    coarse_counts_joint.add_row(counts[0], j);
-    coarse_counts_marginal.add_row(counts[1], j);
+    std::transform(counts[0].begin(), counts[0].end(),
+        coarse_counts_joint.row_cbegin(j), counts[0].begin(), std::plus<int>());
+    std::transform(counts[1].begin(), counts[1].end(),
+        coarse_counts_marginal.row_cbegin(j), counts[1].begin(),
+        std::plus<int>());
 
     Hk_kj[0] = 0;  // joint
     Hk_kj[1] = 0;  // marginal
@@ -282,8 +285,13 @@ void optfun_onerun_kmdl_coarse(vector<int> sortidx_var, vector<int> data, int nb
       ef_nk = sum_sample_weights[j] - sum_sample_weights[k];
       if (flag_sample_weights)
         efN_factor = ef_nk / (njforward - nkforward);
-      coarse_counts_marginal.subtract_row(counts_k[1], k);
-      coarse_counts_joint.subtract_row(counts_k[0], k);
+
+      std::transform(counts_k[1].begin(), counts_k[1].end(),
+          coarse_counts_marginal.row_cbegin(k), counts_k[1].begin(),
+          std::minus<int>());
+      std::transform(counts_k[0].begin(), counts_k[0].end(),
+          coarse_counts_joint.row_cbegin(k), counts_k[0].begin(),
+          std::minus<int>());
 
       H_kj[0]  = 0;
       Hk_kj[0] = 0;
@@ -694,10 +702,11 @@ double* compute_Ixy_alg1(vector<vector<int> > data, vector<vector<int> > sortidx
   return return_res;
 }
 
-double* compute_Ixy_cond_u_new_alg1(vector<vector<int> > data, vector<vector<int> > sortidx,
-    vector<int> ptr_cnt, vector<int> ptrVarIdx, vector<int> AllLevels, int nbrUi,
-    int n, int** cut, int* r, int lbin, vector<double> sample_weights,
-    bool flag_sample_weights, Environment& environment, bool saveIterations) {
+double* compute_Ixy_cond_u_new_alg1(vector<vector<int> > data,
+    vector<vector<int> > sortidx, vector<int> ptr_cnt, vector<int> ptrVarIdx,
+    vector<int> AllLevels, int nbrUi, int n, int** cut, int* r, int lbin,
+    vector<double> sample_weights, bool flag_sample_weights,
+    Environment& environment, bool saveIterations) {
   int maxbins = environment.maxbins;
   int initbins = environment.initbins;
   double* c2terms = environment.c2terms;
@@ -1270,9 +1279,9 @@ double* compute_Ixy_cond_u_new_alg1(vector<vector<int> > data, vector<vector<int
   return return_res;
 }
 
-double* compute_mi_cond_alg1(vector<vector<int> > data, vector<vector<int> > sortidx,
-    vector<int> AllLevels, vector <int> ptr_cnt, vector<int> ptrVarIdx,
-    int nbrUi, int n, vector<double> sample_weights,
+double* compute_mi_cond_alg1(vector<vector<int> > data,
+    vector<vector<int> > sortidx, vector<int> AllLevels, vector<int> ptr_cnt,
+    vector<int> ptrVarIdx, int nbrUi, int n, vector<double> sample_weights,
     bool flag_sample_weights, Environment& environment, bool saveIterations) {
   int maxbins = environment.maxbins;
   int initbins = environment.initbins;

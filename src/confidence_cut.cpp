@@ -118,7 +118,7 @@ vector<vector<string>> miic::reconstruction::confidenceCut(
     c /= environment.n_shuffles;
   }
   // remove edges based on confidence cut
-  auto to_delete = [&environment, &confVect, &edge_list](auto& id) {
+  auto to_delete = [&environment, &confVect, &edge_list](EdgeID& id) {
     int X = id.i, Y = id.j;
     auto info = environment.edges[X][Y].shared_info;
     double I_prime_original = info->Ixy_ui - info->cplx;
@@ -160,10 +160,6 @@ vector<vector<string>> miic::reconstruction::confidenceCut(
     }
   }
 
-  std::sort(
-      environment.connected_list.begin(), environment.connected_list.end());
-  environment.numNoMore = environment.connected_list.size();
-
   vector<vector<string>> res;
   res.emplace_back(std::initializer_list<string>{"x", "y", "confidence_ratio"});
   for (int i = 0; i < n_connected; i++) {
@@ -172,5 +168,8 @@ vector<vector<string>> miic::reconstruction::confidenceCut(
         environment.nodes[edge_list[i].j].name,
         std::to_string(confVect[i])});
   }
+  std::sort(edge_list.begin(), edge_list.end());
+  environment.numNoMore = edge_list.size();
+
   return res;
 }

@@ -14,4 +14,3 @@ src/miic.so
 # clangd
 src/.clangd/
 compile_commands.json
-.Rproj.user
