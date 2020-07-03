@@ -19,6 +19,9 @@
 #' treated as continuous, or character / factor columns which will be treated
 #' as categorical. For further details on the optimal discretization method and
 #' the conditional independence test, see the function discretizeMutual.
+#' The user may also choose to run miic with scheme presented in
+#' (Li \emph{et al.}, NeurIPS 2019) to improve the end result's interpretability
+#' by ensuring consistent separating set during the skeleton iterations.
 #'
 #' @seealso \code{\link{discretizeMutual}} for optimal discretization and
 #' (conditional) independence test.
@@ -27,6 +30,7 @@
 #' \itemize{
 #' \item Verny et al., \emph{PLoS Comp. Bio. 2017.}  https://doi.org/10.1371/journal.pcbi.1005662
 #' \item Cabeli et al., \emph{PLoS Comp. Bio. 2020.}  https://doi.org/10.1371/journal.pcbi.1007866
+#' \item Li et al., \emph{NeurIPS 2019} http://papers.nips.cc/paper/9573-constraint-based-causal-structure-learning-with-consistent-separating-sets.pdf
 #' }
 #'
 #' @param input_data [a data frame]
@@ -127,7 +131,7 @@
 #' consistency of the network;
 #' if "skeleton": iterate over skeleton step to get a consistent skeleton, then
 #' orient edges and discard inconsistent orientations to ensure consistency of
-#' the network.
+#' the network. See (Li \emph{et al.}, NeurIPS 2019) for details.
 #'
 #' @param max_iteration [a positive integer] When the \emph{consistent} parameter
 #' is set to "skeleton" or "orientation", the maximum number of iterations
