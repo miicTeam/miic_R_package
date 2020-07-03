@@ -91,8 +91,6 @@ struct Environment {
 
   double* looklog;
   double* lookH;
-  double* c2terms;
-  double** cterms;
   double** lookchoose;
   std::map<CacheInfoKey, double> look_scores;
   std::map<CacheInfoKey, CacheScoreValue> look_scores_orientation;
@@ -107,7 +105,6 @@ struct Environment {
 
   ~Environment() {
     delete[] oneLineMatrix;
-    delete[] c2terms;
     for (int i = 0; i < n_nodes; i++) delete[] edges[i];
     delete[] edges;
     delete[] looklog;

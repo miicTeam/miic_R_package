@@ -59,7 +59,6 @@ void reset_u_cutpoints(int** cut, int nbrUi, vector<int> ptr_cnt,
 // only n/coarse possible cuts
 
 // double* looklog : lookup table for the logarithms of natural numbers up to n
-// double* c2terms : precomputed vectors for the MDL complexity
 
 /*  DYNAMIC PROGRAMMING OPTIMIZATION FUNCTION
  *
@@ -108,7 +107,7 @@ void reset_u_cutpoints(int** cut, int nbrUi, vector<int> ptr_cnt,
  * speeds up significantly the dynamic programming at the cost of finding
  * approximated solutions.
  *
- * <looklog, lookH, cterms> are lookup tables for computing respectively log,
+ * <looklog, lookH> are lookup tables for computing respectively log,
  * entropy and stochastic complexity (as in Kontkanen & Myllymäki, 2005)
  *
  * <cplx> is the choice of complexity : 0 for simple MDL (product of all
@@ -248,8 +247,7 @@ void optfun_onerun_kmdl_coarse(vector<int> sortidx_var, vector<int> data, int nb
       if (environment.cplx == 0 && counts[1][level] > 0)
         Hk_kj[1] -= sc * environment.looklog[n];
       else if (environment.cplx == 1) {
-        Hk_kj[1] -= computeLogC(weighted_count, sc_levels1, environment.looklog,
-            environment.cterms);
+        Hk_kj[1] -= environment.cache.cterm->getLogC(weighted_count, sc_levels1);
       }
     }
 
@@ -321,8 +319,8 @@ void optfun_onerun_kmdl_coarse(vector<int> sortidx_var, vector<int> data, int nb
         if (environment.cplx == 0 && counts_k[1][level] > 0)
           Hk_kj[1] -= sc * environment.looklog[n];
         else if (environment.cplx == 1) {
-          Hk_kj[1] -= computeLogC(weighted_count, sc_levels1,
-              environment.looklog, environment.cterms);
+          Hk_kj[1] -=
+              environment.cache.cterm->getLogC(weighted_count, sc_levels1);
         }
       }
 
@@ -374,7 +372,6 @@ double* compute_Ixy_alg1(vector<vector<int> > data, vector<vector<int> > sortidx
     Environment& environment, bool saveIterations) {
   int maxbins = environment.maxbins;
   int initbins = environment.initbins;
-  double* c2terms = environment.c2terms;
   double** lookchoose = environment.lookchoose;
   double* looklog = environment.looklog;
   int cplx = environment.cplx;
@@ -415,7 +412,8 @@ double* compute_Ixy_alg1(vector<vector<int> > data, vector<vector<int> > sortidx
   r_temp[2] = rxy;
   if (cplx == 1)
     res_temp = computeMI_knml(datafactors[0], datafactors[1], xy_factors,
-        r_temp, n, n_eff, c2terms, looklog, sample_weights, 0);
+        r_temp, n, n_eff, looklog, sample_weights,
+        environment.cache.cterm, 0);
   else
     res_temp = computeMI_kmdl(
         datafactors[0], datafactors[1], xy_factors, r_temp, n, looklog, 0);
@@ -478,7 +476,8 @@ double* compute_Ixy_alg1(vector<vector<int> > data, vector<vector<int> > sortidx
     r_temp[2] = rxy;
     if (cplx == 1)
       res_temp = computeMI_knml(datafactors[0], datafactors[1], xy_factors,
-          r_temp, n, n_eff, c2terms, looklog, sample_weights, 0);
+          r_temp, n, n_eff, looklog, sample_weights,
+          environment.cache.cterm, 0);
     else
       res_temp = computeMI_kmdl(
           datafactors[0], datafactors[1], xy_factors, r_temp, n, looklog, 0);
@@ -603,7 +602,8 @@ double* compute_Ixy_alg1(vector<vector<int> > data, vector<vector<int> > sortidx
     r_temp[2] = rxy;
     if (cplx == 1)
       res_temp = computeMI_knml(datafactors[0], datafactors[1], xy_factors,
-          r_temp, n, n_eff, c2terms, looklog, sample_weights, 0);
+          r_temp, n, n_eff, looklog, sample_weights,
+          environment.cache.cterm, 0);
     else
       res_temp = computeMI_kmdl(
           datafactors[0], datafactors[1], xy_factors, r_temp, n, looklog, 0);
@@ -709,7 +709,6 @@ double* compute_Ixy_cond_u_new_alg1(vector<vector<int> > data,
     Environment& environment, bool saveIterations) {
   int maxbins = environment.maxbins;
   int initbins = environment.initbins;
-  double* c2terms = environment.c2terms;
   double* looklog = environment.looklog;
   int cplx = environment.cplx;
   double n_eff = accumulate(sample_weights.begin(), sample_weights.end(), 0.0);
@@ -818,7 +817,8 @@ double* compute_Ixy_cond_u_new_alg1(vector<vector<int> > data,
     r_temp[2] = ruiyx[3];
     if (cplx == 1)
       res_temp = computeMI_knml(datafactors[1], uiyxfactors[2], uiyxfactors[3],
-          r_temp, n, n_eff, c2terms, looklog, sample_weights, FLAG_CPLX);
+          r_temp, n, n_eff, looklog, sample_weights,
+          environment.cache.cterm, FLAG_CPLX);
     else
       res_temp = computeMI_kmdl(datafactors[1], uiyxfactors[2], uiyxfactors[3],
           r_temp, n, looklog, 0);
@@ -831,7 +831,8 @@ double* compute_Ixy_cond_u_new_alg1(vector<vector<int> > data,
     r_temp[2] = ruiyx[3];
     if (cplx == 1)
       res_temp = computeMI_knml(datafactors[0], uiyxfactors[1], uiyxfactors[3],
-          r_temp, n, n_eff, c2terms, looklog, sample_weights, FLAG_CPLX);
+          r_temp, n, n_eff, looklog, sample_weights,
+          environment.cache.cterm, FLAG_CPLX);
     else
       res_temp = computeMI_kmdl(datafactors[0], uiyxfactors[1], uiyxfactors[3],
           r_temp, n, looklog, 0);
@@ -934,7 +935,8 @@ double* compute_Ixy_cond_u_new_alg1(vector<vector<int> > data,
     r_temp[2] = ruiyx[3];
     if (cplx == 1)
       res_temp = computeMI_knml(datafactors[1], uiyxfactors[2], uiyxfactors[3],
-          r_temp, n, n_eff, c2terms, looklog, sample_weights, FLAG_CPLX);
+          r_temp, n, n_eff, looklog, sample_weights,
+          environment.cache.cterm, FLAG_CPLX);
     else
       res_temp = computeMI_kmdl(datafactors[1], uiyxfactors[2], uiyxfactors[3],
           r_temp, n, looklog, 0);
@@ -1031,7 +1033,8 @@ double* compute_Ixy_cond_u_new_alg1(vector<vector<int> > data,
     r_temp[2] = ruiyx[3];
     if (cplx == 1)
       res_temp = computeMI_knml(datafactors[0], uiyxfactors[1], uiyxfactors[3],
-          r_temp, n, n_eff, c2terms, looklog, sample_weights, FLAG_CPLX);
+          r_temp, n, n_eff, looklog, sample_weights,
+          environment.cache.cterm, FLAG_CPLX);
     else
       res_temp = computeMI_kmdl(datafactors[0], uiyxfactors[1], uiyxfactors[3],
           r_temp, n, looklog, 0);
@@ -1117,7 +1120,8 @@ double* compute_Ixy_cond_u_new_alg1(vector<vector<int> > data,
     r_temp[2] = ruiyx[2];
     if (cplx == 1)
       res_temp = computeMI_knml(datafactors[0], uiyxfactors[0], uiyxfactors[2],
-          r_temp, n, n_eff, c2terms, looklog, sample_weights, FLAG_CPLX);
+          r_temp, n, n_eff, looklog, sample_weights,
+          environment.cache.cterm, FLAG_CPLX);
     else
       res_temp = computeMI_kmdl(datafactors[0], uiyxfactors[0], uiyxfactors[2],
           r_temp, n, looklog, 0);
@@ -1177,7 +1181,8 @@ double* compute_Ixy_cond_u_new_alg1(vector<vector<int> > data,
     r_temp[2] = ruiyx[1];
     if (cplx == 1)
       res_temp = computeMI_knml(datafactors[1], uiyxfactors[0], uiyxfactors[1],
-          r_temp, n, n_eff, c2terms, looklog, sample_weights, FLAG_CPLX);
+          r_temp, n, n_eff, looklog, sample_weights,
+          environment.cache.cterm, FLAG_CPLX);
     else
       res_temp = computeMI_kmdl(datafactors[1], uiyxfactors[0], uiyxfactors[1],
           r_temp, n, looklog, 0);

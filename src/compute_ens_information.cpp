@@ -179,11 +179,11 @@ void computeContributingScores(Environment& environment, int* ziContPosIdx,
       double** jointFreqs = getJointFreqs(
           environment, posArray[0], posArray[1], sample_is_not_NA);
 
-      double* res = getAllInfoNEW(environment.oneLineMatrix,
-          environment.levels, posArray, myNbrUi, zz, 1, -1,
-          environment.n_samples, environment.n_eff, cplx, environment.is_k23,
-          environment.looklog, environment.c2terms, &m,
-          environment.sample_weights, jointFreqs, environment.test_mar);
+      double* res = getAllInfoNEW(environment.oneLineMatrix, environment.levels,
+          posArray, myNbrUi, zz, 1, -1, environment.n_samples,
+          environment.n_eff, cplx, environment.is_k23, environment.looklog, &m,
+          environment.sample_weights, jointFreqs, environment.test_mar,
+          environment.cache.cterm);
 
       output_score = res[6];
       delete[] res;
@@ -347,8 +347,8 @@ double* computeEnsInformationContinuous(Environment& environment, int* myCond,
         res = getAllInfoNEW(environment.oneLineMatrix, environment.levels,
             posArray, myNbrUi, zz, countZDiscrete, -1, environment.n_samples,
             environment.n_eff, cplx, environment.is_k23, environment.looklog,
-            environment.c2terms, &m, environment.sample_weights, jointFreqs,
-            environment.test_mar);
+            &m, environment.sample_weights, jointFreqs, environment.test_mar,
+            environment.cache.cterm);
 
         for (int level0 = 0; level0 < environment.levels[posArray[0]];
              level0++)
@@ -459,11 +459,11 @@ double* computeEnsInformationNew(Environment& environment, int* myCond,
   double** jointFreqs =
       getJointFreqs(environment, posArray[0], posArray[1]);
 
-  double* res_new = getAllInfoNEW(environment.oneLineMatrix,
-      environment.levels, posArray, myNbrUi, myZi, myNbrZi, myZiPos,
-      environment.n_samples, environment.n_eff, cplx, environment.is_k23,
-      environment.looklog, environment.c2terms, &m, environment.sample_weights,
-      jointFreqs, environment.test_mar);
+  double* res_new = getAllInfoNEW(environment.oneLineMatrix, environment.levels,
+      posArray, myNbrUi, myZi, myNbrZi, myZiPos, environment.n_samples,
+      environment.n_eff, cplx, environment.is_k23, environment.looklog, &m,
+      environment.sample_weights, jointFreqs, environment.test_mar,
+      environment.cache.cterm);
 
   for (int level0 = 0; level0 < environment.levels[posArray[0]]; level0++)
     delete[] jointFreqs[level0];

@@ -42,6 +42,7 @@ struct Grid2d {
 
   size_t n_rows() { return rows_; }
   size_t n_cols() { return cols_; }
+  size_t size() { return data_.size(); }
 
   auto begin() { return data_.begin(); }
   auto end() { return data_.end(); }

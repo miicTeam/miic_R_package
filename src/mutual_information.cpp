@@ -405,8 +405,8 @@ void jointfactors_u(int **datafactors, int *ptrIdx, int n, int Mui, int *r,
 
 // rux -> 0:x,1;u,2:ux
 double *computeMI_knml(int *xfactors, int *ufactors, int *uxfactors, int *rux,
-    int n, int n_eff, double *c2terms, double *looklog,
-    std::vector<double> sample_weights, int flag) {
+    int n, int n_eff, double *looklog, std::vector<double> sample_weights,
+    std::shared_ptr<CtermCache> cache, int flag) {
   double *I = (double *)calloc(2, sizeof(double));
 
   int j, x, u, ux;
@@ -427,14 +427,14 @@ double *computeMI_knml(int *xfactors, int *ufactors, int *uxfactors, int *rux,
     if (nx[x] > 0) {
       Hx -= nx[x] * log(nx[x]);
       if (flag == 0 || flag == 2)
-        SC += computeLogC(fmax(1,int(nx[x]+0.5)), rux[1], looklog, c2terms);
+        SC += cache->getLogC(fmax(1,int(nx[x]+0.5)), rux[1]);
     }
   }
   for (u = 0; u < rux[1]; u++) {
     if (nu[u] > 0){
       Hu -= nu[u] * log(nu[u]);
       if (flag == 0 || flag == 1)
-        SC += computeLogC(fmax(1,int(nu[u]+0.5)), rux[0], looklog, c2terms);
+        SC += cache->getLogC(fmax(1,int(nu[u]+0.5)), rux[0]);
     }
   }
 
@@ -442,8 +442,8 @@ double *computeMI_knml(int *xfactors, int *ufactors, int *uxfactors, int *rux,
     if (nux[ux] > 0) Hux -= nux[ux] * log(nux[ux]);
   }
 
-  if (flag == 0) SC -= computeLogC(n_eff, rux[0], looklog, c2terms);
-  if (flag == 0) SC -= computeLogC(n_eff, rux[1], looklog, c2terms);
+  if (flag == 0) SC -= cache->getLogC(n_eff, rux[0]);
+  if (flag == 0) SC -= cache->getLogC(n_eff, rux[1]);
 
   I[0] = log(n_eff) + (Hu + Hx - Hux) / n_eff;
 
@@ -460,7 +460,7 @@ double *computeMI_knml(int *xfactors, int *ufactors, int *uxfactors, int *rux,
 }
 
 double *computeMI_knml(int *xfactors, int *ufactors, int *uxfactors, int *rux,
-    int n, double *c2terms, double *looklog, int flag) {
+    int n, double *looklog, std::shared_ptr<CtermCache> cache, int flag) {
   double *I = (double *)calloc(2, sizeof(double));
 
   int j, x, u, ux;
@@ -480,20 +480,20 @@ double *computeMI_knml(int *xfactors, int *ufactors, int *uxfactors, int *rux,
   for (x = 0; x < rux[0]; x++) {
     if (nx[x] > 0) Hx -= nx[x] * looklog[nx[x]];
     if (flag == 0 || flag == 2)
-      SC += computeLogC(nx[x], rux[1], looklog, c2terms);
+      SC += cache->getLogC(nx[x], rux[1]);
   }
   for (u = 0; u < rux[1]; u++) {
     if (nu[u] > 0) Hu -= nu[u] * looklog[nu[u]];
     if (flag == 0 || flag == 1)
-      SC += computeLogC(nu[u], rux[0], looklog, c2terms);
+      SC += cache->getLogC(nu[u], rux[0]);
   }
 
   for (ux = 0; ux < rux[2]; ux++) {
     if (nux[ux] > 0) Hux -= nux[ux] * looklog[nux[ux]];
   }
 
-  if (flag == 0) SC -= computeLogC(n, rux[0], looklog, c2terms);
-  if (flag == 0) SC -= computeLogC(n, rux[1], looklog, c2terms);
+  if (flag == 0) SC -= cache->getLogC(n, rux[0]);
+  if (flag == 0) SC -= cache->getLogC(n, rux[1]);
 
   I[0] = looklog[n] + (Hu + Hx - Hux) / n;
 

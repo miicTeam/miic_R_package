@@ -50,13 +50,14 @@ class CtermCache {
 };
 
 struct CompCache {
-  CtermCache cterm;
+  std::shared_ptr<CtermCache> cterm;
 
-  CompCache(int n_samples) : cterm(n_samples) {}
+  CompCache(int n_samples) : cterm(std::make_shared<CtermCache>(n_samples)) {}
   CompCache() = default;
 };
 }  // namespace computation_impl
 using computation_impl::CompCache;
+using computation_impl::CtermCache;
 }  // namespace computation
 }  // namespace miic
 

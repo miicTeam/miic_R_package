@@ -46,7 +46,7 @@ List mydiscretizeMutual(List input_data, List arg_list){
   int maxbins = environment.maxbins;
   int nbrU = environment.n_nodes-2;
 
-  vector<int> posArray(nbrU+2); 
+  vector<int> posArray(nbrU+2);
   for(int i=0; i<(nbrU+2); i++) posArray[i] = i;
 
   // Mark rows containing NAs and count the number of complete samples

@@ -78,11 +78,6 @@ Environment::Environment(
   if (n_threads < 0) n_threads = omp_get_num_procs();
   omp_set_num_threads(n_threads);
 #endif
-  // create the 1000 entries to store c2 values
-  c2terms = new double[n_samples + 1];
-  for (int i = 0; i < n_samples + 1; i++) {
-    c2terms[i] = -1;
-  }
   // for mixed, create the log(j) lookup table with j=0..n_samples;
   looklog = new double[n_samples + 2];
   looklog[0] = 0.0;
@@ -101,23 +96,6 @@ Environment::Environment(
   // For r>N_COL_NML LogC() is computed with the normal
   // recurrence and the result is not stored.
   int ncol = N_COL_NML;
-  cterms = new double*[ncol];
-  for (int K = 0; K < (ncol); K++) {
-    cterms[K] = new double[n_samples + 1];
-    for (int i = 0; i < (n_samples + 1); i++) {
-      if (K == 1)
-        cterms[K][i] = 0;
-      else if (i == 0)
-        cterms[K][i] = 0;
-      else
-        cterms[K][i] = -1;
-    }
-  }
-  // Initialize the c2 terms
-  for (int i = 0; i < (n_samples + 1); i++) {
-    computeLogC(i, 2, looklog, cterms);
-  }
-
   lookchoose = new double*[ncol];
   for (int K = 0; K < (ncol); K++) {
     lookchoose[K] = new double[n_samples + 1];
