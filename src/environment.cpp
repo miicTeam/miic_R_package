@@ -16,7 +16,6 @@ using namespace miic::utility;
 using namespace miic::computation;
 
 #define MAGNITUDE_TIES 0.00005f
-#define N_COL_NML 1000
 
 namespace miic {
 namespace structure {

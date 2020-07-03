@@ -9,6 +9,7 @@
 
 #include "structure.h"
 
+#define N_COL_NML 1000
 namespace miic {
 namespace structure {
 
@@ -107,6 +108,13 @@ struct Environment {
     delete[] c2terms;
     for (int i = 0; i < n_nodes; i++) delete[] edges[i];
     delete[] edges;
+    delete[] looklog;
+    delete[] lookH;
+    for (int i = 0; i < N_COL_NML; i++) delete[] lookchoose[i];
+    delete[] lookchoose;
+    delete[] noise_vec;
+    for (int i = 0; i < N_COL_NML; i++) delete[] cterms[i];
+    delete[] cterms;
   }
 
   void readBlackbox(const vector<vector<int>>&);
