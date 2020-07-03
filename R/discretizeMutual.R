@@ -325,6 +325,7 @@ discretizeMutual <- function(X,
     "propagation" = T,
     "sample_weights" = sample_weights,
     "test_mar" = F,
+    "max_bins" = maxbins,
     "var_names" = var_names,
     "verbose" = F
   )

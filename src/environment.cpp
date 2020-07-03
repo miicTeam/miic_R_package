@@ -41,6 +41,7 @@ Environment::Environment(
       degenerate(as<bool>(arg_list["degenerate"])),
       no_init_eta(as<bool>(arg_list["no_init_eta"])),
       half_v_structure(as<int>(arg_list["half_v_structure"])),
+      maxbins(as<int>(arg_list["max_bins"])),
       initbins(std::min(30, int(0.5 + cbrt(n_samples)))),
       n_threads(as<int>(arg_list["n_threads"])),
       verbose(as<bool>(arg_list["verbose"])) {

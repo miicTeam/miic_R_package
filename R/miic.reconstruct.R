@@ -86,6 +86,7 @@ miic.reconstruct <- function(input_data = NULL,
     "propagation" = propagation,
     "sample_weights" = sample_weights,
     "test_mar" = test_mar,
+    "max_bins" = 50,
     "var_names" = var_names,
     "verbose" = verbose
   )

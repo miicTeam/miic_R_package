@@ -84,7 +84,7 @@ struct Environment {
   // is the min value
   int thresPc{0};
 
-  int maxbins{50};
+  int maxbins;
   int initbins;
 
   double* looklog;
