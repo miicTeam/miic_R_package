@@ -18,23 +18,14 @@ BEGIN_RCPP
 END_RCPP
 }
 // mydiscretizeMutual
-List mydiscretizeMutual(SEXP RmyDist1, SEXP RmyDist2, SEXP RflatU, SEXP RnbrU, SEXP RmaxBins, SEXP Rinitbin, SEXP Rcplx, SEXP Rcnt_vec, SEXP Rnlevels, SEXP ReffN, SEXP RsampleWeights);
-RcppExport SEXP _miic_mydiscretizeMutual(SEXP RmyDist1SEXP, SEXP RmyDist2SEXP, SEXP RflatUSEXP, SEXP RnbrUSEXP, SEXP RmaxBinsSEXP, SEXP RinitbinSEXP, SEXP RcplxSEXP, SEXP Rcnt_vecSEXP, SEXP RnlevelsSEXP, SEXP ReffNSEXP, SEXP RsampleWeightsSEXP) {
+List mydiscretizeMutual(List input_data, List arg_list);
+RcppExport SEXP _miic_mydiscretizeMutual(SEXP input_dataSEXP, SEXP arg_listSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< SEXP >::type RmyDist1(RmyDist1SEXP);
-    Rcpp::traits::input_parameter< SEXP >::type RmyDist2(RmyDist2SEXP);
-    Rcpp::traits::input_parameter< SEXP >::type RflatU(RflatUSEXP);
-    Rcpp::traits::input_parameter< SEXP >::type RnbrU(RnbrUSEXP);
-    Rcpp::traits::input_parameter< SEXP >::type RmaxBins(RmaxBinsSEXP);
-    Rcpp::traits::input_parameter< SEXP >::type Rinitbin(RinitbinSEXP);
-    Rcpp::traits::input_parameter< SEXP >::type Rcplx(RcplxSEXP);
-    Rcpp::traits::input_parameter< SEXP >::type Rcnt_vec(Rcnt_vecSEXP);
-    Rcpp::traits::input_parameter< SEXP >::type Rnlevels(RnlevelsSEXP);
-    Rcpp::traits::input_parameter< SEXP >::type ReffN(ReffNSEXP);
-    Rcpp::traits::input_parameter< SEXP >::type RsampleWeights(RsampleWeightsSEXP);
-    rcpp_result_gen = Rcpp::wrap(mydiscretizeMutual(RmyDist1, RmyDist2, RflatU, RnbrU, RmaxBins, Rinitbin, Rcplx, Rcnt_vec, Rnlevels, ReffN, RsampleWeights));
+    Rcpp::traits::input_parameter< List >::type input_data(input_dataSEXP);
+    Rcpp::traits::input_parameter< List >::type arg_list(arg_listSEXP);
+    rcpp_result_gen = Rcpp::wrap(mydiscretizeMutual(input_data, arg_list));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -53,7 +44,7 @@ END_RCPP
 
 static const R_CallMethodDef CallEntries[] = {
     {"_miic_mydiscretizeMDL", (DL_FUNC) &_miic_mydiscretizeMDL, 2},
-    {"_miic_mydiscretizeMutual", (DL_FUNC) &_miic_mydiscretizeMutual, 11},
+    {"_miic_mydiscretizeMutual", (DL_FUNC) &_miic_mydiscretizeMutual, 2},
     {"_miic_reconstruct", (DL_FUNC) &_miic_reconstruct, 2},
     {NULL, NULL, 0}
 };

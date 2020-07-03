@@ -91,8 +91,6 @@ int initEdgeElt(Environment& environment, int i, int j, MemorySpace& m) {
 }
 
 bool miic::reconstruction::skeletonInitialization(Environment& environment) {
-  environment.oneLineMatrix =
-      new int[environment.n_samples * environment.n_nodes];
   for (int i = 0; i < environment.n_samples; i++) {
     for (int j = 0; j < environment.n_nodes; j++) {
       environment.oneLineMatrix[j * environment.n_samples + i] =

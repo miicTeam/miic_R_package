@@ -5,8 +5,8 @@ mydiscretizeMDL <- function(RmyDist, RmaxBins) {
     .Call('_miic_mydiscretizeMDL', PACKAGE = 'miic', RmyDist, RmaxBins)
 }
 
-mydiscretizeMutual <- function(RmyDist1, RmyDist2, RflatU, RnbrU, RmaxBins, Rinitbin, Rcplx, Rcnt_vec, Rnlevels, ReffN, RsampleWeights) {
-    .Call('_miic_mydiscretizeMutual', PACKAGE = 'miic', RmyDist1, RmyDist2, RflatU, RnbrU, RmaxBins, Rinitbin, Rcplx, Rcnt_vec, Rnlevels, ReffN, RsampleWeights)
+mydiscretizeMutual <- function(input_data, arg_list) {
+    .Call('_miic_mydiscretizeMutual', PACKAGE = 'miic', input_data, arg_list)
 }
 
 reconstruct <- function(input_data, arg_list) {

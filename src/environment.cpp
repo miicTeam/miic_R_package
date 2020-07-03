@@ -155,6 +155,8 @@ Environment::Environment(
     noise_vec[i] = R::runif(-MAGNITUDE_TIES, MAGNITUDE_TIES);
   }
 
+  oneLineMatrix = new int[n_samples * n_nodes];
+
   readBlackbox(as<vector<vector<int>>>(arg_list["black_box"]));
 }
 

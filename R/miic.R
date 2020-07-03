@@ -152,12 +152,17 @@
 #'  'N' becomes 'TN' (True Negative) or 'FN' (False Negative).
 #'  \item \emph{ai:} the contributing nodes found by the method which participate in
 #'  the mutual information between \emph{x} and \emph{y}, and possibly separate them.
-#'  \item \emph{info:} provides the final mutual information times \emph{Nxy_ai} for
-#'  the pair (\emph{x}, \emph{y}) when conditioned on the collected nodes \emph{ai}.
+#'  \item \emph{info:} provides the pairwise mutual information times \emph{Nxyi} for
+#'  the pair (\emph{x}, \emph{y}).
+#'  \item \emph{info_cond:} provides the conditional mutual information times \emph{Nxy_ai} for
+#'  the pair (\emph{x}, \emph{y}) when conditioned on the collected nodes \emph{ai}. It is 
+#'  equal to the \emph{info} column when \emph{ai} is an empty set.
 #'  \item \emph{cplx:} gives the computed complexity between the (\emph{x}, \emph{y})
-#'  variables taking into account the contributing nodes \emph{ai}.
-#'  \item \emph{Nxy_ai:} gives the number of samples on which the information and the
-#'  complexity have been computed. If the input dataset has no missing value, the
+#'  variables taking into account the contributing nodes \emph{ai}. Edges that have
+#'  have more conditional information \emph{info_cond} than \emph{cplx} are retained in the
+#'  final graph.
+#'  \item \emph{Nxy_ai:} gives the number of complete samples on which the information and 
+#'  the  complexity have been computed. If the input dataset has no missing value, the
 #'  number of samples is the same for all pairs and corresponds to the total
 #'  number of samples.
 #'  \item \emph{log_confidence:} represents the \emph{info} - \emph{cplx} value.
@@ -167,17 +172,25 @@
 #'  the edge (\emph{x}, \emph{y}) in the dataset versus the mean probability
 #'  to do the same in multiple (user defined) number of randomized datasets.
 #'  \item \emph{infOrt:} the orientation of the edge (\emph{x}, \emph{y}). It is
-#'  the same value as in the adjacency matrix at row \emph{x} and column \emph{y}.
+#'  the same value as in the adjacency matrix at row \emph{x} and column \emph{y} : 1 for
+#'  unoriented, 2 for an edge from X to Y, -2 from Y to X and 6 for bidirectional.
 #'  \item \emph{trueOrt:} the orientation of the edge (\emph{x}, \emph{y}) present
-#'  in the true edges file (if true edges file is provided).
+#'  in the true edges file if provided.
 #'  \item \emph{isOrtOk:} information about the consistency of the inferred graph’s
 #'  orientations with a reference graph is given (i.e. if true edges file is provided).
 #'  Y: the orientation is consistent; N: the orientation is not consistent with
-#'  the PAG derived from the given true graph.
+#'  the PAG (Partial Ancestor Graph) derived from the given true graph.
 #'  \item \emph{sign:} the sign of the partial correlation between variables
 #'  \emph{x} and \emph{y}, conditioned on the contributing nodes \emph{ai}.
 #'  \item \emph{partial_correlation:} value of the partial correlation for the
 #'  edge (\emph{x}, \emph{y}) conditioned on the contributing nodes \emph{ai}.
+#'  \item \emph{isCausal:} details about the nature of the arrow tip for a directed
+#'  edge. A directed edge in a causal graph does not necessarily imply causation but it
+#'  does imply that the cause-effect relationship is not the other way around. An arrow-tip
+#'  which is itself downstream of another directed edge suggests stronger causal sense and is
+#'  marked by a 'Y', or 'N' otherwise.
+#'  \item \emph{proba:} probabilities for the inferred orientation, derived from the three-point 
+#'  mutual information (cf Affeldt & Isambert, UAI 2015 proceedings) and noted as p(x->y);p(x<-y).
 #'  }
 #'  }
 #'

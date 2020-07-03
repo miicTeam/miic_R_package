@@ -198,6 +198,7 @@ discretizeMutual <- function(X,
   }
 
   # Remove rows for which any input vector is NA
+  matrix_u_NA <- matrix()
   NArows <- logical(length(X))
   NArows <- NArows | is.na(X)
   NArows <- NArows | is.na(Y)
@@ -252,15 +253,7 @@ discretizeMutual <- function(X,
       }
     }
   }
-  cnt_vec <- as.numeric(!is_discrete)
-
-  # Converting matrix to flat vector to pass to cpp
-  if (is.null(matrix_u)) {
-    flatU <- c(0)
-  } else {
-    class(matrix_u_NA) <- "numeric"
-    flatU <- as.vector(matrix_u_NA)
-  }
+  is_continuous <- !is_discrete
 
   # Pass complexity parameter as int
   if (cplx == "mdl") {
@@ -283,36 +276,63 @@ discretizeMutual <- function(X,
   }
 
   if (is.null(sample_weights)) {
-    sample_weights <- rep(1, length(X))
+    sample_weights <- numeric(0);
   }
 
-  # Number of unique values for each input
-  nlevels <- numeric(nbrU + 2)
-  for (i in 1:(nbrU + 2)) {
-    if (i == 1) {
-      nlevels[i] <- length(unique(X))
-    } else if (i == 2) {
-      nlevels[i] <- length(unique(Y))
+  input_data = data.frame(X,Y)
+  if(!all(is.na(matrix_u_NA))) input_data = cbind(input_data, matrix_u_NA)
+  input_factor <- apply(input_data, 2, function(x)
+                        (as.numeric(factor(x, levels = unique(x))) - 1))
+  input_factor[is.na(input_factor)] <- -1
+  input_double <- list()
+  # Order list, order(column) for continuous columns (index starting from 0, NA
+  # mapped to -1), empty for others
+  input_order <- list()
+  for (i in c(1:length(input_data))) {
+    if (is_continuous[i]) {
+      input_double[[i]] <- as.numeric(input_data[, i])
+      n_NAs <- sum(is.na(input_data[, i]))
+      input_order[[i]] <- c(order(input_data[, i], na.last=NA) - 1,
+                            rep_len(-1, n_NAs))
     } else {
-      nlevels[i] <- length(unique(matrix_u_NA[, i - 2]))
+      input_double[[i]] <- numeric(0)
+      input_order[[i]] <- numeric(0)
     }
   }
 
+  max_level_list <- as.numeric(apply(input_factor, 2, max)) + 1
+  input_factor <- data.frame(t(input_factor))
+  var_names <- colnames(input_data)
+
+  arg_list <- list(
+    "black_box" = list(),
+    "conf_threshold" = 0,
+    "consistent" = "no",
+    "cplx" = cplx,
+    "degenerate" = FALSE,
+    "eta" = 1,
+    "half_v_structure" = 0,
+    "is_continuous" = is_continuous,
+    "is_k23" = TRUE,
+    "latent" = "no",
+    "levels" = max_level_list,
+    "max_iteration" = 1,
+    "n_eff" = n_eff,
+    "n_shuffles" = 0,
+    "n_threads" = 1,
+    "no_init_eta" = FALSE,
+    "orientation" = T,
+    "propagation" = T,
+    "sample_weights" = sample_weights,
+    "test_mar" = F,
+    "var_names" = var_names,
+    "verbose" = F
+  )
+  cpp_input <- list("factor" = input_factor, "double" = input_double,
+                    "order" = input_order)
   # Call cpp code
   if (base::requireNamespace("Rcpp", quietly = TRUE)) {
-    rescpp <- mydiscretizeMutual(
-        X,
-        Y,
-        flatU,
-        nbrU,
-        maxbins,
-        initbins,
-        intcplx,
-        cnt_vec,
-        nlevels,
-        n_eff,
-        sample_weights
-      )
+    rescpp <- mydiscretizeMutual(cpp_input, arg_list)
   }
   niterations <- nrow(rescpp$cutpointsmatrix) / maxbins
 
