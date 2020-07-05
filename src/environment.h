@@ -90,8 +90,6 @@ struct Environment {
   int initbins;
 
   double* looklog;
-  double* lookH;
-  double** lookchoose;
   std::map<CacheInfoKey, double> look_scores;
   std::map<CacheInfoKey, CacheScoreValue> look_scores_orientation;
 

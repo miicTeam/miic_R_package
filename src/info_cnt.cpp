@@ -58,8 +58,6 @@ void reset_u_cutpoints(int** cut, int nbrUi, vector<int> ptr_cnt,
 // int coarse : coarse graining step : minimum length of a bin : considering
 // only n/coarse possible cuts
 
-// double* looklog : lookup table for the logarithms of natural numbers up to n
-
 /*  DYNAMIC PROGRAMMING OPTIMIZATION FUNCTION
  *
  *  Takes as input the factors and joint factors and optimizes a variable by
@@ -106,9 +104,6 @@ void reset_u_cutpoints(int** cut, int nbrUi, vector<int> ptr_cnt,
  * vector results in possible cutpoints every 1000/50 = 20 positions. This
  * speeds up significantly the dynamic programming at the cost of finding
  * approximated solutions.
- *
- * <looklog, lookH> are lookup tables for computing respectively log,
- * entropy and stochastic complexity (as in Kontkanen & Myllymäki, 2005)
  *
  * <cplx> is the choice of complexity : 0 for simple MDL (product of all
  * observed values, see <sc>) and 1 for NML with stochastic complexity and a
@@ -233,7 +228,7 @@ void optfun_onerun_kmdl_coarse(vector<int> sortidx_var, vector<int> data, int nb
       weighted_count = flag_sample_weights
                            ? int(efN_factor * counts[0][level] + 0.5)
                            : counts[0][level];
-      Hk_kj[0] += environment.lookH[weighted_count];
+      Hk_kj[0] += environment.cache.cterm->getH(weighted_count);
     }
     H_kj[0]   = Hk_kj[0];
 
@@ -241,13 +236,14 @@ void optfun_onerun_kmdl_coarse(vector<int> sortidx_var, vector<int> data, int nb
       weighted_count = flag_sample_weights
                            ? int(efN_factor * counts[1][level] + 0.5)
                            : counts[1][level];
-      Hk_kj[1] -= environment.lookH[weighted_count];
-      H_kj[1]  -= environment.lookH[weighted_count];
+      Hk_kj[1] -= environment.cache.cterm->getH(weighted_count);
+      H_kj[1]  -= environment.cache.cterm->getH(weighted_count);
 
       if (environment.cplx == 0 && counts[1][level] > 0)
         Hk_kj[1] -= sc * environment.looklog[n];
       else if (environment.cplx == 1) {
-        Hk_kj[1] -= environment.cache.cterm->getLogC(weighted_count, sc_levels1);
+        Hk_kj[1] -=
+            environment.cache.cterm->getLogC(weighted_count, sc_levels1);
       }
     }
 
@@ -300,7 +296,7 @@ void optfun_onerun_kmdl_coarse(vector<int> sortidx_var, vector<int> data, int nb
         // j_efN *
         // nxyu_k[m][xyu]*looklog[int(j_efN
         // * nxyu_k[m][xyu] + 0.5)];
-        Hk_kj[0] += environment.lookH[weighted_count];
+        Hk_kj[0] += environment.cache.cterm->getH(weighted_count);
       }
       H_kj[0] = Hk_kj[0];
 
@@ -313,8 +309,8 @@ void optfun_onerun_kmdl_coarse(vector<int> sortidx_var, vector<int> data, int nb
         // j_efN *
         // nxyu_k[m][xyu]*looklog[int(j_efN
         // * nxyu_k[m][xyu] + 0.5)];<Paste>
-        Hk_kj[1] -= environment.lookH[weighted_count];
-        H_kj[1]  -= environment.lookH[weighted_count];
+        Hk_kj[1] -= environment.cache.cterm->getH(weighted_count);
+        H_kj[1]  -= environment.cache.cterm->getH(weighted_count);
 
         if (environment.cplx == 0 && counts_k[1][level] > 0)
           Hk_kj[1] -= sc * environment.looklog[n];
@@ -332,9 +328,9 @@ void optfun_onerun_kmdl_coarse(vector<int> sortidx_var, vector<int> data, int nb
       }
       if (environment.cplx == 1) {
         // Combinatorial approximation
-        Ik_kj -= logchoose(np - 1, previous_levels - 1, environment.looklog,
-                     environment.lookchoose) /
-                 (previous_levels - 1);
+        Ik_kj -=
+            environment.cache.cterm->getLogChoose(np - 1, previous_levels - 1) /
+            (previous_levels - 1);
       }
 
       if ((Ik[k] + Ik_kj) > Ik[j]) {
@@ -372,7 +368,6 @@ double* compute_Ixy_alg1(vector<vector<int> > data, vector<vector<int> > sortidx
     Environment& environment, bool saveIterations) {
   int maxbins = environment.maxbins;
   int initbins = environment.initbins;
-  double** lookchoose = environment.lookchoose;
   double* looklog = environment.looklog;
   int cplx = environment.cplx;
   double n_eff = accumulate(sample_weights.begin(), sample_weights.end(), 0.0);
@@ -611,12 +606,14 @@ double* compute_Ixy_alg1(vector<vector<int> > data, vector<vector<int> > sortidx
     if (ptr_cnt[ptrVarIdx[0]] == 1 && rx > 1) {
       np = min(maxbins, AllLevels[ptrVarIdx[0]]);
       if (rx < np)
-        res_temp[1] -= logchoose(np - 1, rx - 1, looklog, lookchoose) / n;
+        res_temp[1] -=
+            environment.cache.cterm->getLogChoose(np - 1, rx - 1) / n;
     }
     if (ptr_cnt[ptrVarIdx[1]] == 1 && ry > 1) {
       np = min(maxbins, AllLevels[ptrVarIdx[1]]);
       if (ry < np)
-        res_temp[1] -= logchoose(np - 1, ry - 1, looklog, lookchoose) / n;
+        res_temp[1] -=
+            environment.cache.cterm->getLogChoose(np - 1, ry - 1) / n;
     }
 
     for (i = stop - 1; i > 0; i--) {
@@ -715,7 +712,6 @@ double* compute_Ixy_cond_u_new_alg1(vector<vector<int> > data,
 
   int j, l;
   int STEPMAX1 = 50;
-  double** lookchoose = environment.lookchoose;
   // res_tempults res_temp[0]->I,res_temp[1]->I-k
   double* res_temp = (double*)calloc(2, sizeof(double));
   // allocation factors  x y
@@ -946,7 +942,8 @@ double* compute_Ixy_cond_u_new_alg1(vector<vector<int> > data,
     if ((ptr_cnt[ptrVarIdx[0]] == 1) && (r_old[0] > 1)) {
       np = min(AllLevels[ptrVarIdx[0]], maxbins);
       if (r_old[0] < np) {
-        Ik_y_xu -= logchoose(np - 1, r_old[0] - 1, looklog, lookchoose) / n;
+        Ik_y_xu -=
+            environment.cache.cterm->getLogChoose(np - 1, r_old[0] - 1) / n;
       }
     }
 
@@ -1044,7 +1041,7 @@ double* compute_Ixy_cond_u_new_alg1(vector<vector<int> > data,
     if ((ptr_cnt[ptrVarIdx[1]] == 1) && (r_old[1] > 1)) {
       np = min(AllLevels[ptrVarIdx[1]], maxbins);
       if (r_old[1] < np) {
-        Ik_x_yu -= logchoose(np - 1, r_old[1] - 1, looklog, lookchoose) / n;
+        Ik_x_yu -= environment.cache.cterm->getLogChoose(np - 1, r_old[1] - 1) / n;
       }
     }
 

@@ -24,37 +24,6 @@ using namespace miic::structure;
 using namespace miic::utility;
 using std::vector;
 
-double lnfactorial(int n, double* looklog) {
-  double z = 0;
-  if (n == 0) {
-    z = 1;
-  } else {
-    for (int y = 2; y <= n; y++) z += looklog[y];
-  }
-  return z;
-}
-
-double logchoose(int n, int k, double* looklog) {
-  if (n == k || k == 0) return 0;
-
-  return (lnfactorial(n, looklog) - lnfactorial(k, looklog) -
-          lnfactorial(n - k, looklog));
-}
-
-double logchoose(int n, int k, double* looklog, double** lookchoose) {
-  if (n == k || k == 0) return 0;
-
-  if (k < N_COL_NML) {
-    double val = lookchoose[k][n];
-    if (val >= 0) return val;
-  }
-
-  double res = logchoose(n, k, looklog);
-  if (k < N_COL_NML) lookchoose[k][n] = res;
-
-  return res;
-}
-
 double* getAllInfoNEW(int* ptrAllData, const vector<int>& ptrAllLevels,
     const vector<int>& ptrVarIdx, int nbrUi, int* ptrZiIdx, int nbrZi,
     int ziPos, int sampleSize, int sampleSizeEff, int modCplx, int k23,

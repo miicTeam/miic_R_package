@@ -85,25 +85,6 @@ Environment::Environment(
     looklog[i] = log(1.0 * i);
   }
 
-  lookH = new double[n_samples + 2];
-  lookH[0] = 0.0;
-  for (int i = 1; i < n_samples + 2; i++) {
-    // lookH[i] = i*looklog[i]-(i+1)*looklog[(i+1)];
-    lookH[i] = i * looklog[i];
-  }
-  // Number of levels r for which we want to store the
-  // stochastic NML complexity LogC(n,r) for n in [1,N].
-  // For r>N_COL_NML LogC() is computed with the normal
-  // recurrence and the result is not stored.
-  int ncol = N_COL_NML;
-  lookchoose = new double*[ncol];
-  for (int K = 0; K < (ncol); K++) {
-    lookchoose[K] = new double[n_samples + 1];
-    for (int i = 0; i < (n_samples + 1); i++) {
-      lookchoose[K][i] = -1;
-    }
-  }
-
   edges = new Edge*[n_nodes];
   for (int i = 0; i < n_nodes; i++)
     edges[i] = new Edge[n_nodes];

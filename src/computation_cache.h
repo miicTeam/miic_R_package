@@ -25,16 +25,11 @@ class CtermCache {
   // with n in [1, n_samples] and level in [1, kMaxLevel]
   Grid2d<double> c_;
 
-  double getLogChoose(int n, int k) {
-    if (k == n || k == 0) return 0;
-    return log_factorial_[n] - log_factorial_[k] -
-           log_factorial_[n - k];
-  }
   double getC(int n, int level);
 
  public:
   CtermCache(int n_samples)
-      : size_n_(1 + (n_samples < kApproxLimit ? n_samples : kApproxLimit)),
+      : size_n_(1 + n_samples),
         n_log_n_(size_n_, 0),
         log_factorial_(size_n_, 0),
         c_(n_samples, kMaxLevel, -1) {
@@ -46,7 +41,13 @@ class CtermCache {
   }
   CtermCache() = default;
 
+  double getH(int n) { return n_log_n_[n]; }
   double getLogC(int n, int level) { return log(getC(n, level)); }
+  double getLogChoose(int n, int k) {
+    if (k == n || k == 0) return 0;
+    return log_factorial_[n] - log_factorial_[k] -
+           log_factorial_[n - k];
+  }
 };
 
 struct CompCache {

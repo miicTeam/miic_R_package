@@ -13,9 +13,6 @@ double* getAllInfoNEW(int* ptrAllData, const std::vector<int>& ptrAllLevels,
     double* looklog, structure::MemorySpace* memory,
     const std::vector<double>& weights, double** freqs1, bool test_mar,
     std::shared_ptr<CtermCache> cache);
-double lnfactorial(int n, double* looklog);
-double logchoose(int n, int k, double* looklog);
-double logchoose(int n, int k, double* looklog, double** lookchoose);
 
 }  // namespace computation
 }  // namespace miic
