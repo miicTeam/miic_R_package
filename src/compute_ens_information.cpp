@@ -66,7 +66,7 @@ double* computeEnsInformationContinuous_Orientation(Environment& environment,
   if (samplesNotNA <= 2) {  // not sufficient statistics
     res_new[0] = samplesNotNA;
     res_new[1] = 0;  // Ixyz
-    res_new[2] = 0;  // cplx Ixyz
+    res_new[2] = 1;  // cplx Ixyz
   } else {
 
     // Allocate data reducted *_red without rows containing NAs
@@ -89,7 +89,7 @@ double* computeEnsInformationContinuous_Orientation(Environment& environment,
     if (AllLevels_red[0] == 1 || AllLevels_red[1] == 1){
       res_new[0] = (double)samplesNotNA;
       res_new[1] = 0;  // Ixyz
-      res_new[2] = 0;  // cplx Ixyz
+      res_new[2] = 1;  // cplx Ixyz
 
     } else {
       res = compute_Rscore_Ixyz_alg5(dataNumeric_red, dataNumericIdx_red,
@@ -274,7 +274,7 @@ double* computeEnsInformationContinuous(Environment& environment, int* myCond,
       res_new = new double[3];
       res_new[0] = (double)samplesNotNA;  // N
       res_new[1] = 0;             // Ixyu
-      res_new[2] = 0;             // cplx
+      res_new[2] = 1;             // cplx
       return res_new;
     } else {
 
@@ -297,7 +297,7 @@ double* computeEnsInformationContinuous(Environment& environment, int* myCond,
         res_new = new double[3];
         res_new[0] = (double)samplesNotNA;
         res_new[1] = 0;  // Ixyz
-        res_new[2] = 0;  // cplx Ixyz
+        res_new[2] = 1;  // cplx Ixyz
         return res_new;
       } else{
         res_new = compute_mi_cond_alg1(dataNumeric_red, dataNumericIdx_red,
