@@ -1,18 +1,5 @@
 #include "info_cnt.h"
 
-#include <float.h>
-#include <limits.h>
-#include <math.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <time.h>
-
-#include <iostream>
-#include <map>
-#include <sstream>
-#include <tuple>
-#include <numeric>
-
 #include "compute_info.h"
 #include "mutual_information.h"
 #include "structure.h"
@@ -240,7 +227,7 @@ void optfun_onerun_kmdl_coarse(vector<int> sortidx_var, vector<int> data, int nb
       H_kj[1]  -= environment.cache.cterm->getH(weighted_count);
 
       if (environment.cplx == 0 && counts[1][level] > 0)
-        Hk_kj[1] -= sc * environment.looklog[n];
+        Hk_kj[1] -= sc * environment.cache.cterm->getLog(n);
       else if (environment.cplx == 1) {
         Hk_kj[1] -=
             environment.cache.cterm->getLogC(weighted_count, sc_levels1);
@@ -293,9 +280,6 @@ void optfun_onerun_kmdl_coarse(vector<int> sortidx_var, vector<int> data, int nb
         weighted_count = flag_sample_weights
                              ? int(efN_factor * counts_k[0][level] + 0.5)
                              : counts_k[0][level];
-        // j_efN *
-        // nxyu_k[m][xyu]*looklog[int(j_efN
-        // * nxyu_k[m][xyu] + 0.5)];
         Hk_kj[0] += environment.cache.cterm->getH(weighted_count);
       }
       H_kj[0] = Hk_kj[0];
@@ -306,14 +290,11 @@ void optfun_onerun_kmdl_coarse(vector<int> sortidx_var, vector<int> data, int nb
         weighted_count = flag_sample_weights
                              ? int(efN_factor * counts_k[1][level] + 0.5)
                              : counts_k[1][level];
-        // j_efN *
-        // nxyu_k[m][xyu]*looklog[int(j_efN
-        // * nxyu_k[m][xyu] + 0.5)];<Paste>
         Hk_kj[1] -= environment.cache.cterm->getH(weighted_count);
         H_kj[1]  -= environment.cache.cterm->getH(weighted_count);
 
         if (environment.cplx == 0 && counts_k[1][level] > 0)
-          Hk_kj[1] -= sc * environment.looklog[n];
+          Hk_kj[1] -= sc * environment.cache.cterm->getLog(n);
         else if (environment.cplx == 1) {
           Hk_kj[1] -=
               environment.cache.cterm->getLogC(weighted_count, sc_levels1);
@@ -322,7 +303,7 @@ void optfun_onerun_kmdl_coarse(vector<int> sortidx_var, vector<int> data, int nb
 
       I_kj = 0;
       Ik_kj = 0;
-      for (int m = 0; m < nbrV; m++) { 
+      for (int m = 0; m < nbrV; m++) {
         I_kj  += H_kj[m];
         Ik_kj += Hk_kj[m];
       }
@@ -368,7 +349,6 @@ double* compute_Ixy_alg1(vector<vector<int> > data, vector<vector<int> > sortidx
     Environment& environment, bool saveIterations) {
   int maxbins = environment.maxbins;
   int initbins = environment.initbins;
-  double* looklog = environment.looklog;
   int cplx = environment.cplx;
   double n_eff = accumulate(sample_weights.begin(), sample_weights.end(), 0.0);
 
@@ -407,11 +387,10 @@ double* compute_Ixy_alg1(vector<vector<int> > data, vector<vector<int> > sortidx
   r_temp[2] = rxy;
   if (cplx == 1)
     res_temp = computeMI_knml(datafactors[0], datafactors[1], xy_factors,
-        r_temp, n, n_eff, looklog, sample_weights,
-        environment.cache.cterm, 0);
+        r_temp, n, n_eff, sample_weights, environment.cache.cterm, 0);
   else
-    res_temp = computeMI_kmdl(
-        datafactors[0], datafactors[1], xy_factors, r_temp, n, looklog, 0);
+    res_temp = computeMI_kmdl(datafactors[0], datafactors[1], xy_factors,
+        r_temp, n, environment.cache.cterm, 0);
 
   // all discrete
   if (ptr_cnt[ptrVarIdx[0]] == 0 && ptr_cnt[ptrVarIdx[1]] == 0) {
@@ -471,11 +450,10 @@ double* compute_Ixy_alg1(vector<vector<int> > data, vector<vector<int> > sortidx
     r_temp[2] = rxy;
     if (cplx == 1)
       res_temp = computeMI_knml(datafactors[0], datafactors[1], xy_factors,
-          r_temp, n, n_eff, looklog, sample_weights,
-          environment.cache.cterm, 0);
+          r_temp, n, n_eff, sample_weights, environment.cache.cterm, 0);
     else
-      res_temp = computeMI_kmdl(
-          datafactors[0], datafactors[1], xy_factors, r_temp, n, looklog, 0);
+      res_temp = computeMI_kmdl(datafactors[0], datafactors[1], xy_factors,
+          r_temp, n, environment.cache.cterm, 0);
 
     if (res_temp[1] > max_res) {
       max_initbins = new_initbins;
@@ -597,11 +575,10 @@ double* compute_Ixy_alg1(vector<vector<int> > data, vector<vector<int> > sortidx
     r_temp[2] = rxy;
     if (cplx == 1)
       res_temp = computeMI_knml(datafactors[0], datafactors[1], xy_factors,
-          r_temp, n, n_eff, looklog, sample_weights,
-          environment.cache.cterm, 0);
+          r_temp, n, n_eff, sample_weights, environment.cache.cterm, 0);
     else
-      res_temp = computeMI_kmdl(
-          datafactors[0], datafactors[1], xy_factors, r_temp, n, looklog, 0);
+      res_temp = computeMI_kmdl(datafactors[0], datafactors[1], xy_factors,
+          r_temp, n, environment.cache.cterm, 0);
     // Adding combinatorial term
     if (ptr_cnt[ptrVarIdx[0]] == 1 && rx > 1) {
       np = min(maxbins, AllLevels[ptrVarIdx[0]]);
@@ -706,7 +683,6 @@ double* compute_Ixy_cond_u_new_alg1(vector<vector<int> > data,
     Environment& environment, bool saveIterations) {
   int maxbins = environment.maxbins;
   int initbins = environment.initbins;
-  double* looklog = environment.looklog;
   int cplx = environment.cplx;
   double n_eff = accumulate(sample_weights.begin(), sample_weights.end(), 0.0);
 
@@ -813,11 +789,10 @@ double* compute_Ixy_cond_u_new_alg1(vector<vector<int> > data,
     r_temp[2] = ruiyx[3];
     if (cplx == 1)
       res_temp = computeMI_knml(datafactors[1], uiyxfactors[2], uiyxfactors[3],
-          r_temp, n, n_eff, looklog, sample_weights,
-          environment.cache.cterm, FLAG_CPLX);
+          r_temp, n, n_eff, sample_weights, environment.cache.cterm, FLAG_CPLX);
     else
       res_temp = computeMI_kmdl(datafactors[1], uiyxfactors[2], uiyxfactors[3],
-          r_temp, n, looklog, 0);
+          r_temp, n, environment.cache.cterm, 0);
     I_y_xu = res_temp[0];  // Before optimization on X.
     Ik_y_xu = res_temp[1];
     free(res_temp);
@@ -827,11 +802,10 @@ double* compute_Ixy_cond_u_new_alg1(vector<vector<int> > data,
     r_temp[2] = ruiyx[3];
     if (cplx == 1)
       res_temp = computeMI_knml(datafactors[0], uiyxfactors[1], uiyxfactors[3],
-          r_temp, n, n_eff, looklog, sample_weights,
-          environment.cache.cterm, FLAG_CPLX);
+          r_temp, n, n_eff, sample_weights, environment.cache.cterm, FLAG_CPLX);
     else
       res_temp = computeMI_kmdl(datafactors[0], uiyxfactors[1], uiyxfactors[3],
-          r_temp, n, looklog, 0);
+          r_temp, n, environment.cache.cterm, 0);
     I_x_yu = res_temp[0];  // Before updating Y (and X).
     Ik_x_yu = res_temp[1];
     free(res_temp);
@@ -931,11 +905,10 @@ double* compute_Ixy_cond_u_new_alg1(vector<vector<int> > data,
     r_temp[2] = ruiyx[3];
     if (cplx == 1)
       res_temp = computeMI_knml(datafactors[1], uiyxfactors[2], uiyxfactors[3],
-          r_temp, n, n_eff, looklog, sample_weights,
-          environment.cache.cterm, FLAG_CPLX);
+          r_temp, n, n_eff, sample_weights, environment.cache.cterm, FLAG_CPLX);
     else
       res_temp = computeMI_kmdl(datafactors[1], uiyxfactors[2], uiyxfactors[3],
-          r_temp, n, looklog, 0);
+          r_temp, n, environment.cache.cterm, 0);
     I_y_xu = res_temp[0];  // Before optimization on X.
     Ik_y_xu = res_temp[1];
     free(res_temp);
@@ -1030,11 +1003,10 @@ double* compute_Ixy_cond_u_new_alg1(vector<vector<int> > data,
     r_temp[2] = ruiyx[3];
     if (cplx == 1)
       res_temp = computeMI_knml(datafactors[0], uiyxfactors[1], uiyxfactors[3],
-          r_temp, n, n_eff, looklog, sample_weights,
-          environment.cache.cterm, FLAG_CPLX);
+          r_temp, n, n_eff, sample_weights, environment.cache.cterm, FLAG_CPLX);
     else
       res_temp = computeMI_kmdl(datafactors[0], uiyxfactors[1], uiyxfactors[3],
-          r_temp, n, looklog, 0);
+          r_temp, n, environment.cache.cterm, 0);
     I_x_yu = res_temp[0];  // Before updating Y (and X).
     Ik_x_yu = res_temp[1];
     free(res_temp);
@@ -1117,11 +1089,10 @@ double* compute_Ixy_cond_u_new_alg1(vector<vector<int> > data,
     r_temp[2] = ruiyx[2];
     if (cplx == 1)
       res_temp = computeMI_knml(datafactors[0], uiyxfactors[0], uiyxfactors[2],
-          r_temp, n, n_eff, looklog, sample_weights,
-          environment.cache.cterm, FLAG_CPLX);
+          r_temp, n, n_eff, sample_weights, environment.cache.cterm, FLAG_CPLX);
     else
       res_temp = computeMI_kmdl(datafactors[0], uiyxfactors[0], uiyxfactors[2],
-          r_temp, n, looklog, 0);
+          r_temp, n, environment.cache.cterm, 0);
     I_x_u = res_temp[0];  // After optimization on U.
     Ik_x_u = res_temp[1];
     free(res_temp);
@@ -1178,11 +1149,10 @@ double* compute_Ixy_cond_u_new_alg1(vector<vector<int> > data,
     r_temp[2] = ruiyx[1];
     if (cplx == 1)
       res_temp = computeMI_knml(datafactors[1], uiyxfactors[0], uiyxfactors[1],
-          r_temp, n, n_eff, looklog, sample_weights,
-          environment.cache.cterm, FLAG_CPLX);
+          r_temp, n, n_eff, sample_weights, environment.cache.cterm, FLAG_CPLX);
     else
       res_temp = computeMI_kmdl(datafactors[1], uiyxfactors[0], uiyxfactors[1],
-          r_temp, n, looklog, 0);
+          r_temp, n, environment.cache.cterm, 0);
     I_y_u = res_temp[0];  // After optimization on U.
     Ik_y_u = res_temp[1];
     free(res_temp);
@@ -1523,7 +1493,7 @@ double* compute_Rscore_Ixyz_alg5(vector<vector<int> > data,
         flag_sample_weights, environment, saveIterations);
   } else {
     res_temp = compute_Ixy_alg1(data, sortidx, ptr_cnt, ptrVarIdx_t, AllLevels,
-        n, cut_t, r_t, sample_weights, flag_sample_weights, environment, 
+        n, cut_t, r_t, sample_weights, flag_sample_weights, environment,
         saveIterations);
   }
   Ik_xz_u = res_temp[1];

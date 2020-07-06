@@ -21,7 +21,6 @@ using std::vector;
 using computation::CompCache;
 
 struct Environment {
-  vector<vector<string>> data;
   vector<vector<int>> data_numeric;
   int n_samples;
   int n_nodes;
@@ -89,7 +88,6 @@ struct Environment {
   int maxbins;
   int initbins;
 
-  double* looklog;
   std::map<CacheInfoKey, double> look_scores;
   std::map<CacheInfoKey, CacheScoreValue> look_scores_orientation;
 
@@ -105,13 +103,7 @@ struct Environment {
     delete[] oneLineMatrix;
     for (int i = 0; i < n_nodes; i++) delete[] edges[i];
     delete[] edges;
-    delete[] looklog;
-    delete[] lookH;
-    for (int i = 0; i < N_COL_NML; i++) delete[] lookchoose[i];
-    delete[] lookchoose;
     delete[] noise_vec;
-    for (int i = 0; i < N_COL_NML; i++) delete[] cterms[i];
-    delete[] cterms;
   }
 
   void readBlackbox(const vector<vector<int>>&);

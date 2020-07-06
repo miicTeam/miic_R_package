@@ -30,12 +30,12 @@ void jointfactors_uiyx(
 void jointfactors_u(int **datafactors, int *ptrIdx, int n, int Mui, int *r,
     int *ufactors, int *ru);
 double *computeMI_knml(int *xfactors, int *ufactors, int *uxfactors, int *rux,
-    int n, double *looklog, std::shared_ptr<CtermCache> cache, int flag = 0);
+    int n, std::shared_ptr<CtermCache> cache, int flag = 0);
 double *computeMI_knml(int *xfactors, int *ufactors, int *uxfactors, int *rux,
-    int n, int n_eff, double *looklog, std::vector<double> sample_weights,
+    int n, int n_eff, std::vector<double> sample_weights,
     std::shared_ptr<CtermCache> cache, int flag = 0);
 double *computeMI_kmdl(int *xfactors, int *ufactors, int *uxfactors, int *rux,
-    int n, double *looklog, int flag = 0);
+    int n, std::shared_ptr<CtermCache> cache, int flag = 0);
 }  // namespace computation
 }  // namespace miic
 

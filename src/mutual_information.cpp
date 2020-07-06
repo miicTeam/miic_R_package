@@ -405,7 +405,7 @@ void jointfactors_u(int **datafactors, int *ptrIdx, int n, int Mui, int *r,
 
 // rux -> 0:x,1;u,2:ux
 double *computeMI_knml(int *xfactors, int *ufactors, int *uxfactors, int *rux,
-    int n, int n_eff, double *looklog, std::vector<double> sample_weights,
+    int n, int n_eff, std::vector<double> sample_weights,
     std::shared_ptr<CtermCache> cache, int flag) {
   double *I = (double *)calloc(2, sizeof(double));
 
@@ -460,7 +460,7 @@ double *computeMI_knml(int *xfactors, int *ufactors, int *uxfactors, int *rux,
 }
 
 double *computeMI_knml(int *xfactors, int *ufactors, int *uxfactors, int *rux,
-    int n, double *looklog, std::shared_ptr<CtermCache> cache, int flag) {
+    int n, std::shared_ptr<CtermCache> cache, int flag) {
   double *I = (double *)calloc(2, sizeof(double));
 
   int j, x, u, ux;
@@ -478,24 +478,24 @@ double *computeMI_knml(int *xfactors, int *ufactors, int *uxfactors, int *rux,
   }
 
   for (x = 0; x < rux[0]; x++) {
-    if (nx[x] > 0) Hx -= nx[x] * looklog[nx[x]];
+    if (nx[x] > 0) Hx -= nx[x] * cache->getLog(nx[x]);
     if (flag == 0 || flag == 2)
       SC += cache->getLogC(nx[x], rux[1]);
   }
   for (u = 0; u < rux[1]; u++) {
-    if (nu[u] > 0) Hu -= nu[u] * looklog[nu[u]];
+    if (nu[u] > 0) Hu -= nu[u] * cache->getLog(nu[u]);
     if (flag == 0 || flag == 1)
       SC += cache->getLogC(nu[u], rux[0]);
   }
 
   for (ux = 0; ux < rux[2]; ux++) {
-    if (nux[ux] > 0) Hux -= nux[ux] * looklog[nux[ux]];
+    if (nux[ux] > 0) Hux -= nux[ux] * cache->getLog(nux[ux]);
   }
 
   if (flag == 0) SC -= cache->getLogC(n, rux[0]);
   if (flag == 0) SC -= cache->getLogC(n, rux[1]);
 
-  I[0] = looklog[n] + (Hu + Hx - Hux) / n;
+  I[0] = cache->getLog(n) + (Hu + Hx - Hux) / n;
 
   if (flag == 0)
     I[1] = I[0] - 0.5 * SC / n;
@@ -511,7 +511,7 @@ double *computeMI_knml(int *xfactors, int *ufactors, int *uxfactors, int *rux,
 
 // rux -> 0:x,1;u,2:ux
 double *computeMI_kmdl(int *xfactors, int *ufactors, int *uxfactors, int *rux,
-    int n, double *looklog, int flag) {
+    int n, std::shared_ptr<CtermCache> cache, int flag) {
   double *I = (double *)calloc(2, sizeof(double));
 
   int j, x, u, ux;
@@ -529,21 +529,21 @@ double *computeMI_kmdl(int *xfactors, int *ufactors, int *uxfactors, int *rux,
   }
 
   for (x = 0; x < rux[0]; x++) {
-    if (nx[x] > 0) Hx -= nx[x] * looklog[nx[x]];
+    if (nx[x] > 0) Hx -= nx[x] * cache->getLog(nx[x]);
   }
   for (u = 0; u < rux[1]; u++) {
-    if (nu[u] > 0) Hu -= nu[u] * looklog[nu[u]];
+    if (nu[u] > 0) Hu -= nu[u] * cache->getLog(nu[u]);
   }
 
   for (ux = 0; ux < rux[2]; ux++) {
-    if (nux[ux] > 0) Hux -= nux[ux] * looklog[nux[ux]];
+    if (nux[ux] > 0) Hux -= nux[ux] * cache->getLog(nux[ux]);
   }
 
-  SC = 0.5 * looklog[n];
+  SC = 0.5 * cache->getLog(n);
   if (flag == 0 || flag == 1) SC *= (rux[0] - 1);
   if (flag == 0 || flag == 2) SC *= (rux[1] - 1);
 
-  I[0] = looklog[n] + (Hu + Hx - Hux) / n;
+  I[0] = cache->getLog(n) + (Hu + Hx - Hux) / n;
 
   I[1] = I[0] - SC / n;
 

@@ -7,7 +7,7 @@ namespace computation_impl {
 double CtermCache::getC(int n, int level) {
   if (n == 0 || level == 0) return 1;
   double res{0};
-  if (level <= kMaxLevel) {
+  if (level <= kLevelLimit) {
     res = c_(n - 1, level - 1);
     if (res != -1) return res;
   }
@@ -25,12 +25,12 @@ double CtermCache::getC(int n, int level) {
             getLogChoose(n, h) + n_log_n_[h] + n_log_n_[n - h] - n_log_n_[n]);
     }
     c_(n - 1, level - 1) = res;
-  } else if (level <= kMaxLevel) {
+  } else if (level <= kLevelLimit) {
     res = getC(n, level - 1) + getC(n, level - 2) / (level - 2) * n;
     c_(n - 1, level - 1) = res;
   } else {
-    double r1{getC(n, kMaxLevel)}, r2{getC(n, kMaxLevel - 1)};
-    for (int i = kMaxLevel + 1; i <= level; ++i) {
+    double r1{getC(n, kLevelLimit)}, r2{getC(n, kLevelLimit - 1)};
+    for (int i = kLevelLimit + 1; i <= level; ++i) {
       res = r1 + r2 / (i - 2) * n;
       r2 = r1;
       r1 = res;

@@ -78,12 +78,6 @@ Environment::Environment(
   if (n_threads < 0) n_threads = omp_get_num_procs();
   omp_set_num_threads(n_threads);
 #endif
-  // for mixed, create the log(j) lookup table with j=0..n_samples;
-  looklog = new double[n_samples + 2];
-  looklog[0] = 0.0;
-  for (int i = 1; i < n_samples + 2; i++) {
-    looklog[i] = log(1.0 * i);
-  }
 
   edges = new Edge*[n_nodes];
   for (int i = 0; i < n_nodes; i++)

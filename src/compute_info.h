@@ -10,9 +10,8 @@ namespace computation {
 double* getAllInfoNEW(int* ptrAllData, const std::vector<int>& ptrAllLevels,
     const std::vector<int>& ptrVarIdx, int nbrUi, int* ptrZiIdx, int nbrZi,
     int ziPos, int sampleSize, int sampleSizeEff, int modCplx, int k23,
-    double* looklog, structure::MemorySpace* memory,
-    const std::vector<double>& weights, double** freqs1, bool test_mar,
-    std::shared_ptr<CtermCache> cache);
+    structure::MemorySpace* memory, const std::vector<double>& weights,
+    double** freqs1, bool test_mar, std::shared_ptr<CtermCache> cache);
 
 }  // namespace computation
 }  // namespace miic
