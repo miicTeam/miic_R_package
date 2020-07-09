@@ -25,9 +25,7 @@ class CtermCache {
   vector<double> log_factorial_;
   // Hold <n_samples> * <kMaxLevel> C(omplexity)_n^level terms
   // with n in [1, n_samples] and level in [1, kMaxLevel]
-  Grid2d<double> c_;
-
-  double getC(int n, int level);
+  Grid2d<double> log_c_;
 
  public:
   CtermCache(int n_samples)
@@ -35,7 +33,7 @@ class CtermCache {
         log_n_(size_n_, 0),
         n_log_n_(size_n_, 0),
         log_factorial_(size_n_, 0),
-        c_(n_samples, kLevelLimit, -1) {
+        log_c_(n_samples, kLevelLimit, -1) {
     for (int i = 2; i < size_n_; ++i) {  // first two terms are zero
       double logi = log(i);
       log_n_[i] = logi;
@@ -47,7 +45,7 @@ class CtermCache {
 
   double getH(int n) const { return n_log_n_[n]; }
   double getLog(int n) const { return log_n_[n]; }
-  double getLogC(int n, int level) { return log(getC(n, level)); }
+  double getLogC(int n, int level);
   double getLogChoose(int n, int k) const {
     if (k == n || k == 0) return 0;
     return log_factorial_[n] - log_factorial_[k] -
