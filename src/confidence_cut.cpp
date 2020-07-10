@@ -17,13 +17,8 @@ using namespace miic::computation;
 using namespace miic::structure;
 
 vector<vector<string>> confidenceCut(Environment& environment) {
-  // Create a back up of the data, for later randomization
   vector<vector<int>> original_data(environment.data_numeric);
   vector<vector<int>> original_data_idx(environment.data_numeric_idx);
-
-  // [0, 1, ..., n_samples - 1]
-  Rcpp::IntegerVector indices(Rcpp::seq(0, environment.n_samples - 1));
-  Rcpp::IntegerVector shuffled(indices);
 
   vector<EdgeID>& edge_list = environment.connected_list;
   int n_connected = edge_list.size();
@@ -31,8 +26,9 @@ vector<vector<string>> confidenceCut(Environment& environment) {
   for (const auto& edge : edge_list) {
     columns_to_shuffle.insert(edge.i);
   }
-
-  vector<double> confVect(n_connected, 0);
+  // [0, 1, ..., n_samples - 1]
+  Rcpp::IntegerVector indices(Rcpp::seq(0, environment.n_samples - 1));
+  Rcpp::IntegerVector shuffled(indices);
   for (int nb = 0; nb < environment.n_shuffles; nb++) {
     // Shuffle the dataset for selected columns
     for (auto col : columns_to_shuffle) {
@@ -59,9 +55,8 @@ vector<vector<string>> confidenceCut(Environment& environment) {
 
     double NIxy_ui, k_xy_ui;
     // evaluate the mutual information for every edge
-    for (int i = 0; i < n_connected; i++) {
-      int X = edge_list[i].i;
-      int Y = edge_list[i].j;
+    for (const auto& edge : edge_list) {
+      int X = edge.i, Y = edge.j;
       if (!environment.is_continuous[X] && !environment.is_continuous[Y]) {
         // discrete case
         double* res = computeEnsInformationNew(environment, NULL, 0, NULL, 0,
@@ -82,22 +77,23 @@ vector<vector<string>> confidenceCut(Environment& environment) {
       if (I_prime_shuffle < 0) {
         I_prime_shuffle = 0;
       }
-      confVect[i] += exp(-I_prime_shuffle);  // n_shuffles times
+      // n_shuffles times
+      environment.edges[X][Y].shared_info->exp_shuffle += exp(-I_prime_shuffle);
     }
   }
-  // evaluate the average confidence
-  for (auto& c : confVect) {
-    c /= environment.n_shuffles;
+  // evaluate average
+  for (const auto& edge : edge_list) {
+    environment.edges[edge.i][edge.j].shared_info->exp_shuffle /=
+        environment.n_shuffles;
   }
-  // remove edges based on confidence cut
-  auto to_delete = [&environment, &confVect, &edge_list](EdgeID& id) {
+  // remove edges based on confidence
+  auto to_delete = [&environment](EdgeID& id) {
     int X = id.i, Y = id.j;
     auto info = environment.edges[X][Y].shared_info;
     double I_prime_original = info->Ixy_ui - info->cplx;
-    auto index = &id - &*begin(edge_list);
     // exp(I_shuffle - I_original)
-    confVect[index] = exp(-I_prime_original) / confVect[index];
-    if (confVect[index] > environment.conf_threshold) {
+    auto confidence = exp(-I_prime_original) / info->exp_shuffle;
+    if (confidence > environment.conf_threshold) {
       info->connected = 0;
       environment.edges[X][Y].status = 0;
       environment.edges[Y][X].status = 0;
@@ -124,16 +120,19 @@ vector<vector<string>> confidenceCut(Environment& environment) {
 
   vector<vector<string>> res;
   res.emplace_back(std::initializer_list<string>{"x", "y", "confidence_ratio"});
-  for (int i = 0; i < n_connected; i++) {
+  for (const auto& edge : edge_list) {
+    auto info = environment.edges[edge.i][edge.j].shared_info;
+    auto confidence = exp(info->cplx - info->Ixy_ui) / info->exp_shuffle;
     res.emplace_back(std::initializer_list<string>{
-        environment.nodes[edge_list[i].i].name,
-        environment.nodes[edge_list[i].j].name,
-        std::to_string(confVect[i])});
+        environment.nodes[edge.i].name,
+        environment.nodes[edge.j].name,
+        std::to_string(confidence)});
   }
   std::sort(edge_list.begin(), edge_list.end());
   environment.numNoMore = edge_list.size();
 
   return res;
 }
+
 }  // namespace reconstruction
 }  // namespace miic

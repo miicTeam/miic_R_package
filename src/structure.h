@@ -60,15 +60,26 @@ struct EdgeSharedInfo {
   vector<int> ui_list;
   // {zi}: indices of candidate conditioning nodes
   vector<int> zi_list;
-  int z_name_idx = -1;  // Index of the last best contributor in zi_list
-  double Rxyz_ui = 0;   // Score of the best contributor
+  // Index of the last best contributor in zi_list
+  int z_name_idx = -1;
+  // Score of the best contributor
+  double Rxyz_ui = 0;
+  // Conditional mutual information
   double Ixy_ui = 0;
+  // Complexity with conditioning
   double cplx = 0;
+  // Count of joint factors without NA
   int Nxy_ui = -1;
-  short int connected = 1;  // 1 or 0. An edge is by default connected.
-  double Ixy = 0;           // Mutual information without conditioning
-  double cplx_no_u = 0;     // Complexity without conditioning
-  int Nxy = -1;             // Count of joint factors without NA
+  // 1 or 0. An edge is by default connected.
+  short int connected = 1;
+  // Mutual information without conditioning
+  double Ixy = 0;
+  // Complexity without conditioning
+  double cplx_no_u = 0;
+  // Count of joint factors without NA
+  int Nxy = -1;
+  // if doing shuffling, exp(-I_shuffle)
+  double exp_shuffle = 0;
 
   EdgeSharedInfo() = default;
   // Remove knowledge about all contributing nodes.
