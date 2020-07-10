@@ -1,47 +1,32 @@
-#include <math.h>
+#include "confidence_cut.h"
 
-#include <algorithm>
-#include <iostream>
+#include <Rcpp.h>
+
 #include <set>
-#include <vector>
 
 #include "compute_ens_information.h"
 #include "environment.h"
-#include "reconstruct.h"
-#include "structure.h"
-#include "utilities.h"
+
+namespace miic {
+namespace reconstruction {
 
 using std::string;
 using std::vector;
 using Rcpp::Rcout;
 using namespace miic::computation;
 using namespace miic::structure;
-using namespace miic::utility;
 
-void shuffle_lookup(vector<int>& array, vector<int>& array2, size_t n) {
-  if (n <= 1) return;
-  for (size_t i = 0; i < n - 1; i++) {
-    size_t j = R::runif(0, n-i);
-    int t = array[j];
-    array[j] = array[i];
-    array[i] = t;
-    array2[t] = i;
-  }
-}
-
-vector<vector<string>> miic::reconstruction::confidenceCut(
-    Environment& environment) {
+vector<vector<string>> confidenceCut(Environment& environment) {
   // Create a back up of the data, for later randomization
   vector<vector<int>> original_data(environment.data_numeric);
   vector<vector<int>> original_data_idx(environment.data_numeric_idx);
 
-  vector<int> lookup(environment.n_samples);
-  vector<int> lookup2(environment.n_samples);
-  for (int i = 0; i < environment.n_samples; i++) lookup[i] = i;
+  // [0, 1, ..., n_samples - 1]
+  Rcpp::IntegerVector indices(Rcpp::seq(0, environment.n_samples - 1));
+  Rcpp::IntegerVector shuffled(indices);
 
   vector<EdgeID>& edge_list = environment.connected_list;
   int n_connected = edge_list.size();
-
   std::set<int> columns_to_shuffle;
   for (const auto& edge : edge_list) {
     columns_to_shuffle.insert(edge.i);
@@ -51,30 +36,16 @@ vector<vector<string>> miic::reconstruction::confidenceCut(
   for (int nb = 0; nb < environment.n_shuffles; nb++) {
     // Shuffle the dataset for selected columns
     for (auto col : columns_to_shuffle) {
-      int row2 = 0;
-      shuffle_lookup(lookup, lookup2, environment.n_samples);
-      if (environment.is_continuous[col]) {
-        for (int i = 0; i < environment.n_samples; i++) {
-          lookup2[i] = i;
-        }
-        sort2arraysConfidence(environment.n_samples, lookup, lookup2);
-      }
+      // random permutation
+      shuffled = Rcpp::sample(indices, indices.size());
       for (int row = 0; row < environment.n_samples; row++) {
-        environment.data_numeric[row][col] = original_data[lookup[row]][col];
-      }
-
-      for (int row = 0; row < environment.n_samples; row++) {
+        environment.data_numeric[shuffled[row]][col] = original_data[row][col];
         if (environment.is_continuous[col]) {
-          if (environment.data_numeric[lookup2[row]][col] != -1) {
-            environment.data_numeric_idx[col][row2] = lookup2[row];
-            row2++;
-          }
-        }
-      }
-      if (environment.is_continuous[col]) {
-        while (row2 < environment.n_samples) {
-          environment.data_numeric_idx[col][row2] = -1;
-          row2++;
+          if (original_data_idx[col][row] == -1)
+            environment.data_numeric_idx[col][row] = -1;
+          else
+            environment.data_numeric_idx[col][row] =
+                shuffled[original_data_idx[col][row]];
         }
       }
     }
@@ -140,16 +111,6 @@ vector<vector<string>> miic::reconstruction::confidenceCut(
   Rcout << "# -- number of edges cut: " << n_connected - edge_list.size()
             << "\n";
 
-  for (int X = 0; X < environment.n_nodes - 1; X++) {
-    for (int Y = X + 1; Y < environment.n_nodes; Y++) {
-      if (environment.edges[X][Y].status == -2 ||
-          environment.edges[X][Y].status == 2 ||
-          environment.edges[X][Y].status == 6) {
-        environment.edges[X][Y].status = 1;
-        environment.edges[Y][X].status = 1;
-      }
-    }
-  }
   // Copy data back
   environment.data_numeric = std::move(original_data);
   environment.data_numeric_idx = std::move(original_data_idx);
@@ -174,3 +135,5 @@ vector<vector<string>> miic::reconstruction::confidenceCut(
 
   return res;
 }
+}  // namespace reconstruction
+}  // namespace miic

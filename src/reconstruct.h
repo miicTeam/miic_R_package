@@ -153,7 +153,6 @@ using reconstruction_impl::CycleTracker;
 bool skeletonInitialization(structure::Environment&);
 bool firstStepIteration(structure::Environment&, BCC&);
 bool skeletonIteration(structure::Environment&);
-std::vector<std::vector<std::string> > confidenceCut(structure::Environment&);
 
 }  // namespace reconstruction
 }  // namespace miic

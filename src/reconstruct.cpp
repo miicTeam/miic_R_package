@@ -9,6 +9,7 @@
 #include <sstream>
 #include <string>
 
+#include "confidence_cut.h"
 #include "orientation_probability.h"
 #include "utilities.h"
 
