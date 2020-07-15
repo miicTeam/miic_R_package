@@ -208,15 +208,15 @@ struct MemorySpace {
 };
 
 struct ExecutionTime {
-  double start_time_init;
-  double start_time_iter;
-  long double init;
-  long double iter;
-  long double init_iter;
-  long double ort;
-  long double cut;
-  long double ort_after_cut;
-  long double total;
+  double start_time_init{0};
+  double start_time_iter{0};
+  long double init{0};
+  long double iter{0};
+  long double init_iter{0};
+  long double ort{0};
+  long double cut{0};
+  long double ort_after_cut{0};
+  long double total{0};
 };
 
 }  // namespace structure_impl

@@ -1,12 +1,3 @@
-#include <math.h>
-#include <unistd.h>
-
-#include <algorithm>
-#include <ctime>
-#include <iostream>
-#include <string>
-#include <vector>
-
 #include "reconstruct.h"
 
 #ifdef _OPENMP

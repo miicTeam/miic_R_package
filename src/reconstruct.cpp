@@ -54,7 +54,6 @@ List reconstruct(List input_data, List arg_list) {
   long double spentTime = (get_wall_time() - startTime);
   environment.exec_time.init = spentTime;
   environment.exec_time.init_iter = spentTime;
-  environment.exec_time.iter = 0;
   if (environment.verbose) {
     Rcout << "\n# ----> First contributing node elapsed time:" << spentTime
               << "sec\n\n";
@@ -103,8 +102,6 @@ List reconstruct(List input_data, List arg_list) {
       environment.exec_time.cut += spentTime;
       Rcout << " done.\n";
       confVect = confidenceCut(environment);
-    } else {
-      environment.exec_time.cut = 0;
     }
     // Oriente edges for non-consistent/orientation consistent algorithm
     if (environment.orientation_phase && environment.numNoMore > 0 &&
