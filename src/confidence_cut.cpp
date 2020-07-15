@@ -16,12 +16,18 @@ using Rcpp::Rcout;
 using namespace miic::computation;
 using namespace miic::structure;
 
-vector<vector<string>> confidenceCut(Environment& environment) {
+void setConfidence(Environment& environment) {
   vector<vector<int>> original_data(environment.data_numeric);
   vector<vector<int>> original_data_idx(environment.data_numeric_idx);
 
-  vector<EdgeID>& edge_list = environment.connected_list;
-  int n_connected = edge_list.size();
+  vector<EdgeID> edge_list;
+  for (int i = 1; i < environment.n_nodes; ++i) {
+    for (int j = 0; j < i; ++j) {
+      if (!environment.edges[i][j].status) continue;
+      edge_list.emplace_back(j, i, environment.edges[i][j]);
+    }
+  }
+
   std::set<int> columns_to_shuffle;
   for (const auto& edge : edge_list) {
     columns_to_shuffle.insert(edge.i);
@@ -86,6 +92,21 @@ vector<vector<string>> confidenceCut(Environment& environment) {
     environment.edges[edge.i][edge.j].shared_info->exp_shuffle /=
         environment.n_shuffles;
   }
+  // Copy data back
+  environment.data_numeric = std::move(original_data);
+  environment.data_numeric_idx = std::move(original_data_idx);
+
+  for (int i = 0; i < environment.n_samples; i++) {
+    for (int j = 0; j < environment.n_nodes; j++) {
+      environment.oneLineMatrix[j * environment.n_samples + i] =
+          environment.data_numeric[i][j];
+    }
+  }
+}
+
+vector<vector<string>> confidenceCut(Environment& environment) {
+  vector<EdgeID>& edge_list = environment.connected_list;
+  size_t n_connected = edge_list.size();
   // remove edges based on confidence
   auto to_delete = [&environment](EdgeID& id) {
     int X = id.i, Y = id.j;
@@ -106,17 +127,6 @@ vector<vector<string>> confidenceCut(Environment& environment) {
       remove_if(begin(edge_list), end(edge_list), to_delete), end(edge_list));
   Rcout << "# -- number of edges cut: " << n_connected - edge_list.size()
             << "\n";
-
-  // Copy data back
-  environment.data_numeric = std::move(original_data);
-  environment.data_numeric_idx = std::move(original_data_idx);
-
-  for (int i = 0; i < environment.n_samples; i++) {
-    for (int j = 0; j < environment.n_nodes; j++) {
-      environment.oneLineMatrix[j * environment.n_samples + i] =
-          environment.data_numeric[i][j];
-    }
-  }
 
   vector<vector<string>> res;
   res.emplace_back(std::initializer_list<string>{"x", "y", "confidence_ratio"});

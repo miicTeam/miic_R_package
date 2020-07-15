@@ -95,13 +95,14 @@ List reconstruct(List input_data, List arg_list) {
       environment.exec_time.init_iter += spentTime;
     }
 
-    startTime = get_wall_time();
     if (environment.n_shuffles > 0) {
+      startTime = get_wall_time();
       Rcout << "Computing confidence cut with permutations..." << std::flush;
-      confVect = confidenceCut(environment);
+      setConfidence(environment);
       long double spentTime = (get_wall_time() - startTime);
       environment.exec_time.cut += spentTime;
-      Rcout << " done." << std::endl;
+      Rcout << " done.\n";
+      confVect = confidenceCut(environment);
     } else {
       environment.exec_time.cut = 0;
     }

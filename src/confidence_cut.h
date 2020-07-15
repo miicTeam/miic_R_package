@@ -8,7 +8,9 @@
 namespace miic {
 namespace reconstruction {
 
+void setConfidence(structure::Environment& environment);
 std::vector<std::vector<std::string> > confidenceCut(structure::Environment&);
+
 }  // namespace reconstruction
 }  // namespace miic
 
