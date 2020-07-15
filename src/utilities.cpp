@@ -306,11 +306,15 @@ vector<vector<string>> getEdgesInfoTable(const Environment& env) {
 
   table.emplace_back(std::initializer_list<std::string>{"x", "y", "z.name",
       "ai.vect", "zi.vect", "Ixy", "Ixy_ai", "cplx", "Rxyz_ai", "category",
-      "Nxy_ai"});
+      "Nxy_ai", "confidence"});
   for (const auto& edge : edge_list) {
     auto i = edge.i, j = edge.j;
     auto info = env.edges[i][j].shared_info;
+    double confidence = -1;
+    if (info->exp_shuffle != -1)
+      confidence = exp(info->cplx - info->Ixy_ui) / info->exp_shuffle;
 
+    using std::to_string;
     table.emplace_back(std::initializer_list<std::string>{
         env.nodes[i].name,
         env.nodes[j].name,
@@ -319,12 +323,13 @@ vector<vector<string>> getEdgesInfoTable(const Environment& env) {
           : env.nodes[info->zi_list[info->z_name_idx]].name,
         toNameString(env, info->ui_list),
         toNameString(env, info->zi_list),
-        std::to_string(info->Ixy),
-        std::to_string(info->Ixy_ui),
-        std::to_string(info->cplx),
-        std::to_string(info->Rxyz_ui),
-        std::to_string(info->connected),
-        std::to_string(info->Nxy_ui)
+        to_string(info->Ixy),
+        to_string(info->Ixy_ui),
+        to_string(info->cplx),
+        to_string(info->Rxyz_ui),
+        to_string(info->connected),
+        to_string(info->Nxy_ui),
+        to_string(confidence)
     });
   }
 

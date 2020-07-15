@@ -110,6 +110,8 @@ miic.reconstruct <- function(input_data = NULL,
   df$Ixy_ai <- as.numeric(df$Ixy_ai)
   df$cplx <- as.numeric(df$cplx)
   df$Rxyz_ai <- as.numeric(df$Rxyz_ai)
+  df$Nxy_ai <- as.numeric(df$Nxy_ai)
+  df$confidence <- as.numeric(df$confidence)
   res$edges <- df
 
   #  adj_matrix
@@ -121,25 +123,6 @@ miic.reconstruct <- function(input_data = NULL,
   if (length(res$adj_matrices) > 0) {
     res$adj_matrices <- matrix(unlist(res$adj_matrices),
                                ncol = length(res$adj_matrices))
-  }
-
-  if (n_shuffles > 0) {
-    # create the data frame for the confidence file
-    confData <- res$confData
-    a <- (length(confData[[1]]) + 1)
-    b <- length(unlist(confData))
-    tmp <- unlist(confData)[1:length(confData[[1]])]
-    res1 <- unlist(confData)[a:b]
-    df <-
-      data.frame(matrix(res1, nrow = length(confData) - 1, byrow = T),
-        stringsAsFactors = FALSE
-      )
-    colnames(df) <- tmp
-    df[, "confidence_ratio"] <- as.numeric(df[, "confidence_ratio"])
-
-    df <- df[order(df[, "confidence_ratio"]), ]
-
-    res$confData <- df
   }
 
   # save time

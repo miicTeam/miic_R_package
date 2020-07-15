@@ -35,6 +35,7 @@ void setConfidence(Environment& environment) {
   for (int i = 1; i < environment.n_nodes; ++i) {
     for (int j = 0; j < i; ++j) {
       if (!environment.edges[i][j].status) continue;
+      environment.edges[i][j].shared_info->exp_shuffle = 0;
       edge_list.emplace_back(j, i, environment.edges[i][j]);
     }
   }
@@ -115,7 +116,7 @@ void setConfidence(Environment& environment) {
   }
 }
 
-vector<vector<string>> confidenceCut(Environment& environment) {
+void confidenceCut(Environment& environment) {
   vector<EdgeID>& edge_list = environment.connected_list;
   size_t n_connected = edge_list.size();
   // remove edges based on confidence
@@ -136,23 +137,9 @@ vector<vector<string>> confidenceCut(Environment& environment) {
   };
   edge_list.erase(
       remove_if(begin(edge_list), end(edge_list), to_delete), end(edge_list));
-  Rcout << "# -- number of edges cut: " << n_connected - edge_list.size()
-            << "\n";
-
-  vector<vector<string>> res;
-  res.emplace_back(std::initializer_list<string>{"x", "y", "confidence_ratio"});
-  for (const auto& edge : edge_list) {
-    auto info = environment.edges[edge.i][edge.j].shared_info;
-    auto confidence = exp(info->cplx - info->Ixy_ui) / info->exp_shuffle;
-    res.emplace_back(std::initializer_list<string>{
-        environment.nodes[edge.i].name,
-        environment.nodes[edge.j].name,
-        std::to_string(confidence)});
-  }
+  Rcout << n_connected - edge_list.size() << " edges cut.\n";
   std::sort(edge_list.begin(), edge_list.end());
   environment.numNoMore = edge_list.size();
-
-  return res;
 }
 
 }  // namespace reconstruction

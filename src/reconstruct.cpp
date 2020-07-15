@@ -60,7 +60,6 @@ List reconstruct(List input_data, List arg_list) {
   }
   BCC bcc(environment);
   auto cycle_tracker = CycleTracker(environment);
-  vector<vector<string>> confVect;
   vector<vector<string>> orientations;
   do {
     if (environment.consistent > 0) bcc.analyse();
@@ -101,7 +100,7 @@ List reconstruct(List input_data, List arg_list) {
       long double spentTime = (get_wall_time() - startTime);
       environment.exec_time.cut += spentTime;
       Rcout << " done.\n";
-      confVect = confidenceCut(environment);
+      confidenceCut(environment);
     }
     // Oriente edges for non-consistent/orientation consistent algorithm
     if (environment.orientation_phase && environment.numNoMore > 0 &&
@@ -166,9 +165,6 @@ List reconstruct(List input_data, List arg_list) {
       _["orientations.prob"] = orientations,
       _["time"]              = time,
       _["interrupted"]       = false);
-  if (environment.n_shuffles > 0) {
-    result.push_back(confVect, "confData");
-  }
   if (environment.consistent > 0) {
     result.push_back(cycle_tracker.adj_matrices, "adj_matrices");
   }

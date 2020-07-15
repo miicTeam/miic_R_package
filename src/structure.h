@@ -79,7 +79,7 @@ struct EdgeSharedInfo {
   // Count of joint factors without NA
   int Nxy = -1;
   // if doing shuffling, exp(-I_shuffle)
-  double exp_shuffle = 0;
+  double exp_shuffle = -1;
 
   EdgeSharedInfo() = default;
   // Remove knowledge about all contributing nodes.
