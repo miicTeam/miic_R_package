@@ -390,7 +390,6 @@ discretizeMutual <- function(X,
 
   result$info <- rescpp$info
   result$infok <- rescpp$infok
-  result$efinfo <- rescpp$efinfo
 
   if (plot) {
     if (require(ggplot2, quietly = TRUE) & require(gridExtra, quietly = TRUE)) {

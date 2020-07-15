@@ -395,7 +395,7 @@ findProba <- function(outputSummary.df, proba, index) {
     posProba <- which((proba[, 4] == outputSummary.df[index, 2] &
       proba[, 7] == outputSummary.df[index, 1]))
     if (length(posProba) > 0) {
-      found <- TRUE
+      posProba <- posProba[1]
       return(c(proba[posProba, "p4"], proba[posProba, "p3"]))
     }
   } else if (outputSummary.df[index, "infOrt"] == 6) {

@@ -165,7 +165,6 @@ List reconstruct(List input_data, List arg_list) {
       _["edges"]             = getEdgesInfoTable(environment),
       _["orientations.prob"] = orientations,
       _["time"]              = time,
-      _["dnidx"]             = environment.data_numeric_idx,
       _["interrupted"]       = false);
   if (environment.n_shuffles > 0) {
     result.push_back(confVect, "confData");
