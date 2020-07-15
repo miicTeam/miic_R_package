@@ -16,6 +16,17 @@ using Rcpp::Rcout;
 using namespace miic::computation;
 using namespace miic::structure;
 
+// shuffle with R rng (std::random_shuffle is deprecated)
+// https://en.cppreference.com/w/cpp/algorithm/random_shuffle
+template <class RandomIt>
+void rShuffle(RandomIt first, RandomIt last) {
+  typename std::iterator_traits<RandomIt>::difference_type i, n;
+  n = last - first;
+  for (i = n - 1; i > 0; --i) {
+    std::swap(first[i], first[floor(R::unif_rand() * (i + 1))]);
+  }
+}
+
 void setConfidence(Environment& environment) {
   vector<vector<int>> original_data(environment.data_numeric);
   vector<vector<int>> original_data_idx(environment.data_numeric_idx);
@@ -32,22 +43,22 @@ void setConfidence(Environment& environment) {
   for (const auto& edge : edge_list) {
     columns_to_shuffle.insert(edge.i);
   }
-  // [0, 1, ..., n_samples - 1]
-  Rcpp::IntegerVector indices(Rcpp::seq(0, environment.n_samples - 1));
-  Rcpp::IntegerVector shuffled(indices);
+  vector<int> indices(environment.n_samples);
   for (int nb = 0; nb < environment.n_shuffles; nb++) {
     // Shuffle the dataset for selected columns
     for (auto col : columns_to_shuffle) {
+      // [0, 1, ..., n_samples - 1]
+      std::iota(begin(indices), end(indices), 0);
       // random permutation
-      shuffled = Rcpp::sample(indices, indices.size());
+      rShuffle(begin(indices), end(indices));
       for (int row = 0; row < environment.n_samples; row++) {
-        environment.data_numeric[shuffled[row]][col] = original_data[row][col];
+        environment.data_numeric[indices[row]][col] = original_data[row][col];
         if (environment.is_continuous[col]) {
           if (original_data_idx[col][row] == -1)
             environment.data_numeric_idx[col][row] = -1;
           else
             environment.data_numeric_idx[col][row] =
-                shuffled[original_data_idx[col][row]];
+                indices[original_data_idx[col][row]];
         }
       }
     }
