@@ -392,7 +392,7 @@ discretizeMutual <- function(X,
   result$infok <- rescpp$infok
 
   if (plot) {
-    if (require(ggplot2, quietly = TRUE) & require(gridExtra, quietly = TRUE)) {
+    if (base::requireNamespace("ggplot2", quietly = TRUE) & base::requireNamespace("gridExtra", quietly = TRUE)) {
       if (!any(is_discrete[1:2])) {
         result$plot <- jointplot_hist(X, Y, result, nameDist1, nameDist2)
       } else if (!all(is_discrete[1:2])) {
