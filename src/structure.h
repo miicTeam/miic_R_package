@@ -3,6 +3,7 @@
 
 #include <Rcpp.h>
 
+#include <array>
 #include <memory>  // std::shared_ptr
 #include <set>
 #include <string>
@@ -10,6 +11,8 @@
 
 namespace miic {
 namespace structure {
+
+using Triple = std::array<int, 3>;
 
 namespace structure_impl {
 

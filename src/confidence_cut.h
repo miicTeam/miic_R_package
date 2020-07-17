@@ -6,7 +6,7 @@
 namespace miic {
 namespace reconstruction {
 
-void setConfidence(structure::Environment& environment);
+void setConfidence(structure::Environment&);
 void confidenceCut(structure::Environment&);
 
 }  // namespace reconstruction

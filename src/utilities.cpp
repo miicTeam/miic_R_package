@@ -294,8 +294,6 @@ string toNameString(const Environment& env, const vector<int>& vec) {
 }
 
 vector<vector<string>> getEdgesInfoTable(const Environment& env) {
-  vector<vector<string>> table;
-
   vector<EdgeID> edge_list;
   for (int i = 0; i < env.n_nodes - 1; i++) {
     for (int j = i + 1; j < env.n_nodes; j++) {
@@ -304,7 +302,8 @@ vector<vector<string>> getEdgesInfoTable(const Environment& env) {
   }
   std::sort(edge_list.begin(), edge_list.end());
 
-  table.emplace_back(std::initializer_list<std::string>{"x", "y", "z.name",
+  vector<vector<string>> table;
+  table.emplace_back(std::initializer_list<string>{"x", "y", "z.name",
       "ai.vect", "zi.vect", "Ixy", "Ixy_ai", "cplx", "Rxyz_ai", "category",
       "Nxy_ai", "confidence"});
   for (const auto& edge : edge_list) {
@@ -315,7 +314,7 @@ vector<vector<string>> getEdgesInfoTable(const Environment& env) {
       confidence = exp(info->cplx - info->Ixy_ui) / info->exp_shuffle;
 
     using std::to_string;
-    table.emplace_back(std::initializer_list<std::string>{
+    table.emplace_back(std::initializer_list<string>{
         env.nodes[i].name,
         env.nodes[j].name,
         info->z_name_idx == -1

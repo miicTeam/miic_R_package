@@ -51,9 +51,10 @@ double logF2(double scoreTpl, double I3) {
 }
 
 int miic::reconstruction::OrientTpl_LV_Deg_Propag(int NbTpl, int* Tpl,
-    double* I3, double* ProbArrowhead, int LV, int deg, bool propagation,
-    bool half_v_structure) {
-  int i, j, n1, n2, n3, TRUE = 1, FALSE = 0, *orderTpl, maxTpl, ok, count = 0;
+    double* I3, double* ProbArrowhead, bool latent, bool degenerate,
+    bool propagation, bool half_v_structure) {
+  int i, j, n1, n2, n3, *orderTpl, maxTpl, count = 0;
+  bool ok;
   double maxscoreTpl;
   double p, pp, p1, p2, p3, p4, *ProbArrowhead2, *scoreTpl, *scoresN;
   double logpp,*logscoreTpl;
@@ -70,26 +71,22 @@ int miic::reconstruction::OrientTpl_LV_Deg_Propag(int NbTpl, int* Tpl,
   }
   // Initialization ScoreTpl for I3<0
   for (i = 0; i < NbTpl; i++) {
-    if (I3[i] < 0) {       // Tpl negative
-      if (deg == FALSE) {  // no degenerescence
-			  //scoreTpl[i]=(1+exp(I3[i]))/(1+3*exp(I3[i])); //update 20150228
-			  logscoreTpl[i]=log1p(exp(I3[i])) -log1p(3*exp(I3[i]));
-			  scoreTpl[i]=expm1(logscoreTpl[i])+1;
+    if (I3[i] < 0) {
+      if (!degenerate) {
+        logscoreTpl[i] = log1p(exp(I3[i])) - log1p(3 * exp(I3[i]));
+        scoreTpl[i] = expm1(logscoreTpl[i]) + 1;
         scoresN[i] = -(I3[i]);
-      } else {  // degenerescence
+      } else {
         scoreTpl[i] = (3 - 2 * exp(I3[i])) /
                       (3 - exp(I3[i]));  // larger than p without deg
       }
-      // modif 20150228
       ProbArrowhead2[1 * NbTpl + i] = scoreTpl[i];
       ProbArrowhead2[2 * NbTpl + i] = scoreTpl[i];
-
-      if (LV == FALSE) {  // no change 20151023
+      if (!latent) {
         ProbArrowhead2[0 * NbTpl + i] = 1 - ProbArrowhead2[1 * NbTpl + i];
         ProbArrowhead2[3 * NbTpl + i] = 1 - ProbArrowhead2[2 * NbTpl + i];
       }
-
-    } else {  // Tpl positive
+    } else {  // I3[i] non-negative
       logscoreTpl[i]=log(0.5);
       scoreTpl[i] = 0.5;
       scoresN[i] = 0;
@@ -113,8 +110,8 @@ int miic::reconstruction::OrientTpl_LV_Deg_Propag(int NbTpl, int* Tpl,
         Tpl[2 * NbTpl + i], I3[i], scoreTpl[i]);
   }
 
-  Rprintf("!START LV=%i count=%i deg=%i maxTpl=%i maxscoreTpl=%g \n", LV, count,
-      deg, maxTpl, maxscoreTpl);
+  Rprintf("!START latent=%i count=%i deg=%i maxTpl=%i maxscoreTpl=%g \n", latent,
+      count, deg, maxTpl, maxscoreTpl);
 #endif  // _MY_PRINT_
 
   //  Order Tpl in increasing ScoreTpl /////////////////////
@@ -142,8 +139,9 @@ int miic::reconstruction::OrientTpl_LV_Deg_Propag(int NbTpl, int* Tpl,
 #endif  // _MY_PRINT_
 
     // assign topTpl ///////////////////////////////////////////:
-    n1 = 0;
-    n3 = 0;
+    n1 = -1;
+    n2 = -1;
+    n3 = -1;
     p1 = 0.5;
     p2 = 0.5;
     p3 = 0.5;
@@ -180,10 +178,10 @@ int miic::reconstruction::OrientTpl_LV_Deg_Propag(int NbTpl, int* Tpl,
       n2 = Tpl[1 * NbTpl + i];
       // not sure this is useful;) //change 20151023
       p1 = ProbArrowhead2[0 * NbTpl + i];
-      // if no LV or tail on 1  (x 0<-1 z 2-3 y) // change 20151022 herve
-      if ((LV == FALSE && ProbArrowhead[1 * NbTpl + i] > (0.5 + eps)) ||
+      // if no latent or tail on 1  (x 0<-1 z 2-3 y) // change 20151022 herve
+      if ((!latent && ProbArrowhead[1 * NbTpl + i] > (0.5 + eps)) ||
           (propagation && ProbArrowhead[1 * NbTpl + i] < (0.5 - eps))) {
-        // establish arrowhead/tail if no LV or
+        // establish arrowhead/tail if no latent or
         // arrowhead final proba on 0 (x 0<-1 z 2-3 y)
         ProbArrowhead[0 * NbTpl + i] = ProbArrowhead2[0 * NbTpl + i];
       }
@@ -206,10 +204,10 @@ int miic::reconstruction::OrientTpl_LV_Deg_Propag(int NbTpl, int* Tpl,
       p3 = ProbArrowhead[2 * NbTpl + i];
       // not sure this is useful;) //change 20151023
       p4 = ProbArrowhead2[3 * NbTpl + i];
-      // if no LV or tail on 2  (x 0-1 z 2->3 y) // change 20151022 herve
-      if ((LV == FALSE && ProbArrowhead[2 * NbTpl + i] > (0.5 + eps)) ||
+      // if no latent or tail on 2  (x 0-1 z 2->3 y) // change 20151022 herve
+      if ((!latent && ProbArrowhead[2 * NbTpl + i] > (0.5 + eps)) ||
           (propagation && ProbArrowhead[2 * NbTpl + i] < (0.5 - eps))) {
-        // establish arrowhead/tail if no LV or
+        // establish arrowhead/tail if no latent or
         // arrowhead final proba on 3 (x 0-1 z 2->3 y)
         ProbArrowhead[3 * NbTpl + i] = ProbArrowhead2[3 * NbTpl + i];
       }
@@ -222,17 +220,17 @@ int miic::reconstruction::OrientTpl_LV_Deg_Propag(int NbTpl, int* Tpl,
 
     maxscoreTpl = 0.0;
 
-    if (n1 != 0) {
+    if (n1 != -1) {
       // only loop on relevant Tpl i != maxTpl, thanks to the sorting
       // of their scoreTpl
       for (j = NbTpl - 2; j >= 0; j--) {
         i = orderTpl[j];
-        ok = TRUE;
+        ok = true;
         // sharing fist edge, same symmetry
         if (Tpl[0 * NbTpl + i] == n1 && Tpl[1 * NbTpl + i] == n2) {
           ProbArrowhead[1 * NbTpl + i] = p2;
-          // if(LV==FALSE) ProbArrowhead[0*NbTpl+i] = p1;
-          if ((LV == FALSE && ProbArrowhead[1 * NbTpl + i] > (0.5 + eps)) ||
+          // if(!latent) ProbArrowhead[0*NbTpl+i] = p1;
+          if ((!latent && ProbArrowhead[1 * NbTpl + i] > (0.5 + eps)) ||
               (propagation && ProbArrowhead[1 * NbTpl + i] < (0.5 - eps)))
             // edit HI 20150222 change 20151022 herve
             ProbArrowhead[0 * NbTpl + i] = p1;
@@ -243,10 +241,10 @@ int miic::reconstruction::OrientTpl_LV_Deg_Propag(int NbTpl, int* Tpl,
             logscoreTpl[i] = -__DBL_MAX__;
             scoreTpl[i] = -1;  // remove tpl from the list of yet-unused Tpl
             scoresN[i] = -1;
-            ok = FALSE;
+            ok = false;
           } else {  // copy final proba on putative proba too
             // edit HI 20150222 // change 20151022 herve
-            if ((LV == FALSE && ProbArrowhead[1 * NbTpl + i] > (0.5 + eps)) ||
+            if ((!latent && ProbArrowhead[1 * NbTpl + i] > (0.5 + eps)) ||
                 (propagation && ProbArrowhead[1 * NbTpl + i] < (0.5 - eps)))
               ProbArrowhead2[0 * NbTpl + i] = p1;
 
@@ -255,7 +253,7 @@ int miic::reconstruction::OrientTpl_LV_Deg_Propag(int NbTpl, int* Tpl,
         } else if (Tpl[0 * NbTpl + i] == n2 && Tpl[1 * NbTpl + i] == n1) {
           // sharing fist edge, antisymmetry
           ProbArrowhead[0 * NbTpl + i] = p2;
-          if ((LV == FALSE && ProbArrowhead[0 * NbTpl + i] > (0.5 + eps)) ||
+          if ((!latent && ProbArrowhead[0 * NbTpl + i] > (0.5 + eps)) ||
               (propagation && ProbArrowhead[0 * NbTpl + i] < (0.5 - eps)))
             // edit HI 20150222 // change 20151022 herve
             ProbArrowhead[1 * NbTpl + i] = p1;
@@ -267,10 +265,10 @@ int miic::reconstruction::OrientTpl_LV_Deg_Propag(int NbTpl, int* Tpl,
             logscoreTpl[i]=-__DBL_MAX__;
             scoreTpl[i] = -1;  // remove tpl from the list of yet-unused Tpl
             scoresN[i] = -1;
-            ok = FALSE;
+            ok = false;
           } else {  // copy final proba on putative proba too
             ProbArrowhead2[0 * NbTpl + i] = p2;
-            if ((LV == FALSE && ProbArrowhead[0 * NbTpl + i] > (0.5 + eps)) ||
+            if ((!latent && ProbArrowhead[0 * NbTpl + i] > (0.5 + eps)) ||
                 (propagation && ProbArrowhead[0 * NbTpl + i] < (0.5 - eps)))
               // edit HI 20150222 // change 20151022 herve
               ProbArrowhead2[1 * NbTpl + i] = p1;
@@ -279,7 +277,7 @@ int miic::reconstruction::OrientTpl_LV_Deg_Propag(int NbTpl, int* Tpl,
           // sharing second edge, antisymmetry
           ProbArrowhead[2 * NbTpl + i] = p2;
 
-          if ((LV == FALSE && ProbArrowhead[2 * NbTpl + i] > (0.5 + eps)) ||
+          if ((!latent && ProbArrowhead[2 * NbTpl + i] > (0.5 + eps)) ||
               (propagation && ProbArrowhead[2 * NbTpl + i] < (0.5 - eps)))
             // edit HI 20150222  // change 20151022 herve
             ProbArrowhead[3 * NbTpl + i] = p1;
@@ -290,9 +288,9 @@ int miic::reconstruction::OrientTpl_LV_Deg_Propag(int NbTpl, int* Tpl,
             logscoreTpl[i]=-__DBL_MAX__;
             scoreTpl[i] = -1;  // remove tpl from the list of yet-unused Tpl
             scoresN[i] = -1;
-            ok = FALSE;
+            ok = false;
           } else {  // copy final proba on putative proba too
-            if ((LV == FALSE && ProbArrowhead[2 * NbTpl + i] > (0.5 + eps)) ||
+            if ((!latent && ProbArrowhead[2 * NbTpl + i] > (0.5 + eps)) ||
                 (propagation && ProbArrowhead[2 * NbTpl + i] < (0.5 - eps)))
               // edit HI 20150222  // change 20151022 herve
               ProbArrowhead2[3 * NbTpl + i] = p1;
@@ -302,7 +300,7 @@ int miic::reconstruction::OrientTpl_LV_Deg_Propag(int NbTpl, int* Tpl,
         } else if (Tpl[2 * NbTpl + i] == n2 && Tpl[1 * NbTpl + i] == n1) {
           // sharing second edge, same symmetry
           ProbArrowhead[3 * NbTpl + i] = p2;
-          if ((LV == FALSE && ProbArrowhead[3 * NbTpl + i] > (0.5 + eps)) ||
+          if ((!latent && ProbArrowhead[3 * NbTpl + i] > (0.5 + eps)) ||
               (propagation && ProbArrowhead[3 * NbTpl + i] < (0.5 - eps)))
             // edit HI 20150222 // change 20151022 herve
             ProbArrowhead[2 * NbTpl + i] = p1;
@@ -313,16 +311,16 @@ int miic::reconstruction::OrientTpl_LV_Deg_Propag(int NbTpl, int* Tpl,
             logscoreTpl[i]=-__DBL_MAX__;
             scoreTpl[i] = -1;  // remove tpl from the list of yet-unused Tpl
             scoresN[i] = -1;
-            ok = FALSE;
+            ok = false;
           } else {  // copy final proba on putative proba too
             ProbArrowhead2[3 * NbTpl + i] = p2;
             // edit HI 20150222 // change 20151022 herve
-            if ((LV == FALSE && ProbArrowhead[3 * NbTpl + i] > (0.5 + eps)) ||
+            if ((!latent && ProbArrowhead[3 * NbTpl + i] > (0.5 + eps)) ||
                 (propagation && ProbArrowhead[3 * NbTpl + i] < (0.5 - eps)))
               ProbArrowhead2[2 * NbTpl + i] = p1;
           }
         } else {
-          ok = FALSE;  // non edited tpl
+          ok = false;  // non edited tpl
         }
 
 #if _MY_PRINT_
@@ -400,8 +398,7 @@ int miic::reconstruction::OrientTpl_LV_Deg_Propag(int NbTpl, int* Tpl,
 
               ProbArrowhead2[2 * NbTpl + i] = pp;
               // change 20151031
-              if (LV == FALSE &&
-                  (ProbArrowhead2[3 * NbTpl + i] > (1 - pp + eps)))
+              if (!latent && (ProbArrowhead2[3 * NbTpl + i] > (1 - pp + eps)))
                 ProbArrowhead2[3 * NbTpl + i] =
                     1 - ProbArrowhead2[2 * NbTpl + i];
             } else {
@@ -417,8 +414,7 @@ int miic::reconstruction::OrientTpl_LV_Deg_Propag(int NbTpl, int* Tpl,
                 scoresN[i] = logF2(scoreTpl[i], I3[i]);
                 ProbArrowhead2[1 * NbTpl + i] = pp;
                 // change 20151031
-                if (LV == FALSE &&
-                    (ProbArrowhead2[0 * NbTpl + i] > (1 - pp + eps)))
+                if (!latent && (ProbArrowhead2[0 * NbTpl + i] > (1 - pp + eps)))
                   ProbArrowhead2[0 * NbTpl + i] =
                       1 - ProbArrowhead2[1 * NbTpl + i];
               }
@@ -433,16 +429,16 @@ int miic::reconstruction::OrientTpl_LV_Deg_Propag(int NbTpl, int* Tpl,
         p3, p4, count, deg, maxTpl, maxscoreTpl);
 #endif  // _MY_PRINT_
 
-    if (n3 != 0) {
+    if (n3 != -1) {
       // only loop on relevant Tpl i != maxTpl, thanks to the sorting of their
       // scoreTpl
       for (j = NbTpl - 2; j >= 0; j--) {
         i = orderTpl[j];
-        ok = TRUE;
+        ok = true;
         // sharing fist edge, same symmetry
         if (Tpl[0 * NbTpl + i] == n3 && Tpl[1 * NbTpl + i] == n2) {
           ProbArrowhead[1 * NbTpl + i] = p3;
-          if ((LV == FALSE && ProbArrowhead[1 * NbTpl + i] > (0.5 + eps)) ||
+          if ((!latent && ProbArrowhead[1 * NbTpl + i] > (0.5 + eps)) ||
               (propagation && ProbArrowhead[1 * NbTpl + i] < (0.5 - eps)))
             // edit HI 20150222  // change 20151022 herve
             ProbArrowhead[0 * NbTpl + i] = p4;
@@ -453,9 +449,9 @@ int miic::reconstruction::OrientTpl_LV_Deg_Propag(int NbTpl, int* Tpl,
             logscoreTpl[i] = -__DBL_MAX__;
             scoreTpl[i] = -1;  // remove tpl from the list of yet-unused Tpl
             scoresN[i] = -1;
-            ok = FALSE;
+            ok = false;
           } else {  // copy final proba on putative proba too
-            if ((LV == FALSE && ProbArrowhead[1 * NbTpl + i] > (0.5 + eps)) ||
+            if ((!latent && ProbArrowhead[1 * NbTpl + i] > (0.5 + eps)) ||
                 (propagation && ProbArrowhead[1 * NbTpl + i] < (0.5 - eps)))
               // edit HI 20150222 // change 20151022 herve
               ProbArrowhead2[0 * NbTpl + i] = p4;
@@ -465,7 +461,7 @@ int miic::reconstruction::OrientTpl_LV_Deg_Propag(int NbTpl, int* Tpl,
         } else if (Tpl[0 * NbTpl + i] == n2 && Tpl[1 * NbTpl + i] == n3) {
           // sharing fist edge, antisymmetry
           ProbArrowhead[0 * NbTpl + i] = p3;
-          if ((LV == FALSE && ProbArrowhead[0 * NbTpl + i] > (0.5 + eps)) ||
+          if ((!latent && ProbArrowhead[0 * NbTpl + i] > (0.5 + eps)) ||
               (propagation && ProbArrowhead[0 * NbTpl + i] < (0.5 - eps)))
             // edit HI 20150222 // change 20151022 herve
             ProbArrowhead[1 * NbTpl + i] = p4;
@@ -476,10 +472,10 @@ int miic::reconstruction::OrientTpl_LV_Deg_Propag(int NbTpl, int* Tpl,
             logscoreTpl[i] = -__DBL_MAX__;
             scoreTpl[i] = -1;  // remove tpl from the list of yet-unused Tpl
             scoresN[i] = -1;
-            ok = FALSE;
+            ok = false;
           } else {  // copy final proba on putative proba too
             ProbArrowhead2[0 * NbTpl + i] = p3;
-            if ((LV == FALSE && ProbArrowhead[0 * NbTpl + i] > (0.5 + eps)) ||
+            if ((!latent && ProbArrowhead[0 * NbTpl + i] > (0.5 + eps)) ||
                 (propagation && ProbArrowhead[0 * NbTpl + i] < (0.5 - eps)))
               // edit HI 20150222 // change 20151022 herve
               ProbArrowhead2[1 * NbTpl + i] = p4;
@@ -487,7 +483,7 @@ int miic::reconstruction::OrientTpl_LV_Deg_Propag(int NbTpl, int* Tpl,
         } else if (Tpl[2 * NbTpl + i] == n3 && Tpl[1 * NbTpl + i] == n2) {
           // sharing second edge, antisymmetry
           ProbArrowhead[2 * NbTpl + i] = p3;
-          if ((LV == FALSE && ProbArrowhead[2 * NbTpl + i] > (0.5 + eps)) ||
+          if ((!latent && ProbArrowhead[2 * NbTpl + i] > (0.5 + eps)) ||
               (propagation && ProbArrowhead[2 * NbTpl + i] < (0.5 - eps)))
             // edit HI 20150222 // change 20151022 herve
             ProbArrowhead[3 * NbTpl + i] = p4;
@@ -498,9 +494,9 @@ int miic::reconstruction::OrientTpl_LV_Deg_Propag(int NbTpl, int* Tpl,
             logscoreTpl[i] = -__DBL_MAX__;
             scoreTpl[i] = -1;  // remove tpl from the list of yet-unused Tpl
             scoresN[i] = -1;
-            ok = FALSE;
+            ok = false;
           } else {  // copy final proba on putative proba too
-            if ((LV == FALSE && ProbArrowhead[2 * NbTpl + i] > (0.5 + eps)) ||
+            if ((!latent && ProbArrowhead[2 * NbTpl + i] > (0.5 + eps)) ||
                 (propagation && ProbArrowhead[2 * NbTpl + i] < (0.5 - eps)))
               // edit HI 20150222 // change 20151022 herve
               ProbArrowhead2[3 * NbTpl + i] = p4;
@@ -510,7 +506,7 @@ int miic::reconstruction::OrientTpl_LV_Deg_Propag(int NbTpl, int* Tpl,
         } else if (Tpl[2 * NbTpl + i] == n2 && Tpl[1 * NbTpl + i] == n3) {
           // sharing second edge, same symmetry
           ProbArrowhead[3 * NbTpl + i] = p3;
-          if ((LV == FALSE && ProbArrowhead[3 * NbTpl + i] > (0.5 + eps)) ||
+          if ((!latent && ProbArrowhead[3 * NbTpl + i] > (0.5 + eps)) ||
               (propagation && ProbArrowhead[3 * NbTpl + i] < (0.5 - eps)))
             // edit HI 20150222 // change 20151022 herve
             ProbArrowhead[2 * NbTpl + i] = p4;
@@ -521,16 +517,16 @@ int miic::reconstruction::OrientTpl_LV_Deg_Propag(int NbTpl, int* Tpl,
             logscoreTpl[i] = -__DBL_MAX__;
             scoreTpl[i] = -1;  // remove tpl from the list of yet-unused Tpl
             scoresN[i] = -1;
-            ok = FALSE;
+            ok = false;
           } else {  // copy final proba on putative proba too
             ProbArrowhead2[3 * NbTpl + i] = p3;
-            if ((LV == FALSE && ProbArrowhead[3 * NbTpl + i] > (0.5 + eps)) ||
+            if ((!latent && ProbArrowhead[3 * NbTpl + i] > (0.5 + eps)) ||
                 (propagation && ProbArrowhead[3 * NbTpl + i] < (0.5 - eps)))
               // edit HI 20150222 // change 20151022 herve
               ProbArrowhead2[2 * NbTpl + i] = p4;
           }
         } else {
-          ok = FALSE;  // non edited tpl
+          ok = false;  // non edited tpl
         }
 
 #if _MY_PRINT_
@@ -604,8 +600,7 @@ int miic::reconstruction::OrientTpl_LV_Deg_Propag(int NbTpl, int* Tpl,
                                  // propagation!
               scoresN[i] = logF2(scoreTpl[i], I3[i]);
               ProbArrowhead2[2 * NbTpl + i] = pp;
-              if (LV == FALSE &&
-                  (ProbArrowhead2[3 * NbTpl + i] > (1 - pp + eps)))
+              if (!latent && (ProbArrowhead2[3 * NbTpl + i] > (1 - pp + eps)))
                 ProbArrowhead2[3 * NbTpl + i] =
                     1 - ProbArrowhead2[2 * NbTpl + i];  // change 20151031
             } else {
@@ -621,8 +616,7 @@ int miic::reconstruction::OrientTpl_LV_Deg_Propag(int NbTpl, int* Tpl,
                                    // propagation!
                 scoresN[i] = logF2(scoreTpl[i], I3[i]);
                 ProbArrowhead2[1 * NbTpl + i] = pp;
-                if (LV == FALSE &&
-                    (ProbArrowhead2[0 * NbTpl + i] > (1 - pp + eps)))
+                if (!latent && (ProbArrowhead2[0 * NbTpl + i] > (1 - pp + eps)))
                   ProbArrowhead2[0 * NbTpl + i] =
                       1 - ProbArrowhead2[1 * NbTpl + i];  // change 20151031
               }
@@ -665,8 +659,8 @@ int miic::reconstruction::OrientTpl_LV_Deg_Propag(int NbTpl, int* Tpl,
           Tpl[2 * NbTpl + i], I3[i], scoreTpl[i]);
     }
 
-    Rprintf("!INTER LV=%i count=%i deg=%i maxTpl=%i maxscoreTpl=%g \n", LV,
-        count, deg, maxTpl, maxscoreTpl);
+    Rprintf("!INTER latent=%i count=%i deg=%i maxTpl=%i maxscoreTpl=%g \n",
+        latent, count, deg, maxTpl, maxscoreTpl);
 #endif  // _MY_PRINT_
 
     i = maxTpl;
@@ -690,8 +684,8 @@ int miic::reconstruction::OrientTpl_LV_Deg_Propag(int NbTpl, int* Tpl,
         Tpl[2 * NbTpl + i], I3[i], scoreTpl[i]);
   }
 
-  Rprintf("!END LV=%i count=%i deg=%i maxTpl=%i maxscoreTpl=%g \n", LV, count,
-      deg, maxTpl, maxscoreTpl);
+  Rprintf("!END latent=%i count=%i deg=%i maxTpl=%i maxscoreTpl=%g \n", latent,
+      count, deg, maxTpl, maxscoreTpl);
 #endif  // _MY_PRINT_
 
   delete[] ProbArrowhead2;
@@ -704,18 +698,15 @@ int miic::reconstruction::OrientTpl_LV_Deg_Propag(int NbTpl, int* Tpl,
 }
 
 double* miic::reconstruction::getOrientTplLVDegPropag(int nbrTpl,
-    int* ptrAllTpl, double* ptrAllI3, int LV, int isDeg, bool propagation,
-    bool half_v_structure) {
-  int nbrRetProbaValues = -1;  // Nbr proba to return
-  double*
-      ptrRetProbValues;  // To return ProbArrowhead
-                         // >> ProbArrowhead[1][i] 1<-->2 ProbArrowhead[2][i]
-                         // >> ProbArrowhead[3][i] 2<-->3 ProbArrowhead[4][i]
-                         //
-                         // ProbArrowhead > 0.5: an arrow head  (>)
-                         // ProbArrowhead < 0.5: an arrow tail  (-)
-  nbrRetProbaValues = (4 * nbrTpl);
-  ptrRetProbValues = new double[nbrRetProbaValues];
+    int* ptrAllTpl, double* ptrAllI3, bool latent, bool degenerate,
+    bool propagation, bool half_v_structure) {
+  // To return ProbArrowhead
+  // >> ProbArrowhead[1][i] 1<-->2 ProbArrowhead[2][i]
+  // >> ProbArrowhead[3][i] 2<-->3 ProbArrowhead[4][i]
+  //
+  // ProbArrowhead > 0.5: an arrow head  (>)
+  // ProbArrowhead < 0.5: an arrow tail  (-)
+  double* ptrRetProbValues = new double[4 * nbrTpl];
   // Initialise the arrowhead probabilities to 0.5
   for (int i = 0; i < nbrTpl; i++) {
     for (int j = 0; j < 4; j++) {
@@ -724,8 +715,8 @@ double* miic::reconstruction::getOrientTplLVDegPropag(int nbrTpl,
   }
   // Iteratively converge towards partially oriented graphs including possible
   // latent variables and Propagation/Non-Propagation rules.
-  OrientTpl_LV_Deg_Propag(nbrTpl, ptrAllTpl, ptrAllI3, ptrRetProbValues, LV,
-      isDeg, propagation, half_v_structure);
+  OrientTpl_LV_Deg_Propag(nbrTpl, ptrAllTpl, ptrAllI3, ptrRetProbValues, latent,
+      degenerate, propagation, half_v_structure);
 
   return ptrRetProbValues;
 }
