@@ -32,18 +32,16 @@ void setConfidence(Environment& environment) {
   vector<vector<int>> original_data_idx(environment.data_numeric_idx);
 
   vector<EdgeID> edge_list;
+  std::set<int> columns_to_shuffle;
   for (int i = 1; i < environment.n_nodes; ++i) {
     for (int j = 0; j < i; ++j) {
       if (!environment.edges[i][j].status) continue;
       environment.edges[i][j].shared_info->exp_shuffle = 0;
-      edge_list.emplace_back(j, i, environment.edges[i][j]);
+      edge_list.emplace_back(i, j, environment.edges[i][j]);
+      columns_to_shuffle.insert(j);
     }
   }
 
-  std::set<int> columns_to_shuffle;
-  for (const auto& edge : edge_list) {
-    columns_to_shuffle.insert(edge.i);
-  }
   vector<int> indices(environment.n_samples);
   for (int nb = 0; nb < environment.n_shuffles; nb++) {
     // Shuffle the dataset for selected columns

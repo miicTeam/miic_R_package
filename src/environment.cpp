@@ -57,9 +57,10 @@ Environment::Environment(
     consistent = 2;
 
   auto latent_flag = as<std::string>(arg_list["latent"]);
-  if (latent_flag.compare("yes") == 0)
+  if (latent_flag.compare("yes") == 0) {
     latent = true;
-  else if (latent_flag.compare("orientation") == 0)
+    latent_orientation = true;
+  } else if (latent_flag.compare("orientation") == 0)
     latent_orientation = true;
 
   if (as<string>(arg_list["cplx"]).compare("mdl") == 0) cplx = 0;
