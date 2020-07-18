@@ -637,15 +637,6 @@ double compute_kl_divergence(const vector<int>& posArray,
   return kldiv;
 }
 
-int sign(double val) {
-  if (val < 0)
-    return -1;
-  else if (val > 0)
-    return 1;
-  else
-    return 0;
-}
-
 // Computes the Kullback-Leibler divergence between two joint (2D) distributions
 // of real values based on the KNN estimation (F. Perez-Cruz 2004).
 // <space 1> is the subsampling of <space 2> after removing NAs.
