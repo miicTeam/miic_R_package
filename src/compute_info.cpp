@@ -171,76 +171,76 @@ double* getAllInfoNEW(int* ptrAllData, const vector<int>& ptrAllLevels,
     Opt_dBin[iii] = (int*)malloc(ncol * sizeof(int));
 
 #if _MY_DEBUG_NEW
-  printf("\n# ---- Printed from C [getAllInfo]: ----\n");
+  Rprintf("\n# ---- Printed from C [getAllInfo]: ----\n");
 
-  printf("\n# ----> DATA\n");
+  Rprintf("\n# ----> DATA\n");
   // i --> sample number; j --> variable number
-  printf("X0=%d Y0=%d\t", ptrAllData[0 + ptrVarIdx[0] * sampleSize],
+  Rprintf("X0=%d Y0=%d\t", ptrAllData[0 + ptrVarIdx[0] * sampleSize],
       ptrAllData[0 + ptrVarIdx[1] * sampleSize]);
 
   for (i = 0; i < sampleSize; i++) {
     if (ptrAllData[i + ptrVarIdx[0] * sampleSize] > -1 &&
         ptrAllData[i + ptrVarIdx[1] * sampleSize] > -1)
-      printf("X=%d Y=%d\t", ptrAllData[i + ptrVarIdx[0] * sampleSize],
+      Rprintf("X=%d Y=%d\t", ptrAllData[i + ptrVarIdx[0] * sampleSize],
           ptrAllData[i + ptrVarIdx[1] * sampleSize]);
     i = sampleSize;
   }
 
   for (i = 0; i < 6; i++) {
     // Display data for xi, xj, {ui}
-    printf("# ");
+    Rprintf("# ");
     for (j = 0; j < (2 + nbrUi); j++) {
-      printf("%d\t", ptrAllData[i + ptrVarIdx[j] * sampleSize]);
+      Rprintf("%d\t", ptrAllData[i + ptrVarIdx[j] * sampleSize]);
     }
     // Display data for zi
     for (k = 0; k < nbrZi; k++) {
-      printf("%d\t", ptrAllData[i + ptrZiIdx[k] * sampleSize]);
+      Rprintf("%d\t", ptrAllData[i + ptrZiIdx[k] * sampleSize]);
     }
-    printf("\n");
+    Rprintf("\n");
   }
-  printf("# ../..\n");
+  Rprintf("# ../..\n");
 
-  printf("\n# ----> LEVELS\n");
-  printf("# ");
+  Rprintf("\n# ----> LEVELS\n");
+  Rprintf("# ");
   for (i = 0; i < (2 + nbrUi); i++) {
-    printf("%d\t", ptrAllLevels[ptrVarIdx[i]]);
+    Rprintf("%d\t", ptrAllLevels[ptrVarIdx[i]]);
   }
   for (i = 0; i < nbrZi; i++) {
-    printf("%d\t", ptrAllLevels[ptrZiIdx[i]]);
+    Rprintf("%d\t", ptrAllLevels[ptrZiIdx[i]]);
   }
-  printf("\n");
+  Rprintf("\n");
 
-  printf("\n# ----> VAR IDX (xi, xj, {ui})\n");
-  printf("# ");
+  Rprintf("\n# ----> VAR IDX (xi, xj, {ui})\n");
+  Rprintf("# ");
   for (i = 0; i < (2 + nbrUi); i++) {
-    printf("%d\t", ptrVarIdx[i]);
+    Rprintf("%d\t", ptrVarIdx[i]);
   }
-  printf("\n");
+  Rprintf("\n");
 
-  printf("\n# ----> NBR UI\n");
-  printf("# %d\n", nbrUi);
+  Rprintf("\n# ----> NBR UI\n");
+  Rprintf("# %d\n", nbrUi);
 
-  printf("\n# ----> ZI IDX (nbrZi=%d)\n", nbrZi);
-  printf("# ");
+  Rprintf("\n# ----> ZI IDX (nbrZi=%d)\n", nbrZi);
+  Rprintf("# ");
   for (i = 0; i < nbrZi; i++) {
-    printf("%d\t", ptrZiIdx[i]);
+    Rprintf("%d\t", ptrZiIdx[i]);
   }
-  printf("\n");
+  Rprintf("\n");
 
-  printf("\n# ----> ZI POS\n");
-  printf("# %d\n", ziPos);
+  Rprintf("\n# ----> ZI POS\n");
+  Rprintf("# %d\n", ziPos);
 
-  printf("\n# ----> SAMPLE SIZE\n");
-  printf("# %d\n", sampleSize);
+  Rprintf("\n# ----> SAMPLE SIZE\n");
+  Rprintf("# %d\n", sampleSize);
 
-  printf("\n# ----> EFFECTIVE SAMPLE SIZE\n");
-  printf("# %d\n", sampleSizeEff);
+  Rprintf("\n# ----> EFFECTIVE SAMPLE SIZE\n");
+  Rprintf("# %d\n", sampleSizeEff);
 
-  printf("\n# ----> NBR ALLVAR\n");
-  printf("# %d\n\n", nbrAllVar);
+  Rprintf("\n# ----> NBR ALLVAR\n");
+  Rprintf("# %d\n\n", nbrAllVar);
 
-  printf("\n# ----> Check for MODEL COMPLEXITY\n");
-  printf("# %d\n\n", modCplx);
+  Rprintf("\n# ----> Check for MODEL COMPLEXITY\n");
+  Rprintf("# %d\n\n", modCplx);
 #endif  // _MY_DEBUG_NEW
 
   // find samples without NA in x,y,ui and store their id in sample[k][0]
@@ -284,10 +284,10 @@ double* getAllInfoNEW(int* ptrAllData, const vector<int>& ptrAllLevels,
   }
 
 #if _MY_DEBUG_NEW
-  printf(
+  Rprintf(
       "\n# =====> test before initialisation of bin numbers for continuous "
       "variables \n");
-  printf("# ==> sampleSize=%d    nSample0=%d  \n", sampleSize, nSample0);
+  Rprintf("# ==> sampleSize=%d    nSample0=%d  \n", sampleSize, nSample0);
 #endif  // _MY_DEBUG_NEW
 
   if (nSample0 > 0) {
@@ -298,9 +298,9 @@ double* getAllInfoNEW(int* ptrAllData, const vector<int>& ptrAllLevels,
     }
 
 #if _MY_DEBUG_NEW
-    printf("\n# =====> test before optimisation on xy_ui \n");
+    Rprintf("\n# =====> test before optimisation on xy_ui \n");
     for (j = 0; j < nbrAllVar; j++) {
-      printf("# dBin[0][%d] = %d \n", j, dBin[0][j]);
+      Rprintf("# dBin[0][%d] = %d \n", j, dBin[0][j]);
     }
 #endif  // _MY_DEBUG_NEW
 
@@ -342,7 +342,7 @@ double* getAllInfoNEW(int* ptrAllData, const vector<int>& ptrAllLevels,
     sample[k][3] = bin;  // max Lui   (useful for termination of counts)
 
 #if _MY_DEBUG_NEW
-    printf("\n# =====> test before sorting \n");
+    Rprintf("\n# =====> test before sorting \n");
 #endif  // _MY_DEBUG_NEW
 
     // sort sample in increasing Lxyui stored in sample[k][1]
@@ -352,16 +352,16 @@ double* getAllInfoNEW(int* ptrAllData, const vector<int>& ptrAllLevels,
     }
 
 #if _MY_DEBUG_NEW
-    printf("\n# =====> test before sort2int \n");
+    Rprintf("\n# =====> test before sort2int \n");
 #endif  // _MY_DEBUG_NEW
 
     sort2arrays(nSample0 + 1, sampleKey, orderSample, bridge);
 
 #if _MY_DEBUG_NEW
-    printf("\n# =====> test after sort2int \n");
+    Rprintf("\n# =====> test after sort2int \n");
     for (k = 0; k <= nSample0; k++) {
       // if(sample[k][0]<0)
-      // if(k>(nSample0-10))  printf("@ nSample0=%d   sampleKey[k=%d]=%d
+      // if(k>(nSample0-10))  Rprintf("@ nSample0=%d   sampleKey[k=%d]=%d
       // orderSample[k=%d]=%d  sample[i=%d][1]=%d  sample[i=%d][0]=%d
       // \n",nSample0,k,sampleKey[k],k,orderSample[k],k,sample[k][1],k,sample[k][0]);
     }
@@ -369,29 +369,29 @@ double* getAllInfoNEW(int* ptrAllData, const vector<int>& ptrAllLevels,
 
     for (k = 1; k <= nSample0 + 1; k++) {
 #if _MY_DEBUG_NEW
-      //	  printf("\n k=%d ",k);
+      //	  Rprintf("\n k=%d ",k);
 #endif  // _MY_DEBUG_NEW
 
       i = orderSample[k];
 
 #if _MY_DEBUG_NEW
       if (i < 0 || i > sampleSize)
-        printf("\n# @@@@@@@@@@@@@@@@@@@@> Probs i=%d sampleSize=%d \n", i,
+        Rprintf("\n# @@@@@@@@@@@@@@@@@@@@> Probs i=%d sampleSize=%d \n", i,
             sampleSize);
-      if (k > (nSample0 - 10)) printf("\n @ ordS[k=%d]=%d ", k, orderSample[k]);
+      if (k > (nSample0 - 10)) Rprintf("\n @ ordS[k=%d]=%d ", k, orderSample[k]);
 #endif  // _MY_DEBUG_NEW
 
       for (j = 0; j < 6; j++) {
         sortedSample[k - 1][j] = sample[i][j];
 #if _MY_DEBUG_NEW
         if (k > (nSample0 - 10))
-          printf("sdS[k=%d][j=%d]=%d ", k - 1, j, sortedSample[k - 1][j]);
+          Rprintf("sdS[k=%d][j=%d]=%d ", k - 1, j, sortedSample[k - 1][j]);
 #endif  // _MY_DEBUG_NEW
       }
     }
 
 #if _MY_DEBUG_NEW
-    printf(
+    Rprintf(
         "\n# =====> test before initialization of counts and mutual infos & "
         "logCs \n");
 #endif  // _MY_DEBUG_NEW
@@ -438,7 +438,7 @@ double* getAllInfoNEW(int* ptrAllData, const vector<int>& ptrAllLevels,
 #if _MY_DEBUG_NEW
       if (k > (nSample0 - 10) || Nxyui < 0 || Nyui < 0 || Nui < 0 || X < 0 ||
           Y < 0 || X >= dBin[0][0] || Y >= dBin[0][1]) {
-        printf(
+        Rprintf(
             "before counts nSam0=%d  X=%d(%d) Y=%d(%d) k=%d sortS[%d][1]=%d "
             "Lxyui=%d sortS[%d][2]=%d Lyui=%d sortS[%d][3]=%d Lui=%d Nxyui=%d "
             "Nyui=%d Nui=%d  \n",
@@ -489,7 +489,7 @@ double* getAllInfoNEW(int* ptrAllData, const vector<int>& ptrAllLevels,
 
             if (modCplx != MDL) {
               if (Nyui > Ntot)
-                printf("# ==$$$===> Ntot=%d Nyui=%d \n", Ntot, Nyui);
+                Rprintf("# ==$$$===> Ntot=%d Nyui=%d \n", Ntot, Nyui);
               logC_yui_x += cache->getLogC(Nyui, dBin[0][0]);
             }
           }
@@ -506,7 +506,7 @@ double* getAllInfoNEW(int* ptrAllData, const vector<int>& ptrAllLevels,
                 info_ui_x += NlogN;
                 if (modCplx != MDL) {
                   if (Nxuij > Ntot)
-                    printf("# ==$$$===> Ntot=%d Nxuij=%d \n", Ntot, Nxuij);
+                    Rprintf("# ==$$$===> Ntot=%d Nxuij=%d \n", Ntot, Nxuij);
                   logC_xui_y += cache->getLogC(Nxuij, dBin[0][1]);
                 }
 
@@ -521,7 +521,7 @@ double* getAllInfoNEW(int* ptrAllData, const vector<int>& ptrAllLevels,
               info_ui_x -= NlogN;
               if (modCplx != MDL) {
                 if (Nui > Ntot)
-                  printf("# ==$$$===> Ntot=%d Nui=%d \n", Ntot, Nui);
+                  Rprintf("# ==$$$===> Ntot=%d Nui=%d \n", Ntot, Nui);
                 logC_ui_x += cache->getLogC(Nui, dBin[0][0]);
                 logC_ui_y += cache->getLogC(Nui, dBin[0][1]);
               }
@@ -562,21 +562,21 @@ double* getAllInfoNEW(int* ptrAllData, const vector<int>& ptrAllLevels,
     info2xy_ui = 0.5 * (info_ui_y + info_ui_x);
 
 #if _MY_DEBUG_NEW
-    printf(
+    Rprintf(
         "# =====> test before check maximum mutual infos - cplx terms "
         "nSample0=%d Nxyuis=%d   Nyuis=%d   Nuis=%d  Nxuis=%d  Nxs=%d  Nys=%d  "
         "Ntot=%d  info_ui_y=%g info_ui_x=%g info_ui_y+info_ui_x =%g  \n",
         nSample0, Nxyuis, Nyuis, Nuis, Nxuis, Nxs, Nys, Ntot, info_ui_y,
         info_ui_x, info_ui_y + info_ui_x);
-    printf(
+    Rprintf(
         "# =====> test before check maximum mutual infos - cplx terms "
         "sampleSizeEff=%d sampleSize=%d info3xy_ui=%g   info2xy_ui=%g \n",
         sampleSizeEff, sampleSize, info3xy_ui, info2xy_ui);
-    printf(
+    Rprintf(
         "# =====> test before check maximum mutual infos - cplx terms "
         "info_xui_y=%g info_yui_x=%g info_ui_y=%g info_ui_x=%g \n",
         info_xui_y, info_yui_x, info_ui_y, info_ui_x);
-    printf(
+    Rprintf(
         "# =====> test before check maximum mutual infos - cplx terms "
         "logC_xui_y=%g logC_yui_x=%g logC_ui_y=%g logC_ui_x=%g \n",
         logC_xui_y, logC_yui_x, logC_ui_y, logC_ui_x);
@@ -610,7 +610,7 @@ double* getAllInfoNEW(int* ptrAllData, const vector<int>& ptrAllLevels,
       testinfo_xy_ui = info3xy_ui - logC3xy_ui + info2xy_ui - logC2xy_ui;
 
 #if _MY_DEBUG_NEW
-    printf(
+    Rprintf(
         "\n# =====> test before change bin numbers 1,  info3xy_ui - "
         "logC3xy_ui=%g  info2xy_ui - logC2xy_ui=%g testinfo_xy_ui=%g "
         "info3xy_ui=%g  logC3xy_ui=%g  info2xy_ui=%g logC2xy_ui=%g "
@@ -644,7 +644,7 @@ double* getAllInfoNEW(int* ptrAllData, const vector<int>& ptrAllLevels,
     }
 
 #if _MY_DEBUG_NEW
-    printf(
+    Rprintf(
         "\n# =====> test before change bin numbers 2,  info3xy_ui - "
         "logC3xy_ui=%g  info2xy_ui - logC2xy_ui=%g testinfo_xy_ui=%g "
         "info3xy_ui=%g  logC3xy_ui=%g  info2xy_ui=%g logC2xy_ui=%g "
@@ -652,7 +652,7 @@ double* getAllInfoNEW(int* ptrAllData, const vector<int>& ptrAllLevels,
         (info3xy_ui - logC3xy_ui), (info2xy_ui - logC2xy_ui), testinfo_xy_ui,
         info3xy_ui, logC3xy_ui, info2xy_ui, logC2xy_ui, max_info_logC,
         min_info_logC);
-    printf("\n# =====> test before z nbrZi=%d \n", nbrZi);
+    Rprintf("\n# =====> test before z nbrZi=%d \n", nbrZi);
 #endif  // _MY_DEBUG_NEW
 
     if (nbrZi == 0) {
@@ -775,7 +775,7 @@ double* getAllInfoNEW(int* ptrAllData, const vector<int>& ptrAllLevels,
 
         if (isGoodCandidate) {
 #if _MY_DEBUG_NEW
-          printf("\n# =====> test before z 2 nSample[zi=%d]=%d nSample0=%d \n",
+          Rprintf("\n# =====> test before z 2 nSample[zi=%d]=%d nSample0=%d \n",
               zi, nSample[zi], nSample0);
 #endif  // _MY_DEBUG_NEW
 
@@ -1074,7 +1074,7 @@ double* getAllInfoNEW(int* ptrAllData, const vector<int>& ptrAllLevels,
               }
             }
 #if _MY_DEBUG_NEW
-            printf(
+            Rprintf(
                 "# =====> Z test before check maximum mutual infos - cplx "
                 "terms nSample0=%d nSample[zi=%d]=%d\n Nxyuis=%d   Nyuis=%d   "
                 "Nuis=%d  Nxuis=%d  Nxs=%d  Nys=%d  Nzs=%d Nuizs=%d Nyuizs=%d "
@@ -1083,17 +1083,17 @@ double* getAllInfoNEW(int* ptrAllData, const vector<int>& ptrAllLevels,
                 nSample0, zi, nSample[zi], Nxyuis, Nyuis, Nuis, Nxuis, Nxs, Nys,
                 Nzs, Nuizs, Nyuizs, Nxyuizs, Nxuizs, info_ui_y, info_ui_x,
                 info_ui_y + info_ui_x);
-            printf(
+            Rprintf(
                 "# =====> Z test before check maximum mutual infos - cplx "
                 "terms sampleSizeEff=%d sampleSize=%d info3xy_ui=%g   "
                 "info2xy_ui=%g \n",
                 sampleSizeEff, sampleSize, info3xy_ui, info2xy_ui);
-            printf(
+            Rprintf(
                 "# =====> Z test before check maximum mutual infos - cplx "
                 "terms info_xui_y=%g info_yui_x=%g info_ui_y=%g info_ui_x=%g "
                 "\n",
                 info_xui_y, info_yui_x, info_ui_y, info_ui_x);
-            printf(
+            Rprintf(
                 "# =====> Z test before check maximum mutual infos - cplx "
                 "terms logC_xui_y=%g logC_yui_x=%g logC_ui_y=%g logC_ui_x=%g "
                 "\n",
@@ -1105,7 +1105,7 @@ double* getAllInfoNEW(int* ptrAllData, const vector<int>& ptrAllLevels,
                 info_uiz_y < -0.000001 || info_uiz_x < -0.000001 ||
                 info_xui_z < -0.000001 || info_yui_z < -0.000001 ||
                 info_ui_z < -0.000001)
-              printf(
+              Rprintf(
                   "\n# ===@@@@@@@===> 2 Probl zi=%d, info_xui_y=%g  "
                   "info_yui_x=%g  info_ui_y =%g  info_ui_x =%g  info_xuiz_y=%g "
                   " info_yuiz_x=%g  info_uiz_y =%g  info_uiz_x =%g  "
@@ -1269,26 +1269,26 @@ double* getAllInfoNEW(int* ptrAllData, const vector<int>& ptrAllLevels,
             }
 
 #if _MY_DEBUG_NEW
-            printf(
+            Rprintf(
                 "\n# =====> test before change zi=%d bin numbers, testz=%g "
                 "testinfo_xy_ui=%g info3xy_ui=%g  logC3xy_ui=%g  info2xy_ui=%g "
                 "logC2xy_ui=%g max_info_logC=%g min_info_logC=%g \n",
                 zi, testz, testinfo_xy_ui, info3xy_ui, logC3xy_ui, info2xy_ui,
                 logC2xy_ui, max_info_logC, min_info_logC);
-            printf(
+            Rprintf(
                 "\n# =====> test before change zi=%d bin numbers, testz=%g "
                 "testinfo_xy_uiz=%g info3xy_uiz=%g  logC3xy_uiz=%g  "
                 "info2xy_uiz=%g logC2xy_uiz=%g max_info_logC=%g "
                 "min_info_logC=%g \n",
                 zi, testz, testinfo_xy_uiz, info3xy_uiz, logC3xy_uiz,
                 info2xy_uiz, logC2xy_uiz, max_info_logC, min_info_logC);
-            printf(
+            Rprintf(
                 "\n# =====> test before change zi=%d bin numbers, testz=%g "
                 "testinfo_xz_ui=%g info3xz_ui=%g  logC3xz_ui=%g  info2xz_ui=%g "
                 "logC2xz_ui=%g max_info_logC=%g min_info_logC=%g \n",
                 zi, testz, testinfo_xz_ui, info3xz_ui, logC3xz_ui, info2xz_ui,
                 logC2xz_ui, max_info_logC, min_info_logC);
-            printf(
+            Rprintf(
                 "\n# =====> test before change zi=%d bin numbers, testz=%g "
                 "testinfo_yz_ui=%g info3yz_ui=%g  logC3yz_ui=%g  info2yz_ui=%g "
                 "logC2yz_ui=%g max_info_logC=%g min_info_logC=%g \n",
@@ -1356,7 +1356,7 @@ double* getAllInfoNEW(int* ptrAllData, const vector<int>& ptrAllLevels,
   }
 
 #if _MY_DEBUG_NEW
-  printf("\n# =====> test after z \n");
+  Rprintf("\n# =====> test after z \n");
 #endif  // _MY_DEBUG_NEW
 
   for (i = 0; i < 1; i++) free(dBin[i]);
@@ -1370,16 +1370,16 @@ double* getAllInfoNEW(int* ptrAllData, const vector<int>& ptrAllLevels,
   delete[] sampleWithZ;
 
 #if _MY_DEBUG_NEW
-  printf("\n# =====> end getAllInfoNEW \n");
+  Rprintf("\n# =====> end getAllInfoNEW \n");
   if (nbrZi == 0) {
-    printf("# N=ptrRetValues[%d]=%g ", 0, ptrRetValues[0]);
+    Rprintf("# N=ptrRetValues[%d]=%g ", 0, ptrRetValues[0]);
   }
   if (nbrZi > 0) {
-    printf("# N=ptrRetValues[%d]=%g ", 0, ptrRetValues[0]);
+    Rprintf("# N=ptrRetValues[%d]=%g ", 0, ptrRetValues[0]);
     for (i = 1; i < 3; i++)
-      printf("# ptrRetValues[%d]=%g ", i, ptrRetValues[i]);
-    printf("# z=ptrRetValues[%d]=%g ", 3, ptrRetValues[3]);
-    for (i = 4; i < 9; i++) printf(" ptrRetValues[%d]=%g ", i, ptrRetValues[i]);
+      Rprintf("# ptrRetValues[%d]=%g ", i, ptrRetValues[i]);
+    Rprintf("# z=ptrRetValues[%d]=%g ", 3, ptrRetValues[3]);
+    for (i = 4; i < 9; i++) Rprintf(" ptrRetValues[%d]=%g ", i, ptrRetValues[i]);
   }
 #endif  // _MY_DEBUG_NEW
 

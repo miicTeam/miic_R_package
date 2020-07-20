@@ -16,6 +16,7 @@ using Rcpp::_;
 using Rcpp::as;
 using Rcpp::DataFrame;
 using Rcpp::List;
+using Rcpp::Rcout;
 using std::string;
 using std::vector;
 using namespace miic::reconstruction;
@@ -54,7 +55,7 @@ List reconstruct(List input_data, List arg_list) {
   environment.exec_time.init_iter = spentTime;
   environment.exec_time.iter = 0;
   if (environment.verbose) {
-    std::cout << "\n# ----> First contributing node elapsed time:" << spentTime
+    Rcout << "\n# ----> First contributing node elapsed time:" << spentTime
               << "sec\n\n";
   }
   BCC bcc(environment);
@@ -76,12 +77,12 @@ List reconstruct(List input_data, List arg_list) {
 
     if (environment.numNoMore == 0 && environment.numSearchMore == 0) {
       if (environment.verbose)
-        std::cout << "# ------| Only phantom edges found.\n";
+        Rcout << "# ------| Only phantom edges found.\n";
     } else if (environment.numSearchMore > 0) {
       // Search for other Contributing node(s) (possible only for the edges
       /// still in 'searchMore', ie. 2)
       if (environment.verbose) {
-        std::cout << "\n# ---- Other Contributing node(s) ----\n\n";
+        Rcout << "\n# ---- Other Contributing node(s) ----\n\n";
       }
       startTime = get_wall_time();
 
@@ -95,11 +96,11 @@ List reconstruct(List input_data, List arg_list) {
 
     startTime = get_wall_time();
     if (environment.n_shuffles > 0) {
-      std::cout << "Computing confidence cut with permutations..." << std::flush;
+      Rcout << "Computing confidence cut with permutations..." << std::flush;
       confVect = confidenceCut(environment);
       long double spentTime = (get_wall_time() - startTime);
       environment.exec_time.cut += spentTime;
-      std::cout << " done." << std::endl;
+      Rcout << " done." << std::endl;
     } else {
       environment.exec_time.cut = 0;
     }
@@ -108,7 +109,7 @@ List reconstruct(List input_data, List arg_list) {
         environment.consistent <= 1) {
       orientations = orientationProbability(environment);
     }
-    std::cout << "Number of edges: " << environment.numNoMore << std::endl;
+    Rcout << "Number of edges: " << environment.numNoMore << std::endl;
   } while (environment.consistent > 0 && !cycle_tracker.hasCycle());
 
   int union_n_edges = 0;
@@ -135,7 +136,7 @@ List reconstruct(List input_data, List arg_list) {
         if (edge.status || bcc.is_consistent(i, j, edge.shared_info->ui_list))
           continue;
         if (environment.verbose) {
-          std::cout << environment.nodes[i].name << ",\t"
+          Rcout << environment.nodes[i].name << ",\t"
                     << environment.nodes[j].name << "\t| "
                     << toNameString(environment, edge.shared_info->ui_list)
                     << std::endl;
@@ -149,7 +150,7 @@ List reconstruct(List input_data, List arg_list) {
       environment.edges[k.second][k.first].status = 1;
       environment.edges[k.first][k.second].shared_info->setUndirected();
     }
-    std::cout << n_inconsistency << " inconsistent conditional independences"
+    Rcout << n_inconsistency << " inconsistent conditional independences"
               << " found after orientation." << std::endl;
   }
 
@@ -200,7 +201,7 @@ bool CycleTracker::hasCycle() {
     iter_indices.push_back(it->second + 1);
   saveIteration();
   if (n_saved > env_.max_iteration) {
-    std::cout << "Max number of iterations reached: " << env_.max_iteration
+    Rcout << "Max number of iterations reached: " << env_.max_iteration
               << '\n';
     return true;
   }
@@ -243,7 +244,7 @@ bool CycleTracker::hasCycle() {
       env_.edges[p.first][p.second].shared_info->setUndirected();
     }
 
-    std::cout << "cycle found of size " << cycle_size << std::endl;
+    Rcout << "cycle found of size " << cycle_size << std::endl;
     break;
   }
   // fill the adj_matrices

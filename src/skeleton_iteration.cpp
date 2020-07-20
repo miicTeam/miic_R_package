@@ -17,7 +17,7 @@
 #include "structure.h"
 #include "utilities.h"
 
-using std::cout;
+using Rcpp::Rcout;
 using std::endl;
 using std::vector;
 using namespace miic::computation;
@@ -40,7 +40,7 @@ void searchAndSetZi(
   }
 
   if (environment.verbose)
-    cout << "The number of neighbours is: " << numZiPos << endl;
+    Rcout << "The number of neighbours is: " << numZiPos << endl;
 }
 
 void searchAndSetZi(
@@ -80,16 +80,16 @@ bool firstStepIteration(Environment& environment, BCC& bcc) {
   int threadnum = 0;
   bool interrupt = false;
   int prg_numSearchMore = -1;
-  cout << "First round of conditional independences :\n";
+  Rcout << "First round of conditional independences :\n";
   if (environment.numSearchMore > 0) {
     if (environment.verbose)
-      cout << "\n# -> searchMore edges, to get zi and noMore...\n";
+      Rcout << "\n# -> searchMore edges, to get zi and noMore...\n";
 
     for (int i = 0; i < environment.numSearchMore; i++) {
       int posX = environment.unsettled_list[i].i;
       int posY = environment.unsettled_list[i].j;
       if (environment.verbose) {
-        cout << "\n# --------------------\n# ----> EDGE: "
+        Rcout << "\n# --------------------\n# ----> EDGE: "
              << environment.nodes[posX].name << "--"
              << environment.nodes[posY].name << "\n# --------------------";
       }
@@ -100,7 +100,7 @@ bool firstStepIteration(Environment& environment, BCC& bcc) {
     }
 
     if (environment.verbose) {
-      cout << "SEARCH OF BEST Z: ";
+      Rcout << "SEARCH OF BEST Z: ";
     }
 
     environment.exec_time.start_time_init = get_wall_time();
@@ -123,7 +123,7 @@ bool firstStepIteration(Environment& environment, BCC& bcc) {
       int posX = environment.unsettled_list[i].i;
       int posY = environment.unsettled_list[i].j;
       if (environment.verbose)
-        cout << "##  "
+        Rcout << "##  "
              << "XY: " << environment.nodes[posX].name << " "
              << environment.nodes[posY].name << "\n\n";
       if (environment.edges[posX][posY].shared_info->zi_list.size() > 0) {
@@ -149,7 +149,7 @@ bool firstStepIteration(Environment& environment, BCC& bcc) {
       int posY = environment.unsettled_list[i].j;
       if (environment.edges[posX][posY].shared_info->z_name_idx != -1) {
         if (environment.verbose) {
-          cout << "## ------!!--> Update the edge element in 'searchMore': "
+          Rcout << "## ------!!--> Update the edge element in 'searchMore': "
                << environment
                       .nodes[environment.edges[posX][posY].shared_info->zi_list
                                  [environment.edges[posX][posY]
@@ -159,7 +159,7 @@ bool firstStepIteration(Environment& environment, BCC& bcc) {
         }
       } else {
         if (environment.verbose) {
-          cout << "## ------!!--> Remove the edge element from searchMore.\n## "
+          Rcout << "## ------!!--> Remove the edge element from searchMore.\n## "
                   "------!!--> Add edge to 'noMore' (no good zi candidate)\n";
         }
         // Move this edge element to "noMore"
@@ -172,7 +172,7 @@ bool firstStepIteration(Environment& environment, BCC& bcc) {
         // Update the status
         environment.edges[posX][posY].shared_info->connected = 1;
       }
-      if (environment.verbose) cout << "\n";
+      if (environment.verbose) Rcout << "\n";
     }
 
     if (checkInterrupt()) {
@@ -191,9 +191,9 @@ bool skeletonIteration(Environment& environment) {
   int max = 0;
 
   if (environment.verbose)
-    cout << "Number of numSearchMore: " << environment.numSearchMore << endl;
+    Rcout << "Number of numSearchMore: " << environment.numSearchMore << endl;
 
-  cout << "\nSkeleton iteration :\n";
+  Rcout << "\nSkeleton iteration :\n";
   environment.exec_time.start_time_iter = get_wall_time();
   int start_numSearchMore = environment.numSearchMore;
 
@@ -205,18 +205,18 @@ bool skeletonIteration(Environment& environment) {
     }
     iIteration_count++;
     if (environment.verbose) {
-      cout << "\n# Iteration " << iIteration_count << "\n";
+      Rcout << "\n# Iteration " << iIteration_count << "\n";
     }
     // Get the first edge
     int posX = environment.unsettled_list[max].i;
     int posY = environment.unsettled_list[max].j;
 
     if (environment.verbose)
-      cout << "Pos x : " << posX << " , pos y: " << posY << endl;
+      Rcout << "Pos x : " << posX << " , pos y: " << posY << endl;
 
     auto topEdgeElt = environment.edges[posX][posY].shared_info;
 
-    if (environment.verbose) cout << "# Before adding new zi to {ui}: ";
+    if (environment.verbose) Rcout << "# Before adding new zi to {ui}: ";
 
     // Keep the previous z.name for this edge
     std::string accepted_z_name =
@@ -224,7 +224,7 @@ bool skeletonIteration(Environment& environment) {
 
     // Reinit ui.vect, z.name, zi.vect, z.name.idx
     if (environment.verbose) {
-      cout << "# DO: Add new zi to {ui}: " << topEdgeElt->z_name_idx << endl;
+      Rcout << "# DO: Add new zi to {ui}: " << topEdgeElt->z_name_idx << endl;
     }
     // move top z_name_idx from zi_vect to ui_vect
     topEdgeElt->ui_list.push_back(topEdgeElt->zi_list[topEdgeElt->z_name_idx]);
@@ -266,19 +266,19 @@ bool skeletonIteration(Environment& environment) {
     int nRemainingEdges = environment.numSearchMore + environment.numNoMore;
 
     if (environment.verbose) {
-      cout << "# --> nbrEdges L = " << nRemainingEdges << "\n";
-      cout << "# --> nbrProp P = " << environment.n_nodes << "\n\n";
-      cout << "topEdgeElt->Ixy_ui " << topEdgeElt->Ixy_ui << "\n";
-      cout << "topEdgeElt_kxy_ui " << topEdgeElt_kxy_ui << "\n";
-      cout << "environment.log_eta " << environment.log_eta << "\n";
-      cout << "IsPhantom? "
+      Rcout << "# --> nbrEdges L = " << nRemainingEdges << "\n";
+      Rcout << "# --> nbrProp P = " << environment.n_nodes << "\n\n";
+      Rcout << "topEdgeElt->Ixy_ui " << topEdgeElt->Ixy_ui << "\n";
+      Rcout << "topEdgeElt_kxy_ui " << topEdgeElt_kxy_ui << "\n";
+      Rcout << "environment.log_eta " << environment.log_eta << "\n";
+      Rcout << "IsPhantom? "
            << (topEdgeElt->Ixy_ui - topEdgeElt_kxy_ui - environment.log_eta <= 0)
            << endl;
     }
     if (topEdgeElt->Ixy_ui - topEdgeElt_kxy_ui - environment.log_eta <= 0) {
       // Conditional independence found, remove edge
       if (environment.verbose) {
-        cout << "# PHANTOM" << environment.nodes[posX].name << ","
+        Rcout << "# PHANTOM" << environment.nodes[posX].name << ","
              << environment.nodes[posY].name << "\n";
       }
       environment.unsettled_list.erase(
@@ -294,7 +294,7 @@ bool skeletonIteration(Environment& environment) {
       topEdgeElt->Rxyz_ui = environment.thresPc;
 
       if (environment.verbose) {
-        cout << "# Do SearchForNewContributingNodeAndItsRank\n";
+        Rcout << "# Do SearchForNewContributingNodeAndItsRank\n";
       }
 
       if (topEdgeElt->zi_list.size() > 0) {
@@ -304,9 +304,9 @@ bool skeletonIteration(Environment& environment) {
 
       if (environment.verbose) {
         if (environment.edges[posX][posY].shared_info->z_name_idx == -1)
-          cout << "# See topEdgeElt[['z.name']]: NA\n";
+          Rcout << "# See topEdgeElt[['z.name']]: NA\n";
         else
-          cout << "# See topEdgeElt[['z.name']]: "
+          Rcout << "# See topEdgeElt[['z.name']]: "
                << environment.nodes[topEdgeElt->zi_list[topEdgeElt->z_name_idx]]
                       .name
                << "\n";
@@ -314,13 +314,13 @@ bool skeletonIteration(Environment& environment) {
       //// Update the information about the edge
       if (topEdgeElt->z_name_idx != -1) {
         if (environment.verbose) {
-          cout << "# Do update myAllEdges$searchMore\n";
+          Rcout << "# Do update myAllEdges$searchMore\n";
         }
         // myGv$allEdges[["searchMore"]][[topEdgeElt[["key"]]]] = topEdgeElt
 
       } else {
         if (environment.verbose) {
-          cout << "# Do update myAllEdges$noMore\n";
+          Rcout << "# Do update myAllEdges$noMore\n";
         }
         // Move this edge from the list searchMore to noMore
         environment.connected_list.push_back(environment.unsettled_list[max]);
@@ -336,7 +336,7 @@ bool skeletonIteration(Environment& environment) {
     // Sort all pairs xy with a contributing node z in decreasing order of
     // their ranks, R(xy;z| )
     if (environment.verbose) {
-      cout << "# Do Sort all pairs by Rxyz_ui\n";
+      Rcout << "# Do Sort all pairs by Rxyz_ui\n";
     }
 
     max = 0;
@@ -356,7 +356,7 @@ bool skeletonIteration(Environment& environment) {
                           (start_numSearchMore),
             environment.exec_time.start_time_iter, prg_numSearchMore);
   }
-  cout << "\n";
+  Rcout << "\n";
   std::sort(
       environment.connected_list.begin(), environment.connected_list.end());
   return (true);

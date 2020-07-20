@@ -13,6 +13,7 @@
 
 using std::string;
 using std::vector;
+using Rcpp::Rcout;
 using namespace miic::computation;
 using namespace miic::structure;
 using namespace miic::utility;
@@ -136,7 +137,7 @@ vector<vector<string>> miic::reconstruction::confidenceCut(
   };
   edge_list.erase(
       remove_if(begin(edge_list), end(edge_list), to_delete), end(edge_list));
-  std::cout << "# -- number of edges cut: " << n_connected - edge_list.size()
+  Rcout << "# -- number of edges cut: " << n_connected - edge_list.size()
             << "\n";
 
   for (int X = 0; X < environment.n_nodes - 1; X++) {

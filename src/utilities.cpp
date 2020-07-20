@@ -26,7 +26,6 @@
 namespace miic {
 namespace utility {
 
-using std::cout;
 using std::endl;
 using std::string;
 using std::stringstream;
@@ -429,9 +428,9 @@ int printProgress(double percentage, double startTime, int prg_numSearchMore) {
       sremaining_time << minutes % 60 << "m";
     }
     sremaining_time << int(remaining_time) % 60 << "s";
-    printf("\r\t %3d%% [%.*s%*s] est. remaining time : %10s", val, lpad,
+    Rprintf("\r\t %3d%% [%.*s%*s] est. remaining time : %10s", val, lpad,
         pbstr.c_str(), rpad, "", sremaining_time.str().c_str());
-    fflush(stdout);
+    R_FlushConsole();
   }
   return val;
 }

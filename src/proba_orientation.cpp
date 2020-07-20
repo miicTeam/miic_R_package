@@ -97,23 +97,23 @@ int miic::reconstruction::OrientTpl_LV_Deg_Propag(int NbTpl, int* Tpl,
   }
 
 #if _MY_PRINT_
-  printf("\n\n Orientation  (P>0.5: arrow-head; P<0.5: arrow-tail) :\n");
+  Rprintf("\n\n Orientation  (P>0.5: arrow-head; P<0.5: arrow-tail) :\n");
   for (i = 0; i < NbTpl; i++) {
-    printf("!!! Tpl %i (%g-%g) %i (%g-%g) %i -- I3=%g scoreTpl=%g\n",
+    Rprintf("!!! Tpl %i (%g-%g) %i (%g-%g) %i -- I3=%g scoreTpl=%g\n",
         Tpl[0 * NbTpl + i], ProbArrowhead[0 * NbTpl + i],
         ProbArrowhead[1 * NbTpl + i], Tpl[1 * NbTpl + i],
         ProbArrowhead[2 * NbTpl + i], ProbArrowhead[3 * NbTpl + i],
         Tpl[2 * NbTpl + i], I3[i], scoreTpl[i]);
   }
   for (i = 0; i < NbTpl; i++) {
-    printf("!!! Tpl2 %i (%g-%g) %i (%g-%g) %i -- I3=%g scoreTpl=%g\n",
+    Rprintf("!!! Tpl2 %i (%g-%g) %i (%g-%g) %i -- I3=%g scoreTpl=%g\n",
         Tpl[0 * NbTpl + i], ProbArrowhead2[0 * NbTpl + i],
         ProbArrowhead2[1 * NbTpl + i], Tpl[1 * NbTpl + i],
         ProbArrowhead2[2 * NbTpl + i], ProbArrowhead2[3 * NbTpl + i],
         Tpl[2 * NbTpl + i], I3[i], scoreTpl[i]);
   }
 
-  printf("!START LV=%i count=%i deg=%i maxTpl=%i maxscoreTpl=%g \n", LV, count,
+  Rprintf("!START LV=%i count=%i deg=%i maxTpl=%i maxscoreTpl=%g \n", LV, count,
       deg, maxTpl, maxscoreTpl);
 #endif  // _MY_PRINT_
 
@@ -128,16 +128,16 @@ int miic::reconstruction::OrientTpl_LV_Deg_Propag(int NbTpl, int* Tpl,
 
 #if _MY_PRINT_
   for (i = 0; i < NbTpl; i++) {
-    printf(" scoreTpl[orderTpl[%i]=%i]=%g  \n", i, orderTpl[i],
+    Rprintf(" scoreTpl[orderTpl[%i]=%i]=%g  \n", i, orderTpl[i],
         scoreTpl[orderTpl[i]]);
   }
-  printf(" maxTpl=%i  maxscoreTpl=%g\n", maxTpl, maxscoreTpl);
+  Rprintf(" maxTpl=%i  maxscoreTpl=%g\n", maxTpl, maxscoreTpl);
 #endif
 
   do {
     count++;
 #if _MY_PRINT_
-    printf("! count=%i deg=%i maxTpl=%i maxscoreTpl=%g \n", count, deg, maxTpl,
+    Rprintf("! count=%i deg=%i maxTpl=%i maxscoreTpl=%g \n", count, deg, maxTpl,
         maxscoreTpl);
 #endif  // _MY_PRINT_
 
@@ -155,7 +155,7 @@ int miic::reconstruction::OrientTpl_LV_Deg_Propag(int NbTpl, int* Tpl,
     scoresN[i] = -1;
 
 #if _MY_PRINT_
-    printf("maxTpl=%i n1=%i  %g(%g)--%g(%g)  n2=%i  %g(%g)--%g(%g)  n3=%i \n",
+    Rprintf("maxTpl=%i n1=%i  %g(%g)--%g(%g)  n2=%i  %g(%g)--%g(%g)  n3=%i \n",
         maxTpl, Tpl[0 * NbTpl + i], ProbArrowhead[0 * NbTpl + i],
         ProbArrowhead2[0 * NbTpl + i], ProbArrowhead[1 * NbTpl + i],
         ProbArrowhead2[1 * NbTpl + i], Tpl[1 * NbTpl + i],
@@ -216,7 +216,7 @@ int miic::reconstruction::OrientTpl_LV_Deg_Propag(int NbTpl, int* Tpl,
     }
 
 #if _MY_PRINT_
-    printf("!n1=%i p1=%g p2=%g count=%i deg=%i maxTpl=%i maxscoreTpl=%g \n", n1,
+    Rprintf("!n1=%i p1=%g p2=%g count=%i deg=%i maxTpl=%i maxscoreTpl=%g \n", n1,
         p1, p2, count, deg, maxTpl, maxscoreTpl);
 #endif  // _MY_PRINT_
 
@@ -326,7 +326,7 @@ int miic::reconstruction::OrientTpl_LV_Deg_Propag(int NbTpl, int* Tpl,
         }
 
 #if _MY_PRINT_
-        printf(
+        Rprintf(
             "!n1=%i i=%i j=%i ok=%i count=%i deg=%i maxTpl=%i maxscoreTpl=%g "
             "\n",
             n1, i, j, ok, count, deg, maxTpl, maxscoreTpl);
@@ -429,7 +429,7 @@ int miic::reconstruction::OrientTpl_LV_Deg_Propag(int NbTpl, int* Tpl,
     }
 
 #if _MY_PRINT_
-    printf("!n3=%i p3=%g p4=%g count=%i deg=%i maxTpl=%i maxscoreTpl=%g \n", n3,
+    Rprintf("!n3=%i p3=%g p4=%g count=%i deg=%i maxTpl=%i maxscoreTpl=%g \n", n3,
         p3, p4, count, deg, maxTpl, maxscoreTpl);
 #endif  // _MY_PRINT_
 
@@ -534,7 +534,7 @@ int miic::reconstruction::OrientTpl_LV_Deg_Propag(int NbTpl, int* Tpl,
         }
 
 #if _MY_PRINT_
-        printf(
+        Rprintf(
             "!n3=%i i=%i j=%i ok=%i count=%i deg=%i maxTpl=%i maxscoreTpl=%g "
             "\n",
             n3, i, j, ok, count, deg, maxTpl, maxscoreTpl);
@@ -632,7 +632,7 @@ int miic::reconstruction::OrientTpl_LV_Deg_Propag(int NbTpl, int* Tpl,
       }
     }
 #if _MY_PRINT_
-    printf("!n3=%i count=%i deg=%i maxTpl=%i maxscoreTpl=%g \n", n3, count, deg,
+    Rprintf("!n3=%i count=%i deg=%i maxTpl=%i maxscoreTpl=%g \n", n3, count, deg,
         maxTpl, maxscoreTpl);
 #endif  // _MY_PRINT_
 
@@ -643,29 +643,29 @@ int miic::reconstruction::OrientTpl_LV_Deg_Propag(int NbTpl, int* Tpl,
     maxscoreTpl = scoreTpl[maxTpl];
 #if _MY_PRINT_
     for (i = 0; i < NbTpl; i++) {
-      printf("count=%i scoreTpl[orderTpl[%i]=%i]=%g", count, i, orderTpl[i],
+      Rprintf("count=%i scoreTpl[orderTpl[%i]=%i]=%g", count, i, orderTpl[i],
           scoreTpl[orderTpl[i]]);
     }
-    printf(" maxTpl=%i  maxscoreTpl=%g\n", maxTpl, maxscoreTpl);
+    Rprintf(" maxTpl=%i  maxscoreTpl=%g\n", maxTpl, maxscoreTpl);
 
-    printf("\n\n Orientation  (P>0.5: arrow-head; P<0.5: arrow-tail) :\n");
+    Rprintf("\n\n Orientation  (P>0.5: arrow-head; P<0.5: arrow-tail) :\n");
     for (i = 0; i < NbTpl; i++) {
-      printf("!!! %i Tpl %i (%g-%g) %i (%g-%g) %i -- I3=%g scoreTpl=%g\n", i,
+      Rprintf("!!! %i Tpl %i (%g-%g) %i (%g-%g) %i -- I3=%g scoreTpl=%g\n", i,
           Tpl[0 * NbTpl + i], ProbArrowhead[0 * NbTpl + i],
           ProbArrowhead[1 * NbTpl + i], Tpl[1 * NbTpl + i],
           ProbArrowhead[2 * NbTpl + i], ProbArrowhead[3 * NbTpl + i],
           Tpl[2 * NbTpl + i], I3[i], scoreTpl[i]);
     }
-    printf("\n");
+    Rprintf("\n");
     for (i = 0; i < NbTpl; i++) {
-      printf("!!! %i Tpl2 %i (%g-%g) %i (%g-%g) %i -- I3=%g scoreTpl=%g\n", i,
+      Rprintf("!!! %i Tpl2 %i (%g-%g) %i (%g-%g) %i -- I3=%g scoreTpl=%g\n", i,
           Tpl[0 * NbTpl + i], ProbArrowhead2[0 * NbTpl + i],
           ProbArrowhead2[1 * NbTpl + i], Tpl[1 * NbTpl + i],
           ProbArrowhead2[2 * NbTpl + i], ProbArrowhead2[3 * NbTpl + i],
           Tpl[2 * NbTpl + i], I3[i], scoreTpl[i]);
     }
 
-    printf("!INTER LV=%i count=%i deg=%i maxTpl=%i maxscoreTpl=%g \n", LV,
+    Rprintf("!INTER LV=%i count=%i deg=%i maxTpl=%i maxscoreTpl=%g \n", LV,
         count, deg, maxTpl, maxscoreTpl);
 #endif  // _MY_PRINT_
 
@@ -673,24 +673,24 @@ int miic::reconstruction::OrientTpl_LV_Deg_Propag(int NbTpl, int* Tpl,
   } while ((maxscoreTpl > (0.5 + eps)) && count < 200000);
 
 #if _MY_PRINT_
-  printf("\n\n consist-neg-pos\n");
-  printf("\n\n Orientation  (P>0.5: arrow-head; P<0.5: arrow-tail) :\n");
+  Rprintf("\n\n consist-neg-pos\n");
+  Rprintf("\n\n Orientation  (P>0.5: arrow-head; P<0.5: arrow-tail) :\n");
   for (i = 0; i < NbTpl; i++) {
-    printf("!!! Tpl %i (%g-%g) %i (%g-%g) %i -- I3=%g scoreTpl=%g\n",
+    Rprintf("!!! Tpl %i (%g-%g) %i (%g-%g) %i -- I3=%g scoreTpl=%g\n",
         Tpl[0 * NbTpl + i], ProbArrowhead[0 * NbTpl + i],
         ProbArrowhead[1 * NbTpl + i], Tpl[1 * NbTpl + i],
         ProbArrowhead[2 * NbTpl + i], ProbArrowhead[3 * NbTpl + i],
         Tpl[2 * NbTpl + i], I3[i], scoreTpl[i]);
   }
   for (i = 0; i < NbTpl; i++) {
-    printf("!!! Tpl2 %i (%g-%g) %i (%g-%g) %i -- I3=%g scoreTpl=%g\n",
+    Rprintf("!!! Tpl2 %i (%g-%g) %i (%g-%g) %i -- I3=%g scoreTpl=%g\n",
         Tpl[0 * NbTpl + i], ProbArrowhead2[0 * NbTpl + i],
         ProbArrowhead2[1 * NbTpl + i], Tpl[1 * NbTpl + i],
         ProbArrowhead2[2 * NbTpl + i], ProbArrowhead2[3 * NbTpl + i],
         Tpl[2 * NbTpl + i], I3[i], scoreTpl[i]);
   }
 
-  printf("!END LV=%i count=%i deg=%i maxTpl=%i maxscoreTpl=%g \n", LV, count,
+  Rprintf("!END LV=%i count=%i deg=%i maxTpl=%i maxscoreTpl=%g \n", LV, count,
       deg, maxTpl, maxscoreTpl);
 #endif  // _MY_PRINT_
 

@@ -22,7 +22,7 @@ namespace computation {
 
 using namespace miic::structure;
 using namespace miic::utility;
-using std::cout;
+using Rcpp::Rcout;
 using std::endl;
 using std::vector;
 
@@ -112,18 +112,18 @@ double* computeEnsInformationContinuous_Orientation(Environment& environment,
   }
 
 #if _MY_DEBUG_NEW
-  printf("\n# =====> after getAllInfoNEW \n");
+  Rprintf("\n# =====> after getAllInfoNEW \n");
   if (myNbrZi == 0) {
-    printf("# N=res_new[%d]=%g ", 0, res_new[0]);
-    for (int i = 1; i < 3; i++) printf("# res_new[%d]=%g ", i, res_new[i]);
+    Rprintf("# N=res_new[%d]=%g ", 0, res_new[0]);
+    for (int i = 1; i < 3; i++) Rprintf("# res_new[%d]=%g ", i, res_new[i]);
   }
   if (myNbrZi > 0) {
-    printf("# N=res_new[%d]=%g ", 0, res_new[0]);
-    for (int i = 1; i < 3; i++) printf("# res_new[%d]=%g ", i, res_new[i]);
-    printf("# z=res_new[%d]=%g ", 3, res_new[3]);
-    for (int i = 4; i < 9; i++) printf(" res_new[%d]=%g \n", i, res_new[i]);
+    Rprintf("# N=res_new[%d]=%g ", 0, res_new[0]);
+    for (int i = 1; i < 3; i++) Rprintf("# res_new[%d]=%g ", i, res_new[i]);
+    Rprintf("# z=res_new[%d]=%g ", 3, res_new[3]);
+    for (int i = 4; i < 9; i++) Rprintf(" res_new[%d]=%g \n", i, res_new[i]);
   }
-  printf("\n");
+  Rprintf("\n");
 #endif  // _MY_DEBUG_NEW
 
   saveScore(posArray, myNbrUi, z, res_new, environment);
@@ -419,18 +419,18 @@ double* computeEnsInformationContinuous(Environment& environment, int* myCond,
   }
 
 #if _MY_DEBUG_NEW
-  printf("\n# =====> after getAllInfoNEW \n");
+  Rprintf("\n# =====> after getAllInfoNEW \n");
   if (myNbrZi == 0) {
-    printf("# N=res_new[%d]=%g ", 0, res_new[0]);
-    for (int i = 1; i < 3; i++) printf("# res_new[%d]=%g ", i, res_new[i]);
+    Rprintf("# N=res_new[%d]=%g ", 0, res_new[0]);
+    for (int i = 1; i < 3; i++) Rprintf("# res_new[%d]=%g ", i, res_new[i]);
   }
   if (myNbrZi > 0) {
-    printf("# N=res_new[%d]=%g ", 0, res_new[0]);
-    for (int i = 1; i < 3; i++) printf("# res_new[%d]=%g ", i, res_new[i]);
-    printf("# z=res_new[%d]=%g ", 3, res_new[3]);
-    for (int i = 4; i < 9; i++) printf(" res_new[%d]=%g \n", i, res_new[i]);
+    Rprintf("# N=res_new[%d]=%g ", 0, res_new[0]);
+    for (int i = 1; i < 3; i++) Rprintf("# res_new[%d]=%g ", i, res_new[i]);
+    Rprintf("# z=res_new[%d]=%g ", 3, res_new[3]);
+    for (int i = 4; i < 9; i++) Rprintf(" res_new[%d]=%g \n", i, res_new[i]);
   }
-  printf("\n");
+  Rprintf("\n");
 #endif  // _MY_DEBUG_NEW
 
   return res_new;
@@ -453,7 +453,7 @@ double* computeEnsInformationNew(Environment& environment, int* myCond,
 
 // Compute the mutual information
 #if _MY_DEBUG_NEW
-  printf("\n# =====> before getAllInfoNEW \n");
+  Rprintf("\n# =====> before getAllInfoNEW \n");
 #endif  // _MY_DEBUG_NEW
 
   double** jointFreqs =
@@ -482,18 +482,18 @@ double* computeEnsInformationNew(Environment& environment, int* myCond,
   }
 
 #if _MY_DEBUG_NEW
-  printf("\n# =====> after getAllInfoNEW \n");
+  Rprintf("\n# =====> after getAllInfoNEW \n");
   if (myNbrZi == 0) {
-    printf("# N=res_new[%d]=%g ", 0, res_new[0]);
-    for (int i = 1; i < 3; i++) printf("# res_new[%d]=%g ", i, res_new[i]);
+    Rprintf("# N=res_new[%d]=%g ", 0, res_new[0]);
+    for (int i = 1; i < 3; i++) Rprintf("# res_new[%d]=%g ", i, res_new[i]);
   }
   if (myNbrZi > 0) {
-    printf("# N=res_new[%d]=%g ", 0, res_new[0]);
-    for (int i = 1; i < 3; i++) printf("# res_new[%d]=%g ", i, res_new[i]);
-    printf("# z=res_new[%d]=%g ", 3, res_new[3]);
-    for (int i = 4; i < 9; i++) printf(" res_new[%d]=%g \n", i, res_new[i]);
+    Rprintf("# N=res_new[%d]=%g ", 0, res_new[0]);
+    for (int i = 1; i < 3; i++) Rprintf("# res_new[%d]=%g ", i, res_new[i]);
+    Rprintf("# z=res_new[%d]=%g ", 3, res_new[3]);
+    for (int i = 4; i < 9; i++) Rprintf(" res_new[%d]=%g \n", i, res_new[i]);
   }
-  printf("\n");
+  Rprintf("\n");
 #endif  // _MY_DEBUG_NEW
 
   return res_new;
@@ -539,7 +539,7 @@ void SearchForNewContributingNodeAndItsRank(
         m);
     if (vect[6] - info->Rxyz_ui > 0) {
       if (environment.verbose) {
-        cout << "\n"
+        Rcout << "\n"
              << posX << "    " << posY << "# -----> possible zi: "
              << environment
                     .nodes[environment.edges[posX][posY]
@@ -556,7 +556,7 @@ void SearchForNewContributingNodeAndItsRank(
       free(vect);
 
     } else if (environment.verbose) {
-      cout << "# --!!--> Rxyz_ui.tmp = " << vect[6]
+      Rcout << "# --!!--> Rxyz_ui.tmp = " << vect[6]
            << " < Rxyz_ui = " << info->Rxyz_ui << "\n";
     }
 
@@ -566,7 +566,7 @@ void SearchForNewContributingNodeAndItsRank(
         info->ui_list.size() + 2, posX, posY, argEnsInfo, m);
     if (vect[2] - info->Rxyz_ui > 0) {
       if (environment.verbose) {
-        cout << "\n"
+        Rcout << "\n"
              << posX << " " << posY << " # -----> possible zi: "
              << environment.nodes[info->zi_list[vect[1]]].name << "(" << vect[2]
              << " > " << info->Rxyz_ui << ")\n";
@@ -579,7 +579,7 @@ void SearchForNewContributingNodeAndItsRank(
       info->Rxyz_ui = vect[2];
 
     } else if (environment.verbose) {
-      cout << "# --!!--> Rxyz_ui.tmp = " << vect[2]
+      Rcout << "# --!!--> Rxyz_ui.tmp = " << vect[2]
            << " < Rxyz_ui = " << info->Rxyz_ui << "\n";
     }
     delete[] vect;

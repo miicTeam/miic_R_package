@@ -20,6 +20,7 @@
 using namespace miic::computation;
 using namespace miic::structure;
 using namespace miic::utility;
+using Rcpp::Rcout;
 
 // Initialize the edges of the network
 int initEdgeElt(Environment& environment, int i, int j, MemorySpace& m) {
@@ -43,7 +44,7 @@ int initEdgeElt(Environment& environment, int i, int j, MemorySpace& m) {
   }
 
   if (environment.verbose) {
-    std::cout << "# --> Ixy_ui = "
+    Rcout << "# --> Ixy_ui = "
               << environment.edges[i][j].shared_info->Ixy_ui /
                      environment.edges[i][j].shared_info->Nxy_ui
               << "[Ixy_ui*Nxy_ui ="
@@ -85,7 +86,7 @@ int initEdgeElt(Environment& environment, int i, int j, MemorySpace& m) {
   }
 
   if (environment.verbose)
-    std::cout << "# --> Category = " << category << "\n";
+    Rcout << "# --> Category = " << category << "\n";
 
   return environment.edges[i][j].status;
 }
@@ -99,8 +100,8 @@ bool miic::reconstruction::skeletonInitialization(Environment& environment) {
   }
 
   int threadnum = 0;
-  std::cout << "Computing pairwise independencies...";
-  fflush(stdout);
+  Rcout << "Computing pairwise independencies...";
+  R_FlushConsole();
 
   bool interrupt = false;
 
@@ -120,7 +121,7 @@ bool miic::reconstruction::skeletonInitialization(Environment& environment) {
     }
     for (int j = i + 1; j < environment.n_nodes && !interrupt; j++) {
       if (environment.verbose) {
-        std::cout << "\n# Edge " << environment.nodes[i].name << ","
+        Rcout << "\n# Edge " << environment.nodes[i].name << ","
                   << environment.nodes[j].name << "\n";
       }
       environment.edges[i][j].shared_info = std::make_shared<EdgeSharedInfo>();
@@ -137,7 +138,7 @@ bool miic::reconstruction::skeletonInitialization(Environment& environment) {
     }
   }
   if (interrupt) return false;
-  std::cout << " done.\n";
+  Rcout << " done.\n";
   for (int i = 0; i < environment.n_nodes; i++) {
     for (int j = 0; j < environment.n_nodes; j++) {
       environment.edges[i][j].status_init = environment.edges[i][j].status;

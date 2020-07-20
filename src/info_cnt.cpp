@@ -645,19 +645,19 @@ double* compute_Ixy_alg1(vector<vector<int> > data, vector<vector<int> > sortidx
   }
 
 #if _MY_DEBUG_MInoU
-  cout << (ptr_cnt[ptrVarIdx[0]]) << " " << (ptr_cnt[ptrVarIdx[1]]) << endl;
-  printf("    final: I_xy=%lf Ik_xy=%lf\n", return_res[0], return_res[1]);
+  Rcout << (ptr_cnt[ptrVarIdx[0]]) << " " << (ptr_cnt[ptrVarIdx[1]]) << endl;
+  Rprintf("    final: I_xy=%lf Ik_xy=%lf\n", return_res[0], return_res[1]);
 
-  printf("    0 : r=%d ", r[0]);
+  Rprintf("    0 : r=%d ", r[0]);
   for (i = 0; i < r[0]; i++) {
-    printf("    %d ", cut[0][i]);
+    Rprintf("    %d ", cut[0][i]);
   }
-  printf("\n");
-  printf("    1 : r=%d ", r[1]);
+  Rprintf("\n");
+  Rprintf("    1 : r=%d ", r[1]);
   for (i = 0; i < r[1]; i++) {
-    printf("    %d ", cut[1][i]);
+    Rprintf("    %d ", cut[1][i]);
   }
-  printf("\n");
+  Rprintf("\n");
 #endif
 
   free(xy_factors);
@@ -936,8 +936,8 @@ double* compute_Ixy_cond_u_new_alg1(vector<vector<int> > data,
       sc = 0.5 * (sc_levels_y - 1) * ruiyx[0];
 
 #if _MY_DEBUG_MInoU
-      printf("start optfun\n ");
-      fflush(stdout);
+      Rprintf("start optfun\n ");
+      R_FlushConsole();
 #endif
       sc_levels1 = sc_levels_y;  // herve
       sc_levels2 = sc_levels_x;  // herve
@@ -1555,11 +1555,6 @@ double* compute_Rscore_Ixyz_alg5(vector<vector<int> > data,
 
   // dpi
   dpi = first - log1p(exp(first - second));
-
-  if(environment.verbose){
-    printf("nv    %.2f = %i * %.2f\n", nv, n, Ik_xyz_u);
-    printf("dpi   %.2f = %.2f - log1p(exp(%.2f - %.2f)) = %.2f - %.2f\n", dpi, first, first, second, first, log1p(exp(first-second)));
-  }
 
   if (dpi < nv) {
     // Pdpi>Pnv => Rscore=Pdpi

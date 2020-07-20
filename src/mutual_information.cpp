@@ -253,18 +253,18 @@ void jointfactors_uiyx(int **datafactors, int dui, int n, int Mui, int *r,
   }
 
 #if _MY_DEBUG_NEW_UI
-  printf("j,dataui[j],datauiy[j]\n");
+  Rprintf("j,dataui[j],datauiy[j]\n");
   for (j = 0; j <= n - 1; j++) {
-    printf("%d-> %d %d\n", j, dataui[j], datauiy[j]);
+    Rprintf("%d-> %d %d\n", j, dataui[j], datauiy[j]);
   }
 #endif
 
 #if _MY_DEBUG_NEW_UI_2
-  printf(
+  Rprintf(
       "j, uiyxfactors[0][j], uiyxfactors[1][j], uiyxfactors[2][j], "
       "uiyxfactors[3][j]\n");
   for (j = 0; j <= n - 1; j++) {
-    printf("%d-> %d %d %d %d\n", j, uiyxfactors[0][j], uiyxfactors[1][j],
+    Rprintf("%d-> %d %d %d %d\n", j, uiyxfactors[0][j], uiyxfactors[1][j],
         uiyxfactors[2][j], uiyxfactors[3][j]);
   }
 #endif
@@ -365,35 +365,35 @@ void jointfactors_u(int **datafactors, int *ptrIdx, int n, int Mui, int *r,
   }
 
 #if DEBUG_JOINT
-  printf("\nj -> datau[j]\n");
+  Rprintf("\nj -> datau[j]\n");
   for (j = 0; j <= n - 1; j++) {
-    printf("%d -> %d \n", j, datau[j]);
+    Rprintf("%d -> %d \n", j, datau[j]);
   }
-  fflush(stdout);
+  R_FlushConsole();
 #endif
 
 #if DEBUG_JOINT
-  printf("j,orderSample[j+1],sampleKey[j+1],datau[orderSample[j+1]]\n");
+  Rprintf("j,orderSample[j+1],sampleKey[j+1],datau[orderSample[j+1]]\n");
   for (j = 0; j <= n - 1; j++) {
-    printf("%d: %d %d, %d \n", j, orderSample[j + 1], sampleKey[j + 1],
+    Rprintf("%d: %d %d, %d \n", j, orderSample[j + 1], sampleKey[j + 1],
         datau[orderSample[j + 1]]);
   }
-  fflush(stdout);
+  R_FlushConsole();
 #endif
 
   // joint datafactors without gaps
   // compute term constant H(y,Ui) and H(Ui)
 
 #if DEBUG
-  printf("Hu=%lf\n", *Hu);
+  Rprintf("Hu=%lf\n", *Hu);
 #endif
 
 #if DEBUG_JOINT
-  printf("j,uiyfactors[0][i] (ru=%d)\n", *ru);
+  Rprintf("j,uiyfactors[0][i] (ru=%d)\n", *ru);
   for (j = 0; j <= n - 1; j++) {
-    printf("%d-> %d\n", j, ufactors[j]);
+    Rprintf("%d-> %d\n", j, ufactors[j]);
   }
-  fflush(stdout);
+  R_FlushConsole();
 #endif
 
   if (!tooManyLevels) {

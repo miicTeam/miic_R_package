@@ -664,7 +664,7 @@ public:
       // use the standard C malloc to allocate memory
       void *m = ::malloc(blocksize);
       if (!m) {
-        fprintf(stderr, "Failed to allocate memory.\n");
+        REprintf("Failed to allocate memory.\n");
         return NULL;
       }
 
