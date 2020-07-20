@@ -70,18 +70,18 @@
 #' X <- Z * 2 + rnorm(N, sd = 0.2)
 #' Y <- Z * 2 + rnorm(N, sd = 0.2)
 #' res <- discretizeMutual(X, Y, plot = T)
-#' cat("I(X;Y) = ", res$info)
+#' message("I(X;Y) = ", res$info)
 #' res <- discretizeMutual(X, Y, matrix_u = matrix(Z, ncol = 1), plot = T)
-#' cat("I(X;Y|Z) = ", res$info)
+#' message("I(X;Y|Z) = ", res$info)
 #'
 #' # Conditional independence with categorical conditioning variable : X <- Z -> Y
 #' Z <- sample(1:3, N, replace = T)
 #' X <- -as.numeric(Z == 1) + as.numeric(Z == 2) + 0.2 * rnorm(N)
 #' Y <- as.numeric(Z == 1) + as.numeric(Z == 2) + 0.2 * rnorm(N)
 #' res <- miic::discretizeMutual(X, Y, cplx = "nml")
-#' cat("I(X;Y) = ", res$info)
+#' message("I(X;Y) = ", res$info)
 #' res <- miic::discretizeMutual(X, Y, matrix(Z, ncol = 1), is_discrete = c(F, F, T))
-#' cat("I(X;Y|Z) = ", res$info)
+#' message("I(X;Y|Z) = ", res$info)
 #'
 #'
 #' # Independence, conditional dependence : X -> Z <- Y
@@ -89,9 +89,9 @@
 #' Y <- runif(N)
 #' Z <- X + Y + runif(N, sd = 0.1)
 #' res <- discretizeMutual(X, Y, plot = T)
-#' cat("I(X;Y) = ", res$info)
+#' message("I(X;Y) = ", res$info)
 #' res <- discretizeMutual(X, Y, matrix_u = matrix(Z, ncol = 1), plot = T)
-#' cat("I(X;Y|Z) = ", res$info)
+#' message("I(X;Y|Z) = ", res$info)
 #' }
 #'
 discretizeMutual <- function(X,
@@ -338,7 +338,7 @@ discretizeMutual <- function(X,
   niterations <- nrow(rescpp$cutpointsmatrix) / maxbins
 
   result <- list()
-  epsilon <- min(c(sd(X), sd(Y))) / 100
+  epsilon <- min(c(stats::sd(X), stats::sd(Y))) / 100
   result$niterations <- niterations
   for (i in 0:(niterations - 1)) {
     result[[paste0("iteration", i + 1)]] <- list()
@@ -420,22 +420,22 @@ axisprint <- function(x) {
 }
 
 theme_side_hist <- function() {
-  theme_classic() %+replace%
-    theme(
-      title = element_text(
+  ggplot2::theme_classic() +
+    ggplot2::theme_replace(
+      title = ggplot2::element_text(
         family = "",
         face = "plain",
         color = NA,
-        size = theme_classic()$text$size
+        size = ggplot2::theme_classic()$text$size
       ),
-      axis.text = element_text(
+      axis.text = ggplot2::element_text(
         color = NA,
-        size = theme_classic()$axis.text$size
+        size = ggplot2::theme_classic()$axis.text$size
       ),
-      axis.line.x = element_line(colour = NA),
-      axis.line.y = element_line(colour = NA),
-      axis.ticks = element_blank(),
-      panel.background = element_rect(fill = "white", colour = "white")
+      axis.line.x = ggplot2::element_line(colour = NA),
+      axis.line.y = ggplot2::element_line(colour = NA),
+      axis.ticks = ggplot2::element_blank(),
+      panel.background = ggplot2::element_rect(fill = "white", colour = "white")
     )
 }
 
@@ -477,120 +477,118 @@ jointplot_hist <- function(X, Y, result, nameDist1, nameDist2,
     }
   }
   fill_density_flat[fill_density_flat$density == 0, "density"] <- NA
+  fill_density_flat$logdensity = log(fill_density_flat$density)
 
-  hist2d <- ggplot(fill_density_flat) +
-    geom_rect(
-      aes(
-        xmin = xstart,
-        xmax = xend,
-        ymin = ystart,
-        ymax = yend,
-        fill = log(density)
+  hist2d <- ggplot2::ggplot(fill_density_flat) +
+    ggplot2::geom_rect(
+      ggplot2::aes_string(
+        xmin = "xstart",
+        xmax = "xend",
+        ymin = "ystart",
+        ymax = "yend",
+        fill = "logdensity"
       ),
       na.rm = T,
       show.legend = F
     ) +
-    scale_fill_gradient(
+    ggplot2::scale_fill_gradient(
       low = "#f4f5fc",
       high = "#0013a3",
       position = "left",
       na.value = "white",
       limits = log(c(
         min_density,
-        max(fill_density_flat$density,
-          na.rm = T
-        )
-      ))
+        max(fill_density_flat$density,na.rm = T))
+      )
     ) +
-    geom_vline(
+    ggplot2::geom_vline(
       xintercept = cut_points1,
       linetype = "dashed",
       color = "grey"
     ) +
-    geom_hline(
+    ggplot2::geom_hline(
       yintercept = cut_points2,
       linetype = "dashed",
       color = "grey"
     ) +
-    geom_point(
+    ggplot2::geom_point(
       data = data.frame(X, Y),
-      aes(x = X, y = Y),
+      ggplot2::aes(x = X, y = Y),
       shape = 21,
       alpha = .7,
       fill = "#ffef77",
       size = 2
     ) +
-    xlab(nameDist1) + ylab(nameDist2) +
-    theme_classic()
+    ggplot2::xlab(nameDist1) + ggplot2::ylab(nameDist2) +
+    ggplot2::theme_classic()
 
-  g <- ggplot_build(hist2d)
+  g <- ggplot2::ggplot_build(hist2d)
   labels <- g$layout$panel_params[[1]]$y.labels
 
 
-  side_hist_top <- ggplot(data.frame(X), aes(x = X)) +
+  side_hist_top <- ggplot2::ggplot(data.frame(X), ggplot2::aes(x = X)) +
     # Histogram with density instead of count on y-axis
-    geom_histogram(
-      aes(y = ..density..),
+    ggplot2::geom_histogram(
+      ggplot2::aes(y = ggplot2::after_stat(stats::density)),
       breaks = cut_points1,
       colour = "black",
       fill = "white"
     ) +
     # Overlay with transparent density plot
-    geom_density(
+    ggplot2::geom_density(
       adjust = 0.5,
       alpha = .5,
       fill = "#c1c6ee"
     ) +
-    theme_side_hist() %+replace% theme(plot.margin = margin(
-      5.5, 5.5, -25, 5.5,
-      "pt"
-    )) +
+    theme_side_hist() + ggplot2::theme_replace(plot.margin = ggplot2::margin(
+      5.5, 5.5, -25, 5.5, "pt")) +
     # , expand = c(0, 0)) + #Pass hist2d's labels to align both X axes
-    scale_y_continuous(
+    ggplot2::scale_y_continuous(
       labels = labels,
       breaks = seq(0, 0.1, length.out = length(labels))
     ) +
-    ylab("X")
+    ggplot2::ylab("X")
   # Histogram with density instead of count on y-axis
-  side_hist_bot <- ggplot(data.frame(Y), aes(x = Y)) +
-    geom_histogram(
-      aes(y = ..density..),
+  side_hist_bot <- ggplot2::ggplot(data.frame(Y), ggplot2::aes(x = Y)) +
+    ggplot2::geom_histogram(
+      ggplot2::aes(y = ggplot2::after_stat(stats::density)),
       breaks = cut_points2,
       colour = "black",
       fill = "white"
     ) +
     # Overlay with transparent density plot
-    geom_density(
+    ggplot2::geom_density(
       adjust = 0.5,
       alpha = .5,
       fill = "#c1c6ee"
     ) +
-    theme_side_hist() %+replace% theme(plot.margin = margin(5.5, 5.5, 5.5, -30, "pt")) +
-    scale_y_continuous(expand = c(0, 0)) +
-    ylab("Y") +
-    coord_flip()
+    theme_side_hist() + ggplot2::theme_replace(plot.margin = ggplot2::margin(
+      5.5, 5.5, 5.5, -30, "pt")) +
+    ggplot2::scale_y_continuous(expand = c(0, 0)) +
+    ggplot2::ylab("Y") +
+    ggplot2::coord_flip()
 
   I2 <- result$info
   I2p <- result$infok
 
-  empty <- ggplot() + geom_point(aes(1, 1), colour = "white") +
-    geom_text(aes(
+  empty <- ggplot2::ggplot() + ggplot2::geom_point(ggplot2::aes(1, 1), colour = "white") +
+    ggplot2::geom_text(ggplot2::aes(
       x = 1,
       y = 0.5,
       label = paste0("I = ", round(I2, 3))
     )) +
-    geom_text(aes(
+    ggplot2::geom_text(ggplot2::aes(
       x = 1,
       y = 0,
       label = paste0("Ik = ", round(I2p, 3))
     )) +
-    theme(
-      axis.ticks = element_blank(),
-      panel.background = element_blank(),
-      axis.text.x = element_blank(),
-      axis.text.y = element_blank(),
-      axis.title.x = element_blank(),
-      axis.title.y = element_blank()
+    ggplot2::theme(
+      axis.ticks = ggplot2::element_blank(),
+      panel.background = ggplot2::element_blank(),
+      axis.text.x = ggplot2::element_blank(),
+      axis.text.y = ggplot2::element_blank(),
+      axis.title.x = ggplot2::element_blank(),
+      axis.title.y = ggplot2::element_blank()
     )
 
 
@@ -635,18 +633,18 @@ barplot_disc <- function(X,
     stringAsFactors = TRUE
   )
 
-  barplot <- ggplot(plot_df, aes(x = X, y = Y)) +
-    geom_boxplot(outlier.shape = NA, fill = "#c1c6ee") +
-    geom_jitter(width = 0.2, height = 0) +
-    geom_hline(
+  barplot <- ggplot2::ggplot(plot_df, ggplot2::aes(x = X, y = Y)) +
+    ggplot2::geom_boxplot(outlier.shape = NA, fill = "#c1c6ee") +
+    ggplot2::geom_jitter(width = 0.2, height = 0) +
+    ggplot2::geom_hline(
       yintercept = cut_points,
       linetype = "dashed",
       color = "grey",
       size = 1
     ) +
-    theme_classic() +
-    xlab(Xname) +
-    ylab(Yname)
+    ggplot2::theme_classic() +
+    ggplot2::xlab(Xname) +
+    ggplot2::ylab(Yname)
 
   return(barplot)
 }

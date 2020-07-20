@@ -89,18 +89,18 @@ Z <- runif(N)
 X <- Z * 2 + rnorm(N, sd = 0.2)
 Y <- Z * 2 + rnorm(N, sd = 0.2)
 res <- discretizeMutual(X, Y, plot = T)
-cat("I(X;Y) = ", res$info)
+message("I(X;Y) = ", res$info)
 res <- discretizeMutual(X, Y, matrix_u = matrix(Z, ncol = 1), plot = T)
-cat("I(X;Y|Z) = ", res$info)
+message("I(X;Y|Z) = ", res$info)
 
 # Conditional independence with categorical conditioning variable : X <- Z -> Y
 Z <- sample(1:3, N, replace = T)
 X <- -as.numeric(Z == 1) + as.numeric(Z == 2) + 0.2 * rnorm(N)
 Y <- as.numeric(Z == 1) + as.numeric(Z == 2) + 0.2 * rnorm(N)
 res <- miic::discretizeMutual(X, Y, cplx = "nml")
-cat("I(X;Y) = ", res$info)
+message("I(X;Y) = ", res$info)
 res <- miic::discretizeMutual(X, Y, matrix(Z, ncol = 1), is_discrete = c(F, F, T))
-cat("I(X;Y|Z) = ", res$info)
+message("I(X;Y|Z) = ", res$info)
 
 
 # Independence, conditional dependence : X -> Z <- Y
@@ -108,9 +108,9 @@ X <- runif(N)
 Y <- runif(N)
 Z <- X + Y + runif(N, sd = 0.1)
 res <- discretizeMutual(X, Y, plot = T)
-cat("I(X;Y) = ", res$info)
+message("I(X;Y) = ", res$info)
 res <- discretizeMutual(X, Y, matrix_u = matrix(Z, ncol = 1), plot = T)
-cat("I(X;Y|Z) = ", res$info)
+message("I(X;Y|Z) = ", res$info)
 }
 
 }

@@ -256,7 +256,7 @@ compute_partial_correlation <- function(summary, observations, state_order) {
       !any(is.na(row[columns]))
     }, c(x, y, ai))
 
-    OK <- complete.cases(observations[non_na_rows, x], observations[non_na_rows, y])
+    OK <- stats::complete.cases(observations[non_na_rows, x], observations[non_na_rows, y])
     if (sum(OK) >= 2) {
       if (!is.null(ai)) {
         ai <- unlist(strsplit(ai, ",")) # Character vector
@@ -266,7 +266,7 @@ compute_partial_correlation <- function(summary, observations, state_order) {
           method = "spearman"
         )
       } else {
-        edge_res <- cor.test(observations[non_na_rows, x],
+        edge_res <- stats::cor.test(observations[non_na_rows, x],
           observations[non_na_rows, y],
           method = "spearman"
         )
