@@ -6,7 +6,6 @@
 
 #include "compute_ens_information.h"
 #include "proba_orientation.h"
-#include "structure.h"
 
 namespace miic {
 namespace reconstruction {
@@ -36,13 +35,13 @@ vector<vector<string>> orientationProbability(Environment& environment) {
         triples.emplace_back(Triple{posX, posY, posY1});
     }
   }
-  // Compute I3 for each triple
+  if (triples.empty())
+    return vector<vector<string>>();
+
+  // Compute the 3-point mutual info (N * I'(X;Y;Z|{ui})) for each triple
   vector<double> I3_list(triples.size());
   std::transform(begin(triples), end(triples), begin(I3_list),
       [&environment](const auto& t) { return getI3(environment, t); });
-
-  if (triples.empty())
-    return vector<vector<string>>();
 
   // Compute the arrowhead probability of each edge endpoint
   vector<ProbaArray> probas_list = getOriProbasList(triples, I3_list,
