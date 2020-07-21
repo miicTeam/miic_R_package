@@ -22,7 +22,7 @@ Imports:
         stats,
         Rcpp
 Suggests:
-        ggplot2,
+        ggplot2 (>= 3.3.0),
         gridExtra
 License: GPL (>= 2)
 NeedsCompilation: yes

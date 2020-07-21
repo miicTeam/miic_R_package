@@ -60,6 +60,7 @@
 #' }
 #' @export
 #' @useDynLib miic
+#' @importFrom stats density sd
 #'
 #' @examples
 #' library(miic)
@@ -338,7 +339,7 @@ discretizeMutual <- function(X,
   niterations <- nrow(rescpp$cutpointsmatrix) / maxbins
 
   result <- list()
-  epsilon <- min(c(stats::sd(X), stats::sd(Y))) / 100
+  epsilon <- min(c(sd(X), sd(Y))) / 100
   result$niterations <- niterations
   for (i in 0:(niterations - 1)) {
     result[[paste0("iteration", i + 1)]] <- list()
@@ -421,7 +422,7 @@ axisprint <- function(x) {
 
 theme_side_hist <- function() {
   ggplot2::theme_classic() +
-    ggplot2::theme_replace(
+    ggplot2::theme(
       title = ggplot2::element_text(
         family = "",
         face = "plain",
@@ -523,13 +524,12 @@ jointplot_hist <- function(X, Y, result, nameDist1, nameDist2,
     ggplot2::theme_classic()
 
   g <- ggplot2::ggplot_build(hist2d)
-  labels <- g$layout$panel_params[[1]]$y.labels
-
+  labels <- g$layout$panel_params[[1]]$y$get_labels()
+  labels <- labels[labels != "NA"]
 
   side_hist_top <- ggplot2::ggplot(data.frame(X), ggplot2::aes(x = X)) +
-    # Histogram with density instead of count on y-axis
     ggplot2::geom_histogram(
-      ggplot2::aes(y = ggplot2::after_stat(stats::density)),
+      ggplot2::aes(y = ggplot2::after_stat(density)),
       breaks = cut_points1,
       colour = "black",
       fill = "white"
@@ -540,18 +540,19 @@ jointplot_hist <- function(X, Y, result, nameDist1, nameDist2,
       alpha = .5,
       fill = "#c1c6ee"
     ) +
-    theme_side_hist() + ggplot2::theme_replace(plot.margin = ggplot2::margin(
-      5.5, 5.5, -25, 5.5, "pt")) +
-    # , expand = c(0, 0)) + #Pass hist2d's labels to align both X axes
+    theme_side_hist() +
+    ggplot2::theme(
+      plot.margin = ggplot2::margin(
+      5.5, 5.5, -30, 5.5, "pt")) +
     ggplot2::scale_y_continuous(
-      labels = labels,
+      labels = labels, # Pass hist2d's labels to align cutpoints on X axis
       breaks = seq(0, 0.1, length.out = length(labels))
     ) +
     ggplot2::ylab("X")
-  # Histogram with density instead of count on y-axis
-  side_hist_bot <- ggplot2::ggplot(data.frame(Y), ggplot2::aes(x = Y)) +
+
+  side_hist_right <- ggplot2::ggplot(data.frame(Y), ggplot2::aes(x = Y)) +
     ggplot2::geom_histogram(
-      ggplot2::aes(y = ggplot2::after_stat(stats::density)),
+      ggplot2::aes(y = ggplot2::after_stat(density)),
       breaks = cut_points2,
       colour = "black",
       fill = "white"
@@ -562,7 +563,9 @@ jointplot_hist <- function(X, Y, result, nameDist1, nameDist2,
       alpha = .5,
       fill = "#c1c6ee"
     ) +
-    theme_side_hist() + ggplot2::theme_replace(plot.margin = ggplot2::margin(
+    theme_side_hist() +
+    ggplot2::theme(
+      plot.margin = ggplot2::margin(
       5.5, 5.5, 5.5, -30, "pt")) +
     ggplot2::scale_y_continuous(expand = c(0, 0)) +
     ggplot2::ylab("Y") +
@@ -597,7 +600,7 @@ jointplot_hist <- function(X, Y, result, nameDist1, nameDist2,
       side_hist_top,
       empty,
       hist2d,
-      side_hist_bot,
+      side_hist_right,
       ncol = 2,
       nrow = 2,
       widths = c(4.2, 1),
