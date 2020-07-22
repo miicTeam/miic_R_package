@@ -493,8 +493,8 @@ vector<ProbaArray> getOriProbasList(const vector<Triple>& triples,
             scoresN[i] = logF2(scoreTpl[i], I3_list[i]);
           }
           p = probas_list[i][1];
-          // only p*(1.0/(1+exp(-I3_list[i])) term
-          logpp = log1p(p - 1) - log1p(exp(-I3_list[i]));
+          // only p*(1.0/(1+exp(I3_list[i])) term
+          logpp = log1p(p - 1) - log1p(exp(I3_list[i]));
           pp = expm1(logpp) + 1;
           if (pp > (0.5 + kEps) && (probas_list2[i][2] < (pp - kEps))) {
             // 2->3 condition of propagation (p > pp > 0.5) and no previously
