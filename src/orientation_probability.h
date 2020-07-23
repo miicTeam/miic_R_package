@@ -5,13 +5,13 @@
 #include <vector>
 
 #include "environment.h"
-#include "structure.h"
+#include "proba_orientation.h"
 
 namespace miic {
 namespace reconstruction {
 
 namespace reconstruction_impl {
-double getI3(structure::Environment&, const structure::Triple&);
+double getI3(structure::Environment&, const Triple&);
 void updateAdj(structure::Environment&, int x, int y, double y2x, double x2y);
 }  // namespace reconstruction_impl
 

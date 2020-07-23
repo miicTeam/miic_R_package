@@ -12,8 +12,6 @@
 namespace miic {
 namespace structure {
 
-using Triple = std::array<int, 3>;
-
 namespace structure_impl {
 
 using std::string;
