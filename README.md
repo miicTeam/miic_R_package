@@ -16,6 +16,7 @@ install.packages("miic")
 ```
 Or if you wish the latest version under development, you may clone this repository and install the package from the source using the console commmand :
 ```
+cd miic_R_package
 R CMD INSTALL .
 ```
 ## Documentation
