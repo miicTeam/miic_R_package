@@ -24,15 +24,14 @@ int initEdgeElt(Environment& environment, int i, int j, MemorySpace& m) {
     environment.edges[i][j].shared_info->Ixy_ui = res[1];
     environment.edges[i][j].shared_info->cplx = res[2];
     environment.edges[i][j].shared_info->Nxy_ui = res[0];
-    free(res);
   } else {
     res = computeEnsInformationContinuous(
         environment, NULL, 0, NULL, 0, -1, i, j, environment.cplx, m);
     environment.edges[i][j].shared_info->Ixy_ui = res[1];
     environment.edges[i][j].shared_info->cplx = res[2];
     environment.edges[i][j].shared_info->Nxy_ui = res[0];
-    delete[] res;
   }
+  delete[] res;
 
   if (environment.verbose) {
     Rcout << "# --> Ixy_ui = "
