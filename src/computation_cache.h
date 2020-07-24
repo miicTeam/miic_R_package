@@ -1,6 +1,9 @@
 #ifndef MIIC_COMPUTATION_CACHE
 #define MIIC_COMPUTATION_CACHE
 
+#define _USE_MATH_DEFINES
+#include <cmath>
+
 #include "structure.h"
 
 namespace miic {
