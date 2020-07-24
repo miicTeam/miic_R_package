@@ -476,7 +476,8 @@ double* getAllInfoNEW(int* ptrAllData, const vector<int>& ptrAllLevels,
         }
         Lxyui = sortedSample[k][1];
         Nxyuis += NNxyui;
-        Pxyui = weights[sortedSample[k][0]-1];  // weights[k];
+        if (sortedSample[k][0] < sampleSize)
+          Pxyui = weights[sortedSample[k][0]];  // weights[k];
 
         if (k < nSample0) X = sortedSample[k][4];
         if (k < nSample0) Y = sortedSample[k][5];
