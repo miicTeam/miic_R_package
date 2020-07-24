@@ -424,7 +424,7 @@ int printProgress(double percentage, double startTime, int prg_numSearchMore) {
     double remaining_time =
         (get_wall_time() - startTime) / percentage * (1 - percentage);
     stringstream sremaining_time;
-    if (std::isinf(remaining_time)){
+    if (std::isinf(remaining_time) || remaining_time < 0){
       remaining_time = 0;
     }
     if (remaining_time > 60) {
