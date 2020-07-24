@@ -372,7 +372,7 @@ double* computeEnsInformationContinuous(Environment& environment, int* myCond,
         res_new[2] = res[6];
         res_new[1] = posZi[int(res[3])];
         res_new[0] = res[0];
-        free(res);
+        delete[] res;
         delete[] posZi;
       }
     }
@@ -553,7 +553,6 @@ void SearchForNewContributingNodeAndItsRank(
       // z.name has the right bin xyzi key
       info->z_name_idx = vect[3];
       info->Rxyz_ui = vect[6];
-      free(vect);
 
     } else if (environment.verbose) {
       Rcout << "# --!!--> Rxyz_ui.tmp = " << vect[6]
@@ -582,8 +581,8 @@ void SearchForNewContributingNodeAndItsRank(
       Rcout << "# --!!--> Rxyz_ui.tmp = " << vect[2]
            << " < Rxyz_ui = " << info->Rxyz_ui << "\n";
     }
-    delete[] vect;
   }
+  delete[] vect;
 }
 
 }  // namespace computation

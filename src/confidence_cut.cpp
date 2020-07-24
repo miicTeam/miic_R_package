@@ -81,14 +81,14 @@ void setConfidence(Environment& environment) {
             -1, X, Y, environment.cplx, environment.m);
         NIxy_ui = res[1];
         k_xy_ui = res[2];
-        delete res;
+        delete[] res;
       } else {
         // mixed case
         double* res = computeEnsInformationContinuous(environment, NULL, 0,
             NULL, 0, -1, X, Y, environment.cplx, environment.m);
         NIxy_ui = res[1];
         k_xy_ui = res[2];
-        delete res;
+        delete[] res;
       }
 
       double I_prime_shuffle = NIxy_ui - k_xy_ui;

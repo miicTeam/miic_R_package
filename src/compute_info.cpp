@@ -140,7 +140,7 @@ double* getAllInfoNEW(int* ptrAllData, const vector<int>& ptrAllLevels,
   //                      R_top & nSample[z_top]*I(xyz|{ui}) & k_xyz_ui
   if (nbrZi > 0) nbrRetValues = 9;
 
-  double* ptrRetValues = (double*)malloc(nbrRetValues * sizeof(double));
+  double* ptrRetValues = new double[nbrRetValues];
 
   ptrRetValues[0] = -1;
   ptrRetValues[1] = -1;
