@@ -408,6 +408,7 @@ double* computeEnsInformationContinuous(Environment& environment, int* myCond,
         // res_new[0]=(double) samplesNotNA;
       }
     }  // optimal z search
+    delete[] scoresZ;
 
     if (ziContPosIdx != NULL) delete[] ziContPosIdx;
   }
