@@ -233,8 +233,7 @@ void deleteMemorySpace(Environment& environment, MemorySpace& m) {
           environment.is_continuous.end(), 0) > 1) {
     int max_level = 0;
     for (int i = 0; i < environment.n_nodes; i++) {
-      if (!environment.is_continuous[i] &&
-          environment.levels[i] > max_level)
+      if (environment.levels[i] > max_level)
         max_level = environment.levels[i];
     }
 
