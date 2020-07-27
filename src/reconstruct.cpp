@@ -173,6 +173,7 @@ List reconstruct(List input_data, List arg_list) {
     deleteMemorySpace(environment, environment.memoryThreads[i]);
   }
   deleteMemorySpace(environment, environment.m);
+  delete[] environment.memoryThreads;
 
   return result;
 }
