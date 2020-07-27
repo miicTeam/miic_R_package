@@ -404,10 +404,10 @@ void jointfactors_u(int **datafactors, int *ptrIdx, int n, int Mui, int *r,
 }
 
 // rux -> 0:x,1;u,2:ux
-double *computeMI_knml(int *xfactors, int *ufactors, int *uxfactors, int *rux,
+vector<double> computeMI_knml(int *xfactors, int *ufactors, int *uxfactors, int *rux,
     int n, int n_eff, std::vector<double> sample_weights,
     std::shared_ptr<CtermCache> cache, int flag) {
-  double *I = (double *)calloc(2, sizeof(double));
+  vector<double> I(2);
 
   int j, x, u, ux;
 
@@ -459,9 +459,9 @@ double *computeMI_knml(int *xfactors, int *ufactors, int *uxfactors, int *rux,
   return I;
 }
 
-double *computeMI_knml(int *xfactors, int *ufactors, int *uxfactors, int *rux,
+vector<double> computeMI_knml(int *xfactors, int *ufactors, int *uxfactors, int *rux,
     int n, std::shared_ptr<CtermCache> cache, int flag) {
-  double *I = (double *)calloc(2, sizeof(double));
+  vector<double> I(2);
 
   int j, x, u, ux;
 
@@ -510,9 +510,9 @@ double *computeMI_knml(int *xfactors, int *ufactors, int *uxfactors, int *rux,
 }
 
 // rux -> 0:x,1;u,2:ux
-double *computeMI_kmdl(int *xfactors, int *ufactors, int *uxfactors, int *rux,
+vector<double> computeMI_kmdl(int *xfactors, int *ufactors, int *uxfactors, int *rux,
     int n, std::shared_ptr<CtermCache> cache, int flag) {
-  double *I = (double *)calloc(2, sizeof(double));
+  vector<double> I(2);
 
   int j, x, u, ux;
 

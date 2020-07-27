@@ -15,7 +15,7 @@ namespace computation {
 
 using std::vector;
 
-double* compute_Ixy_alg1(vector<vector<int> > data, vector<vector<int> > sortidx,
+vector<double> compute_Ixy_alg1(vector<vector<int> > data, vector<vector<int> > sortidx,
     vector<int> ptr_cnt, vector<int> ptrVarIdx, vector<int> AllLevels, int n,
     int** cut, int* r, vector<double> sample_weights, bool flag_sample_weights,
     structure::Environment& environment, bool saveIterations = false);
