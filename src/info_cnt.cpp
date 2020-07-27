@@ -416,7 +416,7 @@ double* compute_Ixy_alg1(vector<vector<int> > data, vector<vector<int> > sortidx
   for (int new_initbins = 2; (new_initbins < initbins) && (new_initbins < 20) &&
                              (new_initbins < min_unique_values);
        new_initbins++) {
-    int lbin = floor(n / new_initbins);
+    int lbin = n / new_initbins;
     if (lbin < 1) {
       lbin = 1;
       new_initbins = n;
@@ -462,7 +462,7 @@ double* compute_Ixy_alg1(vector<vector<int> > data, vector<vector<int> > sortidx
     free(res_temp);
   }
 
-  int lbin = floor(n / max_initbins);
+  int lbin = n / max_initbins;
   if (lbin < 1) {
     lbin = 1;
     max_initbins = n;
@@ -816,7 +816,7 @@ double* compute_Ixy_cond_u_new_alg1(vector<vector<int> > data,
     }
   }
 
-  lbin = floor(n / max_initbins);
+  lbin = n / max_initbins;
   if (lbin < 1) {
     lbin = 1;
     max_initbins = n;
@@ -1272,7 +1272,7 @@ double* compute_mi_cond_alg1(vector<vector<int> > data,
     cut[l] = (int*)calloc(maxbins, sizeof(int));
   }
 
-  int lbin = floor(n / initbins);
+  int lbin = n / initbins;
   if (lbin < 1) {
     lbin = 1;
     initbins = n;
@@ -1379,7 +1379,7 @@ double* compute_Rscore_Ixyz_alg5(vector<vector<int> > data,
     cut[l] = (int*)calloc(maxbins, sizeof(int));
   }
 
-  int lbin = floor(n / initbins);
+  int lbin = n / initbins;
   if (lbin < 1) {
     lbin = 1;
     initbins = n;
