@@ -66,7 +66,7 @@ void getStructure(Environment& environment, const int posX, const int posY,
     Cs = res[8];
     if (environment.is_k23) {
       if (environment.degenerate) {
-        Cs += log(3);
+        Cs += log(3.0);
       }
       // to fit eq(20) and eq(22) in BMC Bioinfo 2016
       Is = Is + Cs;
@@ -78,7 +78,7 @@ void getStructure(Environment& environment, const int posX, const int posY,
     Cs = res[2];
     if (environment.is_k23) {
       if (environment.degenerate) {
-        Cs += log(3);
+        Cs += log(3.0);
       }
       // I(x;y;z|ui) - cplx(x;y;z|ui)
       Is = Is - Cs;

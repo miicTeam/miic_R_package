@@ -445,7 +445,7 @@ double *computeMI_knml(int *xfactors, int *ufactors, int *uxfactors, int *rux,
   if (flag == 0) SC -= cache->getLogC(n_eff, rux[0]);
   if (flag == 0) SC -= cache->getLogC(n_eff, rux[1]);
 
-  I[0] = log(n_eff) + (Hu + Hx - Hux) / n_eff;
+  I[0] = cache->getLog(n_eff) + (Hu + Hx - Hux) / n_eff;
 
   if (flag == 0)
     I[1] = I[0] - 0.5 * SC / n_eff;

@@ -130,9 +130,9 @@ double ramanujan(int n) {
   if (n == 0) {
     return (0);
   }
-  double N = n * log(n) - n + log(1.0 * n * (1 + 4 * n * (1 + 2 * n))) / 6 +
-             log(M_PI) / 2L;
-  return (N);
+  double N = n * log(1.0 * n) - n +
+             log(1.0 * n * (1 + 4 * n * (1 + 2 * n))) / 6 + log(M_PI) / 2L;
+  return N;
 }
 
 double get_wall_time() {

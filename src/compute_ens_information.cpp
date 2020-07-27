@@ -214,7 +214,7 @@ void computeContributingScores(Environment& environment, int* ziContPosIdx,
         if (environment.test_mar && n_samples_nonNA != samplesNotNA) {
           double kldiv = compute_kl_divergence(posArray, environment,
               samplesNotNA, AllLevels_red, sample_is_not_NA);
-          double cplxMdl = log(samplesNotNA);
+          double cplxMdl = environment.cache.cterm->getLog(samplesNotNA);
 
           if ((kldiv - cplxMdl) > 0) {
             // the sample is not representative of the population, hence we do

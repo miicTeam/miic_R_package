@@ -258,7 +258,7 @@ bool skeletonIteration(Environment& environment) {
 
     if (environment.degenerate)
       topEdgeElt_kxy_ui =
-          topEdgeElt->cplx + (topEdgeElt->ui_list.size() * log(3));
+          topEdgeElt->cplx + (topEdgeElt->ui_list.size() * log(3.0));
 
     int nRemainingEdges = environment.numSearchMore + environment.numNoMore;
 
