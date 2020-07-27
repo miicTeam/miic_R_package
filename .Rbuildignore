@@ -2,3 +2,4 @@
 ^.*\.vscode$
 ^\.Rproj\.user$
 LICENSE
+^\.github$
