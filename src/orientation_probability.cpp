@@ -12,9 +12,68 @@ namespace reconstruction {
 
 using std::string;
 using std::vector;
-using namespace reconstruction_impl;
 using namespace miic::computation;
 using namespace miic::structure;
+
+namespace {
+
+double getI3(Environment& environment, const Triple& t) {
+  int posX{t[0]}, posZ{t[1]}, posY{t[2]};
+
+  vector<int> ui_no_z(environment.edges[posX][posY].shared_info->ui_list);
+  ui_no_z.erase(remove(begin(ui_no_z), end(ui_no_z), posZ), end(ui_no_z));
+  int* ui = ui_no_z.empty() ? NULL : &ui_no_z[0];
+
+  vector<int> z{posZ};
+  int* zi = &z[0];
+
+  double* res = NULL;
+  double Ixyz_ui = -1;
+  double cplx = -1;
+  if (!environment.is_continuous[posX] && !environment.is_continuous[posZ] &&
+      !environment.is_continuous[posY]) {
+    res = computeEnsInformationNew(environment, ui, ui_no_z.size(), zi,
+        z.size(), -1, posX, posY, environment.cplx, environment.m);
+    Ixyz_ui = res[7];
+    cplx = res[8];
+    if (environment.degenerate) cplx += log(3.0);
+    // To fit eq(20) and eq(22) in BMC Bioinfo 2016
+    if (environment.is_k23) Ixyz_ui += cplx;
+  } else {
+    res = computeEnsInformationContinuous_Orientation(environment, ui,
+        ui_no_z.size(), zi, posX, posY, environment.cplx, environment.m);
+    Ixyz_ui = res[1];
+    cplx = res[2];
+    if (environment.degenerate) cplx += log(3.0);
+    if (environment.is_k23) Ixyz_ui -= cplx;
+  }
+  delete[] res;
+  return Ixyz_ui;
+}
+
+// y2x: probability that there is an arrow from node y to x
+// x2y: probability that there is an arrow from node x to y
+void updateAdj(Environment& env, int x, int y, double y2x, double x2y) {
+  double lower, higher;
+  std::tie(lower, higher) = std::minmax(y2x, x2y);
+  // No arrowhead
+  if (higher <= 0.5) return;
+  // Only one arrowhead
+  if (lower <= 0.5) {
+    if (y2x == higher) {
+      env.edges[x][y].status = -2;
+      env.edges[y][x].status = 2;
+    } else {
+      env.edges[x][y].status = 2;
+      env.edges[y][x].status = -2;
+    }
+  } else {
+    env.edges[x][y].status = 6;
+    env.edges[y][x].status = 6;
+  }
+}
+
+}  // anonymous namespace
 
 vector<vector<string>> orientationProbability(Environment& environment) {
   // Get all unshielded triples X -- Z -- Y
@@ -116,64 +175,5 @@ vector<vector<string>> orientationProbability(Environment& environment) {
   return orientations;
 }
 
-namespace reconstruction_impl {
-
-double getI3(Environment& environment, const Triple& t) {
-  int posX{t[0]}, posZ{t[1]}, posY{t[2]};
-
-  vector<int> ui_no_z(environment.edges[posX][posY].shared_info->ui_list);
-  ui_no_z.erase(remove(begin(ui_no_z), end(ui_no_z), posZ), end(ui_no_z));
-  int* ui = ui_no_z.empty() ? NULL : &ui_no_z[0];
-
-  vector<int> z{posZ};
-  int* zi = &z[0];
-
-  double* res = NULL;
-  double Ixyz_ui = -1;
-  double cplx = -1;
-  if (!environment.is_continuous[posX] && !environment.is_continuous[posZ] &&
-      !environment.is_continuous[posY]) {
-    res = computeEnsInformationNew(environment, ui, ui_no_z.size(), zi,
-        z.size(), -1, posX, posY, environment.cplx, environment.m);
-    Ixyz_ui = res[7];
-    cplx = res[8];
-    if (environment.degenerate) cplx += log(3.0);
-    // To fit eq(20) and eq(22) in BMC Bioinfo 2016
-    if (environment.is_k23) Ixyz_ui += cplx;
-  } else {
-    res = computeEnsInformationContinuous_Orientation(environment, ui,
-        ui_no_z.size(), zi, posX, posY, environment.cplx, environment.m);
-    Ixyz_ui = res[1];
-    cplx = res[2];
-    if (environment.degenerate) cplx += log(3.0);
-    if (environment.is_k23) Ixyz_ui -= cplx;
-  }
-  delete[] res;
-  return Ixyz_ui;
-}
-
-// y2x: probability that there is an arrow from node y to x
-// x2y: probability that there is an arrow from node x to y
-void updateAdj(Environment& env, int x, int y, double y2x, double x2y) {
-  double lower, higher;
-  std::tie(lower, higher) = std::minmax(y2x, x2y);
-  // No arrowhead
-  if (higher <= 0.5) return;
-  // Only one arrowhead
-  if (lower <= 0.5) {
-    if (y2x == higher) {
-      env.edges[x][y].status = -2;
-      env.edges[y][x].status = 2;
-    } else {
-      env.edges[x][y].status = 2;
-      env.edges[y][x].status = -2;
-    }
-  } else {
-    env.edges[x][y].status = 6;
-    env.edges[y][x].status = 6;
-  }
-}
-
-}  // namespace reconstruction_impl
 }  // namespace reconstruction
 }  // namespace miic
