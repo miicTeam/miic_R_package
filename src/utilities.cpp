@@ -248,11 +248,11 @@ void deleteMemorySpace(Environment& environment, MemorySpace& m) {
     free(m.sortedSample);
 
     for (i = 0; i < bin_max + 1; i++) free(m.Nxuiz[i]);
-
-    for (i = 0; i < bin_max + 1; i++) free(m.Opt_sortedSample[i]);
-
-    free(m.Opt_sortedSample);
     free(m.Nxuiz);
+
+    for (i = 0; i < nrow; i++) free(m.Opt_sortedSample[i]);
+    free(m.Opt_sortedSample);
+
     free(m.orderSample);
     free(m.sampleKey);
     free(m.Pxyuiz);
@@ -262,6 +262,7 @@ void deleteMemorySpace(Environment& environment, MemorySpace& m) {
     free(m.Ny);
     free(m.Nxui);
     free(m.Nx);
+    free(m.bridge);
   }
   // cotinuous part
   if (std::any_of(environment.is_continuous.begin(),

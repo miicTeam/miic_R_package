@@ -696,7 +696,9 @@ int miic::reconstruction::OrientTpl_LV_Deg_Propag(int NbTpl, int* Tpl,
 
   delete[] ProbArrowhead2;
   delete[] scoreTpl;
+  delete[] logscoreTpl;
   delete[] orderTpl;
+  delete[] scoresN;
 
   return 0;
 }

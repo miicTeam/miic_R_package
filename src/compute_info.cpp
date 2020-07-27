@@ -1367,6 +1367,7 @@ double* getAllInfoNEW(int* ptrAllData, const vector<int>& ptrAllLevels,
   free(Opt_dBin);
 
   free(nbrLevCorrect);
+  free(nSample);
 
   delete[] sampleWithZ;
 
