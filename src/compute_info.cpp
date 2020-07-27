@@ -470,7 +470,7 @@ double* getAllInfoNEW(int* ptrAllData, const vector<int>& ptrAllLevels,
         Ntot += NNxyui;
 
         if (NNxyui > 0) {
-          NlogN = NNxyui * log(NNxyui);
+          NlogN = NNxyui * cache->getLog(NNxyui);
           info_xui_y += NlogN;
           info_yui_x += NlogN;
         }
@@ -484,7 +484,7 @@ double* getAllInfoNEW(int* ptrAllData, const vector<int>& ptrAllLevels,
 
         if (sortedSample[k][2] > Lyui) {
           if (Nyui > 0) {
-            NlogN = Nyui * log(Nyui);
+            NlogN = Nyui * cache->getLog(Nyui);
             info_yui_x -= NlogN;
             info_ui_y += NlogN;
 
@@ -502,7 +502,7 @@ double* getAllInfoNEW(int* ptrAllData, const vector<int>& ptrAllLevels,
             for (j = 0; j < dBin[0][0]; j++) {
               Nxuij = Nxui[j];
               if (Nxuij > 0) {
-                NlogN = Nxuij * log(Nxuij);
+                NlogN = Nxuij * cache->getLog(Nxuij);
                 info_xui_y -= NlogN;
                 info_ui_x += NlogN;
                 if (modCplx != MDL) {
@@ -517,7 +517,7 @@ double* getAllInfoNEW(int* ptrAllData, const vector<int>& ptrAllLevels,
             }
 
             if (Nui > 0) {
-              NlogN = Nui * log(Nui);
+              NlogN = Nui * cache->getLog(Nui);
               info_ui_y -= NlogN;
               info_ui_x -= NlogN;
               if (modCplx != MDL) {
@@ -585,7 +585,7 @@ double* getAllInfoNEW(int* ptrAllData, const vector<int>& ptrAllLevels,
 
     if (modCplx == MDL) {
       Prui = 1;
-      logN = log(Ntot);
+      logN = cache->getLog(Ntot);
       for (j = 2; j < nbrAllVar; j++) Prui *= dBin[0][j];
       logC_xui_y = 0.5 * (dBin[0][1] - 1) * (dBin[0][0] * Prui - 1) * logN;
       logC_yui_x = 0.5 * (dBin[0][0] - 1) * (dBin[0][1] * Prui - 1) * logN;
@@ -760,7 +760,7 @@ double* getAllInfoNEW(int* ptrAllData, const vector<int>& ptrAllLevels,
               counts2[ptrAllData[i + ptrVarIdx[0] * sampleSize]]
                      [ptrAllData[i + ptrVarIdx[1] * sampleSize]]++;
             }
-            double cplxMdl = log(nSampleZ);
+            double cplxMdl = cache->getLog(nSampleZ);
             double kldiv =
                 exp(-nSampleZ * kl(counts2, freqs1, ptrAllLevels[ptrVarIdx[0]],
                                     ptrAllLevels[ptrVarIdx[1]]) +
@@ -897,7 +897,7 @@ double* getAllInfoNEW(int* ptrAllData, const vector<int>& ptrAllLevels,
                       }
 
                       if (NNxyuizl > 0) {
-                        NlogN = NNxyuizl * log(NNxyuizl);
+                        NlogN = NNxyuizl * cache->getLog(NNxyuizl);
                         info_xuiz_y += NlogN;
                         info_yuiz_x += NlogN;
                         NNxyuiz += NNxyuizl;
@@ -913,7 +913,7 @@ double* getAllInfoNEW(int* ptrAllData, const vector<int>& ptrAllLevels,
                   Pxyuiz[Z] = weights[sortedSample[k][0]];
 
                   if (NNxyuiz > 0) {
-                    NlogN = NNxyuiz * log(NNxyuiz);
+                    NlogN = NNxyuiz * cache->getLog(NNxyuiz);
                     info_xui_y += NlogN;
                     info_yui_x += NlogN;
 
@@ -939,7 +939,7 @@ double* getAllInfoNEW(int* ptrAllData, const vector<int>& ptrAllLevels,
 
                   if (sortedSample[k][2] > Lyui) {
                     if (Nyui > 0) {
-                      NlogN = Nyui * log(Nyui);
+                      NlogN = Nyui * cache->getLog(Nyui);
                       info_yui_x -= NlogN;
                       info_yui_z -= NlogN;
                       info_ui_y += NlogN;
@@ -951,7 +951,7 @@ double* getAllInfoNEW(int* ptrAllData, const vector<int>& ptrAllLevels,
                       for (l = 0; l < dBin[0][z]; l++) {
                         Nyuizl = Nyuiz[l];
                         if (Nyuizl > 0) {
-                          NlogN = Nyuizl * log(Nyuizl);
+                          NlogN = Nyuizl * cache->getLog(Nyuizl);
                           info_yui_z += NlogN;
                           info_uiz_y += NlogN;
                           info_yuiz_x -= NlogN;
@@ -969,7 +969,7 @@ double* getAllInfoNEW(int* ptrAllData, const vector<int>& ptrAllLevels,
 
                     if (sortedSample[k][3] > Lui) {
                       if (Nui > 0) {
-                        NlogN = Nui * log(Nui);
+                        NlogN = Nui * cache->getLog(Nui);
                         info_ui_x -= NlogN;
                         info_ui_y -= NlogN;
                         info_ui_z -= NlogN;
@@ -984,7 +984,7 @@ double* getAllInfoNEW(int* ptrAllData, const vector<int>& ptrAllLevels,
                         for (l = 0; l < dBin[0][z]; l++) {
                           Nuizl = Nuiz[l];
                           if (Nuizl > 0) {
-                            NlogN = Nuizl * log(Nuizl);
+                            NlogN = Nuizl * cache->getLog(Nuizl);
                             info_ui_z += NlogN;
                             info_uiz_x -= NlogN;
                             info_uiz_y -= NlogN;
@@ -1000,7 +1000,7 @@ double* getAllInfoNEW(int* ptrAllData, const vector<int>& ptrAllLevels,
                         for (j = 0; j < dBin[0][0]; j++) {
                           Nxuij = Nxui[j];
                           if (Nxuij > 0) {
-                            NlogN = Nxuij * log(Nxuij);
+                            NlogN = Nxuij * cache->getLog(Nxuij);
                             info_xui_y -= NlogN;
                             info_xui_z -= NlogN;
                             info_ui_x += NlogN;
@@ -1014,7 +1014,7 @@ double* getAllInfoNEW(int* ptrAllData, const vector<int>& ptrAllLevels,
                             for (l = 0; l < dBin[0][z]; l++) {
                               Nxuizjl = Nxuiz[j][l];
                               if (Nxuizjl > 0) {
-                                NlogN = Nxuizjl * log(Nxuizjl);
+                                NlogN = Nxuizjl * cache->getLog(Nxuizjl);
                                 info_xui_z += NlogN;
                                 info_uiz_x += NlogN;
                                 info_xuiz_y -= NlogN;
@@ -1120,7 +1120,7 @@ double* getAllInfoNEW(int* ptrAllData, const vector<int>& ptrAllLevels,
             // check maximum mutual infos - cplx terms
             if (modCplx == MDL) {
               Prui = 1;
-              logN = log(nSample[zi]);
+              logN = cache->getLog(nSample[zi]);
               for (j = 2; j < nbrAllVar; j++) Prui *= dBin[0][j];
             }
 
