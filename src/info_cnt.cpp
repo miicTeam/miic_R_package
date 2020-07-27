@@ -948,7 +948,7 @@ double* compute_Ixy_cond_u_new_alg1(vector<vector<int> > data,
     }
 
     // Reset cutpoints on U
-    reset_u_cutpoints(cut, nbrUi, ptr_cnt, ptrVarIdx, initbins, maxbins, lbin,
+    reset_u_cutpoints(cut, nbrUi, ptr_cnt, ptrVarIdx, max_initbins, maxbins, lbin,
         r, AllLevels, n);
     for (l = 0; l < nbrUi; l++) {
       if (ptr_cnt[ptrVarIdx[l + 2]] == 1)
@@ -1040,7 +1040,7 @@ double* compute_Ixy_cond_u_new_alg1(vector<vector<int> > data,
           cut[1], &(r[1]), sample_weights, flag_sample_weights, environment);  // 2 factors
     }
     // Reset cutpoints on U
-    reset_u_cutpoints(cut, nbrUi, ptr_cnt, ptrVarIdx, initbins, maxbins, lbin,
+    reset_u_cutpoints(cut, nbrUi, ptr_cnt, ptrVarIdx, max_initbins, maxbins, lbin,
         r, AllLevels, n);
     for (l = 0; l < nbrUi; l++) {
       if (ptr_cnt[ptrVarIdx[l + 2]] == 1)
@@ -1097,7 +1097,7 @@ double* compute_Ixy_cond_u_new_alg1(vector<vector<int> > data,
     Ik_x_u = res_temp[1];
     free(res_temp);
     // Reset cutpoints on U
-    reset_u_cutpoints(cut, nbrUi, ptr_cnt, ptrVarIdx, initbins, maxbins, lbin,
+    reset_u_cutpoints(cut, nbrUi, ptr_cnt, ptrVarIdx, max_initbins, maxbins, lbin,
         r, AllLevels, n);
     for (l = 0; l < nbrUi; l++) {
       if (ptr_cnt[ptrVarIdx[l + 2]] == 1)
@@ -1157,7 +1157,7 @@ double* compute_Ixy_cond_u_new_alg1(vector<vector<int> > data,
     Ik_y_u = res_temp[1];
     free(res_temp);
     // Reset cutpoints on U
-    reset_u_cutpoints(cut, nbrUi, ptr_cnt, ptrVarIdx, initbins, maxbins, lbin,
+    reset_u_cutpoints(cut, nbrUi, ptr_cnt, ptrVarIdx, max_initbins, maxbins, lbin,
         r, AllLevels, n);
     for (l = 0; l < nbrUi; l++) {
       if (ptr_cnt[ptrVarIdx[l + 2]] == 1)
@@ -1276,6 +1276,10 @@ double* compute_mi_cond_alg1(vector<vector<int> > data,
   if (lbin < 1) {
     lbin = 1;
     initbins = n;
+  }
+  for (l = 0; l < (nbrUi + 2); l++) {
+    if (ptr_cnt[ptrVarIdx[l]] == 1)
+      initbins = min(initbins, AllLevels[ptrVarIdx[l]]);
   }
 
   // no conditioning, empty set of variables in u
