@@ -39,9 +39,15 @@ bool isOriented(double proba) { return isHead(proba) || isTail(proba); }
 // Input w2z, z2w the probabilities of t0 (W -* Z and W *- Z respectively),
 // where * can be head (< or >) or tail (-)
 // Input/Output probas, probas2, the ProbaArrays of t to be updated
+//
+// Denote by M (can be W or Z) the middle node of t, by U (can be Z or W) the
+// other node in the shared edge, and by V the third node, so t is either (U
+// -- M -- V) or (V -- M -- U)
+//
 // Input w2z_index, z2w_index value in [0, 1, 2, 3]. Index of the probabilites
-// in the ProbaArray of t that corresponds to w2z, z2w, If W is X, then (z, w)
-// is (0, 1) or (1, 0), if W is Y, then (z, w) is (2, 3) or (3, 2)
+// in the ProbaArray of t that corresponds to w2z, z2w, If t is (U -- M -- V),
+// then (w2z_index, z2w_index) is (0, 1) or (1, 0), if t is (V -- M -- U), then
+// (w2z_index, z2w_index) is (2, 3) or (3, 2)
 void updateProba(int w2z_index, int z2w_index, double w2z, double z2w,
     bool latent, bool propagation, ProbaArray& probas, ProbaArray& probas2,
     bool& need_propagation, bool& remove_triple) {
@@ -49,9 +55,6 @@ void updateProba(int w2z_index, int z2w_index, double w2z, double z2w,
   if ((!latent && isHead(probas[w2z_index])) ||
       (propagation && isTail(probas[w2z_index])))
     probas[z2w_index] = z2w;
-  // Denote by M (can be W or Z) the middle node of t, by U (can be Z or W) the
-  // other node in the shared edge, and by V the third node, so t is either (U
-  // -- M -- V) or (V -- M -- U)
   double v2m = std::max(w2z_index, z2w_index) == 1 ? probas[2] : probas[1];
   double u2m = (w2z_index == 1 || w2z_index == 2) ? w2z : z2w;
   if (isOriented(u2m) && isOriented(v2m)) {
