@@ -1,11 +1,18 @@
 # MIIC
   <!-- badges: start -->
-  [![R build status](https://github.com/miicTeam/miic_R_package/workflows/R-CMD-check/badge.svg)](https://github.com/miicTeam/miic_R_package/actions)
+  [![CRAN
+  Status](https://www.r-pkg.org/badges/version/miic)](https://cran.r-project.org/package=miic)
+  [![R build
+  status](https://github.com/miicTeam/miic_R_package/workflows/R-CMD-check/badge.svg)](https://github.com/miicTeam/miic_R_package/actions)
   <!-- badges: end -->
 
 This repository contains the source code for MIIC, a method which learns a large class of causal or non-causal graphical models from purely observational data, while including the effects of unobserved latent variables, commonly found in many datasets. Starting from a complete graph, the method iteratively removes dispensable edges, by uncovering significant information contributions from indirect paths, and assesses edge-specific confidences from randomization of available data. The remaining edges are then oriented based on the signature of causality in observational data. This approach can be applied on a wide range of datasets and provide new biological insights on regulatory networks from single cell expression data, genomic alterations during tumor development and co-evolving residues in protein structures. For more information you can refer to: Cabeli et al. PLoS Comp. Bio. 2020 <doi:10.1371/journal.pcbi.1007866>, Verny et al. PLoS Comp. Bio. 2017 <doi:10.1371/journal.pcbi.1005662>.
 
 ## References
+Cabeli V., Verny L., Sella N., Uguzzoni G., Verny M., Isambert H.; Learning clinical networks from medical records based on information estimates in mixed-type data; PLoS computational biology., 2020. [code](https://github.com/vcabeli/miic_PLoS)
+
+Li H., Cabeli V., Sella N., Isambert H.; Constraint-based causal structure learning with consistent separating sets; In Advances in Neural Information Processing Systems 2019. [code](https://github.com/honghaoli42/consistent_pcalg)
+
 Verny L., Sella N., Affeldt S., Singh PP., Isambert H.; Learning causal networks with latent variables from multivariate information in genomic data;  PLoS Comput. Biol., 2017.
 
 ## Prerequisites
