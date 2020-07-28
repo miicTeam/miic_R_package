@@ -32,7 +32,7 @@ void reset_u_cutpoints(int** cut, int nbrUi, vector<int> ptr_cnt,
       for (int j = init_nbin; j < maxbins; j++) {
         cut[l][j] = 0;
       }
-      r[l] = init_nbin;
+      r[l] = min(init_nbin, AllLevels[ptrVarIdx[l]]);
     } else {
       r[l] = AllLevels[ptrVarIdx[l]];
     }
@@ -943,7 +943,7 @@ vector<double> compute_Ixy_cond_u_new_alg1(vector<vector<int> > data,
     }
 
     // Reset cutpoints on U
-    reset_u_cutpoints(cut, nbrUi, ptr_cnt, ptrVarIdx, max_initbins, maxbins, lbin,
+    reset_u_cutpoints(cut, nbrUi, ptr_cnt, ptrVarIdx, initbins, maxbins, lbin,
         r, AllLevels, n);
     for (l = 0; l < nbrUi; l++) {
       if (ptr_cnt[ptrVarIdx[l + 2]] == 1)
@@ -1034,7 +1034,7 @@ vector<double> compute_Ixy_cond_u_new_alg1(vector<vector<int> > data,
           cut[1], &(r[1]), sample_weights, flag_sample_weights, environment);  // 2 factors
     }
     // Reset cutpoints on U
-    reset_u_cutpoints(cut, nbrUi, ptr_cnt, ptrVarIdx, max_initbins, maxbins, lbin,
+    reset_u_cutpoints(cut, nbrUi, ptr_cnt, ptrVarIdx, initbins, maxbins, lbin,
         r, AllLevels, n);
     for (l = 0; l < nbrUi; l++) {
       if (ptr_cnt[ptrVarIdx[l + 2]] == 1)
@@ -1090,7 +1090,7 @@ vector<double> compute_Ixy_cond_u_new_alg1(vector<vector<int> > data,
     I_x_u = res_temp[0];  // After optimization on U.
     Ik_x_u = res_temp[1];
     // Reset cutpoints on U
-    reset_u_cutpoints(cut, nbrUi, ptr_cnt, ptrVarIdx, max_initbins, maxbins, lbin,
+    reset_u_cutpoints(cut, nbrUi, ptr_cnt, ptrVarIdx, initbins, maxbins, lbin,
         r, AllLevels, n);
     for (l = 0; l < nbrUi; l++) {
       if (ptr_cnt[ptrVarIdx[l + 2]] == 1)
@@ -1149,7 +1149,7 @@ vector<double> compute_Ixy_cond_u_new_alg1(vector<vector<int> > data,
     I_y_u = res_temp[0];  // After optimization on U.
     Ik_y_u = res_temp[1];
     // Reset cutpoints on U
-    reset_u_cutpoints(cut, nbrUi, ptr_cnt, ptrVarIdx, max_initbins, maxbins, lbin,
+    reset_u_cutpoints(cut, nbrUi, ptr_cnt, ptrVarIdx, initbins, maxbins, lbin,
         r, AllLevels, n);
     for (l = 0; l < nbrUi; l++) {
       if (ptr_cnt[ptrVarIdx[l + 2]] == 1)
