@@ -17,6 +17,11 @@ using namespace miic::structure;
 
 namespace {
 
+bool acceptProba(double proba, double ori_proba_ratio) {
+  if (proba <= 0.5) return false;
+  return (1 - proba) / proba < ori_proba_ratio;
+}
+
 double getI3(Environment& environment, const Triple& t) {
   int posX{t[0]}, posZ{t[1]}, posY{t[2]};
 
@@ -60,14 +65,15 @@ void updateAdj(Environment& env, int x, int y, double y2x, double x2y) {
   if (higher <= 0.5) return;
   // Only one arrowhead
   if (lower <= 0.5) {
-    if (y2x == higher) {
+    if (y2x == higher && acceptProba(y2x, env.ori_proba_ratio)) {
       env.edges[x][y].status = -2;
       env.edges[y][x].status = 2;
-    } else {
+    } else if (acceptProba(x2y, env.ori_proba_ratio)) {
       env.edges[x][y].status = 2;
       env.edges[y][x].status = -2;
     }
-  } else {
+  } else if (acceptProba(x2y, env.ori_proba_ratio) &&
+             acceptProba(y2x, env.ori_proba_ratio)) {
     env.edges[x][y].status = 6;
     env.edges[y][x].status = 6;
   }

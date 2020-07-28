@@ -35,6 +35,7 @@ struct Environment {
   vector<Node> nodes{};
   Edge** edges;
   bool orientation_phase;
+  double ori_proba_ratio = 1;
   bool propagation;
   // Level of consistency required for the graph
   // 0: no consistency requirement

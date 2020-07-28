@@ -80,6 +80,12 @@
 #' procedure relyes on probabilities; for more details, see Verny \emph{et al.}, PLoS Comp. Bio. 2017).
 #' If set to FALSE the orientation step is not performed.
 #'
+#' @param ori_proba_ratio [a floating point between 0 and 1] When orienting an
+#' edge according to the probability of orientation, the threshold to accept the
+#' orientation. For a given edge, denote by p > 0.5 the probability of
+#' orientation, the orientation is accepted if (1 - p) / p < ori_proba_ratio.
+#' 0 means reject all orientations, 1 means accept all orientations.
+#'
 #' @param propagation [a boolean value]
 #' If set to FALSE, the skeleton is partially oriented with only the
 #' v-structure orientations. Otherwise, the v-structure orientations are
@@ -293,6 +299,7 @@ miic <- function(input_data,
                  n_threads = 1,
                  cplx = c("nml", "mdl"),
                  orientation = TRUE,
+                 ori_proba_ratio = 1,
                  propagation = TRUE,
                  latent = c("no", "yes", "orientation"),
                  n_eff = -1,
@@ -464,6 +471,7 @@ miic <- function(input_data,
         black_box = black_box,
         n_shuffles = n_shuffles,
         orientation = orientation,
+        ori_proba_ratio = ori_proba_ratio,
         propagation = propagation,
         conf_threshold = conf_threshold,
         verbose = verbose,

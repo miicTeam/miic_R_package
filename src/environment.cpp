@@ -31,6 +31,7 @@ Environment::Environment(
       levels(as<vector<int>>(arg_list["levels"])),
       n_eff(as<int>(arg_list["n_eff"])),
       orientation_phase(as<bool>(arg_list["orientation"])),
+      ori_proba_ratio(as<double>(arg_list["ori_proba_ratio"])),
       propagation(as<bool>(arg_list["propagation"])),
       max_iteration(as<int>(arg_list["max_iteration"])),
       test_mar(as<bool>(arg_list["test_mar"])),
