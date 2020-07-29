@@ -30,15 +30,15 @@
 #' at the end of the nodes names), the function will plot the lag 
 #' information on the edges.
 #' 
-#' @param miic_result [a miic graph object]
+#' @param g [a miic graph object]
 #' The graph object returned by the miic execution.
 #' @param method [a string; \emph{c("pcor", "log_confidence")}]
 #' Optional, "log_confidence" by default. The column used to plot the 
 #' strength of the edges. 
-#' @param igraphLayout [an igraph layout object]
+#' @param igraph_layout [an igraph layout object]
 #' Optional, \emph{layout_with_kk} by default. When set, it is used to plot the network. 
 #' See the igraph manual for more information.
-#' @param userLayout [a data frame]
+#' @param user_layout [a data frame]
 #' Optional, NULL by default. A data frame reporting the position of nodes. 
 #' Each line corresponds to the \emph{(x,y)} coordinates of each vertex.
 #' When the data frame has two columns, the first one is assocated with
@@ -114,8 +114,8 @@
 #' @export
 #' @useDynLib miic
 #--------------------------------------------------------------------------------
-tmiic.plot <- function (miic_result, method="log_confidence", igraphLayout=NULL, 
-                        userLayout=NULL, miic_defaults=TRUE, 
+tmiic.plot <- function (g, method="log_confidence", igraph_layout=NULL, 
+                        user_layout=NULL, miic_defaults=TRUE, 
                         filename=NULL, file_figsize=NULL, 
                         font_family=NULL, title=NULL, title_cex=1.5, 
                         draw_legend=TRUE, graph_margin=NULL, 
@@ -127,7 +127,7 @@ tmiic.plot <- function (miic_result, method="log_confidence", igraphLayout=NULL,
                         verbose=FALSE) 
   {
   DEBUG <- FALSE
-  if (is.null(miic_result$adjMatrix)) 
+  if (is.null(g$adjMatrix)) 
     {
     message ("The learnt graphical model adjacency matrix does not exist")
     return()
@@ -137,18 +137,18 @@ tmiic.plot <- function (miic_result, method="log_confidence", igraphLayout=NULL,
     print ("tmiic.plot:")
     print (paste ("input title=", title, sep="") )
     print (paste ("input filename=", filename, sep="") )
-    print (paste ("curve_edges=", curve_edges, sep="") )
+    print (paste ("edges_curved=", edges_curved, sep="") )
     print ("input adjacency matrix:")
-    print (miic_result$adjMatrix)
+    print (g$adjMatrix)
     print ("input summary:")
-    print (miic_result$all.edges.summary [ miic_result$all.edges.summary[["type"]] == "P" ])
+    print (g$all.edges.summary [ g$all.edges.summary[["type"]] == "P" ])
     }
   #
   # Check if the network is the lagged or the flatten one:
   # If any node does not end with "_lag*", the network is not lagged
   #
   is_graph_lagged = TRUE
-  list_nodes <- colnames (miic_result$adjMatrix)
+  list_nodes <- colnames (g$adjMatrix)
   for (one_node in list_nodes)
     {
     regex_found = grepl ("_lag.*$", one_node)
@@ -166,7 +166,7 @@ tmiic.plot <- function (miic_result, method="log_confidence", igraphLayout=NULL,
     {
     # If the graph is condensed, we display lag values on edges
     #
-    edges_labels = miic_result$all.edges.summary$lag
+    edges_labels = g$all.edges.summary$lag
     }
   else 
     { 
@@ -181,27 +181,27 @@ tmiic.plot <- function (miic_result, method="log_confidence", igraphLayout=NULL,
     #
     # Set a layout if none is supplied
     #
-    if ( is.null(userLayout) )
+    if ( is.null(user_layout) )
       {
       #
-      # Get the max lag from nodes names
+      # Get the number of non lagged nodes (the first not lag0)
       #
-      max_lag <- 0
+      n_nodes <- 0
       for (one_node in list_nodes)
         {
-        pos_lag_x <- str_locate(one_node, "_lag")
+        pos_lag_x <- stringr::str_locate(one_node, "_lag")
         lag <- 0
         if ( !is.na(pos_lag_x[1]) )
           {
-          lag <- str_remove(one_node, ".*_lag")
+          lag <- stringr::str_remove(one_node, ".*_lag")
           lag <- strtoi (lag)
           }
-        if (lag > max_lag)
-          max_lag <- lag
+        if (lag > 0)
+          break
+        n_nodes <- n_nodes + 1
         } 
-      max_lag_plus1 <- max_lag + 1
-      n_nodes <- length(list_nodes) %/% max_lag_plus1
-      userLayout = data.frame (list_nodes, rep(1:max_lag_plus1, each=n_nodes), 
+      max_lag_plus1 <- length(list_nodes) %/% n_nodes
+      user_layout = data.frame (list_nodes, rep(1:max_lag_plus1, each=n_nodes), 
                                            rep(1:n_nodes, times=max_lag_plus1) )    
   
       if (DEBUG)
@@ -209,23 +209,23 @@ tmiic.plot <- function (miic_result, method="log_confidence", igraphLayout=NULL,
         print ("no user layout given:")
         print ("found these nodes=")
         print (list_nodes)
-        print (paste ("found max lag=", max_lag, sep="") )
+        print (paste ("found max lag=", max_lag_plus1 - 1, sep="") )
         print (paste ("found n_nodes=", n_nodes, sep="") )
         print ("layout defined=")
-        print (userLayout)
+        print (user_layout)
         }
       }
     } 
   if (DEBUG)
     {
     print (paste ("is_graph_lagged =", is_graph_lagged) )
-    print (paste ("curve_edges=", curve_edges, sep="") )
+    print (paste ("edges_curved=", edges_curved, sep="") )
     }
   #
   # Plot the graph
   #
-  miic.plot (miic_result, method=method, igraphLayout=igraphLayout, 
-             userLayout=userLayout, miic_defaults=miic_defaults, 
+  miic.plot (g, method=method, igraph_layout=igraph_layout, 
+             user_layout=user_layout, miic_defaults=miic_defaults, 
              filename=filename, file_figsize=file_figsize, 
              font_family=font_family, title=title, title_cex=title_cex,
              draw_legend=draw_legend, graph_margin=graph_margin,

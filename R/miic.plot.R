@@ -1,17 +1,19 @@
 #*****************************************************************************
 # Filename   : miic.plot.R                     Creation date: 11 june 2020
 #
-# Description: iGrpah plotting for miic
+# Description: iGraph plotting for miic
 #
 # Author     : Franck SIMON (fsimon.informaticien@wanadoo.fr)
 #
 # Changes history:
 # - 11 june 2020 : initial version
-#   This version is a rewrite from miic.plot.R and gmPlot.lib.R, needed to
-#   be able to plot multiple edges between same nodes
+#   This version is a rewrite from miic.plot.R and gmPlot.lib.R. 
+#   miic.plot is now able to plot multiple edges between the same nodes
+#
+# TODO:
+# - Transfer each of the 3 parts (data preparation, graph, plot) into a sub
+#   function
 #*****************************************************************************
-# library (igraph)
-# library (dplyr)
 
 #-----------------------------------------------------------------------------
 # miic.plot
@@ -24,15 +26,15 @@
 #' @details The plot reports the partial correlation or the log_confidence
 #' as strength of the edges.
 #'
-#' @param miic_result [a miic graph object]
+#' @param g [a miic graph object]
 #' The graph object returned by the miic execution.
 #' @param method [a string; \emph{c("pcor", "log_confidence")}]
 #' Optional, "log_confidence" by default. The column used to plot the 
 #' strength of the edges. 
-#' @param igraphLayout [an igraph layout object]
+#' @param igraph_layout [an igraph layout object]
 #' Optional, \emph{layout_with_kk} by default. When set, it is used to plot 
 #' the network. See the igraph manual for more information.
-#' @param userLayout [a data frame]
+#' @param user_layout [a data frame]
 #' Optional, NULL by default. A data frame reporting the position of nodes. 
 #' Each line corresponds to the \emph{(x,y)} coordinates of each vertex.
 #' When the data frame has two columns, the first one is assocated with
@@ -105,8 +107,8 @@
 #' @export
 #' @useDynLib miic
 #-----------------------------------------------------------------------------
-miic.plot <- function (miic_result, method = "log_confidence", 
-                       igraphLayout = NULL, userLayout = NULL, 
+miic.plot <- function (g, method = "log_confidence", 
+                       igraph_layout = NULL, user_layout = NULL, 
                        miic_defaults=TRUE, filename=NULL, file_figsize=NULL,
                        font_family=NULL, title=NULL, title_cex=1.5, 
                        draw_legend=TRUE, graph_margin=NULL, 
@@ -120,30 +122,32 @@ miic.plot <- function (miic_result, method = "log_confidence",
   {
   DEBUG <- FALSE
   if ( (verbose) | (DEBUG) )
-    print ("Start of plot ...")
+      cat ("# --------\n# -> START Plot...\n")
   #
   # Check inputs
   #
   if ( (method != "pcor") & (method != "log_confidence") )
     stop ("incorrect method argument: must be \"log_confidence\" or \"pcor\" ")
-  if ( is.null (miic_result$adjMatrix) ) 
+  if ( is.null (g$adjMatrix) ) 
     stop ("The learnt graphical model adjacency matrix does not exist")
-  if ( is.null (miic_result$all.edges.summary) ) 
+  if ( is.null (g$all.edges.summary) ) 
     stop ("The learnt graphical model summary does not exist")
   if (method == "pcor") 
     {
-    if (is.na (miic_result$all.edges.summary$partial_correlation[1])) 
+    if (is.na (g$all.edges.summary$partial_correlation[1])) 
       {
-      print ("Impossible to plot correlation without data in summary")
-      return
+      cat ("Impossible to plot correlation without data in summary\n")
+      cat ("# -> END Plot...\n# --------\n")
+      return()
       } 
     } 
   else
     {
-    if (is.na (miic_result$all.edges.summary$log_confidence[1]) ) 
+    if (is.na (g$all.edges.summary$log_confidence[1]) ) 
       {
-      print ("Impossible to plot log_confidence without data in summary")
-      return
+      cat ("Impossible to plot log_confidence without data in summary\n")
+      cat ("# -> END Plot...\n# --------\n")
+      return()
       } 
     } 
   #
@@ -153,7 +157,7 @@ miic.plot <- function (miic_result, method = "log_confidence",
   #
   # Extract nodes and edges. 
   #
-  list_nodes <- colnames (miic_result$adjMatrix)
+  list_nodes <- colnames (g$adjMatrix)
   if (DEBUG) 
     {
     print ("list_nodes:")
@@ -162,7 +166,7 @@ miic.plot <- function (miic_result, method = "log_confidence",
   #
   # Edge are filtered to remove "TN", "N", "FN"
   #
-  df_edges <- miic_result$all.edges.summary
+  df_edges <- g$all.edges.summary
   cond_filter <- ( (df_edges[["type"]] != "TN") 
                  & (df_edges[["type"]] != "N") 
                  & (df_edges[["type"]] != "FN") ) 
@@ -205,29 +209,29 @@ miic.plot <- function (miic_result, method = "log_confidence",
   # otherwise, use specific iGraph layout if supplied
   # otherwise, use igraph::layout_with_kk
   #
-  if ( !is.null (userLayout) ) 
+  if ( !is.null (user_layout) ) 
     {
-    layout <- userLayout
+    layout <- user_layout
     if (ncol (layout) > 2) 
       # keep only posX and posY
       layout <- layout[, 2:3]
     layout <- as.matrix (layout)
     if ( (verbose) | (DEBUG) )
-      print ("User layout supplied")
+      cat ("Load the positions of the vertices\n")
     }
   else 
     {
-    if ( is.null (igraphLayout) ) 
+    if ( is.null (igraph_layout) ) 
       {
       layout <- igraph::layout_with_kk
       if ( (verbose) | (DEBUG) )
-        print ("Use igraph::layout_with_kk layout as none supplied")
+        cat ("Use igraph::layout_with_kk layout as none supplied\n")
       }
     else 
       {
-      layout <- igraphLayout
+      layout <- igraph_layout
       if ( (verbose) | (DEBUG) )
-        print ("Use supplied igraph::layout")
+        cat ("Use supplied igraph::layout\n")
       }
     }
   #
@@ -289,8 +293,8 @@ miic.plot <- function (miic_result, method = "log_confidence",
   #
   # To later identify multiple edges between same nodes 
   #
-  df_mult <- group_by (df_edges, xy, x, y)
-  df_mult <- summarise (df_mult, count=n())
+  df_mult <- dplyr::group_by (df_edges, xy, x, y)
+  df_mult <- dplyr::summarise (df_mult, count=dplyr::n())
   if ( is.null (graph_margin) )
     {
     # Define a margin (if none supplied) on left and right sides
@@ -310,7 +314,7 @@ miic.plot <- function (miic_result, method = "log_confidence",
   #
   # Edges colors and orientations are ready, we can create our graph
   #
-  graph <- graph.data.frame (df_edges[,c("x","y")], vertices=list_nodes, directed=TRUE)
+  graph <- igraph::graph.data.frame (df_edges[,c("x","y")], vertices=list_nodes, directed=TRUE)
   #
   # Set vertices options
   #
@@ -552,6 +556,6 @@ miic.plot <- function (miic_result, method = "log_confidence",
     dev.off()
   par (sav_config, new=FALSE)
   if ( (verbose) | (DEBUG) )
-    print ("End of plot ...")
+      cat ("# -> END Plot...\n# --------\n")
   }
 
