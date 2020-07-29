@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     # Inputs the workflow accepts.
     inputs:
-      name:
+      network:
         description: 'Network to test'
         # Default value if no value is explicitly provided
         default: 'neuro'
@@ -12,7 +12,7 @@ on:
         required: true
 
 jobs:
-  neorep:
+  network:
     runs-on: ubuntu-latest
     # Uses our custom docker with r-base and miic dependencies https://hub.docker.com/repository/docker/miicteam/r-miic
     container: miicteam/r-miic
@@ -20,8 +20,11 @@ jobs:
       - uses: actions/checkout@v1
       - name: miic installation
         run: R CMD INSTALL .
+      - name: testing input
+        run: |
+          cd /tests/networks/${{ github.event.inputs.network }}
+          pwd
       - name: Network test
-        #run: cd /tests/networks/${{ github.event.inputs.name }}
         run: |
           cd /tests/networks/neuro
           Rscript test.R > /dev/null
