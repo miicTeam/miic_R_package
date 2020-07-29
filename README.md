@@ -16,17 +16,19 @@ Li H., Cabeli V., Sella N., Isambert H.; Constraint-based causal structure learn
 Verny L., Sella N., Affeldt S., Singh PP., Isambert H.; Learning causal networks with latent variables from multivariate information in genomic data;  PLoS Comput. Biol., 2017. [doi:10.1371/journal.pcbi.1005662](https://doi.org/10.1371/journal.pcbi.1005662)
 
 ## Prerequisites
-MIIC contains R and C++ sources. In order to compile MIIC you will need a c++ compiler with c++ 14.
-The following R packages are dependencies : MASS, igraph, ppcor, scales, stats, Rcpp
+MIIC contains R and C++ sources.
+- To compile from source, a compiler with support for c++14 language features is required.
+- MIIC imports the following R packages: igraph, ppcor, scales, stats, Rcpp
 
 ## Installing
 
-You may install the latest stable version that was submitted to CRAN directly from R using the package manager :
+Install the latest stable version on CRAN directly from R:
 ```{r}
 install.packages("miic")
 ```
-Or if you wish the latest version under development, you may clone this repository and install the package from the source using the console commmand :
+Or try the latest version under development by compiling from source:
 ```
+git clone https://github.com/miicTeam/miic_R_package.git
 cd miic_R_package
 R CMD INSTALL .
 ```
