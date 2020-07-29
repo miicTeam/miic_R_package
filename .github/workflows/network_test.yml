@@ -30,4 +30,4 @@ jobs:
         #run: cd tests/networks/${{ github.event.inputs.name }}
         run: |
           cd /tests/networks/neuro
-          Rscript test.R
+          Rscript test.R > /dev/null
