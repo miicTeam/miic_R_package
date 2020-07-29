@@ -10,9 +10,6 @@ on:
         default: 'neuro'
         # Input has to be provided for the workflow to run
         required: true
-  push:
-    branches:
-      - CI_network
 
 jobs:
   neorep:
@@ -24,7 +21,7 @@ jobs:
       - name: miic installation
         run: R CMD INSTALL .
       - name: Network test
-        #run: cd tests/networks/${{ github.event.inputs.name }}
+        #run: cd /tests/networks/${{ github.event.inputs.name }}
         run: |
           cd /tests/networks/neuro
           Rscript test.R > /dev/null
