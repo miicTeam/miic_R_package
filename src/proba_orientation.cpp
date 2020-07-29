@@ -11,6 +11,7 @@ namespace miic {
 namespace reconstruction {
 
 using std::vector;
+using std::fabs;
 
 namespace {
 
@@ -79,7 +80,7 @@ std::pair<double, double> getInducedProbability(double I3, double w2z) {
   // FIXME: experimental
   // Only keep w2z * (1.0 / (1 + exp(-abs(I3)))) term, drop 0.5 * (1 - w2z) to
   // reduce the accumulation of orientation error if there is any
-  double logp_induced = log1p(w2z - 1) - log1p(exp(-abs(I3)));
+  double logp_induced = log1p(w2z - 1) - log1p(exp(-fabs(I3)));
   return std::make_pair(expm1(logp_induced) + 1, logp_induced);
 }
 
@@ -258,7 +259,7 @@ vector<ProbaArray> getOriProbasList(const vector<Triple>& triples,
     double z2x{0.5}, x2z{0.5}, y2z{0.5}, z2y{0.5};
     // if arrowhead/tail on Z (x 0-*1 z 2-3 y) is not already established
     // through an earlier propagation
-    if ((abs(max_probas[1] - 0.5) < (abs(max_probas2[1] - 0.5) - kEps)) &&
+    if ((fabs(max_probas[1] - 0.5) < (fabs(max_probas2[1] - 0.5) - kEps)) &&
         (half_v_structure || I3_list[max_idx] > 0 ||
             max_probas[2] > (0.5 - kEps))) {
       // establish arrowhead/tail final proba on 1 (x 0-*1 z 2-3 y)
@@ -274,7 +275,7 @@ vector<ProbaArray> getOriProbasList(const vector<Triple>& triples,
         max_probas[0] = max_probas2[0];
       }
     }
-    if ((abs(max_probas[2] - 0.5) < (abs(max_probas2[2] - 0.5) - kEps)) &&
+    if ((fabs(max_probas[2] - 0.5) < (fabs(max_probas2[2] - 0.5) - kEps)) &&
         (half_v_structure || I3_list[max_idx] > 0 ||
             max_probas[1] > (0.5 - kEps))) {
       // establish arrowhead/tail final proba on 2 (x 0-1 z 2*-3 y)

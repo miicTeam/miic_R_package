@@ -12,6 +12,7 @@ namespace reconstruction {
 
 using std::string;
 using std::vector;
+using std::fabs;
 using namespace miic::computation;
 using namespace miic::structure;
 
@@ -121,7 +122,7 @@ vector<vector<string>> orientationProbability(Environment& environment) {
         return this->insert({std::move(key), proba});
       } else {
         // Update if proba is more probable
-        if (abs(iter_key->second - 0.5) < abs(proba - 0.5))
+        if (fabs(iter_key->second - 0.5) < fabs(proba - 0.5))
           this->at(key) = proba;
         return std::make_pair(iter_key, false);
       }
