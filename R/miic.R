@@ -11,31 +11,29 @@
 #' from randomization of available data. The remaining edges are then oriented 
 #' based on the signature of causality in observational data.
 #' 
-#' For temporal series, miic reorganizes the dataset using the max lag parameter
-#' (\emph{tau}) to transform the timesteps into lagged samples. As starting point,
-#' a lagged graph is created with only edges having at least one node laying
-#' on the last timestep. Then, miic standard algorithm is applied to remove 
-#' dispensable edges. The remaining edges are then oriented by using the
-#' temporality and the signature of causality in observational data.
+#' For temporal series, miic reorganizes the dataset using the \emph{tau}
+#' \emph{tau} and \emph{delta_tau} parameters to transform the timesteps 
+#' into lagged samples. As starting point, a lagged graph is created with 
+#' only edges having at least one node laying on the last timestep. 
+#' Then, miic standard algorithm is applied to remove dispensable edges. 
+#' The remaining edges are then oriented by using the temporality and the 
+#' signature of causality in observational data.
 #'
 #' @references
 #' \itemize{
 #' \item Verny et al., \emph{PLoS Comp. Bio. 2017.}
 #' }
 #'
-#' @param inputData [a data frame or a 2D/3D array]\cr
-#' For non temporal series, a data frame that contains the observational data. 
-#' Each column corresponds to one variable and each row is a sample that gives 
-#' the values for all the observed variables. The column names correspond to 
-#' the names of the observed variables. Numeric columns will be treated as 
-#' continuous values, factors and character as categorical.\cr
-#' \cr
-#' For temporal series, \emph{inputData} can be either a dataframe,a 2D or 3D array.
-#' When \emph{inputData} is a dataframe, each column corresponds to one variable
-#' and each row is a timestep. When \emph{inputData} is an array, the dimension
-#' is [nb nodes, nb timesteps] for 2D and [nb samples, nb nodes, nb timesteps]
-#' when 3D. As for the non temporal case, numeric columns will be treated as 
-#' continuous values, factors and character as categorical.
+#' @param inputData [a data frame]\cr
+#' A data frame that contains the observational data. Each column corresponds 
+#' to one variable and each row is a sample that gives the values for all 
+#' the observed variables. The column names correspond to the names of 
+#' the observed variables.\cr
+#' Numeric columns will be treated as continuous values, factors 
+#' and character as categorical.\cr
+#' For temporal series, (when \emph{tau} parameter is >= 1), in addition 
+#' to the variables, the first column must provide the timestep information 
+#' in ascending order for each time series.
 #'
 #' @param blackBox [a data frame]
 #' An optional data frame containing the pairs of variables that should be
@@ -88,7 +86,7 @@
 #' @param categoryOrder [a data frame] An optional data frame giving information
 #' about how to order the various states of categorical variables. It will be
 #' used to compute the signs of the edges (using partial correlation coefficient)
-#' by sorting each variable’s levels accordingly to the given category order.
+#' by sorting each variable's levels accordingly to the given category order.
 #'
 #' @param trueEdges [a data frame]  An optional data frame containing all the
 #' true edges of the graph. Each line corresponds to one edge.
@@ -138,33 +136,24 @@
 #'
 #' @param tau [an integer] Optional, -1 by default.\cr
 #' Max lag used for temporal series. If \emph{tau} is supplied (integer >= 1), 
-#' miic switches to temporal mode: it contructs a lagged graph over tau periods 
-#' of time, and looks both for temporal and contemporaneous edges.
+#' miic switches to temporal mode: it contructs a lagged graph over 
+#' \emph{tau} / \emph{delta_tau} periods of time, and looks both for temporal 
+#' and contemporaneous edges.\cr
+#' Note that if \emph{delta_tau} is also supplied, \emph{tau} must be a
+#' multiple of \emph{delta_tau}.
 #' 
 #' @param movavg [an integer] Optional, -1 by default.\cr
 #' Used only in temporal mode, If \emph{movavg} is supplied (integer > 1), 
-#' a moving average operation is applied to the time series.\cr
-#' Note that when both moving average and subtiming are applied,
-#' the moving average is performed before the subtiming.
+#' a moving average operation is applied to each time series.\cr
 #' 
-#' @param subtiming [an integer] Optional, -1 by default.\cr
-#' Used only in temporal mode, If \emph{subtiming} is supplied (integer > 1), 
-#' the time series will be subtimed using 1 timestep every \emph{subtiming} 
-#' timesteps starting from the last.\cr 
-#' i.e.: on 1000 timesteps and \emph{subtiming} = 7, the timesteps kept 
-#' will be 1000, 993, 986, ..., 13, 6.\cr
-#' Note that when both moving average and subtiming are applied,
-#' the moving average is performed before the subtiming.
-#' 
-#' @param bootstrap [an int] Optional, default=-1.\cr
-#' Experimental, used only in temporal mode, When -1, no bootstraping 
-#' is performed. When > 0, select randomly \emph{bootstrap} lagged samples 
-#' (the samples obtained after transformation of the input samples over 
-#' \emph{tau} timesteps).\cr
-#' As normal when using bootstrapping, the \emph{bootstrap} value can be
-#' greater than the number of lagged samples as a lagged sample can be  
-#' selected more than once.
-#' 
+#' @param delta_tau [an integer] Optional, 1 by default.\cr
+#' When \emph{delta_tau} is supplied (integer > 1), the samples will be 
+#' construted using 1 timestep every \emph{delta_tau} timesteps starting 
+#' from the last.\cr 
+#' i.e.: on 1000 timesteps with  \emph{tau} = 14 and \emph{delta_tau} = 7, 
+#' the timesteps kept for the samples conversion will be 1000, 993, 986 
+#' for the first sample, the next sample will use 999, 992, 985 and so on.\cr
+#'  
 #' @param verbose [a boolean value] If TRUE, debugging output is printed.
 #'
 #' @return A \emph{miic-like} object that contains:
@@ -198,7 +187,7 @@
 #'  the same value as in the adjacency matrix at row \emph{x} and column \emph{y}.
 #'  \item \emph{trueOrt:} the orientation of the edge (\emph{x}, \emph{y}) present
 #'  in the true edges file (if true edges file is provided).
-#'  \item \emph{isOrtOk:} information about the consistency of the inferred graph’s
+#'  \item \emph{isOrtOk:} information about the consistency of the inferred graph's
 #'  orientations with a reference graph is given (i.e. if true edges file is provided).
 #'  Y: the orientation is consistent; N: the orientation is not consistent with
 #'  the PAG derived from the given true graph.
@@ -315,8 +304,7 @@ miic <- function(inputData,
                  consistent = c("no", "orientation", "skeleton"),
                  tau = -1,
                  movavg = -1,
-                 subtiming = -1,
-                 bootstrap = -1,
+                 delta_tau = 1,
                  verbose = FALSE
                  ) {
   res <- NULL
@@ -326,39 +314,20 @@ miic <- function(inputData,
   if (is.null(inputData)) {
     stop("The input data file is required")
   }
-  #
-  # Check if we use normal or temporal version of miic
-  #
+  if (!is.data.frame(inputData)) 
+    {
+    stop("The input data is not a dataframe")
+    }
+  
   if (tau > 0)
     {
-    #
     # If we use temporal version of miic, convert history into lagged nodes and samples
     #
-    print ("Using temporal version of miic")
-    if ( (!is.data.frame(inputData)) & (!is.array(inputData)) )
-      {
-      stop("The input data is not a datafraeme or an array")
-      }
-    if (is.data.frame(inputData)) 
-      {
-      inputData <- as.matrix (t(inputData), dim=c( ncol(inputData), nrow(inputData) ),
-                              dimnames=list ( colnames(inputData), rownames(inputData) ) )
-      }
+    cat ("Using temporal version of miic\n")
     struct_ret <- tmiic.transform_data_for_miic (inputData, tau, 
-                                categoryOrder=categoryOrder, movavg=movavg, 
-                                subtiming=subtiming, bootstrap=bootstrap)
+        categoryOrder=categoryOrder, movavg=movavg, delta_tau=delta_tau)
     inputData <- struct_ret$inputData
     categoryOrder <- struct_ret$categoryOrder
-    }
-  else
-    {
-    #
-    # Normal (non temporal) version of miic
-    #
-    if (!is.data.frame(inputData)) 
-      {
-      stop("The input data is not a dataframe")
-      }
     }
 
   effnAnalysis <- miic.evaluate.effn(inputData, plot = F)
