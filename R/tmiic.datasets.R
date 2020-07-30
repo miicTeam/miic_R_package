@@ -250,7 +250,7 @@ tmiic.call_funct <- function(funct, x)
 #' \item \emph{tmiic.f1}: \eqn{f(x) = x}
 #' \item \emph{tmiic.f2}: \eqn{f(x) = ( 1 - 4 * exp[-(x^2)/2] ) * x}
 #' \item \emph{tmiic.f3}: \eqn{f(x) = ( 1 - 4 * x^3 * exp[-(x^2)/2] ) * x}
-#' }
+#' }\cr
 #' @param n_timeseries [an integer] The number of samples to generate
 #' @param n_timesteps [an integer] The number of timesteps of the time series 
 #' generated
@@ -259,8 +259,8 @@ tmiic.call_funct <- function(funct, x)
 #'
 #' @return a list with two entries :
 #' \itemize{
-#' \item samples as an array of dimensions \emph{n_timeseries} * 
-#' \emph{n_nodes} * \emph{n_timesteps}
+#' \item a dataframe of \emph{n_timeseries} * \emph{n_timesteps} rows 
+#' and \emph{n_nodes} columns
 #' \item a dataframe with the true edes of the network
 #' }
 #' 
@@ -355,7 +355,7 @@ tmiic.generate_predefined_dataset <- function (model_idx, funct, n_timeseries,
 #' tmiic.generate_dataset
 #'
 #' @description 
-#' Generate \emph{n_timeseries} samples for \emph{n_nodes} nodes over 
+#' Generate \emph{n_timeseries} tile series for \emph{n_nodes} nodes over 
 #' \emph{n_timesteps} timesteps
 #'
 #' @details 
@@ -368,7 +368,8 @@ tmiic.generate_predefined_dataset <- function (model_idx, funct, n_timeseries,
 #' \item connected to the node2 at t-2 with strength 0.2
 #' } 
 #' the generation will compute for each timestep of node 1:\cr
-#' node1(t) <- 0.5 * funct ( node1[t-1] ) + 0.2 * funct ( node2[t-2] ) + white noise
+#' node1(t) <- 0.5 * node1[t-1] + 0.2 * funct ( node2[t-2] ) + white noise\cr
+#' (Note that funct is only applied when nodes are different)
 #' 
 #' Values of the first iterations are discarded, so the temporal data
 #' generated are not affected by the initial values.
@@ -386,13 +387,14 @@ tmiic.generate_predefined_dataset <- function (model_idx, funct, n_timeseries,
 #' @param funct [a function] The function to apply when an edge exist between
 #' two nodes
 #' @param list_nodes [a list] The list of nodes in the dataset
-#' @param n_timeseries [an integer] The number of samples to generate
-#' @param n_timesteps [an integer] The number of timesteps of the time series 
+#' @param n_timeseries [an integer] The number of time series to generate
+#' @param n_timesteps [an integer] The number of timesteps of each time series 
 #' generated
 #' @param seed [an integer] Optional, NULL by default. The seed to use when 
 #' generating the dataset
 #' 
-#' @return an array of dimensions n_timeseries * n_nodes * n_timesteps
+#' @return a dataframe of \emph{n_timeseries} * \emph{n_timesteps} rows 
+#' and \emph{n_nodes} columns
 #' 
 #' @export
 #' @useDynLib miic
@@ -562,7 +564,7 @@ tmiic.generate_dataset <- function (true_edges, funct, list_nodes, n_timeseries,
 #'
 #' @param df_data [an array of dimensions n_timeseries * n_nodes * n_timesteps]
 #' The array containing the samples
-#' @param timseseries_idx [an integer] The sample index to plot
+#' @param timseseries_idx [an integer] The index of the time series to plot
 #' @param title [a string] Optional, NULL by default. The title of the plot
 #' @param filename [a string] Optional, NULL by default. If supplied, the plot
 #' is saved in this file

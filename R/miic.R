@@ -12,7 +12,7 @@
 #' based on the signature of causality in observational data.
 #' 
 #' For temporal series, miic reorganizes the dataset using the \emph{tau}
-#' \emph{tau} and \emph{delta_tau} parameters to transform the timesteps 
+#' and \emph{delta_tau} parameters to transform the timesteps 
 #' into lagged samples. As starting point, a lagged graph is created with 
 #' only edges having at least one node laying on the last timestep. 
 #' Then, miic standard algorithm is applied to remove dispensable edges. 

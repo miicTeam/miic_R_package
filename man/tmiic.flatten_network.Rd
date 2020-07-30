@@ -31,12 +31,14 @@ Possible values are \emph{"normal"}, \emph{"combine"}, \emph{"unique"},
   X_lag1->Y_lag0 > X_lag2<-Y_lag0.
 \item When \emph{flatten_mode} = \emph{"unique"}, only the edges having the
   highest log_confidence for a couple of nodes are kept in the flattened 
-  network.\cr 
+  network. If several edges between the sames nodes have the same
+  log_confidence, then the edge kept is the one with the minimum lag.\cr 
   i.e.: X_lag1->Y_lag0, X_lag2<-Y_lag0 with log_confidence of 
   X_lag1->Y_lag0 > X_lag2<-Y_lag0 become X->Y lag=1.
 \item When \emph{flatten_mode} = \emph{"drop"}, only the edges having the 
   highest log_confidence for a couple of nodes are kept in the flattened 
-  network.\cr
+  network. If several edges between the sames nodes have the same
+  log_confidence, then the edge kept is the one with the minimum lag.\cr
   i.e. :  X_lag1->Y_lag0, X_lag2<-Y_lag0 with log_confidence of 
   X_lag1->Y_lag0 > X_lag2<-Y_lag0 become X->Y. The lag information is 
   "lost" after flattening
@@ -61,7 +63,7 @@ Flattten the lagged network returned by tmiic
 }
 \details{
 In temporal mode, the network returned by miic contains lagged nodes 
-(X_lag0, X_lag1, ...) over tau timesteps. This function flatten the 
-network depending of the \emph{flatten_mode} parameter.\cr
+(X_lag0, X_lag1, ...). This function flatten the  network depending 
+of the \emph{flatten_mode} parameter.\cr
 Note that only the adjMatrix and summary data frames are flatened.
 }

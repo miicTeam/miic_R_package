@@ -385,8 +385,8 @@ tmiic.lag_one_timeseries <- function (df_timeseries, list_nodes_lagged,
 #'
 #' @details 
 #' In temporal mode, the network returned by miic contains lagged nodes 
-#' (X_lag0, X_lag1, ...) over tau / delta_tau layers. This function flatten the 
-#' network depending of the \emph{flatten_mode} parameter.\cr
+#' (X_lag0, X_lag1, ...). This function flatten the  network depending 
+#' of the \emph{flatten_mode} parameter.\cr
 #' Note that only the adjMatrix and summary data frames are flatened.
 #' 
 #' @param miic_return [a miic object] The object returned by miic's 

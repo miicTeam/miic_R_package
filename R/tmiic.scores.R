@@ -23,8 +23,7 @@
 #' (the summary dataframe of tmiic's return)
 #' @param df_true_edges [a dataframe]  The list of true edges
 #' @param list_nodes [a list] The list of nodes in the network
-#' @param nbLayers [an integer] The number of timesteps back in time used to 
-#' construct the temporal graph
+#' @param n_layers [an integer] The number of layers in the temporal graph
 #' 
 #' @returns [a list] The returned list contains two data frames containing 
 #' both the confusion matrix, the precision, recall and f-score. The first 
@@ -33,7 +32,7 @@
 #' @export
 #' @useDynLib miic
 #-----------------------------------------------------------------------------
-tmiic.compute_scores <- function (df_edges, df_true_edges, list_nodes, nbLayers) 
+tmiic.compute_scores <- function (df_edges, df_true_edges, list_nodes, n_layers) 
   {
   DEBUG <- FALSE
   if (DEBUG)
@@ -41,7 +40,7 @@ tmiic.compute_scores <- function (df_edges, df_true_edges, list_nodes, nbLayers)
     print ("tmiic.compute_scores:")
     print ("List nodes:")
     print (list_nodes)
-    print (paste ("nbLayers:", nbLayers, sep="") )
+    print (paste ("n_layers:", n_layers, sep="") )
     print (paste ("Input edges df (class ", class(df_edges), ") limited to type 'P'=", sep="") )
     print (df_edges[df_edges$type=='P',] 
              %>%  dplyr::select (x,y,type,infOrt,sign,info,info_cond,cplx,Nxy_ai,log_confidence))
@@ -87,30 +86,30 @@ tmiic.compute_scores <- function (df_edges, df_true_edges, list_nodes, nbLayers)
     # Get the lag for each the vertices of the edge
     #
     pos_lag_x <- stringr::str_locate(node_x, "_lag")
-    nbLayers_idx_x <- 0
+    lag_x <- 0
     if ( !is.na(pos_lag_x[1]) )
       {
-      nbLayers_idx_x <- stringr::str_remove(node_x, ".*_lag")
-      nbLayers_idx_x <- strtoi (nbLayers_idx_x)
+      lag_x <- stringr::str_remove(node_x, ".*_lag")
+      lag_x <- strtoi (lag_x)
       }
     pos_lag_y <- stringr::str_locate(node_y, "_lag")
-    nbLayers_idx_y <- 0
+    lag_y <- 0
     if ( !is.na(pos_lag_y[1]) )
       {
-      nbLayers_idx_y <- stringr::str_remove(node_y, ".*_lag")
-      nbLayers_idx_y <- strtoi (nbLayers_idx_y)
+      lag_y <- stringr::str_remove(node_y, ".*_lag")
+      lag_y <- strtoi (lag_y)
       }
     #
     # It temporal, ensure to order from oldest to newest
     #
-    diff = nbLayers_idx_x - nbLayers_idx_y
+    diff = lag_x - lag_y
     if (diff < 0)
       {
       diff <- - diff
       
-      temp_var <- nbLayers_idx_x
-      nbLayers_idx_x <- nbLayers_idx_y
-      nbLayers_idx_y <- temp_var
+      temp_var <- lag_x
+      lag_x <- lag_y
+      lag_y <- temp_var
       
       temp_var <- node_x
       node_x <- node_y
@@ -329,8 +328,7 @@ tmiic.compute_scores <- function (df_edges, df_true_edges, list_nodes, nbLayers)
   #
   # Compute nb of no edges 
   #
-  nbLayersx_plus_1 <- nbLayers + 1
-  nb_possible_edges_for_one_lag0_node <- nbLayers + nbLayersx_plus_1 * (n_nodes - 1)
+  nb_possible_edges_for_one_lag0_node <- (n_layers-1) + n_layers * (n_nodes - 1)
   nb_possible_edges_with_one_node_lag0 <- nb_possible_edges_for_one_lag0_node * n_nodes
   nb_possible_edges_non_orient <- nb_possible_edges_with_one_node_lag0 - (n_nodes - 1)
   nb_possible_edges_orient <- nb_possible_edges_non_orient * 2
@@ -565,8 +563,7 @@ tmiic.compute_scores <- function (df_edges, df_true_edges, list_nodes, nbLayers)
 #' full results or only summary
 #' @param df_true_edges [a dataframe] The list of the true edges
 #' @param list_nodes [a list] The list of nodes in the network
-#' @param nbLayers [an integer] The number of timesteps back in time used to 
-#' construct the temporal graphs
+#' @param n_layers [an integer] The number of layers in the temporal graph
 #' 
 #' @returns [a list] the returned list contains two dataframes containing 
 #' both the list of scores for each tmiic result. The first dataframe is for
@@ -575,7 +572,7 @@ tmiic.compute_scores <- function (df_edges, df_true_edges, list_nodes, nbLayers)
 #' @export
 #' @useDynLib miic
 #-----------------------------------------------------------------------------
-tmiic.compute_list_scores <- function (list_res, df_true_edges, list_nodes, nbLayers) 
+tmiic.compute_list_scores <- function (list_res, df_true_edges, list_nodes, n_layers) 
   {
   DEBUG <- FALSE
   if (DEBUG)
@@ -618,7 +615,7 @@ tmiic.compute_list_scores <- function (list_res, df_true_edges, list_nodes, nbLa
       {
       if (! is.data.frame(one_res))
         one_res <- one_res$all.edges.summary
-      tmp_ret <- tmiic.compute_scores (one_res, df_true_edges, list_nodes, nbLayers)
+      tmp_ret <- tmiic.compute_scores (one_res, df_true_edges, list_nodes, n_layers)
       df_scores_unoriented[nrow(df_scores_unoriented) + 1,] <- tmp_ret[[1]]
       df_scores_oriented  [nrow(df_scores_oriented)   + 1,] <- tmp_ret[[2]]
       }

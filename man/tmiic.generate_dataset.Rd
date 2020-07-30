@@ -8,8 +8,8 @@ tmiic.generate_dataset(
   true_edges,
   funct,
   list_nodes,
-  n_samples,
-  n_time,
+  n_timeseries,
+  n_timesteps,
   seed = NULL
 )
 }
@@ -30,20 +30,21 @@ two nodes}
 
 \item{list_nodes}{[a list] The list of nodes in the dataset}
 
-\item{n_samples}{[an integer] The number of samples to generate}
+\item{n_timeseries}{[an integer] The number of time series to generate}
 
-\item{n_time}{[an integer] The number of timesteps of the time series 
+\item{n_timesteps}{[an integer] The number of timesteps of each time series 
 generated}
 
 \item{seed}{[an integer] Optional, NULL by default. The seed to use when 
 generating the dataset}
 }
 \value{
-an array of dimensions n_samples * n_nodes * n_time
+a dataframe of \emph{n_timeseries} * \emph{n_timesteps} rows 
+and \emph{n_nodes} columns
 }
 \description{
-Generate \emph{n_samples} samples for \emph{n_nodes} nodes over 
-\emph{n_time} timesteps
+Generate \emph{n_timeseries} tile series for \emph{n_nodes} nodes over 
+\emph{n_timesteps} timesteps
 }
 \details{
 The function uses the \emph{funct} and the \emph{true_edges} parameters 
@@ -55,7 +56,8 @@ i.e.: if in the true edges, the node1 is:
 \item connected to the node2 at t-2 with strength 0.2
 } 
 the generation will compute for each timestep of node 1:\cr
-node1(t) <- 0.5 * funct ( node1[t-1] ) + 0.2 * funct ( node2[t-2] ) + white noise
+node1(t) <- 0.5 * node1[t-1] + 0.2 * funct ( node2[t-2] ) + white noise
+(Note that funct is only applied when nodes are different)
 
 Values of the first iterations are discarded, so the temporal data
 generated are not affected by the initial values.

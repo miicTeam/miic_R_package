@@ -5,10 +5,10 @@
 \title{Igraph plotting function for miic}
 \usage{
 miic.plot(
-  miic_result,
+  g,
   method = "log_confidence",
-  igraphLayout = NULL,
-  userLayout = NULL,
+  igraph_layout = NULL,
+  user_layout = NULL,
   miic_defaults = TRUE,
   filename = NULL,
   file_figsize = NULL,
@@ -33,18 +33,18 @@ miic.plot(
 )
 }
 \arguments{
-\item{miic_result}{[a miic graph object]
+\item{g}{[a miic graph object]
 The graph object returned by the miic execution.}
 
 \item{method}{[a string; \emph{c("pcor", "log_confidence")}]
 Optional, "log_confidence" by default. The column used to plot the 
 strength of the edges.}
 
-\item{igraphLayout}{[an igraph layout object]
+\item{igraph_layout}{[an igraph layout object]
 Optional, \emph{layout_with_kk} by default. When set, it is used to plot 
 the network. See the igraph manual for more information.}
 
-\item{userLayout}{[a data frame]
+\item{user_layout}{[a data frame]
 Optional, NULL by default. A data frame reporting the position of nodes. 
 Each line corresponds to the \emph{(x,y)} coordinates of each vertex.
 When the data frame has two columns, the first one is assocated with

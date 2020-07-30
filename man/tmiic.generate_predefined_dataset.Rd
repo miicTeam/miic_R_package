@@ -7,8 +7,8 @@
 tmiic.generate_predefined_dataset(
   model_idx,
   funct,
-  n_samples,
-  n_time,
+  n_timeseries,
+  n_timesteps,
   seed = NULL
 )
 }
@@ -34,23 +34,23 @@ predefined ones:
 \item \emph{tmiic.f3}: \eqn{f(x) = ( 1 - 4 * x^3 * exp[-(x^2)/2] ) * x}
 }}
 
-\item{n_samples}{[an integer] The number of samples to generate}
+\item{n_timeseries}{[an integer] The number of samples to generate}
 
-\item{n_time}{[an integer] The number of timesteps of the time series 
+\item{n_timesteps}{[an integer] The number of timesteps of the time series 
 generated}
 
-\item{seed}{[an integer] Optiinal, NULL by default. The seed to use when 
+\item{seed}{[an integer] Optional, NULL by default. The seed to use when 
 generating the dataset}
 }
 \value{
 a list with two entries :
 \itemize{
-\item samples as an array of dimensions \emph{n_samples} * 
-\emph{n_nodes} * \emph{n_time}
+\item a dataframe of \emph{n_timeseries} * \emph{n_timesteps} rows 
+and \emph{n_nodes} columns
 \item a dataframe with the true edes of the network
 }
 }
 \description{
-Generate n_samples samples for x nodes over n_time timesteps
+Generate n_timeseries samples for x nodes over n_timesteps timesteps
 using a predefined model
 }

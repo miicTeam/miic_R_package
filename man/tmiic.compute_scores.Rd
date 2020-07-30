@@ -4,7 +4,7 @@
 \alias{tmiic.compute_scores}
 \title{tmiic.compute_scores}
 \usage{
-tmiic.compute_scores(df_edges, df_true_edges, list_nodes, tau)
+tmiic.compute_scores(df_edges, df_true_edges, list_nodes, n_layers)
 }
 \arguments{
 \item{df_edges}{[a dataframe] The list of edges computed by tmiic
@@ -14,8 +14,7 @@ tmiic.compute_scores(df_edges, df_true_edges, list_nodes, tau)
 
 \item{list_nodes}{[a list] The list of nodes in the network}
 
-\item{tau}{[an integer] The number of timesteps back in time used to 
-construct the temporal graph}
+\item{n_layers}{[an integer] The number of layers in the temporal graph}
 }
 \value{
 [a list] The returned list contains two data frames containing 
