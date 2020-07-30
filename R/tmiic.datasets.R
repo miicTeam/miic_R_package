@@ -1,5 +1,5 @@
 #*****************************************************************************
-# Filename   : tmiic_datasets.R                   Creation date: 24 march 2020
+# Filename   : tmiic.datasets.R                   Creation date: 24 march 2020
 #
 # Description: time series data sets generation
 #
@@ -70,7 +70,7 @@
 # X1(t) <- 0.40 * X1(t-1) + noise1[t]
 # X2(t) <- 0.30 * X2(t-1) - 0.287 * f( X1(t-1) ) + 0.287 * f( X3(t-1) ) + noise2[t]
 # X3(t) <- noise3[t]
-# X4(t) <- 0.20 * X4(t-1) + 0.287 * f( X5(t-1) ) - 0.287 * f( X3(t-1) ) + noise4[t]
+# X4(t) <- 0.20 * X4(t-1) + 0.287 * f( X5(t-2) ) - 0.287 * f( X3(t-1) ) + noise4[t]
 # X5(t) <- 0.60 * X5(t-1)  + noise5[t]
 #
 # noises ~ N(0, 1)
@@ -126,7 +126,7 @@ tmiic.DF_TRUE_EDGES_MODEL_6 = data.frame (
 tmiic.DF_TRUE_EDGES_MODEL_7 = data.frame (
   orig     = c(1   , 2   , 1     , 3     , 4   , 3     , 5     , 5   ), 
   dest     = c(1   , 2   , 2     , 2     , 4   , 4     , 4     , 5   ),
-  lag      = c(1   , 1   , 1     , 1     , 1   , 1     , 1     , 1   ),
+  lag      = c(1   , 1   , 1     , 1     , 1   , 1     , 2     , 1   ),
   strength = c(+0.4, +0.3, -0.287, +0.287, +0.2, -0.287, +0.287, +0.6),
   stringsAsFactors=FALSE)
 
@@ -141,6 +141,9 @@ tmiic.DF_TRUE_EDGES_MODEL_7 = data.frame (
 #' @param x [a number]
 #'
 #' @return the number received as argument 
+#'
+#' @export
+#' @useDynLib miic
 #-----------------------------------------------------------------------------
 tmiic.f1 <- function (x) 
   {
@@ -159,6 +162,9 @@ tmiic.f1 <- function (x)
 #' @param x [a number]
 #'
 #' @return the number computed by f(x)
+#' 
+#' @export
+#' @useDynLib miic
 #-----------------------------------------------------------------------------
 tmiic.f2 <- function (x) 
   {
@@ -177,6 +183,9 @@ tmiic.f2 <- function (x)
 #' @param x [a number]
 #'
 #' @return the number computed by f(x)
+#' 
+#' @export
+#' @useDynLib miic
 #-----------------------------------------------------------------------------
 tmiic.f3 <- function (x) 
   {
@@ -184,7 +193,7 @@ tmiic.f3 <- function (x)
   }
 
 #-----------------------------------------------------------------------------
-# Constant to iterate over possible models and functions
+# Constant to find the model by its index
 #-----------------------------------------------------------------------------
 tmiic.LIST_MODELS = list (model1 = tmiic.DF_TRUE_EDGES_MODEL_1, 
                           model2 = tmiic.DF_TRUE_EDGES_MODEL_2, 
@@ -193,7 +202,6 @@ tmiic.LIST_MODELS = list (model1 = tmiic.DF_TRUE_EDGES_MODEL_1,
                           model5 = tmiic.DF_TRUE_EDGES_MODEL_5, 
                           model6 = tmiic.DF_TRUE_EDGES_MODEL_6, 
                           model7 = tmiic.DF_TRUE_EDGES_MODEL_7)
-tmiic.LIST_FUNCTS = list (f1 = tmiic.f1, f2 = tmiic.f2, f3 = tmiic.f3)
 
 #-----------------------------------------------------------------------------
 # tmiic.call_funct
@@ -221,7 +229,7 @@ tmiic.call_funct <- function(funct, x)
 #' tmiic.generate_predefined_dataset
 #'
 #' @description 
-#' Generate n_samples samples for x nodes over n_time timesteps
+#' Generate n_timeseries samples for x nodes over n_timesteps timesteps
 #' using a predefined model
 #'
 #' @param model_idx [an integer betwen 0 and 7] The model for the data 
@@ -243,32 +251,32 @@ tmiic.call_funct <- function(funct, x)
 #' \item \emph{tmiic.f2}: \eqn{f(x) = ( 1 - 4 * exp[-(x^2)/2] ) * x}
 #' \item \emph{tmiic.f3}: \eqn{f(x) = ( 1 - 4 * x^3 * exp[-(x^2)/2] ) * x}
 #' }
-#' @param n_samples [an integer] The number of samples to generate
-#' @param n_time [an integer] The number of timesteps of the time series 
+#' @param n_timeseries [an integer] The number of samples to generate
+#' @param n_timesteps [an integer] The number of timesteps of the time series 
 #' generated
-#' @param seed [an integer] Optiinal, NULL by default. The seed to use when 
+#' @param seed [an integer] Optional, NULL by default. The seed to use when 
 #' generating the dataset
 #'
 #' @return a list with two entries :
 #' \itemize{
-#' \item samples as an array of dimensions \emph{n_samples} * 
-#' \emph{n_nodes} * \emph{n_time}
+#' \item samples as an array of dimensions \emph{n_timeseries} * 
+#' \emph{n_nodes} * \emph{n_timesteps}
 #' \item a dataframe with the true edes of the network
 #' }
 #' 
 #' @export
 #' @useDynLib miic
 #-----------------------------------------------------------------------------
-tmiic.generate_predefined_dataset <- function (model_idx, funct, n_samples, 
-                                               n_time, seed=NULL) 
+tmiic.generate_predefined_dataset <- function (model_idx, funct, n_timeseries, 
+                                               n_timesteps, seed=NULL) 
   {
   DEBUG <- FALSE
   if (DEBUG)
     {
     print ("tmiic.generate_predefined_dataset:")
     print (paste ("model_idx=", model_idx, sep="") )
-    print (paste ("n_samples=", n_samples, sep="") )
-    print (paste ("n_time=", n_time, sep="") )
+    print (paste ("n_timeseries=", n_timeseries, sep="") )
+    print (paste ("n_timesteps=", n_timesteps, sep="") )
     }
   
   if ( (model_idx < 0) | (model_idx > length(tmiic.LIST_MODELS)) )
@@ -288,16 +296,19 @@ tmiic.generate_predefined_dataset <- function (model_idx, funct, n_samples,
     true_edges <- data.frame ( orig=character(), dest=character(),
                                lag=integer(), strength=double(), 
                                stringsAsFactors = FALSE)
-    data_tab <- array ( data=NA, dim=c(n_samples, n_nodes, n_time),
-                        dimnames=list(seq(1,n_samples), list_nodes, seq(1,n_time )) )
-    print (dim(data_tab))
-    for(sample_idx in 1:n_samples)
+    df_data <- data.frame (matrix(ncol=n_nodes+1, nrow=n_timeseries*n_timesteps), 
+                             stringsAsFactors=FALSE)
+    colnames (df_data) <- c("timestep", list_nodes)
+  
+    for(timseseries_idx in 1:n_timeseries)
       {
-      for(node_idx in 1:n_nodes)
+      for(timestep_idx in 1:n_timesteps)
         {
-        for(time_idx in 1:n_time)
+        new_line_idx <- (timseseries_idx-1) * n_timesteps + timestep_idx
+        df_data [new_line_idx, 1] <- timestep_idx
+        for(node_idx in 1:n_nodes)
           {
-          data_tab [sample_idx, node_idx, time_idx] <- sample_idx * 10000 + node_idx * 1000 + time_idx
+          df_data [new_line_idx, node_idx+1] <- timseseries_idx * 10000 + node_idx * 1000 + timestep_idx
           }
         }
       }
@@ -308,16 +319,16 @@ tmiic.generate_predefined_dataset <- function (model_idx, funct, n_samples,
     # Model >= 1 are predefined models
     #
     true_edges <- tmiic.LIST_MODELS[[model_idx]]
-    data_tab <- tmiic.generate_dataset (true_edges, funct, list_nodes, 
-                                        n_samples, n_time, seed) 
+    df_data <- tmiic.generate_dataset (true_edges, funct, list_nodes, 
+                                       n_timeseries, n_timesteps, seed) 
     #
-    # For model 7, erase node 3 data which is the latent node and modify the 
+    # For model 7, erase 3rd node data which is the latent node and modify the 
     # true edges dataframe to remove edges starting from node3 and add a latent
     # edge between node 2 and 4 (indicated by strengh = 0)
     #
     if (model_idx == 7)
       {
-      data_tab[,3,] <- rnorm(n_samples * n_time)
+      df_data[,4] <- rnorm (n_timeseries * n_timesteps)
       true_edges <- true_edges[true_edges$orig != 3,]
       true_edges [nrow(true_edges) + 1,] = c(2, 4, 0, 0)
       }
@@ -328,13 +339,14 @@ tmiic.generate_predefined_dataset <- function (model_idx, funct, n_samples,
     print ("Returned true edges:")
     print (true_edges)
     print ("Returned array dimension:")
-    print (dim(data_tab))
+    print (dim(df_data))
     print ("Returned data for first sample=1, 5 first timestep:")
-    print (data_tab[1,,1:5])
-    print (paste ("Returned array on last sample=", n_samples, ", 5 last timesteps", sep="") )
-    print (data_tab[n_samples,,(n_time-5):n_time])
+    print (df_data[1:5,])
+    print (paste ("Returned array on last sample=", n_timeseries, ", 5 last timesteps", sep="") )
+    last_row = nrow(df_data)
+    print (df_data[(last_row-5):last_row,])
     }
-  return ( list(data_tab, true_edges) )
+  return ( list(df_data, true_edges) )
   }
 
 #-----------------------------------------------------------------------------
@@ -343,8 +355,8 @@ tmiic.generate_predefined_dataset <- function (model_idx, funct, n_samples,
 #' tmiic.generate_dataset
 #'
 #' @description 
-#' Generate \emph{n_samples} samples for \emph{n_nodes} nodes over 
-#' \emph{n_time} timesteps
+#' Generate \emph{n_timeseries} samples for \emph{n_nodes} nodes over 
+#' \emph{n_timesteps} timesteps
 #'
 #' @details 
 #' The function uses the \emph{funct} and the \emph{true_edges} parameters 
@@ -374,19 +386,19 @@ tmiic.generate_predefined_dataset <- function (model_idx, funct, n_samples,
 #' @param funct [a function] The function to apply when an edge exist between
 #' two nodes
 #' @param list_nodes [a list] The list of nodes in the dataset
-#' @param n_samples [an integer] The number of samples to generate
-#' @param n_time [an integer] The number of timesteps of the time series 
+#' @param n_timeseries [an integer] The number of samples to generate
+#' @param n_timesteps [an integer] The number of timesteps of the time series 
 #' generated
 #' @param seed [an integer] Optional, NULL by default. The seed to use when 
 #' generating the dataset
 #' 
-#' @return an array of dimensions n_samples * n_nodes * n_time
+#' @return an array of dimensions n_timeseries * n_nodes * n_timesteps
 #' 
 #' @export
 #' @useDynLib miic
 #-----------------------------------------------------------------------------
-tmiic.generate_dataset <- function (true_edges, funct, list_nodes, n_samples, 
-                                    n_time, seed=NULL) 
+tmiic.generate_dataset <- function (true_edges, funct, list_nodes, n_timeseries, 
+                                    n_timesteps, seed=NULL) 
   {
   DEBUG <- FALSE
   if (DEBUG)
@@ -396,134 +408,161 @@ tmiic.generate_dataset <- function (true_edges, funct, list_nodes, n_samples,
     print (true_edges)
     print ("list_nodes=")
     print (list_nodes)
-    print (paste ("n_samples=", n_samples, sep="") )
-    print (paste ("n_time=", n_time, sep="") )
+    print (paste ("n_timeseries=", n_timeseries, sep="") )
+    print (paste ("n_timesteps=", n_timesteps, sep="") )
     }
   n_nodes = length (list_nodes)
   max_lag = max(true_edges$lag)
-  n_time_generation = (n_time + max_lag) * 2
+  #
+  # We will generate more timesteps than requested to discard the first ones
+  # so the generated data are not affected by the intial values.
+  #
+  n_time_generation = n_timesteps * 2
   # 
-  # If seed is specified
+  # Set seed if specified and init an array with white noise
   #
   if ( !is.null (seed) )
     set.seed (seed)
+  df_random <- array ( data=rnorm(n_timeseries * n_nodes * n_time_generation),
+                       dim=c(n_timeseries, n_nodes, n_time_generation),
+                       dimnames=list ( seq(1,n_timeseries), list_nodes, seq(1,n_time_generation)
+                     )               )
   #
-  # Init the array with white noise, dimensions n_samples * n_nodes * n_time_generation
+  # Generate n_timeseries time series
   #
-  data_tab <- array ( data=rnorm(n_samples * n_nodes * n_time_generation),
-                      dim=c(n_samples, n_nodes, n_time_generation),
-                      dimnames=list ( seq(1,n_samples), list_nodes, seq(1,n_time_generation) ) )
-  #
-  # Generate n_samples time series
-  #
-  for(sample_idx in 1:n_samples)
+  df_data <- data.frame (matrix(ncol=n_nodes+1, nrow=0), stringsAsFactors=FALSE)
+  colnames (df_data) <- c("timestep", list_nodes)
+  
+  for(timseseries_idx in 1:n_timeseries)
     {
-    #
     # Generate the time serie
     #
-    for (time_idx in (max_lag+1):n_time_generation)
+    df_tmp <- data.frame (matrix(ncol=n_nodes, nrow=n_time_generation), 
+                          stringsAsFactors=FALSE)
+    for (timestep_idx in 1:n_time_generation)
       {
-      #
-      # For each true edge, compute new value of nodes
-      #
-      if ( (DEBUG) & (sample_idx == 1) & (time_idx == n_time_generation - n_time + 1) )
+      if ( (DEBUG) & (timseseries_idx == 1)  & (timestep_idx == max_lag+1) )
         {
-        print (paste ("time_idx=", time_idx, sep="") ) 
+        print ("Nodes vals before random init=") 
+        print (df_tmp[timestep_idx,])
+        print ("noise at t=") 
+        print (df_random[timseseries_idx,,timestep_idx] ) 
+        }
+      df_tmp[timestep_idx,] <- df_random[timseseries_idx,,timestep_idx]
+      #
+      # Until max_lag, we just initialize the tmp df with the random values
+      #
+      if (timestep_idx <= max_lag)
+        next          
+      #
+      # Above max_lag, we are able to compute the nodes values using their history
+      #
+      if ( (DEBUG) & (timseseries_idx == 1) & (timestep_idx == max_lag+1) )
+        {
+        print (paste ("timestep_idx=", timestep_idx, sep="") ) 
         print ("t-2=") 
-        print (data_tab[sample_idx, , time_idx-2] ) 
+        print (df_tmp[(timestep_idx-2),] ) 
         print ("t-1=") 
-        print (data_tab[sample_idx, , time_idx-1] ) 
-        print ("old val (noise) at t=") 
-        print (data_tab[sample_idx, , time_idx] ) 
+        print (df_tmp[(timestep_idx-1),] ) 
+        print ("nodes vals at t (init with noise)=") 
+        print (df_tmp[timestep_idx,] ) 
         }
       
       for (edge_idx in 1:nrow(true_edges) )
         {
         one_edge <- true_edges[edge_idx,]
+        data_orig_idx <- timestep_idx - one_edge$lag
         #
         # Function is applied only when edge is from a different node
         #
         if (one_edge$orig == one_edge$dest)
-          {
-          fct_res <- data_tab[sample_idx, one_edge$orig, time_idx - one_edge$lag]
-          }
+          fct_res <- df_tmp[data_orig_idx, one_edge$orig]
         else
-          {
-          fct_res <- tmiic.call_funct (funct, data_tab[sample_idx, one_edge$orig, time_idx - one_edge$lag])
-          }
+          fct_res <- tmiic.call_funct (funct, df_tmp[data_orig_idx, one_edge$orig])
         
-        if ( (DEBUG) & (sample_idx == 1) & (time_idx == n_time_generation - n_time + 1) )
+        if ( (DEBUG) & (timseseries_idx == 1)  & (timestep_idx == max_lag+1) )
           {
           print ("edge=") 
           print (one_edge) 
           print (paste ("old val of dest node ", list_nodes[[one_edge$dest]], "=",
-                        data_tab[sample_idx, one_edge$dest, time_idx], sep="") )
+                        df_tmp[timestep_idx, one_edge$dest], sep="") )
           print (paste ("use val of orig node ", list_nodes[[one_edge$orig]], 
                         " lag ", one_edge$lag, "=",
-                        data_tab[sample_idx, one_edge$orig, time_idx - one_edge$lag], sep="") )
+                        df_tmp[data_orig_idx, one_edge$orig], sep="") )
           print (paste ("function result=", fct_res, sep="") )
           print (paste ("function result * strength=", one_edge$strength * fct_res, sep="") )
           }
         
-        data_tab[sample_idx, one_edge$dest, time_idx] <- data_tab[sample_idx, one_edge$dest, time_idx] + one_edge$strength * fct_res
+        df_tmp[timestep_idx, one_edge$dest] <- df_tmp[timestep_idx, one_edge$dest] + one_edge$strength * fct_res
 
-        if ( (DEBUG) & (sample_idx == 1) & (time_idx == n_time_generation - n_time + 1) )
+        if ( (DEBUG) & (timseseries_idx == 1) & (timestep_idx == max_lag+1) )
           {
           print (paste ("new val at t of dest node ", list_nodes[[one_edge$dest]], "=",
-                        data_tab[sample_idx, one_edge$dest, time_idx], sep="") ) 
+                        df_tmp[timestep_idx, one_edge$dest], sep="") ) 
           }
         }
 
-      if ( (DEBUG) & (sample_idx == 1) & (time_idx == n_time_generation - n_time + 1) )
+      if ( (DEBUG) & (timseseries_idx == 1) & (timestep_idx == max_lag+1) )
         {
         print ("new val at t=") 
-        print (data_tab[sample_idx, , time_idx] ) 
+        print (df_tmp[timestep_idx,] ) 
         }
       }
-    }
-  #
-  # Keep only the last n_time timesteps so the tempral data
-  # generated are not affected by the intial values.
-  #
-  data_tab <- data_tab [, , (n_time_generation-n_time+1):n_time_generation]
-  dim_data <- dim(data_tab)
-  if ( length (dim_data) <= 2)
-    {
     #
-    # CAUTION : If we have only one sample, the dimension is reduced to 2
-    # => change back to 3
+    # One timeseries has been fully computed in df_tmp, add last timesteps into data
     #
-    tmp_dim_names <- dimnames(data_tab)
-    dim(data_tab) <- c(1, dim_data)
-    dimnames(data_tab) <- c(c(1), tmp_dim_names) 
-    dim_data <- dim(data_tab)
+    if (DEBUG)
+      {
+      print ("Tmp array dimension")
+      print ( dim(df_tmp) )
+      print ("Tmp Data around future 1st row ")
+      print (df_tmp[(n_time_generation-n_timesteps):(n_time_generation-n_timesteps+1),])
+      dbg_row_data = nrow(df_data)      
+      print ("Data array dimension")
+      print ( dim(df_data) )
+      print ("End row of data")
+      print (df_data[dbg_row_data,])
+      }
+    df_tmp <- df_tmp[(n_time_generation-n_timesteps+1):n_time_generation,]
+    df_tmp <- cbind (timestep=seq(1,n_timesteps), df_tmp)
+    df_data <- rbind (df_data, df_tmp)
+    if (DEBUG)
+      {
+      print ("New Tmp array dimension")
+      print ( dim(df_tmp) )
+      print ("Tmp Data 1st row ")
+      print (df_tmp[1,])
+      print ("Data array new dimension")
+      print ( dim(df_data) )
+      print ("Data around add of rows")
+      print (df_data[dbg_row_data:(dbg_row_data+1),])
+      }
     }
-  dimnames(data_tab)[[3]] <- seq(1, n_time)
-  
+  row.names(df_data) <- NULL
   if (DEBUG)
     {
     print ("Returned array dimension")
-    print ( dim(data_tab) )
+    print ( dim(df_data) )
     print ("Returned array on first sample=1, 5 first timesteps")
-    print (data_tab [1,,1:5])
-    print (paste ("Returned array on last sample=", n_samples, ", 5 last timesteps", sep="") )
-    print (data_tab [n_samples,,(n_time-5):n_time])
+    print (df_data [1:5,])
+    print (paste ("Returned array on last sample=", n_timeseries, ", 5 last timesteps", sep="") )
+    last_row <- nrow(df_data)
+    print (df_data [(last_row-5):last_row,])
     }
-  return (data_tab)
+  return (df_data)
   }
 
-
 #-----------------------------------------------------------------------------
-# tmiic.plot_one_sample
+# tmiic.plot_one_timeseries
 #-----------------------------------------------------------------------------
-#' tmiic.plot_one_sample
+#' tmiic.plot_one_timeseries
 #' 
 #' @description 
 #' Plot one sample of a temporal serie
 #'
-#' @param data_tab [an array of dimensions n_samples * n_nodes * n_time]
+#' @param df_data [an array of dimensions n_timeseries * n_nodes * n_timesteps]
 #' The array containing the samples
-#' @param sample_idx [an integer] The sample index to plot
+#' @param timseseries_idx [an integer] The sample index to plot
 #' @param title [a string] Optional, NULL by default. The title of the plot
 #' @param filename [a string] Optional, NULL by default. If supplied, the plot
 #' is saved in this file
@@ -533,24 +572,64 @@ tmiic.generate_dataset <- function (true_edges, funct, list_nodes, n_samples,
 #' @export
 #' @useDynLib miic
 #-----------------------------------------------------------------------------
-tmiic.plot_one_sample <- function (data_tab, sample_idx, 
-                                   title=NULL, filename=NULL)
+tmiic.plot_one_timeseries <- function (df_data, timseseries_idx, 
+                                       title=NULL, filename=NULL)
   {
   DEBUG <- FALSE
-  
-  if (! is.null(filename) )
+  if (DEBUG)
     {
-    png (filename=filename)
+    print ("tmiic.plot_one_timeseries")
+    print ("df_data")
+    print (head (df_data))
+    print (paste ("timeseries to plot:", timseseries_idx, sep="") )
     }
-  data_plot <- data_tab[sample_idx,,]
-  data_plot <- t(data_plot)
-  df_plot <- as.data.frame ( ts(data_plot) )
-  colnames(df_plot) <- dimnames(data_tab)[[2]]
+  #
+  # Find the timeseries
+  #
+  n_rows <- nrow(df_data)
+  n_timeseries_found <- 1
+  previous_row_idx <- 1
+  previous_timestep <- -Inf
+  for (row_idx in 1:n_rows)
+    {
+    timestep = df_data[row_idx,1]
+    if (timestep < previous_timestep)
+      {
+      if (n_timeseries_found == timseseries_idx)
+        {
+        row_idx <- row_idx - 1
+        break
+        }
+      n_timeseries_found <- n_timeseries_found + 1
+      previous_row_idx <- row_idx
+      }
+    previous_timestep <- timestep
+    }
+  if (DEBUG)
+    print (paste ("Timeseries search result: ", n_timeseries_found, sep="") )
   
+  if (n_timeseries_found != timseseries_idx)
+    {
+    print (paste ("tmiic.plot_one_timeseries: timeseries ", timseseries_idx,
+           " not found, nothing to plot...", sep="") )
+    return ()
+    }
+  if (DEBUG)
+    print (paste ("Timeseries found between ", previous_row_idx, " and ", row_idx, sep="") )
+  
+  list_nodes <- colnames(df_data)[-1]
+  df_plot <- df_data[previous_row_idx:row_idx, list_nodes]
   if (DEBUG)
     {
     print ("head df to plot")
     print (head (df_plot))
+    }
+  #
+  # Plot part
+  #
+  if (! is.null(filename) )
+    {
+    png (filename=filename)
     }
   plot.ts (df_plot)
   if (! is.null(title) )
