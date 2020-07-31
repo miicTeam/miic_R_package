@@ -1,8 +1,9 @@
 #include <Rcpp.h>
-#include <math.h>
 
 #include <algorithm>
 #include <cfloat>
+#define _USE_MATH_DEFINES
+#include <cmath>
 #include <iostream>
 #include <limits>
 #include <vector>
@@ -87,7 +88,7 @@ static inline float fastlog2(float x) {
          1.72587999f / (0.3520887068f + mx.f);
 }
 static inline float fastlog(float x) { return 0.69314718f * fastlog2(x); }
-//  End fastapprox
+/* End fastapprox */
 
 double* compute_B(int K, int e, double* candidate_cut_points, double* myDist,
     int n, double epsilon, double xmin, double* B_previous_K, double** sc_look,
@@ -131,7 +132,8 @@ double* compute_B(int K, int e, double* candidate_cut_points, double* myDist,
   }
 }
 
-extern "C" SEXP mydiscretizeMDL(SEXP RmyDist, SEXP RmaxBins) {
+// [[Rcpp::export]]
+List mydiscretizeMDL(SEXP RmyDist, SEXP RmaxBins) {
   std::vector<double> myDistVec = Rcpp::as<std::vector<double> >(RmyDist);
   int maxBins = Rcpp::as<int>(RmaxBins);
   double epsilon = 0.001;
@@ -244,8 +246,6 @@ extern "C" SEXP mydiscretizeMDL(SEXP RmyDist, SEXP RmaxBins) {
   // structure the output
   List result = List::create(
       _["cutpoints"] = values
-      //    _["dyntable"] = Rdyntable,
-      //    _["dyntable_trace"]    = Rdyntable_trace
   );
 
   return result;

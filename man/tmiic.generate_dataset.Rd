@@ -56,7 +56,7 @@ i.e.: if in the true edges, the node1 is:
 \item connected to the node2 at t-2 with strength 0.2
 } 
 the generation will compute for each timestep of node 1:\cr
-node1(t) <- 0.5 * node1[t-1] + 0.2 * funct ( node2[t-2] ) + white noise
+node1(t) <- 0.5 * node1[t-1] + 0.2 * funct ( node2[t-2] ) + white noise\cr
 (Note that funct is only applied when nodes are different)
 
 Values of the first iterations are discarded, so the temporal data

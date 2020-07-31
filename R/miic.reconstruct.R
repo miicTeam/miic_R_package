@@ -1,148 +1,132 @@
-miic.reconstruct <- function(inputData = NULL,
-                             cntVar = NULL,
-                             blackBox = NULL,
-                             stateOrder = NULL,
-                             nThreads = nThreads,
-                             effN = -1,
+miic.reconstruct <- function(input_data = NULL,
+                             is_continuous = NULL,
+                             black_box = NULL,
+                             n_threads = 1,
+                             n_eff = -1,
                              cplx = c("nml", "mdl"),
                              eta = 1,
-                             latent = c("no", "yes", "ort"),
-                             confidenceShuffle = 0,
-                             edges = NULL,
+                             latent = c("no", "yes", "orientation"),
+                             n_shuffles = 0,
                              orientation = TRUE,
+                             ori_proba_ratio = 1,
                              propagation = TRUE,
-                             confidenceThreshold = 0,
+                             conf_threshold = 0,
                              verbose = FALSE,
-                             typeOfData = NULL,
-                             sampleWeights = NULL,
-                             testMAR = TRUE,
+                             sample_weights = NULL,
+                             test_mar = TRUE,
                              consistent = c(
                                "no",
                                "orientation",
                                "skeleton"
                              ),
-                             tau = -1) {
-  isTplReuse <- TRUE
-  isK23 <- TRUE
-  isDegeneracy <- FALSE
-  isNoInitEta <- FALSE
-  
-  numNodes <- length(inputData)
-
-  inData <- c(
-    colnames(inputData),
-    as.vector(as.character(t(
-      as.matrix(inputData)
-    )))
-  )
-  if (!is.null(blackBox)) {
-    bB <- as.vector(as.character(t(as.matrix(blackBox))))
-  } else {
-    bB <- c("")
-  }
-
-  if (!is.null(edges)) {
-    edges <- as.vector(as.character(t(as.matrix(blackBox))))
-  } else {
-    edges <- c("")
-  }
-
-  if (!is.null(stateOrder)) {
-    stateOrder <- as.vector(as.character(t(as.matrix(stateOrder))))
-  } else {
-    stateOrder <- c("")
-  }
-
-  if (is.null(sampleWeights)) {
-    sampleWeights <- c(-1, rep(0, nrow(inputData) - 1))
-  }
-  hvs <- 0
-  cntVar <- as.numeric(cntVar)
-  if (base::requireNamespace("Rcpp", quietly = TRUE)) {
-    res <- .Call(
-      "reconstruct",
-      inData,
-      typeOfData,
-      cntVar,
-      numNodes,
-      nThreads,
-      edges,
-      bB,
-      effN,
-      cplx,
-      eta,
-      hvs,
-      latent,
-      isTplReuse,
-      isK23,
-      isDegeneracy,
-      orientation,
-      propagation,
-      isNoInitEta,
-      confidenceShuffle,
-      confidenceThreshold,
-      sampleWeights,
-      consistent,
-      testMAR,
-      tau,
-      verbose,
-      PACKAGE = "miic"
-    )
-    if (res$interrupted) {
-      return(list(interrupted = TRUE))
+                             max_iteration = 100,
+                             tau = -1
+                             ) {
+  # Numeric factor matrix, level starts from 0, NA mapped to -1
+  input_factor <- apply(input_data, 2, function(x)
+                        (as.numeric(factor(x, levels = unique(x))) - 1))
+  input_factor[is.na(input_factor)] <- -1
+  max_level_list <- as.numeric(apply(input_factor, 2, max)) + 1
+  input_factor <- data.frame(t(input_factor))
+  # Data list, numeric for continuous columns, empty for others
+  input_double <- list()
+  # Order list, order(column) for continuous columns (index starting from 0, NA
+  # mapped to -1), empty for others
+  input_order <- list()
+  for (i in c(1:length(input_data))) {
+    if (is_continuous[i]) {
+      input_double[[i]] <- as.numeric(input_data[, i])
+      n_NAs <- sum(is.na(input_data[, i]))
+      input_order[[i]] <- c(order(input_data[, i], na.last=NA) - 1,
+                            rep_len(-1, n_NAs))
+    } else {
+      input_double[[i]] <- numeric(0)
+      input_order[[i]] <- numeric(0)
     }
   }
 
-  # if(shuffle == 0) {
-  # create the data frame of the edges
-  tmp <- unlist(res$edges)[1:11]
-  res1 <- unlist(res$edges)[12:length(unlist(res$edges))]
-  df <-
-    data.frame(matrix(res1, nrow = length(res$edges) - 1, byrow = T),
-      stringsAsFactors = FALSE
-    )
-  row.names(df) <- df[, 1]
-  df <- df[, -1]
-  colnames(df) <- tmp
-  df[df == "NA"] <- NA
-  df[, c(6:10)] <- sapply(df[, c(6:10)], as.numeric)
-  # update the returned object
-  res$edges <- df
-  # create the data frame of the adj matrix
-  a <- (length(res$adjMatrix[[1]]) + 1)
-  b <- length(unlist(res$adjMatrix))
-  tmp <- unlist(res$adjMatrix)[1:length(res$adjMatrix[[1]])]
-  res1 <- unlist(res$adjMatrix)[a:b]
-  df <- data.frame(matrix(res1,
-    nrow = length(res$adjMatrix) - 1,
-    byrow = T
-  ),
-  stringsAsFactors = FALSE
+  var_names <- colnames(input_data)
+  nameToIndex <- function(name, var_indices) {
+    index <- var_indices[name]
+    if (is.na(index))
+      stop(paste0(name, " in the black box does not match names in the input"))
+    else
+      return(index)
+  }
+  if (!is.null(black_box)) {
+    # transform var names to var indices
+    var_indices <- c(0: (length(input_data) - 1))
+    names(var_indices) <- var_names
+    black_box[] <- lapply(black_box, nameToIndex, var_indices)
+    black_box <- data.frame(t(black_box))
+  } else {
+    black_box <- list()  # pass to cpp as empty vector
+  }
+
+  if (is.null(sample_weights)) {
+    sample_weights <- numeric(0)  # pass to cpp as empty vector<double>
+  }
+
+  arg_list <- list(
+    "black_box" = black_box,
+    "conf_threshold" = conf_threshold,
+    "consistent" = consistent,
+    "cplx" = cplx,
+    "degenerate" = FALSE,
+    "eta" = eta,
+    "half_v_structure" = 0,
+    "is_continuous" = as.numeric(is_continuous),
+    "is_k23" = TRUE,
+    "latent" = latent,
+    "levels" = max_level_list,
+    "max_iteration" = max_iteration,
+    "n_eff" = n_eff,
+    "n_shuffles" = n_shuffles,
+    "n_threads" = n_threads,
+    "no_init_eta" = FALSE,
+    "orientation" = orientation,
+    "ori_proba_ratio" = ori_proba_ratio,
+    "propagation" = propagation,
+    "sample_weights" = sample_weights,
+    "test_mar" = test_mar,
+    "max_bins" = 50,
+    "var_names" = var_names,
+    "tau" = tau,
+    "verbose" = verbose
   )
-  df <- df[, -1]
-  colnames(df) <- tmp
-  df <- sapply(df, as.numeric)
-  row.names(df) <- tmp
-  # update the returned adj matrix
-  res$adjMatrix <- df
+  cpp_input <- list("factor" = input_factor, "double" = input_double,
+                    "order" = input_order)
+  # Call C++ function
+  res <- reconstruct(cpp_input, arg_list)
+  if (res$interrupted) {
+    return(list(interrupted = TRUE))
+  }
 
-  if (confidenceShuffle > 0) {
-    # create the data frame for the confidence file
-    confData <- res$confData
-    a <- (length(confData[[1]]) + 1)
-    b <- length(unlist(confData))
-    tmp <- unlist(confData)[1:length(confData[[1]])]
-    res1 <- unlist(confData)[a:b]
-    df <-
-      data.frame(matrix(res1, nrow = length(confData) - 1, byrow = T),
-        stringsAsFactors = FALSE
-      )
-    colnames(df) <- tmp
-    df[, "confidence_ratio"] <- as.numeric(df[, "confidence_ratio"])
+  # R-formalize returned object
+  # table of edges infomation
+  n_row <- length(res$edges) - 1
+  header <- unlist(res$edges[1])
+  df <- data.frame(matrix(unlist(res$edges[2:(n_row + 1)]), nrow = n_row,
+                          byrow = TRUE), stringsAsFactors = FALSE)
+  colnames(df) <- header
+  df[df == "NA"] <- NA
+  df$Ixy <- as.numeric(df$Ixy)
+  df$Ixy_ai <- as.numeric(df$Ixy_ai)
+  df$cplx <- as.numeric(df$cplx)
+  df$Rxyz_ai <- as.numeric(df$Rxyz_ai)
+  df$Nxy_ai <- as.numeric(df$Nxy_ai)
+  df$confidence <- as.numeric(df$confidence)
+  res$edges <- df
 
-    df <- df[order(df[, "confidence_ratio"]), ]
+  #  adj_matrix
+  res$adj_matrix <- matrix(unlist(res$adj_matrix), nrow = length(input_data), byrow = TRUE)
+  colnames(res$adj_matrix) <- var_names
+  rownames(res$adj_matrix) <- var_names
 
-    res$confData <- df
+  # adj_matrices (when consistent parameter is turned on)
+  if (length(res$adj_matrices) > 0) {
+    res$adj_matrices <- matrix(unlist(res$adj_matrices),
+                               ncol = length(res$adj_matrices))
   }
 
   # save time

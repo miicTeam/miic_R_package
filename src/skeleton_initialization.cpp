@@ -1,12 +1,3 @@
-#include <math.h>
-#include <unistd.h>
-
-#include <algorithm>
-#include <ctime>
-#include <iostream>
-#include <string>
-#include <vector>
-
 #include "reconstruct.h"
 
 #ifdef _OPENMP
@@ -17,47 +8,33 @@
 #include "structure.h"
 #include "utilities.h"
 
-using uint = unsigned int;
 using namespace miic::computation;
 using namespace miic::structure;
 using namespace miic::utility;
+using Rcpp::Rcout;
 
 // Initialize the edges of the network
 int initEdgeElt(Environment& environment, int i, int j, MemorySpace& m) {
   // Compute the mutual information and the corresponding CPLX
   double* res = NULL;
-  if (environment.columnAsContinuous[i] == 0 &&
-      environment.columnAsContinuous[j] == 0) {
+  if (!environment.is_continuous[i] &&
+      !environment.is_continuous[j]) {
     res = computeEnsInformationNew(
         environment, NULL, 0, NULL, 0, -1, i, j, environment.cplx, m);
     environment.edges[i][j].shared_info->Ixy_ui = res[1];
     environment.edges[i][j].shared_info->cplx = res[2];
     environment.edges[i][j].shared_info->Nxy_ui = res[0];
-    free(res);
-  }
-
-  else if (environment.columnAsGaussian[i] == 1 &&
-           environment.columnAsGaussian[j] == 1) {
-    res = corrMutInfo(
-        environment, environment.dataDouble, NULL, 0, NULL, 0, i, j, -2);
-    int N = environment.nSamples[i][j];
-    environment.edges[i][j].shared_info->Ixy_ui = res[0];
-    environment.edges[i][j].shared_info->cplx =
-        0.5 * (environment.edges[i][j].shared_info->ui_vect_idx.size() + 2) *
-        log(N);
-    environment.edges[i][j].shared_info->Nxy_ui = N;
-    delete[] res;
   } else {
     res = computeEnsInformationContinuous(
         environment, NULL, 0, NULL, 0, -1, i, j, environment.cplx, m);
     environment.edges[i][j].shared_info->Ixy_ui = res[1];
     environment.edges[i][j].shared_info->cplx = res[2];
     environment.edges[i][j].shared_info->Nxy_ui = res[0];
-    delete[] res;
   }
+  delete[] res;
 
-  if (environment.isVerbose) {
-    std::cout << "# --> Ixy_ui = "
+  if (environment.verbose) {
+    Rcout << "# --> Ixy_ui = "
               << environment.edges[i][j].shared_info->Ixy_ui /
                      environment.edges[i][j].shared_info->Nxy_ui
               << "[Ixy_ui*Nxy_ui ="
@@ -66,24 +43,24 @@ int initEdgeElt(Environment& environment, int i, int j, MemorySpace& m) {
               << "\n"
               << "# --> Nxy_ui = "
               << environment.edges[i][j].shared_info->Nxy_ui << "\n"
-              << "# --> nbrProp P = " << environment.numNodes << "\n";
+              << "# --> nbrProp P = " << environment.n_nodes << "\n";
   }
 
   double myTest = 0;
   std::string category;
-  environment.edges[i][j].shared_info->mutInfo =
+  environment.edges[i][j].shared_info->Ixy =
       environment.edges[i][j].shared_info->Ixy_ui;
-  environment.edges[i][j].shared_info->cplx_noU =
+  environment.edges[i][j].shared_info->cplx_no_u =
       environment.edges[i][j].shared_info->cplx;
   environment.edges[i][j].shared_info->Nxy =
       environment.edges[i][j].shared_info->Nxy_ui;
 
-  if (environment.isNoInitEta)
+  if (environment.no_init_eta)
     myTest = environment.edges[i][j].shared_info->Ixy_ui -
              environment.edges[i][j].shared_info->cplx;
   else
     myTest = environment.edges[i][j].shared_info->Ixy_ui -
-             environment.edges[i][j].shared_info->cplx - environment.logEta;
+             environment.edges[i][j].shared_info->cplx - environment.log_eta;
 
   if (myTest <= 0) {
     // Unconditional independence
@@ -98,25 +75,23 @@ int initEdgeElt(Environment& environment, int i, int j, MemorySpace& m) {
     category = "searchMore";
   }
 
-  if (environment.isVerbose)
-    std::cout << "# --> Category = " << category << "\n";
+  if (environment.verbose)
+    Rcout << "# --> Category = " << category << "\n";
 
   return environment.edges[i][j].status;
 }
 
 bool miic::reconstruction::skeletonInitialization(Environment& environment) {
-  environment.oneLineMatrix =
-      new int[environment.numSamples * environment.numNodes];
-  for (uint i = 0; i < environment.numSamples; i++) {
-    for (uint j = 0; j < environment.numNodes; j++) {
-      environment.oneLineMatrix[j * environment.numSamples + i] =
-          environment.dataNumeric[i][j];
+  for (int i = 0; i < environment.n_samples; i++) {
+    for (int j = 0; j < environment.n_nodes; j++) {
+      environment.oneLineMatrix[j * environment.n_samples + i] =
+          environment.data_numeric[i][j];
     }
   }
 
   int threadnum = 0;
-  std::cout << "Computing pairwise independencies...";
-  fflush(stdout);
+  Rcout << "Computing pairwise independencies...";
+  R_FlushConsole();
 
   bool interrupt = false;
 
@@ -124,7 +99,7 @@ bool miic::reconstruction::skeletonInitialization(Environment& environment) {
 #pragma omp parallel for shared(interrupt) firstprivate(threadnum) \
     schedule(dynamic)
 #endif
-  for (uint i = 0; i < environment.numNodes - 1; i++) {
+  for (int i = 0; i < environment.n_nodes - 1; i++) {
     if (interrupt) {
       continue;  // will continue until out of for loop
     }
@@ -134,9 +109,9 @@ bool miic::reconstruction::skeletonInitialization(Environment& environment) {
     if (checkInterrupt(threadnum == 0)) {
       interrupt = true;
     }
-    for (uint j = i + 1; j < environment.numNodes && !interrupt; j++) {
-      if (environment.isVerbose) {
-        std::cout << "\n# Edge " << environment.nodes[i].name << ","
+    for (int j = i + 1; j < environment.n_nodes && !interrupt; j++) {
+      if (environment.verbose) {
+        Rcout << "\n# Edge " << environment.nodes[i].name << ","
                   << environment.nodes[j].name << "\n";
       }
       environment.edges[i][j].shared_info = std::make_shared<EdgeSharedInfo>();
@@ -153,9 +128,9 @@ bool miic::reconstruction::skeletonInitialization(Environment& environment) {
     }
   }
   if (interrupt) return false;
-  std::cout << " done.\n";
-  for (uint i = 0; i < environment.numNodes; i++) {
-    for (uint j = 0; j < environment.numNodes; j++) {
+  Rcout << " done.\n";
+  for (int i = 0; i < environment.n_nodes; i++) {
+    for (int j = 0; j < environment.n_nodes; j++) {
       environment.edges[i][j].status_init = environment.edges[i][j].status;
     }
   }

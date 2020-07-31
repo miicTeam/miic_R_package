@@ -60,9 +60,9 @@ void repeatEdgesOverHistory (Environment& environment)
   {
 #if _DEBUG
     cout << "\ntmiic::RepeatEdgesOverHistory:\n";
-    printNoMoreAdress  (environment);
+    // printNoMoreAdress  (environment);
     cout << "\n";
-    printEdges (environment);
+    // printEdges (environment);
 #endif
   //
   // First, we count how much non lagged nodes we have 
@@ -70,7 +70,7 @@ void repeatEdgesOverHistory (Environment& environment)
   //
   std::regex lag_expr(".*lag");
   uint nodes_cnt = 0;
-  while (nodes_cnt < environment.numNodes)
+  while (nodes_cnt < environment.n_nodes)
     {
     string node_name = environment.nodes[nodes_cnt].name;
     int node_lag = std::stoi (std::regex_replace(node_name, lag_expr, "") );
@@ -79,86 +79,86 @@ void repeatEdgesOverHistory (Environment& environment)
     nodes_cnt++;
     }
 #if _DEBUG
-  cout << "\nEdge node tot=" << environment.numNodes << " not lagged nodes count=" << nodes_cnt << "\n";
+  cout << "\nEdge node tot=" << environment.n_nodes << " not lagged nodes count=" << nodes_cnt << "\n";
 #endif
   //
   // Now, we iterate over computed edges to duplicate (if needed)
   // the edges over the history
   //
-  uint edges_max = environment.noMoreAddress.size();
-  for (int edge_idx=0; edge_idx < edges_max; edge_idx++)
-    {
-    // 
-    // For each edge, we compute the lag between the 2 nodes
-    //    
-    int node1_pos = environment.noMoreAddress[edge_idx]->i;
-    int node2_pos = environment.noMoreAddress[edge_idx]->j;
-  
-    string node1_name = environment.nodes[node1_pos].name;
-    string node2_name = environment.nodes[node2_pos].name;
-      
-    std::regex lag_expr(".*lag");
-    int node1_lag = std::stoi (std::regex_replace(node1_name, lag_expr, "") );
-    int node2_lag = std::stoi (std::regex_replace(node2_name, lag_expr, "") );
-    // 
-    // When the lag is smaller than the global lag (tau) in the temporal graph,
-    // We can add lagged edges in the history until tau is reached
-    //    
-    int min_lag = std::min (node1_lag, node2_lag); // Normally 0 as one edge should be lag0
-    int lag_between_nodes = std::abs (node1_lag - node2_lag);
-#if _DEBUG
-    cout << "Edge " << node1_pos << " (" << node1_name << ") - " 
-                    << node2_pos << " (" << node2_name << ")" 
-                    << " min_lag=" << min_lag << " lag_between_nodes=" << lag_between_nodes 
-                    << " => will add " << environment.tau - lag_between_nodes << " into history\n";
-#endif
-    //
-    // Find the Edge structure that will be duplicated 
-    //
-    const Edge& edge_orig = environment.edges[node1_pos][node2_pos];
-    //
-    // To create the same edge over history, we switch the nodes pos by nodes_cnt
-    // until node pos > nb total nodes
-    //
-    while (true)
-      {
-      node1_pos += nodes_cnt;
-      node2_pos += nodes_cnt;
-      if ( (node1_pos >= environment.numNodes) || (node2_pos >= environment.numNodes) )
-        break;
-#if _DEBUG
-      cout << "Edge " << node1_pos << " (" << environment.nodes[node1_pos].name << ") - " 
-                      << node2_pos << " (" << environment.nodes[node2_pos].name << ") to add\n";
-#endif
-      //
-      // Add the nodes into noMoreAddress
-      //
-      environment.noMoreAddress.emplace_back ( new EdgeID (node1_pos, node2_pos) );
-      //
-      // Duplicate the edge info into environment.edges array
-      //
-      Edge& edge_to_modif = environment.edges[node1_pos][node2_pos];
-      
-      edge_to_modif.status = edge_orig.status;
-      edge_to_modif.status_init = edge_orig.status_init;
-      edge_to_modif.status_prev = edge_orig.status_prev;
-#if _DEBUG
-      cout << "Edge " << node1_pos << " (" << environment.nodes[node1_pos].name << ") - " 
-           << node2_pos << " (" << environment.nodes[node2_pos].name << ") modified:"
-           << edge_to_modif.status << "\n";
-#endif
-      
-      Edge& edge_to_modif_inverse = environment.edges[node2_pos][node1_pos];
-      edge_to_modif_inverse.status = edge_orig.status;
-      edge_to_modif_inverse.status_init = edge_orig.status_init;
-      edge_to_modif_inverse.status_prev = edge_orig.status_prev;
-#if _DEBUG
-      cout << "Edge " << node2_pos << " (" << environment.nodes[node2_pos].name << ") - " 
-           << node1_pos << " (" << environment.nodes[node1_pos].name << ") modified:"
-           << edge_to_modif_inverse.status << "\n";
-#endif
-      }
-    }
+//TODO
+//   for (auto edge_iter = begin(edge_list); edge_iter != end(edge_list); ++edge_iter) 
+//     {
+//     // For each edge, we compute the lag between the 2 nodes
+//     //    
+//     int node1_pos = edge_iter->i;
+//     int node2_pos = edge_iter->j;
+//   
+//     string node1_name = environment.nodes[node1_pos].name;
+//     string node2_name = environment.nodes[node2_pos].name;
+//       
+//     std::regex lag_expr(".*lag");
+//     int node1_lag = std::stoi (std::regex_replace(node1_name, lag_expr, "") );
+//     int node2_lag = std::stoi (std::regex_replace(node2_name, lag_expr, "") );
+//     // 
+//     // When the lag is smaller than the global lag (tau) in the temporal graph,
+//     // We can add lagged edges in the history until tau is reached
+//     //    
+//     int min_lag = std::min (node1_lag, node2_lag); // Normally 0 as one edge should be lag0
+//     int lag_between_nodes = std::abs (node1_lag - node2_lag);
+// #if _DEBUG
+//     cout << "Edge " << node1_pos << " (" << node1_name << ") - " 
+//                     << node2_pos << " (" << node2_name << ")" 
+//                     << " min_lag=" << min_lag << " lag_between_nodes=" << lag_between_nodes 
+//                     << " => will add " << environment.tau - lag_between_nodes << " into history\n";
+// #endif
+//     //
+//     // Find the Edge structure that will be duplicated 
+//     //
+//     const Edge& edge_orig = environment.edges[node1_pos][node2_pos];
+//     //
+//     // To create the same edge over history, we switch the nodes pos by nodes_cnt
+//     // until node pos > nb total nodes
+//     //
+//     while (true)
+//       {
+//       node1_pos += nodes_cnt;
+//       node2_pos += nodes_cnt;
+//       if ( (node1_pos >= environment.n_nodes) || (node2_pos >= environment.n_nodes) )
+//         break;
+// #if _DEBUG
+//       cout << "Edge " << node1_pos << " (" << environment.nodes[node1_pos].name << ") - " 
+//                       << node2_pos << " (" << environment.nodes[node2_pos].name << ") to add\n";
+// #endif
+//       //
+//       // Add the nodes into noMoreAddress
+//       //
+// //TODO      environment.noMoreAddress.emplace_back ( new EdgeID (node1_pos, node2_pos) );
+//       //
+//       // Duplicate the edge info into environment.edges array
+//       //
+//       Edge& edge_to_modif = environment.edges[node1_pos][node2_pos];
+//       
+//       edge_to_modif.status = edge_orig.status;
+//       edge_to_modif.status_init = edge_orig.status_init;
+//       edge_to_modif.status_prev = edge_orig.status_prev;
+// #if _DEBUG
+//       cout << "Edge " << node1_pos << " (" << environment.nodes[node1_pos].name << ") - " 
+//            << node2_pos << " (" << environment.nodes[node2_pos].name << ") modified:"
+//            << edge_to_modif.status << "\n";
+// #endif
+//       
+//       Edge& edge_to_modif_inverse = environment.edges[node2_pos][node1_pos];
+//       edge_to_modif_inverse.status = edge_orig.status;
+//       edge_to_modif_inverse.status_init = edge_orig.status_init;
+//       edge_to_modif_inverse.status_prev = edge_orig.status_prev;
+// #if _DEBUG
+//       cout << "Edge " << node2_pos << " (" << environment.nodes[node2_pos].name << ") - " 
+//            << node1_pos << " (" << environment.nodes[node1_pos].name << ") modified:"
+//            << edge_to_modif_inverse.status << "\n";
+// #endif
+//       }
+//     }
+//TODO
 
 #if _DEBUG
   cout << "\n";
@@ -200,47 +200,48 @@ void dropPastEdges (Environment& environment)
   // All the edges duplicated are removed from environment.noMoreAddress
   //
   std::regex lag_expr(".*lag");
-	std::vector<EdgeID*>::iterator it = environment.noMoreAddress.begin();
-	while ( it != environment.noMoreAddress.end() ) 
-	  {
-    // 
-    // For each edge, we compute the minimum lag of the 2 nodes
-    //    
-    int node1_pos = (*it)->i;
-    int node2_pos = (*it)->j;
-  
-    string node1_name = environment.nodes[node1_pos].name;
-    string node2_name = environment.nodes[node2_pos].name;
-      
-    std::regex lag_expr(".*lag");
-    int node1_lag = std::stoi (std::regex_replace(node1_name, lag_expr, "") );
-    int node2_lag = std::stoi (std::regex_replace(node2_name, lag_expr, "") );
-    int min_lag = std::min (node1_lag, node2_lag);
-    // 
-    // When the two lag are greater than 0, the edge is not comptemporanous
-    // and is removed
-    //    
-    if (min_lag > 0)
-      {
-      delete (*it);
-			it = environment.noMoreAddress.erase(it);
-#if _DEBUG
-      cout << "Edge " << node1_pos << " (" << node1_name << ") - " 
-                      << node2_pos << " (" << node2_name << ")" 
-                      << " min_lag=" << min_lag << " => edge removed from environment.noMoreAddress (new size="
-                      << environment.noMoreAddress.size() << ")\n";
-#endif
-      }
-    else
-			it++;
-	  }  
+//TODO	std::vector<EdgeID*>::iterator it = environment.noMoreAddress.begin();
+//TODO	while ( it != environment.noMoreAddress.end() ) 
+// 	  {
+//     // 
+//     // For each edge, we compute the minimum lag of the 2 nodes
+//     //    
+//     int node1_pos = (*it)->i;
+//     int node2_pos = (*it)->j;
+//   
+//     string node1_name = environment.nodes[node1_pos].name;
+//     string node2_name = environment.nodes[node2_pos].name;
+//       
+//     std::regex lag_expr(".*lag");
+//     int node1_lag = std::stoi (std::regex_replace(node1_name, lag_expr, "") );
+//     int node2_lag = std::stoi (std::regex_replace(node2_name, lag_expr, "") );
+//     int min_lag = std::min (node1_lag, node2_lag);
+//     // 
+//     // When the two lag are greater than 0, the edge is not comptemporanous
+//     // and is removed
+//     //    
+//     if (min_lag > 0)
+//       {
+//       delete (*it);
+// 			it = environment.noMoreAddress.erase(it);
+// #if _DEBUG
+//       cout << "Edge " << node1_pos << " (" << node1_name << ") - " 
+//                       << node2_pos << " (" << node2_name << ")" 
+//                       << " min_lag=" << min_lag << " => edge removed from environment.noMoreAddress (new size="
+//                       << environment.noMoreAddress.size() << ")\n";
+// #endif
+//       }
+//     else
+// 			it++;
+// 	  }  
+//TODO
   //
   // We iterate over the list of edges to find edges previously duplicated using stationary.
   // For all the edges duplicated, we set the status to 0 (no connection) in environment.edges
   //
-  for (int node1_pos = 0; node1_pos < environment.numNodes; node1_pos++)
+  for (int node1_pos = 0; node1_pos < environment.n_nodes; node1_pos++)
     {
-    for (int node2_pos = 0; node2_pos < environment.numNodes; node2_pos++)
+    for (int node2_pos = 0; node2_pos < environment.n_nodes; node2_pos++)
   	  {
       // 
       // For each edge, we compute the minimum lag of the 2 nodes
@@ -273,9 +274,9 @@ void dropPastEdges (Environment& environment)
     
 #if _DEBUG
   cout << "\ntmiic::dropPastEdges end:\n";
-  printNoMoreAdress  (environment);
+  //printNoMoreAdress  (environment);
   cout << "\n";
-  printEdges (environment);
+  //printEdges (environment);
 #endif
   }
 

@@ -1,141 +1,109 @@
 #include "orientation_probability.h"
 
-#include <math.h>
-#include <sys/stat.h>
-#include <unistd.h>
-
-#include <algorithm>
-#include <ctime>
-#include <fstream>
-#include <iostream>
+#define _USE_MATH_DEFINES
+#include <cmath>
 #include <map>
 #include <regex>
-#include <sstream>
-#include <string>
 
 #include "compute_ens_information.h"
 #include "proba_orientation.h"
-#include "structure.h"
-#include "utilities.h"
 #include "tmiic.h"
-
-#define _DEBUG 0
 
 namespace miic {
 namespace reconstruction {
 
-using uint = unsigned int;
 using std::string;
 using std::vector;
+using std::fabs;
 using namespace miic::computation;
 using namespace miic::structure;
-using namespace miic::utility;
-using namespace tmiic;
 
-void getSStructure(Environment& environment, const int posX, const int posY,
-    const int posZ, bool isVerbose, vector<vector<int> >& allTpl,
-    vector<double>& allI3) {
-  // Check if xk belongs to the {ui} of the base
-  vector<int> u(environment.edges[posX][posZ].shared_info->ui_vect_idx);
-  if (environment.edges[posX][posZ].shared_info->ui_vect_idx.size() > 0) {
-    // Remove xk from the {ui} if needed
-    for (uint i = 0;
-         i < environment.edges[posX][posZ].shared_info->ui_vect_idx.size();
-         i++) {
-      if (u[i] == posY) {
-        u.erase(u.begin() + i);
-        break;
-      }
-    }
-  }
-  int* ui;
-  int* zi = NULL;
-  if (u.empty())
-    ui = NULL;
-  else
-    ui = &u[0];
+namespace {
 
-  vector<int> z;
-  z.clear();
-  z.push_back(posY);
-
-  zi = &z[0];
-
-  double* res = NULL;
-  double Is = -1;
-  double Cs = -1;
-  if (environment.columnAsContinuous[posX] == 0 &&
-      environment.columnAsContinuous[posZ] == 0 &&
-      environment.columnAsContinuous[posY] == 0) {
-    res = computeEnsInformationNew(environment, ui, u.size(), zi, z.size(), -1,
-        posX, posZ, environment.cplx, environment.m);
-
-    Is = res[7];
-    Cs = res[8];
-    if (environment.isK23) {
-      if (environment.isDegeneracy) {
-        Cs += log(3);
-      }
-      // to fit eq(20) and eq(22) in BMC Bioinfo 2016
-      Is = Is + Cs;
-    }
-  } else if (environment.typeOfData == 2 ||
-             (environment.typeOfData == 1 && environment.isAllGaussian == 0)) {
-    res = computeEnsInformationContinuous_Orientation(environment, ui, u.size(),
-        zi, posX, posZ, environment.cplx, environment.m);
-
-    Is = res[1];
-    Cs = res[2];
-    if (environment.isK23) {
-      if (environment.isDegeneracy) {
-        Cs += log(3);
-      }
-      // I(x;y;z|ui) - cplx(x;y;z|ui)
-      Is = Is - Cs;
-    }
-  } else {
-    // THIS PART IS TO DO ?
-    Is =
-        computeEnsInformationContinuous_Gaussian(environment, posX, posY, posZ);
-    Cs = 0.5 *
-         (environment.edges[posX][posY].shared_info->ui_vect_idx.size() + 2) *
-         log(environment.numSamples);
-    if (environment.isK23) {
-      if (environment.isDegeneracy) {
-        Cs += log(3);
-      }
-      Is = Is - Cs;
-    }
-  }
-  delete (res);
-
-  allTpl.emplace_back(std::initializer_list<int>{posX + 1, posY + 1, posZ + 1});
-  allI3.push_back(Is);
+bool acceptProba(double proba, double ori_proba_ratio) {
+  if (proba <= 0.5) return false;
+  return (1 - proba) / proba < ori_proba_ratio;
 }
 
-//----------------------------------------------------------------------------
-vector<vector<string> > orientationProbability(Environment& environment) {
-  vector<vector<string> > orientations;  // output of orientation table
-  vector<vector<int> > allTpl;
-  vector<double> allI3;
-  double* ptrRetProbValues;
-  bool isVerbose = environment.isVerbose;
-  uint nodes_cnt_not_lagged = 0; // for tmiic, number of nodes (not lagged)
+double getI3(Environment& environment, const Triple& t) {
+  int posX{t[0]}, posZ{t[1]}, posY{t[2]};
+
+  vector<int> ui_no_z(environment.edges[posX][posY].shared_info->ui_list);
+  ui_no_z.erase(remove(begin(ui_no_z), end(ui_no_z), posZ), end(ui_no_z));
+  int* ui = ui_no_z.empty() ? NULL : &ui_no_z[0];
+
+  vector<int> z{posZ};
+  int* zi = &z[0];
+
+  double* res = NULL;
+  double Ixyz_ui = -1;
+  double cplx = -1;
+  if (!environment.is_continuous[posX] && !environment.is_continuous[posZ] &&
+      !environment.is_continuous[posY]) {
+    res = computeEnsInformationNew(environment, ui, ui_no_z.size(), zi,
+        z.size(), -1, posX, posY, environment.cplx, environment.m);
+    Ixyz_ui = res[7];
+    cplx = res[8];
+    if (environment.degenerate) cplx += log(3.0);
+    // To fit eq(20) and eq(22) in BMC Bioinfo 2016
+    if (environment.is_k23) Ixyz_ui += cplx;
+  } else {
+    res = computeEnsInformationContinuous_Orientation(environment, ui,
+        ui_no_z.size(), zi, posX, posY, environment.cplx, environment.m);
+    Ixyz_ui = res[1];
+    cplx = res[2];
+    if (environment.degenerate) cplx += log(3.0);
+    if (environment.is_k23) Ixyz_ui -= cplx;
+  }
+  delete[] res;
+  return Ixyz_ui;
+}
+
+// y2x: probability that there is an arrow from node y to x
+// x2y: probability that there is an arrow from node x to y
+void updateAdj(Environment& env, int x, int y, double y2x, double x2y) {
+  double lower, higher;
+  std::tie(lower, higher) = std::minmax(y2x, x2y);
+  // No arrowhead
+  if (higher <= 0.5) return;
+  // Only one arrowhead
+  if (lower <= 0.5) {
+    if (y2x == higher && acceptProba(y2x, env.ori_proba_ratio)) {
+      env.edges[x][y].status = -2;
+      env.edges[y][x].status = 2;
+    } else if (acceptProba(x2y, env.ori_proba_ratio)) {
+      env.edges[x][y].status = 2;
+      env.edges[y][x].status = -2;
+    }
+  } else if (acceptProba(x2y, env.ori_proba_ratio) &&
+             acceptProba(y2x, env.ori_proba_ratio)) {
+    env.edges[x][y].status = 6;
+    env.edges[y][x].status = 6;
+  }
+}
+
+}  // anonymous namespace
+
+vector<vector<string>> orientationProbability(Environment& environment) {
+  // Get all unshielded triples X -- Z -- Y
+  vector<Triple> triples;
+  const auto& edge_list = environment.connected_list;
+  
+  int nodes_cnt_not_lagged = 0; // for tmiic, number of nodes (not lagged)
 
   if (environment.tau > 0) 
     {
-    //
     // For temporal graph, repeat edges found over history if latent variable 
     // discovery is activated (TODO add why ...)
     //
-    if ( (environment.isLatent) || (environment.isLatentOnlyOrientation) )
+    if (environment.latent || environment.latent_orientation)
       tmiic::repeatEdgesOverHistory (environment);
     //
     // We count how much non lagged nodes we have 
     // => we look for the first lag1 node
     //
     std::regex lag_expr(".*lag");
-    while (nodes_cnt_not_lagged < environment.numNodes)
+    while (nodes_cnt_not_lagged < environment.n_nodes)
       {
       string node_name = environment.nodes[nodes_cnt_not_lagged].name;
       int node_lag = std::stoi (std::regex_replace(node_name, lag_expr, "") );
@@ -144,116 +112,49 @@ vector<vector<string> > orientationProbability(Environment& environment) {
       nodes_cnt_not_lagged++;
       }
     }
-  //  
-  // GET ALL TPL that could be V/NON-V-STRUCTURES #######
-  //
-  // Only open triplets are considered. Closed triplets (forming a triangle
-  // in the graph) can not be used to determine the orientation of edges. 
-  //
-  for (uint pos = 0; pos < environment.noMoreAddress.size(); pos++) 
-    {
-    int posX = environment.noMoreAddress[pos]->i;
-    int posY = environment.noMoreAddress[pos]->j;
-    //
-    // Prepare a list that will contain the neighbors of "x" and the neighbors
-    // of "y"
-    //
-    vector<int> neighboursX;
-    vector<int> neighboursY;
-    //
-    // First loop to identify possible triplets on the Y1 side 
-    // of the edges in the loop
-    //
-    for (uint i = pos + 1; i < environment.noMoreAddress.size(); i++) 
-      {
-      int posX1 = environment.noMoreAddress[i]->i;
-      int posY1 = environment.noMoreAddress[i]->j;
-      
-      if ( (environment.tau > 0) && ( (environment.isLatent) || (environment.isLatentOnlyOrientation) ) )
+  
+  for (auto iter0 = begin(edge_list); iter0 != end(edge_list); ++iter0) {
+    int posX = iter0->i, posY = iter0->j;
+
+    for (auto iter1 = iter0 + 1; iter1 != end(edge_list); ++iter1) {
+      int posX1 = iter1->i, posY1 = iter1->j;
+      //
+      // In temporal mode, we are only interested to orient
+      // triplets having at least one node contemporaneaous (lag0).
+      // (Triplets having only past nodes are induced by the call to 
+      // repeatEdgesOverHistory when latent discovery is on)
+      //
+      bool add_Y_X_X1 = true;
+      bool add_X_Y_X1 = true;
+      bool add_Y_X_Y1 = true;
+      bool add_X_Y_Y1 = true;
+      if (  (environment.tau > 0) 
+         && (environment.latent || environment.latent_orientation) )
         {
-        // For temporal mode of miic, we are only interested to orient
-        // triplets having at least on node contemporaneaous (lag0).
-        // Triplets having only past nodes are induced by the call to 
-        // repeatEdgesOverHistory when latent discovery is on 
-        // => we checked these past only triplets to skip them here
-        //
-        int lag_node0 = posX / nodes_cnt_not_lagged;
-        int lag_node1 = posY / nodes_cnt_not_lagged;
-        int lag_node2 = posX1 / nodes_cnt_not_lagged;
-        if ( (lag_node0 > 0) && (lag_node1 > 0) && (lag_node2 > 0) )
-          {
-#if _DEBUG
-        std::cout << "First loop, past only triplet: Edges " << environment.nodes[posX].name
-                       << "-" << environment.nodes[posY].name 
-                       << "-" << environment.nodes[posX1].name << " skipped\n";
-#endif
-          continue;
-          }
+        int lag_nodeX = posX / nodes_cnt_not_lagged;
+        int lag_nodeY = posY / nodes_cnt_not_lagged;
+        int lag_nodeX1 = posX1 / nodes_cnt_not_lagged;
+        int lag_nodeY1 = posY1 / nodes_cnt_not_lagged;
+        add_Y_X_X1 = (lag_nodeY == 0) || (lag_nodeX == 0) || (lag_nodeX1 == 0);
+        add_X_Y_X1 = (lag_nodeX == 0) || (lag_nodeY == 0) || (lag_nodeX1 == 0);
+        add_Y_X_Y1 = (lag_nodeY == 0) || (lag_nodeX == 0) || (lag_nodeY1 == 0);
+        add_X_Y_Y1 = (lag_nodeX == 0) || (lag_nodeY == 0) || (lag_nodeY1 == 0);
         }
-      
-      if (posY1 == posX && !environment.edges[posY][posX1].status)
-        neighboursX.push_back(posX1);
-      else if (posY1 == posY && !environment.edges[posX][posX1].status)
-        neighboursY.push_back(posX1);
-      }
-    //
-    // Second loop to identify possible triplets on the other side 
-    // of the edges in the loop, the X1 side
-    //
-    for (uint i = pos + 1; i < environment.noMoreAddress.size(); i++) 
-      {
-      int posX1 = environment.noMoreAddress[i]->i;
-      int posY1 = environment.noMoreAddress[i]->j;
-      
-      if ( (environment.tau > 0) && ( (environment.isLatent) || (environment.isLatentOnlyOrientation) ) )
-        {
-        // Same as first loop, skip past only triplets in temporal mode
-        //
-        int lag_node0 = posX / nodes_cnt_not_lagged;
-        int lag_node1 = posY / nodes_cnt_not_lagged;
-        int lag_node2 = posY1 / nodes_cnt_not_lagged;
-        if ( (lag_node0 > 0) && (lag_node1 > 0) && (lag_node2 > 0) )
-          {
-#if _DEBUG
-        std::cout << "Second loop, past only triplet: Edges " << environment.nodes[posX].name
-                       << "-" << environment.nodes[posY].name 
-                       << "-" << environment.nodes[posY1].name << " skipped\n";
-#endif
-          continue;
-          }
-        }
-      
-      if (posX1 == posX && !environment.edges[posY][posY1].status)
-        neighboursX.push_back(posY1);
-      else if (posX1 == posY && !environment.edges[posX][posY1].status)
-        neighboursY.push_back(posY1);
-      }
-    //
-    // The lists of neighbours on both sides is ready for the edge
-    //
-    int sizeX = neighboursX.size();
-    int sizeY = neighboursY.size();
-    if (sizeX == 0 && sizeY == 0) continue;
-    //
-    // getSStructure computes triplets and I3 from the neighbours lists.
-    // CAUTION: nodes indexes returned in allTpl are shihted of +1
-    //
-    for (int i = 0; i < sizeX; i++) {
-      // Get the structure if any
-      getSStructure(
-          environment, posY, posX, neighboursX[i], isVerbose, allTpl, allI3);
-    }
-    // iterate on neighbours of y
-    for (int i = 0; i < sizeY; i++) {
-      //// Get the structure if any
-      getSStructure(
-          environment, posX, posY, neighboursY[i], isVerbose, allTpl, allI3);
+
+      if (posY1 == posX && !environment.edges[posY][posX1].status && add_Y_X_X1)
+        triples.emplace_back(Triple{posY, posX, posX1});
+      else if (posY1 == posY && !environment.edges[posX][posX1].status && add_X_Y_X1)
+        triples.emplace_back(Triple{posX, posY, posX1});
+      if (posX1 == posX && !environment.edges[posY][posY1].status && add_Y_X_Y1)
+        triples.emplace_back(Triple{posY, posX, posY1});
+      else if (posX1 == posY && !environment.edges[posX][posY1].status && add_X_Y_Y1)
+        triples.emplace_back(Triple{posX, posY, posY1});
     }
   }
   //
   // In temporal mode, the oriention of temporal edges can be determined
   // using the time. So even if a temporal edge is not part of an open
-  // edge, we will add it for orientation.
+  // triple, we will add it for orientation.
   // 
   // As all the orientation code has been designed for triplets, 
   // we use a trick here by creating a fake triplet with:
@@ -264,10 +165,10 @@ vector<vector<string> > orientationProbability(Environment& environment) {
     //
     // Go over all edges computed
     //
-    for (uint edge_idx = 0; edge_idx < environment.noMoreAddress.size(); edge_idx++) 
+    for (auto edge_iter = begin(edge_list); edge_iter != end(edge_list); ++edge_iter) 
       {
-      int egde_node0 = environment.noMoreAddress[edge_idx]->i;
-      int egde_node1 = environment.noMoreAddress[edge_idx]->j;
+      int egde_node0 = edge_iter->i;
+      int egde_node1 = edge_iter->j;
       //
       // If edge is not temporal, we don't add it
       //
@@ -281,24 +182,21 @@ vector<vector<string> > orientationProbability(Environment& environment) {
       // because we duplicated edges over history and we are not 
       // interested to orient duplicated past edges)
       //
-      if ( (lag_node0 >0) && (lag_node1 > 0) )
+      if (lag_node0 > 0 && lag_node1 > 0)
         continue;
       //
       // The computed edge is temporal and we want to have it oriented.
       // We now check if the edge is already in the open triplets list
       //
       bool is_edge_in_list = false;
-      for (uint tpl_idx = 0; tpl_idx < allTpl.size(); tpl_idx++) 
+      for (size_t i = 0; i < triples.size(); i++) 
         {
-        // CAUTION : getSStructure added 1 to the node index => remove 1
-        //
-        int tpl_node0 = allTpl[tpl_idx][0]-1;
-        int tpl_node1 = allTpl[tpl_idx][1]-1;
-        int tpl_node2 = allTpl[tpl_idx][2]-1;
-        if (  (egde_node0 == tpl_node0) && (egde_node1 == tpl_node1)
-           || (egde_node0 == tpl_node1) && (egde_node1 == tpl_node0)
-           || (egde_node0 == tpl_node1) && (egde_node1 == tpl_node2)
-           || (egde_node0 == tpl_node2) && (egde_node1 == tpl_node1) )
+        const auto& triple = triples[i];
+    
+        if (  (egde_node0 == triple[0] && egde_node1 == triple[1])
+           || (egde_node0 == triple[1] && egde_node1 == triple[0])
+           || (egde_node0 == triple[1] && egde_node1 == triple[2])
+           || (egde_node0 == triple[2] && egde_node1 == triple[1]) )
           {
           is_edge_in_list = true;
           break;
@@ -314,261 +212,113 @@ vector<vector<string> > orientationProbability(Environment& environment) {
       // with node1 of edge - node2 of edge - node1 of edge
       // (and we add 1 to the node indexes like getSStructure does)
       //
-      allTpl.emplace_back(std::initializer_list<int>{egde_node0 + 1, egde_node1 + 1, egde_node0 + 1});
-      allI3.push_back (0);
+      triples.emplace_back (Triple{egde_node0, egde_node1, egde_node0});
+      // TODO See why we were setting I3=0 allI3.push_back (0);
+      // and how not compute I3 in the next lines below
 #if _DEBUG
-      std::cout << "Fake triplet: Edges " << environment.nodes[egde_node0].name
-                     << "-" << environment.nodes[egde_node1].name 
-                     << "-" << environment.nodes[egde_node0].name << " with I3=0 added\n";
+      Rcout << "Fake triplet: Edges " << environment.nodes[egde_node0].name
+            << "-" << environment.nodes[egde_node1].name 
+            << "-" << environment.nodes[egde_node0].name << " with I3=0 added\n";
 #endif
       }
     }
-    
-  int* oneLineMatrixallTpl = new int[allTpl.size() * 3];
-  for (uint i = 0; i < allTpl.size(); i++) 
-    {
-    for (int j = 0; j < 3; j++) 
-      {
-      oneLineMatrixallTpl[j * allTpl.size() + i] = allTpl[i][j];
-      allTpl[i][j]--;
-      }
-    }
+  
+  if (triples.empty())
+    return vector<vector<string>>();
+
+  // Compute the 3-point mutual info (N * I'(X;Y;Z|{ui})) for each triple
+  vector<double> I3_list(triples.size());
+  std::transform(begin(triples), end(triples), begin(I3_list),
+      [&environment](const auto& t) { return getI3(environment, t); });
+
   // Compute the arrowhead probability of each edge endpoint
-  int myNbrTpl = allTpl.size();
-  
-#if _DEBUG
-    std::cout << "\noneLineMatrixallTpl Init:\n";
-    for (int i = 0; i < myNbrTpl; i++) 
-      {
-      // CAUTION : in oneLineMatrixallTpl nodes indices start from 1 !!!!!!!!
-      // The indice shift occurs in getSStructure
-      int node0 = oneLineMatrixallTpl[0 * myNbrTpl + i] - 1;
-      int node1 = oneLineMatrixallTpl[1 * myNbrTpl + i] - 1;
-      int node2 = oneLineMatrixallTpl[2 * myNbrTpl + i] - 1;
-      std::cout << "!!! Tpl " << node0 << "=" << environment.nodes[node0].name;
-      std::cout << " " << node1 << "=" << environment.nodes[node1].name;
-      std::cout << " " << node2 << "=" << environment.nodes[node2].name;
-      std::cout << " -- I3=" << allI3[i] << "\n";
-     }
-#endif
-  
-  if (myNbrTpl > 0) {
-    int propag = 0;
-    if (environment.isPropagation) propag = 1;
-    int degeneracy = 0;
-    if (environment.isDegeneracy) degeneracy = 1;
-    int latent = 0;
-    if (environment.isLatent || environment.isLatentOnlyOrientation) latent = 1;
-
-    ptrRetProbValues = getOrientTplLVDegPropag(environment, myNbrTpl, oneLineMatrixallTpl,
-        &allI3[0], latent, degeneracy, propag, environment.halfVStructures);
-    // update ptrRetProbValues for possible inconsistencies
-    std::map<string, double> probabsMap;
-    string s;
-    for (uint i = 0; i < allTpl.size(); i++) {
-      // 0 -> 1
-      s = environment.nodes[allTpl[i][0]].name +
-          environment.nodes[allTpl[i][1]].name;
-      double proba = ptrRetProbValues[i + (1 * allTpl.size())];
-      if (probabsMap.find(s) == probabsMap.end()) {
-        // not found
-        probabsMap[s] = proba;
+  vector<ProbaArray> probas_list = getOriProbasList(environment, triples, I3_list,
+      environment.latent_orientation, environment.degenerate,
+      environment.propagation, environment.half_v_structure);
+  // update probas_list for possible inconsistencies
+  class ProbaArrayMap : public std::map<std::pair<int, int>, double> {
+   public:
+    auto insert_or_update(std::pair<int, int> key, double proba) {
+      auto iter_key = this->find(key);
+      if (iter_key == this->end()) {
+        return this->insert({std::move(key), proba});
       } else {
-        // found
-        if (abs(probabsMap.find(s)->second - 0.5) < abs(proba - 0.5)) {
-          probabsMap[s] = proba;
-        }
-      }
-      // 1 -> 0
-      s = environment.nodes[allTpl[i][1]].name +
-          environment.nodes[allTpl[i][0]].name;
-      proba = ptrRetProbValues[i + (0 * allTpl.size())];
-      if (probabsMap.find(s) == probabsMap.end()) {
-        // not found
-        probabsMap[s] = proba;
-      } else {
-        // found
-        if (abs(probabsMap.find(s)->second - 0.5) < abs(proba - 0.5)) {
-          probabsMap[s] = proba;
-        }
-      }
-      // 1 -> 2
-      s = environment.nodes[allTpl[i][1]].name +
-          environment.nodes[allTpl[i][2]].name;
-      proba = ptrRetProbValues[i + (3 * allTpl.size())];
-      if (probabsMap.find(s) == probabsMap.end()) {
-        // not found
-        probabsMap[s] = proba;
-      } else {
-        // found
-        if (abs(probabsMap.find(s)->second - 0.5) < abs(proba - 0.5)) {
-          probabsMap[s] = proba;
-        }
-      }
-      // 2 -> 1
-      s = environment.nodes[allTpl[i][2]].name +
-          environment.nodes[allTpl[i][1]].name;
-      proba = ptrRetProbValues[i + (2 * allTpl.size())];
-      if (probabsMap.find(s) == probabsMap.end()) {
-        // not found
-        probabsMap[s] = proba;
-      } else {
-        // found
-        if (abs(probabsMap.find(s)->second - 0.5) < abs(proba - 0.5)) {
-          probabsMap[s] = proba;
-        }
+        // Update if proba is more probable
+        if (fabs(iter_key->second - 0.5) < fabs(proba - 0.5))
+          this->at(key) = proba;
+        return std::make_pair(iter_key, false);
       }
     }
-    for (uint i = 0; i < allTpl.size(); i++) {
-      s = environment.nodes[allTpl[i][0]].name +
-          environment.nodes[allTpl[i][1]].name;
-      ptrRetProbValues[i + (1 * allTpl.size())] = probabsMap.find(s)->second;
+  } proba_map;
 
-      s = environment.nodes[allTpl[i][1]].name +
-          environment.nodes[allTpl[i][0]].name;
-      ptrRetProbValues[i + (0 * allTpl.size())] = probabsMap.find(s)->second;
-
-      s = environment.nodes[allTpl[i][1]].name +
-          environment.nodes[allTpl[i][2]].name;
-      ptrRetProbValues[i + (3 * allTpl.size())] = probabsMap.find(s)->second;
-
-      s = environment.nodes[allTpl[i][2]].name +
-          environment.nodes[allTpl[i][1]].name;
-      ptrRetProbValues[i + (2 * allTpl.size())] = probabsMap.find(s)->second;
-    }
-    // set results to file
-    vector<string> vec;
-    vec.push_back("source1");
-    vec.push_back("p1");
-    vec.push_back("p2");
-    vec.push_back("target");
-    vec.push_back("p3");
-    vec.push_back("p4");
-    vec.push_back("source2");
-    vec.push_back("NI3");
-    vec.push_back("Error");
-
-    orientations.push_back(vec);
-
-    for (uint i = 0; i < allTpl.size(); i++) {
-      vec.clear();
-      int error = 0;
-      int info_sign = round(allI3[i] - 0.5);
-      int proba_sign = 0;
-
-      if (ptrRetProbValues[i + (1 * allTpl.size())] > 0.5 &&
-          ptrRetProbValues[i + (2 * allTpl.size())] > 0.5)
-        proba_sign = -1;
-      else
-        proba_sign = 1;
-
-      if ((sign(info_sign) != proba_sign && info_sign != 0) ||
-          (info_sign == 0 && proba_sign == -1))
-        error = 1;
-
-      vec.push_back(environment.nodes[allTpl[i][0]].name);
-
-      std::stringstream output;
-
-      output.str("");
-      output << ptrRetProbValues[i + (0 * allTpl.size())];
-      vec.push_back(output.str());
-
-      output.str("");
-      output << ptrRetProbValues[i + (1 * allTpl.size())];
-      vec.push_back(output.str());
-
-      vec.push_back(environment.nodes[allTpl[i][1]].name);
-
-      output.str("");
-      output << ptrRetProbValues[i + (2 * allTpl.size())];
-      vec.push_back(output.str());
-
-      output.str("");
-      output << ptrRetProbValues[i + (3 * allTpl.size())];
-      vec.push_back(output.str());
-
-      vec.push_back(environment.nodes[allTpl[i][2]].name);
-
-      output.str("");
-      output << allI3[i];
-      vec.push_back(output.str());
-
-      output.str("");
-      output << error;
-      vec.push_back(output.str());
-
-      orientations.push_back(vec);
-    }
+  for (size_t i = 0; i < triples.size(); i++) {
+    const auto& triple = triples[i];
+    const auto& probas = probas_list[i];
+    proba_map.insert_or_update({triple[1], triple[0]}, probas[0]);  // 1 -> 0
+    proba_map.insert_or_update({triple[0], triple[1]}, probas[1]);  // 0 -> 1
+    proba_map.insert_or_update({triple[2], triple[1]}, probas[2]);  // 2 -> 1
+    proba_map.insert_or_update({triple[1], triple[2]}, probas[3]);  // 1 -> 2
   }
-
-  vector<double> myProba;
-  //// UPDATE ADJ MATRIX
-  if (myNbrTpl > 0) {
-    for (uint i = 0; i < allTpl.size(); i++) {
-      myProba.clear();
-      myProba.push_back(ptrRetProbValues[i + (0 * allTpl.size())]);
-      myProba.push_back(ptrRetProbValues[i + (1 * allTpl.size())]);
-      // If there is AT LEAST ONE arrowhead
-      if ((*max_element(myProba.begin(), myProba.end()) - 0.5) > 0) {
-        // If there is ONLY ONE arrowhead
-        if ((*min_element(myProba.begin(), myProba.end()) - 0.5) <= 0) {
-          double a = myProba[0] - *max_element(myProba.begin(), myProba.end());
-          // If p1 is max: n1 <-- n2
-          if (a == 0) {
-            environment.edges[allTpl[i][0]][allTpl[i][1]].status = -2;
-            environment.edges[allTpl[i][1]][allTpl[i][0]].status = 2;
-          } else {
-            environment.edges[allTpl[i][0]][allTpl[i][1]].status = 2;
-            environment.edges[allTpl[i][1]][allTpl[i][0]].status = -2;
-          }
-        } else {
-          environment.edges[allTpl[i][0]][allTpl[i][1]].status = 6;
-          environment.edges[allTpl[i][1]][allTpl[i][0]].status = 6;
-        }
-      }
-      myProba.clear();
-      myProba.push_back(ptrRetProbValues[i + (2 * allTpl.size())]);
-      myProba.push_back(ptrRetProbValues[i + (3 * allTpl.size())]);
-      // If there is AT LEAST ONE arrowhead
-      if ((*max_element(myProba.begin(), myProba.end()) - 0.5) > 0) {
-        // If there is ONLY ONE arrowhead
-        if ((*min_element(myProba.begin(), myProba.end()) - 0.5) <= 0) {
-          double a = myProba[0] - *max_element(myProba.begin(), myProba.end());
-          // If p1 is max: n1 <-- n2
-          if (a == 0) {
-            environment.edges[allTpl[i][1]][allTpl[i][2]].status = -2;
-            environment.edges[allTpl[i][2]][allTpl[i][1]].status = 2;
-          } else {
-            environment.edges[allTpl[i][1]][allTpl[i][2]].status = 2;
-            environment.edges[allTpl[i][2]][allTpl[i][1]].status = -2;
-          }
-        } else {
-          environment.edges[allTpl[i][1]][allTpl[i][2]].status = 6;
-          environment.edges[allTpl[i][2]][allTpl[i][1]].status = 6;
-        }
-      }
-    }
+  // Update probabilities
+  std::transform(begin(triples), end(triples), begin(probas_list),
+      [&proba_map](const auto& triple) {
+        return ProbaArray{proba_map.at({triple[1], triple[0]}),
+            proba_map.at({triple[0], triple[1]}),
+            proba_map.at({triple[2], triple[1]}),
+            proba_map.at({triple[1], triple[2]})};
+      });
+  // Update adj matrix
+  for (size_t i = 0; i < triples.size(); i++) {
+    const auto& triple = triples[i];
+    const auto& probas = probas_list[i];
+    updateAdj(environment, triple[0], triple[1], probas[0], probas[1]);
+    updateAdj(environment, triple[1], triple[2], probas[2], probas[3]);
   }
-  delete[] oneLineMatrixallTpl;
-  delete[] ptrRetProbValues;
-
-  if (environment.tau > 0) 
-    {
-    //
-    // For temporal mode, when latent variable discovery is enabled, 
-    // we duplicated the edges over the history at the beginning 
-    // of the function => we need now to drop these extra edges
-    //
-    if ( (environment.isLatent) || (environment.isLatentOnlyOrientation) )
+  //
+  // In temporal mode, when latent variable discovery is enabled, 
+  // we duplicated the edges over the history at the beginning 
+  // of the function => we need now to drop these extra edges
+  //
+  if (   environment.tau > 0 
+      && (environment.latent || environment.latent_orientation) )
       tmiic::dropPastEdges (environment);
-    //
+  
+  // Write output
+  vector<vector<string>> orientations{
+      {"source1", "p1", "p2", "target", "p3", "p4", "source2", "NI3", "Error"}};
+  for (size_t i = 0; i < triples.size(); i++) {
+    const auto& triple = triples[i];
+    const auto& probas = probas_list[i];
+
+    int info_int = round(I3_list[i] - 0.5);
+    int info_sign = (info_int > 0) - (info_int < 0);
+
+    int proba_sign = 1;
+    if (probas[1] > 0.5 && probas[2] > 0.5) proba_sign = -1;
+
+    string error = "0";
+    if ((info_int != 0 && info_sign != proba_sign) ||
+        (info_int == 0 && proba_sign == -1))
+      error = "1";
+
+    using std::to_string;
+    orientations.emplace_back(std::initializer_list<string>{
+        environment.nodes[triple[0]].name,
+        to_string(probas[0]), to_string(probas[1]),
+        environment.nodes[triple[1]].name,
+        to_string(probas[2]), to_string(probas[3]),
+        environment.nodes[triple[2]].name,
+        to_string(I3_list[i]), error});
+
+  if (environment.tau > 0)
+    {
     // Check if orientation found by miic is aligned with time
     //
-    for (uint edge_idx = 0; edge_idx < environment.noMoreAddress.size(); edge_idx++) 
+    for (auto edge_iter = begin(edge_list); edge_iter != end(edge_list); ++edge_iter) 
       {
-      int egde_node0 = environment.noMoreAddress[edge_idx]->i;
-      int egde_node1 = environment.noMoreAddress[edge_idx]->j;
+      int egde_node0 = edge_iter->i;
+      int egde_node1 = edge_iter->j;
+      int orient_from_miic = environment.edges[egde_node0][egde_node1].status;
 
       int lag_node0 = egde_node0 / nodes_cnt_not_lagged;
       int lag_node1 = egde_node1 / nodes_cnt_not_lagged;
@@ -581,21 +331,19 @@ vector<vector<string> > orientationProbability(Environment& environment) {
       else
         orient_from_time = 2;
       
-      int orient_from_miic = environment.edges[egde_node0][egde_node1].status;
-      
       if (orient_from_miic != orient_from_time)
-        std::cout << "Warning: Edge " << environment.nodes[egde_node0].name
-                       << "-" << environment.nodes[egde_node1].name
-                       << ", miic orientation=" << orient_from_miic
-                       << " differs from time orientation=" << orient_from_time << "\n";
+        Rcpp::Rcout << "Warning: Edge " << environment.nodes[egde_node0].name
+                    << "-" << environment.nodes[egde_node1].name
+                    << ", miic orientation=" << orient_from_miic
+                    << " differs from time orientation=" << orient_from_time << "\n";
       }
     }
   
 #if _DEBUG
-  std::cout << "\norientationProbability end:\n";
+  Rcout << "\norientationProbability end:\n";
   printEdges (environment);
 #endif
-
+    }
   return orientations;
 }
 

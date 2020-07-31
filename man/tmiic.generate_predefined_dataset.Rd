@@ -32,7 +32,7 @@ predefined ones:
 \item \emph{tmiic.f1}: \eqn{f(x) = x}
 \item \emph{tmiic.f2}: \eqn{f(x) = ( 1 - 4 * exp[-(x^2)/2] ) * x}
 \item \emph{tmiic.f3}: \eqn{f(x) = ( 1 - 4 * x^3 * exp[-(x^2)/2] ) * x}
-}}
+}\cr}
 
 \item{n_timeseries}{[an integer] The number of samples to generate}
 

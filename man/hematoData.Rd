@@ -4,7 +4,9 @@
 \name{hematoData}
 \alias{hematoData}
 \title{Early blood development: single cell binary gene expression data}
-\format{A data.frame object.}
+\format{
+A data.frame object.
+}
 \usage{
 data(hematoData)
 }

@@ -1,7 +1,7 @@
 #include "compute_info.h"
 
-#include <math.h>
-
+#define _USE_MATH_DEFINES
+#include <cmath>
 #include <set>
 
 #include "structure.h"
@@ -20,109 +20,15 @@
 namespace miic {
 namespace computation {
 
-using uint = unsigned int;
 using namespace miic::structure;
 using namespace miic::utility;
+using std::vector;
 
-double lnfactorial(int n, double* looklog) {
-  double z = 0;
-  if (n == 0) {
-    z = 1;
-  } else {
-    for (int y = 2; y <= n; y++) z += looklog[y];
-  }
-  return z;
-}
-
-double logchoose(int n, int k, double* looklog) {
-  if (n == k || k == 0) return 0;
-
-  return (lnfactorial(n, looklog) - lnfactorial(k, looklog) -
-          lnfactorial(n - k, looklog));
-}
-
-double logchoose(int n, int k, double* looklog, double** lookchoose) {
-  if (n == k || k == 0) return 0;
-
-  if (k < N_COL_NML) {
-    double val = lookchoose[k][n];
-    if (val >= 0) return val;
-  }
-
-  double res = logchoose(n, k, looklog);
-  if (k < N_COL_NML) lookchoose[k][n] = res;
-
-  return res;
-}
-
-double computeLogC(int N, int r, double* looklog, double* c2terms) {
-  double C2 = 0;
-  if (c2terms[N] != -1)
-    C2 = c2terms[N];
-  else {
-    if (N <= 1000) {
-      for (int h = 0; h <= N; h++) {
-        C2 += exp(logchoose(N, h, looklog) + log(pow(h / ((double)N), h)) +
-                  log(pow((N - h) / ((double)N), (N - h))));
-      }
-    } else {
-      C2 = sqrt(N * M_PI_2) *
-           exp(sqrt(8 / (9 * N * M_PI)) + (3 * M_PI - 16) / (36 * N * M_PI));
-    }
-    c2terms[N] = C2;
-  }
-
-  double D = C2;
-  double logC = log(D);
-  if (r > 2) {
-    for (int rr = 3; rr <= r; rr++) {
-      D = 1 + N / (1.0 * (rr - 2) * D);
-      logC += log(D);
-    }
-  }
-  return logC;
-}
-
-double computeLogC(int N, int r, double* looklog, double** cterms) {
-  if (r < N_COL_NML) {
-    double val = cterms[r][N];
-    if (val >= 0) return val;
-  }
-  double* c2terms = cterms[2];
-  double C2 = 0;
-  if (c2terms[N] != -1)
-    C2 = c2terms[N];
-  else {
-    if (N <= 1000) {
-      for (int h = 0; h <= N; h++) {
-        C2 += exp(logchoose(N, h, looklog) + log(pow(h / ((double)N), h)) +
-                  log(pow((N - h) / ((double)N), (N - h))));
-      }
-    } else {
-      C2 = sqrt(N * M_PI_2) *
-           exp(sqrt(8 / (9 * N * M_PI)) + (3 * M_PI - 16) / (36 * N * M_PI));
-    }
-    C2 = log(C2);
-  }
-
-  double D = exp(C2);
-  double logC = C2;
-  if (r > 2) {
-    for (int rr = 3; rr <= r; rr++) {
-      D = 1 + N / (1.0 * (rr - 2) * D);
-      logC += log(D);
-    }
-  }
-  if (r < N_COL_NML) cterms[r][N] = logC;
-
-  return logC;
-}
-
-double* getAllInfoNEW(int* ptrAllData, uint* ptrAllLevels, int* ptrVarIdx,
-    int nbrUi, int* ptrZiIdx, int nbrZi, int ziPos, int sampleSize,
-    int sampleSizeEff, int modCplx, int k23, double* looklog, double* c2terms,
-    MemorySpace* memory, double* weights, double** freqs1,
-    bool testDistribution) {
+double* getAllInfoNEW(int* ptrAllData, const vector<int>& ptrAllLevels,
+    const vector<int>& ptrVarIdx, int nbrUi, int* ptrZiIdx, int nbrZi,
+    int ziPos, int sampleSize, int sampleSizeEff, int modCplx, int k23,
+    MemorySpace* memory, const vector<double>& weights, double** freqs1,
+    bool test_mar, std::shared_ptr<CtermCache> cache) {
   int randomrescaling = 1;
   float r, rr;
 
@@ -234,7 +140,7 @@ double* getAllInfoNEW(int* ptrAllData, uint* ptrAllLevels, int* ptrVarIdx,
   //                      R_top & nSample[z_top]*I(xyz|{ui}) & k_xyz_ui
   if (nbrZi > 0) nbrRetValues = 9;
 
-  double* ptrRetValues = (double*)malloc(nbrRetValues * sizeof(double));
+  double* ptrRetValues = new double[nbrRetValues];
 
   ptrRetValues[0] = -1;
   ptrRetValues[1] = -1;
@@ -265,76 +171,76 @@ double* getAllInfoNEW(int* ptrAllData, uint* ptrAllLevels, int* ptrVarIdx,
     Opt_dBin[iii] = (int*)malloc(ncol * sizeof(int));
 
 #if _MY_DEBUG_NEW
-  printf("\n# ---- Printed from C [getAllInfo]: ----\n");
+  Rprintf("\n# ---- Printed from C [getAllInfo]: ----\n");
 
-  printf("\n# ----> DATA\n");
+  Rprintf("\n# ----> DATA\n");
   // i --> sample number; j --> variable number
-  printf("X0=%d Y0=%d\t", ptrAllData[0 + ptrVarIdx[0] * sampleSize],
+  Rprintf("X0=%d Y0=%d\t", ptrAllData[0 + ptrVarIdx[0] * sampleSize],
       ptrAllData[0 + ptrVarIdx[1] * sampleSize]);
 
   for (i = 0; i < sampleSize; i++) {
     if (ptrAllData[i + ptrVarIdx[0] * sampleSize] > -1 &&
         ptrAllData[i + ptrVarIdx[1] * sampleSize] > -1)
-      printf("X=%d Y=%d\t", ptrAllData[i + ptrVarIdx[0] * sampleSize],
+      Rprintf("X=%d Y=%d\t", ptrAllData[i + ptrVarIdx[0] * sampleSize],
           ptrAllData[i + ptrVarIdx[1] * sampleSize]);
     i = sampleSize;
   }
 
   for (i = 0; i < 6; i++) {
     // Display data for xi, xj, {ui}
-    printf("# ");
+    Rprintf("# ");
     for (j = 0; j < (2 + nbrUi); j++) {
-      printf("%d\t", ptrAllData[i + ptrVarIdx[j] * sampleSize]);
+      Rprintf("%d\t", ptrAllData[i + ptrVarIdx[j] * sampleSize]);
     }
     // Display data for zi
     for (k = 0; k < nbrZi; k++) {
-      printf("%d\t", ptrAllData[i + ptrZiIdx[k] * sampleSize]);
+      Rprintf("%d\t", ptrAllData[i + ptrZiIdx[k] * sampleSize]);
     }
-    printf("\n");
+    Rprintf("\n");
   }
-  printf("# ../..\n");
+  Rprintf("# ../..\n");
 
-  printf("\n# ----> LEVELS\n");
-  printf("# ");
+  Rprintf("\n# ----> LEVELS\n");
+  Rprintf("# ");
   for (i = 0; i < (2 + nbrUi); i++) {
-    printf("%d\t", ptrAllLevels[ptrVarIdx[i]]);
+    Rprintf("%d\t", ptrAllLevels[ptrVarIdx[i]]);
   }
   for (i = 0; i < nbrZi; i++) {
-    printf("%d\t", ptrAllLevels[ptrZiIdx[i]]);
+    Rprintf("%d\t", ptrAllLevels[ptrZiIdx[i]]);
   }
-  printf("\n");
+  Rprintf("\n");
 
-  printf("\n# ----> VAR IDX (xi, xj, {ui})\n");
-  printf("# ");
+  Rprintf("\n# ----> VAR IDX (xi, xj, {ui})\n");
+  Rprintf("# ");
   for (i = 0; i < (2 + nbrUi); i++) {
-    printf("%d\t", ptrVarIdx[i]);
+    Rprintf("%d\t", ptrVarIdx[i]);
   }
-  printf("\n");
+  Rprintf("\n");
 
-  printf("\n# ----> NBR UI\n");
-  printf("# %d\n", nbrUi);
+  Rprintf("\n# ----> NBR UI\n");
+  Rprintf("# %d\n", nbrUi);
 
-  printf("\n# ----> ZI IDX (nbrZi=%d)\n", nbrZi);
-  printf("# ");
+  Rprintf("\n# ----> ZI IDX (nbrZi=%d)\n", nbrZi);
+  Rprintf("# ");
   for (i = 0; i < nbrZi; i++) {
-    printf("%d\t", ptrZiIdx[i]);
+    Rprintf("%d\t", ptrZiIdx[i]);
   }
-  printf("\n");
+  Rprintf("\n");
 
-  printf("\n# ----> ZI POS\n");
-  printf("# %d\n", ziPos);
+  Rprintf("\n# ----> ZI POS\n");
+  Rprintf("# %d\n", ziPos);
 
-  printf("\n# ----> SAMPLE SIZE\n");
-  printf("# %d\n", sampleSize);
+  Rprintf("\n# ----> SAMPLE SIZE\n");
+  Rprintf("# %d\n", sampleSize);
 
-  printf("\n# ----> EFFECTIVE SAMPLE SIZE\n");
-  printf("# %d\n", sampleSizeEff);
+  Rprintf("\n# ----> EFFECTIVE SAMPLE SIZE\n");
+  Rprintf("# %d\n", sampleSizeEff);
 
-  printf("\n# ----> NBR ALLVAR\n");
-  printf("# %d\n\n", nbrAllVar);
+  Rprintf("\n# ----> NBR ALLVAR\n");
+  Rprintf("# %d\n\n", nbrAllVar);
 
-  printf("\n# ----> Check for MODEL COMPLEXITY\n");
-  printf("# %d\n\n", modCplx);
+  Rprintf("\n# ----> Check for MODEL COMPLEXITY\n");
+  Rprintf("# %d\n\n", modCplx);
 #endif  // _MY_DEBUG_NEW
 
   // find samples without NA in x,y,ui and store their id in sample[k][0]
@@ -378,10 +284,10 @@ double* getAllInfoNEW(int* ptrAllData, uint* ptrAllLevels, int* ptrVarIdx,
   }
 
 #if _MY_DEBUG_NEW
-  printf(
+  Rprintf(
       "\n# =====> test before initialisation of bin numbers for continuous "
       "variables \n");
-  printf("# ==> sampleSize=%d    nSample0=%d  \n", sampleSize, nSample0);
+  Rprintf("# ==> sampleSize=%d    nSample0=%d  \n", sampleSize, nSample0);
 #endif  // _MY_DEBUG_NEW
 
   if (nSample0 > 0) {
@@ -392,9 +298,9 @@ double* getAllInfoNEW(int* ptrAllData, uint* ptrAllLevels, int* ptrVarIdx,
     }
 
 #if _MY_DEBUG_NEW
-    printf("\n# =====> test before optimisation on xy_ui \n");
+    Rprintf("\n# =====> test before optimisation on xy_ui \n");
     for (j = 0; j < nbrAllVar; j++) {
-      printf("# dBin[0][%d] = %d \n", j, dBin[0][j]);
+      Rprintf("# dBin[0][%d] = %d \n", j, dBin[0][j]);
     }
 #endif  // _MY_DEBUG_NEW
 
@@ -436,7 +342,7 @@ double* getAllInfoNEW(int* ptrAllData, uint* ptrAllLevels, int* ptrVarIdx,
     sample[k][3] = bin;  // max Lui   (useful for termination of counts)
 
 #if _MY_DEBUG_NEW
-    printf("\n# =====> test before sorting \n");
+    Rprintf("\n# =====> test before sorting \n");
 #endif  // _MY_DEBUG_NEW
 
     // sort sample in increasing Lxyui stored in sample[k][1]
@@ -446,16 +352,16 @@ double* getAllInfoNEW(int* ptrAllData, uint* ptrAllLevels, int* ptrVarIdx,
     }
 
 #if _MY_DEBUG_NEW
-    printf("\n# =====> test before sort2int \n");
+    Rprintf("\n# =====> test before sort2int \n");
 #endif  // _MY_DEBUG_NEW
 
     sort2arrays(nSample0 + 1, sampleKey, orderSample, bridge);
 
 #if _MY_DEBUG_NEW
-    printf("\n# =====> test after sort2int \n");
+    Rprintf("\n# =====> test after sort2int \n");
     for (k = 0; k <= nSample0; k++) {
       // if(sample[k][0]<0)
-      // if(k>(nSample0-10))  printf("@ nSample0=%d   sampleKey[k=%d]=%d
+      // if(k>(nSample0-10))  Rprintf("@ nSample0=%d   sampleKey[k=%d]=%d
       // orderSample[k=%d]=%d  sample[i=%d][1]=%d  sample[i=%d][0]=%d
       // \n",nSample0,k,sampleKey[k],k,orderSample[k],k,sample[k][1],k,sample[k][0]);
     }
@@ -463,29 +369,29 @@ double* getAllInfoNEW(int* ptrAllData, uint* ptrAllLevels, int* ptrVarIdx,
 
     for (k = 1; k <= nSample0 + 1; k++) {
 #if _MY_DEBUG_NEW
-      //	  printf("\n k=%d ",k);
+      //	  Rprintf("\n k=%d ",k);
 #endif  // _MY_DEBUG_NEW
 
       i = orderSample[k];
 
 #if _MY_DEBUG_NEW
       if (i < 0 || i > sampleSize)
-        printf("\n# @@@@@@@@@@@@@@@@@@@@> Probs i=%d sampleSize=%d \n", i,
+        Rprintf("\n# @@@@@@@@@@@@@@@@@@@@> Probs i=%d sampleSize=%d \n", i,
             sampleSize);
-      if (k > (nSample0 - 10)) printf("\n @ ordS[k=%d]=%d ", k, orderSample[k]);
+      if (k > (nSample0 - 10)) Rprintf("\n @ ordS[k=%d]=%d ", k, orderSample[k]);
 #endif  // _MY_DEBUG_NEW
 
       for (j = 0; j < 6; j++) {
         sortedSample[k - 1][j] = sample[i][j];
 #if _MY_DEBUG_NEW
         if (k > (nSample0 - 10))
-          printf("sdS[k=%d][j=%d]=%d ", k - 1, j, sortedSample[k - 1][j]);
+          Rprintf("sdS[k=%d][j=%d]=%d ", k - 1, j, sortedSample[k - 1][j]);
 #endif  // _MY_DEBUG_NEW
       }
     }
 
 #if _MY_DEBUG_NEW
-    printf(
+    Rprintf(
         "\n# =====> test before initialization of counts and mutual infos & "
         "logCs \n");
 #endif  // _MY_DEBUG_NEW
@@ -532,7 +438,7 @@ double* getAllInfoNEW(int* ptrAllData, uint* ptrAllLevels, int* ptrVarIdx,
 #if _MY_DEBUG_NEW
       if (k > (nSample0 - 10) || Nxyui < 0 || Nyui < 0 || Nui < 0 || X < 0 ||
           Y < 0 || X >= dBin[0][0] || Y >= dBin[0][1]) {
-        printf(
+        Rprintf(
             "before counts nSam0=%d  X=%d(%d) Y=%d(%d) k=%d sortS[%d][1]=%d "
             "Lxyui=%d sortS[%d][2]=%d Lyui=%d sortS[%d][3]=%d Lui=%d Nxyui=%d "
             "Nyui=%d Nui=%d  \n",
@@ -548,7 +454,7 @@ double* getAllInfoNEW(int* ptrAllData, uint* ptrAllLevels, int* ptrVarIdx,
           if (randomrescaling) {
             NNxyui = (int)floor(Pxyui);
             r = Pxyui - NNxyui;
-            rr = (double)rand() / (double)RAND_MAX;
+            rr = R::runif(0,1);
             if (r > rr) NNxyui++;
           }
         } else {
@@ -564,27 +470,28 @@ double* getAllInfoNEW(int* ptrAllData, uint* ptrAllLevels, int* ptrVarIdx,
         Ntot += NNxyui;
 
         if (NNxyui > 0) {
-          NlogN = NNxyui * log(NNxyui);
+          NlogN = NNxyui * cache->getLog(NNxyui);
           info_xui_y += NlogN;
           info_yui_x += NlogN;
         }
         Lxyui = sortedSample[k][1];
         Nxyuis += NNxyui;
-        Pxyui = weights[sortedSample[k][0]];  // weights[k];
+        if (sortedSample[k][0] < sampleSize)
+          Pxyui = weights[sortedSample[k][0]];  // weights[k];
 
         if (k < nSample0) X = sortedSample[k][4];
         if (k < nSample0) Y = sortedSample[k][5];
 
         if (sortedSample[k][2] > Lyui) {
           if (Nyui > 0) {
-            NlogN = Nyui * log(Nyui);
+            NlogN = Nyui * cache->getLog(Nyui);
             info_yui_x -= NlogN;
             info_ui_y += NlogN;
 
             if (modCplx != MDL) {
               if (Nyui > Ntot)
-                printf("# ==$$$===> Ntot=%d Nyui=%d \n", Ntot, Nyui);
-              logC_yui_x += computeLogC(Nyui, dBin[0][0], looklog, c2terms);
+                Rprintf("# ==$$$===> Ntot=%d Nyui=%d \n", Ntot, Nyui);
+              logC_yui_x += cache->getLogC(Nyui, dBin[0][0]);
             }
           }
           Lyui = sortedSample[k][2];
@@ -595,14 +502,13 @@ double* getAllInfoNEW(int* ptrAllData, uint* ptrAllLevels, int* ptrVarIdx,
             for (j = 0; j < dBin[0][0]; j++) {
               Nxuij = Nxui[j];
               if (Nxuij > 0) {
-                NlogN = Nxuij * log(Nxuij);
+                NlogN = Nxuij * cache->getLog(Nxuij);
                 info_xui_y -= NlogN;
                 info_ui_x += NlogN;
                 if (modCplx != MDL) {
                   if (Nxuij > Ntot)
-                    printf("# ==$$$===> Ntot=%d Nxuij=%d \n", Ntot, Nxuij);
-                  logC_xui_y +=
-                      computeLogC(Nxuij, dBin[0][1], looklog, c2terms);
+                    Rprintf("# ==$$$===> Ntot=%d Nxuij=%d \n", Ntot, Nxuij);
+                  logC_xui_y += cache->getLogC(Nxuij, dBin[0][1]);
                 }
 
                 Nxuis += Nxuij;
@@ -611,14 +517,14 @@ double* getAllInfoNEW(int* ptrAllData, uint* ptrAllLevels, int* ptrVarIdx,
             }
 
             if (Nui > 0) {
-              NlogN = Nui * log(Nui);
+              NlogN = Nui * cache->getLog(Nui);
               info_ui_y -= NlogN;
               info_ui_x -= NlogN;
               if (modCplx != MDL) {
                 if (Nui > Ntot)
-                  printf("# ==$$$===> Ntot=%d Nui=%d \n", Ntot, Nui);
-                logC_ui_x += computeLogC(Nui, dBin[0][0], looklog, c2terms);
-                logC_ui_y += computeLogC(Nui, dBin[0][1], looklog, c2terms);
+                  Rprintf("# ==$$$===> Ntot=%d Nui=%d \n", Ntot, Nui);
+                logC_ui_x += cache->getLogC(Nui, dBin[0][0]);
+                logC_ui_y += cache->getLogC(Nui, dBin[0][1]);
               }
             }
             Lui = sortedSample[k][3];
@@ -657,21 +563,21 @@ double* getAllInfoNEW(int* ptrAllData, uint* ptrAllLevels, int* ptrVarIdx,
     info2xy_ui = 0.5 * (info_ui_y + info_ui_x);
 
 #if _MY_DEBUG_NEW
-    printf(
+    Rprintf(
         "# =====> test before check maximum mutual infos - cplx terms "
         "nSample0=%d Nxyuis=%d   Nyuis=%d   Nuis=%d  Nxuis=%d  Nxs=%d  Nys=%d  "
         "Ntot=%d  info_ui_y=%g info_ui_x=%g info_ui_y+info_ui_x =%g  \n",
         nSample0, Nxyuis, Nyuis, Nuis, Nxuis, Nxs, Nys, Ntot, info_ui_y,
         info_ui_x, info_ui_y + info_ui_x);
-    printf(
+    Rprintf(
         "# =====> test before check maximum mutual infos - cplx terms "
         "sampleSizeEff=%d sampleSize=%d info3xy_ui=%g   info2xy_ui=%g \n",
         sampleSizeEff, sampleSize, info3xy_ui, info2xy_ui);
-    printf(
+    Rprintf(
         "# =====> test before check maximum mutual infos - cplx terms "
         "info_xui_y=%g info_yui_x=%g info_ui_y=%g info_ui_x=%g \n",
         info_xui_y, info_yui_x, info_ui_y, info_ui_x);
-    printf(
+    Rprintf(
         "# =====> test before check maximum mutual infos - cplx terms "
         "logC_xui_y=%g logC_yui_x=%g logC_ui_y=%g logC_ui_x=%g \n",
         logC_xui_y, logC_yui_x, logC_ui_y, logC_ui_x);
@@ -679,7 +585,7 @@ double* getAllInfoNEW(int* ptrAllData, uint* ptrAllLevels, int* ptrVarIdx,
 
     if (modCplx == MDL) {
       Prui = 1;
-      logN = log(Ntot);
+      logN = cache->getLog(Ntot);
       for (j = 2; j < nbrAllVar; j++) Prui *= dBin[0][j];
       logC_xui_y = 0.5 * (dBin[0][1] - 1) * (dBin[0][0] * Prui - 1) * logN;
       logC_yui_x = 0.5 * (dBin[0][0] - 1) * (dBin[0][1] * Prui - 1) * logN;
@@ -705,7 +611,7 @@ double* getAllInfoNEW(int* ptrAllData, uint* ptrAllLevels, int* ptrVarIdx,
       testinfo_xy_ui = info3xy_ui - logC3xy_ui + info2xy_ui - logC2xy_ui;
 
 #if _MY_DEBUG_NEW
-    printf(
+    Rprintf(
         "\n# =====> test before change bin numbers 1,  info3xy_ui - "
         "logC3xy_ui=%g  info2xy_ui - logC2xy_ui=%g testinfo_xy_ui=%g "
         "info3xy_ui=%g  logC3xy_ui=%g  info2xy_ui=%g logC2xy_ui=%g "
@@ -739,7 +645,7 @@ double* getAllInfoNEW(int* ptrAllData, uint* ptrAllLevels, int* ptrVarIdx,
     }
 
 #if _MY_DEBUG_NEW
-    printf(
+    Rprintf(
         "\n# =====> test before change bin numbers 2,  info3xy_ui - "
         "logC3xy_ui=%g  info2xy_ui - logC2xy_ui=%g testinfo_xy_ui=%g "
         "info3xy_ui=%g  logC3xy_ui=%g  info2xy_ui=%g logC2xy_ui=%g "
@@ -747,7 +653,7 @@ double* getAllInfoNEW(int* ptrAllData, uint* ptrAllLevels, int* ptrVarIdx,
         (info3xy_ui - logC3xy_ui), (info2xy_ui - logC2xy_ui), testinfo_xy_ui,
         info3xy_ui, logC3xy_ui, info2xy_ui, logC2xy_ui, max_info_logC,
         min_info_logC);
-    printf("\n# =====> test before z nbrZi=%d \n", nbrZi);
+    Rprintf("\n# =====> test before z nbrZi=%d \n", nbrZi);
 #endif  // _MY_DEBUG_NEW
 
     if (nbrZi == 0) {
@@ -840,19 +746,21 @@ double* getAllInfoNEW(int* ptrAllData, uint* ptrAllLevels, int* ptrVarIdx,
             nbrLevCorrect[j] = s.size();
           }
 
-          if (testDistribution) {
-            int** counts2 =
-                (int**)calloc(ptrAllLevels[ptrVarIdx[0]], sizeof(int*));
-            for (uint j = 0; j < ptrAllLevels[ptrVarIdx[0]]; j++)
-              counts2[j] =
-                  (int*)calloc(ptrAllLevels[ptrVarIdx[1]], sizeof(int));
+          if (test_mar) {
+            int** counts2 = new int*[ptrAllLevels[ptrVarIdx[0]]];
+            for (int j = 0; j < ptrAllLevels[ptrVarIdx[0]]; j++){
+              counts2[j] = new int[ptrAllLevels[ptrVarIdx[1]]];
+              for(int k = 0; k < ptrAllLevels[ptrVarIdx[1]]; k++){
+                counts2[j][k] = 0;
+              }
+            }
             // fill table
             for (int k = 0; k < nSampleZ; k++) {
               i = sampleWithZ[k];
               counts2[ptrAllData[i + ptrVarIdx[0] * sampleSize]]
                      [ptrAllData[i + ptrVarIdx[1] * sampleSize]]++;
             }
-            double cplxMdl = log(nSampleZ);
+            double cplxMdl = cache->getLog(nSampleZ);
             double kldiv =
                 exp(-nSampleZ * kl(counts2, freqs1, ptrAllLevels[ptrVarIdx[0]],
                                     ptrAllLevels[ptrVarIdx[1]]) +
@@ -860,7 +768,7 @@ double* getAllInfoNEW(int* ptrAllData, uint* ptrAllLevels, int* ptrVarIdx,
 
             if (kldiv < 1) isGoodCandidate = false;
 
-            for (uint j = 0; j < ptrAllLevels[ptrVarIdx[0]]; j++)
+            for (int j = 0; j < ptrAllLevels[ptrVarIdx[0]]; j++)
               delete[] counts2[j];
             delete[] counts2;
           }
@@ -868,7 +776,7 @@ double* getAllInfoNEW(int* ptrAllData, uint* ptrAllLevels, int* ptrVarIdx,
 
         if (isGoodCandidate) {
 #if _MY_DEBUG_NEW
-          printf("\n# =====> test before z 2 nSample[zi=%d]=%d nSample0=%d \n",
+          Rprintf("\n# =====> test before z 2 nSample[zi=%d]=%d nSample0=%d \n",
               zi, nSample[zi], nSample0);
 #endif  // _MY_DEBUG_NEW
 
@@ -981,7 +889,7 @@ double* getAllInfoNEW(int* ptrAllData, uint* ptrAllLevels, int* ptrVarIdx,
                         if (randomrescaling) {
                           NNxyuizl = (int)floor(Pxyuizl);
                           r = Pxyuizl - NNxyuiz;
-                          rr = (double)rand() / (double)RAND_MAX;
+                          rr = R::runif(0,1);
                           if (r > rr) NNxyuizl++;
                         }
                       } else {
@@ -989,7 +897,7 @@ double* getAllInfoNEW(int* ptrAllData, uint* ptrAllLevels, int* ptrVarIdx,
                       }
 
                       if (NNxyuizl > 0) {
-                        NlogN = NNxyuizl * log(NNxyuizl);
+                        NlogN = NNxyuizl * cache->getLog(NNxyuizl);
                         info_xuiz_y += NlogN;
                         info_yuiz_x += NlogN;
                         NNxyuiz += NNxyuizl;
@@ -1005,7 +913,7 @@ double* getAllInfoNEW(int* ptrAllData, uint* ptrAllLevels, int* ptrVarIdx,
                   Pxyuiz[Z] = weights[sortedSample[k][0]];
 
                   if (NNxyuiz > 0) {
-                    NlogN = NNxyuiz * log(NNxyuiz);
+                    NlogN = NNxyuiz * cache->getLog(NNxyuiz);
                     info_xui_y += NlogN;
                     info_yui_x += NlogN;
 
@@ -1031,27 +939,24 @@ double* getAllInfoNEW(int* ptrAllData, uint* ptrAllLevels, int* ptrVarIdx,
 
                   if (sortedSample[k][2] > Lyui) {
                     if (Nyui > 0) {
-                      NlogN = Nyui * log(Nyui);
+                      NlogN = Nyui * cache->getLog(Nyui);
                       info_yui_x -= NlogN;
                       info_yui_z -= NlogN;
                       info_ui_y += NlogN;
                       if (modCplx != MDL) {
-                        logC_yui_x +=
-                            computeLogC(Nyui, dBin[0][0], looklog, c2terms);
-                        logC_yui_z +=
-                            computeLogC(Nyui, dBin[0][z], looklog, c2terms);
+                        logC_yui_x += cache->getLogC(Nyui, dBin[0][0]);
+                        logC_yui_z += cache->getLogC(Nyui, dBin[0][z]);
                       }
 
                       for (l = 0; l < dBin[0][z]; l++) {
                         Nyuizl = Nyuiz[l];
                         if (Nyuizl > 0) {
-                          NlogN = Nyuizl * log(Nyuizl);
+                          NlogN = Nyuizl * cache->getLog(Nyuizl);
                           info_yui_z += NlogN;
                           info_uiz_y += NlogN;
                           info_yuiz_x -= NlogN;
                           if (modCplx != MDL) {
-                            logC_yuiz_x += computeLogC(
-                                Nyuizl, dBin[0][0], looklog, c2terms);
+                            logC_yuiz_x += cache->getLogC(Nyuizl, dBin[0][0]);
                           }
                           Nyuizs += Nyuizl;
                           Nyuiz[l] = 0;
@@ -1064,17 +969,14 @@ double* getAllInfoNEW(int* ptrAllData, uint* ptrAllLevels, int* ptrVarIdx,
 
                     if (sortedSample[k][3] > Lui) {
                       if (Nui > 0) {
-                        NlogN = Nui * log(Nui);
+                        NlogN = Nui * cache->getLog(Nui);
                         info_ui_x -= NlogN;
                         info_ui_y -= NlogN;
                         info_ui_z -= NlogN;
                         if (modCplx != MDL) {
-                          logC_ui_x +=
-                              computeLogC(Nui, dBin[0][0], looklog, c2terms);
-                          logC_ui_y +=
-                              computeLogC(Nui, dBin[0][1], looklog, c2terms);
-                          logC_ui_z +=
-                              computeLogC(Nui, dBin[0][z], looklog, c2terms);
+                          logC_ui_x += cache->getLogC(Nui, dBin[0][0]);
+                          logC_ui_y += cache->getLogC(Nui, dBin[0][1]);
+                          logC_ui_z += cache->getLogC(Nui, dBin[0][z]);
                         }
                         Nuis += Nui;
                         Nui = 0;
@@ -1082,15 +984,13 @@ double* getAllInfoNEW(int* ptrAllData, uint* ptrAllLevels, int* ptrVarIdx,
                         for (l = 0; l < dBin[0][z]; l++) {
                           Nuizl = Nuiz[l];
                           if (Nuizl > 0) {
-                            NlogN = Nuizl * log(Nuizl);
+                            NlogN = Nuizl * cache->getLog(Nuizl);
                             info_ui_z += NlogN;
                             info_uiz_x -= NlogN;
                             info_uiz_y -= NlogN;
                             if (modCplx != MDL) {
-                              logC_uiz_x += computeLogC(
-                                  Nuizl, dBin[0][0], looklog, c2terms);
-                              logC_uiz_y += computeLogC(
-                                  Nuizl, dBin[0][1], looklog, c2terms);
+                              logC_uiz_x += cache->getLogC(Nuizl, dBin[0][0]);
+                              logC_uiz_y += cache->getLogC(Nuizl, dBin[0][1]);
                             }
                             Nuizs += Nuizl;
                             Nuiz[l] = 0;
@@ -1100,15 +1000,13 @@ double* getAllInfoNEW(int* ptrAllData, uint* ptrAllLevels, int* ptrVarIdx,
                         for (j = 0; j < dBin[0][0]; j++) {
                           Nxuij = Nxui[j];
                           if (Nxuij > 0) {
-                            NlogN = Nxuij * log(Nxuij);
+                            NlogN = Nxuij * cache->getLog(Nxuij);
                             info_xui_y -= NlogN;
                             info_xui_z -= NlogN;
                             info_ui_x += NlogN;
                             if (modCplx != MDL) {
-                              logC_xui_y += computeLogC(
-                                  Nxuij, dBin[0][1], looklog, c2terms);
-                              logC_xui_z += computeLogC(
-                                  Nxuij, dBin[0][z], looklog, c2terms);
+                              logC_xui_y += cache->getLogC(Nxuij, dBin[0][1]);
+                              logC_xui_z += cache->getLogC(Nxuij, dBin[0][z]);
                             }
                             Nxuis += Nxuij;
                             Nxui[j] = 0;
@@ -1116,13 +1014,13 @@ double* getAllInfoNEW(int* ptrAllData, uint* ptrAllLevels, int* ptrVarIdx,
                             for (l = 0; l < dBin[0][z]; l++) {
                               Nxuizjl = Nxuiz[j][l];
                               if (Nxuizjl > 0) {
-                                NlogN = Nxuizjl * log(Nxuizjl);
+                                NlogN = Nxuizjl * cache->getLog(Nxuizjl);
                                 info_xui_z += NlogN;
                                 info_uiz_x += NlogN;
                                 info_xuiz_y -= NlogN;
                                 if (modCplx != MDL) {
-                                  logC_xuiz_y += computeLogC(
-                                      Nxuizjl, dBin[0][1], looklog, c2terms);
+                                  logC_xuiz_y +=
+                                      cache->getLogC(Nxuizjl, dBin[0][1]);
                                 }
                                 Nxuizs += Nxuizjl;
                                 Nxuiz[j][l] = 0;
@@ -1177,7 +1075,7 @@ double* getAllInfoNEW(int* ptrAllData, uint* ptrAllLevels, int* ptrVarIdx,
               }
             }
 #if _MY_DEBUG_NEW
-            printf(
+            Rprintf(
                 "# =====> Z test before check maximum mutual infos - cplx "
                 "terms nSample0=%d nSample[zi=%d]=%d\n Nxyuis=%d   Nyuis=%d   "
                 "Nuis=%d  Nxuis=%d  Nxs=%d  Nys=%d  Nzs=%d Nuizs=%d Nyuizs=%d "
@@ -1186,17 +1084,17 @@ double* getAllInfoNEW(int* ptrAllData, uint* ptrAllLevels, int* ptrVarIdx,
                 nSample0, zi, nSample[zi], Nxyuis, Nyuis, Nuis, Nxuis, Nxs, Nys,
                 Nzs, Nuizs, Nyuizs, Nxyuizs, Nxuizs, info_ui_y, info_ui_x,
                 info_ui_y + info_ui_x);
-            printf(
+            Rprintf(
                 "# =====> Z test before check maximum mutual infos - cplx "
                 "terms sampleSizeEff=%d sampleSize=%d info3xy_ui=%g   "
                 "info2xy_ui=%g \n",
                 sampleSizeEff, sampleSize, info3xy_ui, info2xy_ui);
-            printf(
+            Rprintf(
                 "# =====> Z test before check maximum mutual infos - cplx "
                 "terms info_xui_y=%g info_yui_x=%g info_ui_y=%g info_ui_x=%g "
                 "\n",
                 info_xui_y, info_yui_x, info_ui_y, info_ui_x);
-            printf(
+            Rprintf(
                 "# =====> Z test before check maximum mutual infos - cplx "
                 "terms logC_xui_y=%g logC_yui_x=%g logC_ui_y=%g logC_ui_x=%g "
                 "\n",
@@ -1208,7 +1106,7 @@ double* getAllInfoNEW(int* ptrAllData, uint* ptrAllLevels, int* ptrVarIdx,
                 info_uiz_y < -0.000001 || info_uiz_x < -0.000001 ||
                 info_xui_z < -0.000001 || info_yui_z < -0.000001 ||
                 info_ui_z < -0.000001)
-              printf(
+              Rprintf(
                   "\n# ===@@@@@@@===> 2 Probl zi=%d, info_xui_y=%g  "
                   "info_yui_x=%g  info_ui_y =%g  info_ui_x =%g  info_xuiz_y=%g "
                   " info_yuiz_x=%g  info_uiz_y =%g  info_uiz_x =%g  "
@@ -1222,7 +1120,7 @@ double* getAllInfoNEW(int* ptrAllData, uint* ptrAllLevels, int* ptrVarIdx,
             // check maximum mutual infos - cplx terms
             if (modCplx == MDL) {
               Prui = 1;
-              logN = log(nSample[zi]);
+              logN = cache->getLog(nSample[zi]);
               for (j = 2; j < nbrAllVar; j++) Prui *= dBin[0][j];
             }
 
@@ -1372,26 +1270,26 @@ double* getAllInfoNEW(int* ptrAllData, uint* ptrAllLevels, int* ptrVarIdx,
             }
 
 #if _MY_DEBUG_NEW
-            printf(
+            Rprintf(
                 "\n# =====> test before change zi=%d bin numbers, testz=%g "
                 "testinfo_xy_ui=%g info3xy_ui=%g  logC3xy_ui=%g  info2xy_ui=%g "
                 "logC2xy_ui=%g max_info_logC=%g min_info_logC=%g \n",
                 zi, testz, testinfo_xy_ui, info3xy_ui, logC3xy_ui, info2xy_ui,
                 logC2xy_ui, max_info_logC, min_info_logC);
-            printf(
+            Rprintf(
                 "\n# =====> test before change zi=%d bin numbers, testz=%g "
                 "testinfo_xy_uiz=%g info3xy_uiz=%g  logC3xy_uiz=%g  "
                 "info2xy_uiz=%g logC2xy_uiz=%g max_info_logC=%g "
                 "min_info_logC=%g \n",
                 zi, testz, testinfo_xy_uiz, info3xy_uiz, logC3xy_uiz,
                 info2xy_uiz, logC2xy_uiz, max_info_logC, min_info_logC);
-            printf(
+            Rprintf(
                 "\n# =====> test before change zi=%d bin numbers, testz=%g "
                 "testinfo_xz_ui=%g info3xz_ui=%g  logC3xz_ui=%g  info2xz_ui=%g "
                 "logC2xz_ui=%g max_info_logC=%g min_info_logC=%g \n",
                 zi, testz, testinfo_xz_ui, info3xz_ui, logC3xz_ui, info2xz_ui,
                 logC2xz_ui, max_info_logC, min_info_logC);
-            printf(
+            Rprintf(
                 "\n# =====> test before change zi=%d bin numbers, testz=%g "
                 "testinfo_yz_ui=%g info3yz_ui=%g  logC3yz_ui=%g  info2yz_ui=%g "
                 "logC2yz_ui=%g max_info_logC=%g min_info_logC=%g \n",
@@ -1459,7 +1357,7 @@ double* getAllInfoNEW(int* ptrAllData, uint* ptrAllLevels, int* ptrVarIdx,
   }
 
 #if _MY_DEBUG_NEW
-  printf("\n# =====> test after z \n");
+  Rprintf("\n# =====> test after z \n");
 #endif  // _MY_DEBUG_NEW
 
   for (i = 0; i < 1; i++) free(dBin[i]);
@@ -1469,20 +1367,21 @@ double* getAllInfoNEW(int* ptrAllData, uint* ptrAllLevels, int* ptrVarIdx,
   free(Opt_dBin);
 
   free(nbrLevCorrect);
+  free(nSample);
 
   delete[] sampleWithZ;
 
 #if _MY_DEBUG_NEW
-  printf("\n# =====> end getAllInfoNEW \n");
+  Rprintf("\n# =====> end getAllInfoNEW \n");
   if (nbrZi == 0) {
-    printf("# N=ptrRetValues[%d]=%g ", 0, ptrRetValues[0]);
+    Rprintf("# N=ptrRetValues[%d]=%g ", 0, ptrRetValues[0]);
   }
   if (nbrZi > 0) {
-    printf("# N=ptrRetValues[%d]=%g ", 0, ptrRetValues[0]);
+    Rprintf("# N=ptrRetValues[%d]=%g ", 0, ptrRetValues[0]);
     for (i = 1; i < 3; i++)
-      printf("# ptrRetValues[%d]=%g ", i, ptrRetValues[i]);
-    printf("# z=ptrRetValues[%d]=%g ", 3, ptrRetValues[3]);
-    for (i = 4; i < 9; i++) printf(" ptrRetValues[%d]=%g ", i, ptrRetValues[i]);
+      Rprintf("# ptrRetValues[%d]=%g ", i, ptrRetValues[i]);
+    Rprintf("# z=ptrRetValues[%d]=%g ", 3, ptrRetValues[3]);
+    for (i = 4; i < 9; i++) Rprintf(" ptrRetValues[%d]=%g ", i, ptrRetValues[i]);
   }
 #endif  // _MY_DEBUG_NEW
 

@@ -4,12 +4,12 @@
 #include <string>
 #include <vector>
 
-#include "structure.h"
+#include "environment.h"
 
 namespace miic {
 namespace reconstruction {
 
-std::vector<std::vector<std::string> > orientationProbability(
+std::vector<std::vector<std::string>> orientationProbability(
     structure::Environment&);
 
 }  // namespace reconstruction

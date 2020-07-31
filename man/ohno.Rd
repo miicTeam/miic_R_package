@@ -4,7 +4,9 @@
 \name{ohno}
 \alias{ohno}
 \title{Tetraploidization in vertebrate evolution}
-\format{A data.frame object.}
+\format{
+A data.frame object.
+}
 \usage{
 data(ohno)
 }

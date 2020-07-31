@@ -4,8 +4,17 @@
 \alias{discretizeMutual}
 \title{Iterative dynamic programming for (conditional) mutual information through optimized discretization.}
 \usage{
-discretizeMutual(X, Y, matrixU = NULL, maxbins = NULL, cplx = "nml",
-  effN = NULL, is_discrete = NULL, plot = T)
+discretizeMutual(
+  X,
+  Y,
+  matrix_u = NULL,
+  maxbins = NULL,
+  cplx = "nml",
+  n_eff = NULL,
+  sample_weights = NULL,
+  is_discrete = NULL,
+  plot = T
+)
 }
 \arguments{
 \item{X}{[a vector]
@@ -14,30 +23,44 @@ A vector that contains the observational data of the first variable.}
 \item{Y}{[a vector]
 A vector that contains the observational data of the second variable.}
 
-\item{matrixU}{[a numeric matrix]
+\item{matrix_u}{[a numeric matrix]
 The matrix with the observations of as many columns as conditioning variables.}
 
 \item{maxbins}{[an int]
 The maximum number of bins desired in the discretization. A lower number makes the computation faster, a higher
-number allows finer discretization (50 by default).}
+number allows finer discretization (by default : 5 * cubic root of N).}
 
 \item{cplx}{[a string]
 The complexity used in the dynamic programming. Either "mdl" for Minimum description Length or
 "nml" for Normalized Maximum Likelihood, which is less costly in the finite sample case and
 will allow more bins than mdl.}
 
+\item{n_eff}{[an int]
+The number of effective samples. When there is significant autocorrelation in the samples you may
+want to specify a number of effective samples that is lower than the number of points in the distribution.}
+
+\item{sample_weights}{[a vector of floats]
+Individual weights for each sample, used for the same reason as the effective sample number but with individual
+precision.}
+
 \item{is_discrete}{[a vector of booleans]
 Specify if each variable is to be treated as discrete (TRUE) or continuous (FALSE) in a
-logical vector of length ncol(matrixU)+2, in the order [X, Y, U1, U2...]. By
-default all variables are treated as continuous.}
+logical vector of length ncol(matrix_u) + 2, in the order [X, Y, U1, U2...]. By default,
+factors and character vectors are treated as discrete, and numerical vectors as continuous.}
 
 \item{plot}{[a boolean]
 Specify if the XY joint space with discretization scheme is to be plotted or not (requires
 ggplot2 and gridExtra).}
-
-\item{Neff}{[an int]
-The number of effective samples. When there is significant autocorrelation in the samples you may
-want to specify a number of effective samples that is lower than the number of points in the distribution.}
+}
+\value{
+A list that contains :
+\itemize{
+\item{two vectors containing the cutpoints for each variable : \emph{cutpoints1} corresponds to /emph{myDist1}, /emph{cutpoints2} corresponds to /emph{myDist2}.}
+\item{\emph{niterations} is the number of iterations performed before convergence of the (C)MI estimation.}
+\item{\emph{iterationN}, lists contatining the cutpoint vectors for each iteration.}
+\item{\emph{info} and \emph{infok}, the estimated (C)MI value and (C)MI minus the complexity cost.}
+\item{if $emph{plot} == T, a plot object (requires ggplot2 and gridExtra).}
+}
 }
 \description{
 This function chooses cutpoints in the input distributions by maximizing the mutual
@@ -48,52 +71,53 @@ the mutual information computed on the original continuous variables.
 \details{
 For a pair of variables \eqn{X} and \eqn{Y}, the algorithm will in turn choose cutpoints on \eqn{X}
 then on \eqn{Y}, maximizing \eqn{I(X_{d};Y_{d}) - cplx(X_{d};Y_{d})} where \eqn{cplx(X_{d};Y_{d})} is the
-complexity cost of the considered discretizations of \eqn{X} and \eqn{Y} (see Affeldt 2016).
+complexity cost of the considered discretizations of \eqn{X} and \eqn{Y} (see Affeldt 2016 and Cabeli 2020).
 When the value \eqn{I(X_{d};Y_{d})} is stable between two iterations the discretization scheme of
 \eqn{X_{d}} and \eqn{Y_{d}} is returned as well as \eqn{I(X_{d};Y_{d})} and \eqn{I(X_{d};Y_{d})-cplx(X_{d};Y_{d})}.
 
 With a set of conditioning variables \eqn{U}, the discretization scheme maximizes each term of the sum
-\eqn{I(X;Y|U) \sim 0.5*(I(X_{d};Y_{d},U_{d}) - I(X_{d};U_{d}) + I(Y_{d};X_{d},U_{d}) - I(Y_{d};U_{d}))}.
+\eqn{I(X;Y|U) \sim 0.5*(I(X_{d};Y_{d}, U_{d}) - I(X_{d};U_{d}) + I(Y_{d};X_{d}, U_{d}) - I(Y_{d};U_{d}))}.
 
-Discrete variables can be passed as factors will be used "as is" to maximize each term.
+Discrete variables can be passed as factors and will be used "as is" to maximize each term.
 }
 \examples{
 library(miic)
-
 \dontrun{
 N <- 1000
-# Dependence, conditional independence
+# Dependence, conditional independence : X <- Z -> Y
 Z <- runif(N)
-X <- Z*2+rnorm(N,sd=0.2)
-Y <- Z*2+rnorm(N,sd=0.2)
-res <- discretizeMutual(X, Y, plot=T)
-cat("I(X;Y) =",res$info)
-res <- discretizeMutual(X, Y, matrixU=matrix(Z, ncol=1), plot=T)
-cat("I(X;Y|Z) =",res$info)
+X <- Z * 2 + rnorm(N, sd = 0.2)
+Y <- Z * 2 + rnorm(N, sd = 0.2)
+res <- discretizeMutual(X, Y, plot = T)
+message("I(X;Y) = ", res$info)
+res <- discretizeMutual(X, Y, matrix_u = matrix(Z, ncol = 1), plot = T)
+message("I(X;Y|Z) = ", res$info)
 
-# Conditional independence with categorical conditioning variable
-Z <- sample(1:3, N, replace=T)
-X <- -as.numeric(Z==1) + as.numeric(Z==2) + 0.2*rnorm(N)
-Y <- as.numeric(Z==1) + as.numeric(Z==2) + 0.2*rnorm(N)
-res <- miic::discretizeMutual(X, Y, cplx = 'nml')
-cat("I(X;Y) =", res$info)
-res <- miic::discretizeMutual(X, Y, matrix(Z,ncol=1), is_discrete = c(F,F,T))
-cat("I(X;Y|Z) =", res$info)
+# Conditional independence with categorical conditioning variable : X <- Z -> Y
+Z <- sample(1:3, N, replace = T)
+X <- -as.numeric(Z == 1) + as.numeric(Z == 2) + 0.2 * rnorm(N)
+Y <- as.numeric(Z == 1) + as.numeric(Z == 2) + 0.2 * rnorm(N)
+res <- miic::discretizeMutual(X, Y, cplx = "nml")
+message("I(X;Y) = ", res$info)
+res <- miic::discretizeMutual(X, Y, matrix(Z, ncol = 1), is_discrete = c(F, F, T))
+message("I(X;Y|Z) = ", res$info)
 
 
-# Independence, conditional dependence
+# Independence, conditional dependence : X -> Z <- Y
 X <- runif(N)
 Y <- runif(N)
-Z <- X+Y
-res <- discretizeMutual(X, Y, plot=T)
-cat("I(X;Y) =",res$info)
-res <- discretizeMutual(X, Y, matrixU = matrix(Z, ncol=1), plot=T)
-cat("I(X;Y|Z) =",res$info)
+Z <- X + Y + runif(N, sd = 0.1)
+res <- discretizeMutual(X, Y, plot = T)
+message("I(X;Y) = ", res$info)
+res <- discretizeMutual(X, Y, matrix_u = matrix(Z, ncol = 1), plot = T)
+message("I(X;Y|Z) = ", res$info)
 }
+
 }
 \references{
 \itemize{
-\item verny et al., \emph{plos comp. bio. 2017.}
+\item Verny et al., \emph{PLoS Comp. Bio. 2017.}  https://doi.org/10.1371/journal.pcbi.1005662
+\item Cabeli et al., \emph{PLoS Comp. Bio. 2020.}  https://doi.org/10.1371/journal.pcbi.1007866
 \item Affeldt et al., \emph{Bioinformatics 2016}
 }
 }

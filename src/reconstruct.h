@@ -7,6 +7,7 @@
 #include <set>
 #include <stack>
 
+#include "environment.h"
 #include "structure.h"
 
 namespace miic {
@@ -15,8 +16,6 @@ namespace reconstruction {
 namespace reconstruction_impl {
 using std::set;
 using std::vector;
-using uint = unsigned int;
-using edge_index_1d = uint;
 
 using structure::Environment;
 
@@ -40,10 +39,10 @@ class BCC {
  public:
   BCC(Environment& env)
       : environment(env),
-        is_cp(env.numNodes, 0),
-        degree_of(env.numNodes, 0),
-        bc_tree_rep(env.numNodes, -1),
-        bcc_set_indices(env.numNodes, set<int>()) {}
+        is_cp(env.n_nodes, 0),
+        degree_of(env.n_nodes, 0),
+        bc_tree_rep(env.n_nodes, -1),
+        bcc_set_indices(env.n_nodes, set<int>()) {}
 
   void analyse() {
     // Reset members
@@ -67,20 +66,24 @@ class BCC {
 // iteration.
 class CycleTracker {
  private:
-  // Max number of iterations to track in a cycle, cycle of larger size won't
-  // be recognized.
-  static constexpr uint max_cycle_size = 100;
-
   struct Iteration {
-    uint index;
+    int index;
     // key: index of edge
     // value: status of edge in the previous iteration
-    std::map<uint, int> changed_edges;
+    std::map<int, int> changed_edges;
+    std::vector<int> adj_matrix_1d;
 
-    Iteration(const Environment& env, uint i) : index(i) {
+    Iteration(const Environment& env, int i)
+        : index(i), adj_matrix_1d(env.n_nodes * env.n_nodes, 0) {
+      int n_node(env.n_nodes);
+      for (int i = 0; i < n_node; ++i) {
+        for (int j = 0; j < n_node; ++j) {
+          adj_matrix_1d[j + i * n_node] = env.edges[i][j].status;
+        }
+      }
       // Keep track of the lower triangular part
-      for (uint i = 1; i < env.numNodes; ++i) {
-        for (uint j = 0; j < i; ++j) {
+      for (int i = 1; i < n_node; ++i) {
+        for (int j = 0; j < i; ++j) {
           const auto& edge = env.edges[i][j];
           if (edge.status_prev == edge.status) continue;
 
@@ -91,17 +94,15 @@ class CycleTracker {
     }
   };
 
-  // Internal class keeping track of iterations, max size is given
-  // by max_cycle_size, new iteration is inserted at the front
+  // Internal class keeping track of iterations.
   class IterationList {
     std::deque<Iteration> iteration_list_;
 
    public:
     void add(Iteration&& i) {
       iteration_list_.push_front(std::move(i));
-      if (iteration_list_.size() > max_cycle_size) iteration_list_.pop_back();
     }
-    Iteration& get(uint i) { return iteration_list_[i]; }
+    Iteration& get(int i) { return iteration_list_[i]; }
 
     size_t size() { return iteration_list_.size(); }
 
@@ -113,15 +114,15 @@ class CycleTracker {
 
   Environment& env_;
   IterationList iterations_;
-  uint n_saved = 0;  // Number of saving operations performed
+  int n_saved = 0;  // Number of saving operations performed
   // key: number of edges in the graph
   // value: index of iteration
-  std::multimap<uint, uint> edge_index_map_;
+  std::multimap<int, int> edge_index_map_;
 
   void saveIteration() {
-    uint n_edge = env_.numNoMore;
+    int n_edge = env_.numNoMore;
     // Index of the iteration starting from 0
-    uint index = n_saved++;
+    int index = n_saved++;
     edge_index_map_.insert(std::make_pair(n_edge, index));
     // skip the first iteration as its previous step is the initial graph
     if (index != 0) iterations_.add(Iteration(env_, index));
@@ -130,18 +131,20 @@ class CycleTracker {
  public:
   CycleTracker(Environment& env) : env_(env) {}
   // convert lower triangular indices to 1d index
-  static edge_index_1d getEdgeIndex1D(uint i, uint j) {
+  static int getEdgeIndex1D(int i, int j) {
     return (j < i ? j + i * (i - 1) / 2 : i + j * (j - 1) / 2);
   }
   // convert 1d index to lower triangular indices
-  std::pair<uint, uint> getEdgeIndex2D(uint k) {
+  std::pair<int, int> getEdgeIndex2D(int k) {
     // floor is equivalent to a int cast for positive number
-    uint i = (uint)(0.5 + std::sqrt(0.25 + 2 * k));
-    uint j = k - i * (i - 1) / 2;
+    int i = static_cast<int>(0.5 + std::sqrt(0.25 + 2 * k));
+    int j = k - i * (i - 1) / 2;
     return std::make_pair(i, j);
   }
   // check if a cycle exists between the current and the past iterations
   bool hasCycle();
+  // when a cycle is found, hold the adj_matrix of all iterations in the cycle
+  std::vector<std::vector<int>> adj_matrices;
 };
 }  // namespace reconstruction_impl
 using reconstruction_impl::BCC;
@@ -150,8 +153,6 @@ using reconstruction_impl::CycleTracker;
 bool skeletonInitialization(structure::Environment&);
 bool firstStepIteration(structure::Environment&, BCC&);
 bool skeletonIteration(structure::Environment&);
-bool reconstruct(structure::Environment&, std::string, double, int, char*[]);
-std::vector<std::vector<std::string> > confidenceCut(structure::Environment&);
 
 }  // namespace reconstruction
 }  // namespace miic

@@ -72,7 +72,9 @@ int reconstruction_cut_coarse(vector<int> &memory_cuts,
 // d: index of variable in datafactors
 // varidx: index of variable in sortidx
 void update_datafactors(
-    int **sortidx, int varidx, int **datafactors, int d, int n, int **cut) {
+    vector<vector<int> > &sortidx, int varidx, int** datafactors,
+    int d, int n, int **cut) {
+
   int j, sjj, uu = 0;
   for (j = 0; j <= n - 1; j++) {
     sjj = sortidx[varidx][j];
@@ -92,10 +94,10 @@ void update_datafactors(
 void jointfactors_uiyx(int **datafactors, int dui, int n, int Mui, int *r,
     int **uiyxfactors, int *ruiyx) {
   int df, Pbin_ui;
-  int *datauix = (int *)calloc(n, sizeof(int));
-  int *datauiy = (int *)calloc(n, sizeof(int));
-  int *datauiyx = (int *)calloc(n, sizeof(int));
-  int *dataui = (int *)calloc(n, sizeof(int));
+  vector<int> datauix(n);
+  vector<int> datauiy(n);
+  vector<int> datauiyx(n);
+  vector<int> dataui(n);
 
   int j, jj, l;
   bool tooManyLevels = false;
@@ -114,17 +116,14 @@ void jointfactors_uiyx(int **datafactors, int dui, int n, int Mui, int *r,
   int *vecZeroOnesuix;
   int *vecZeroOnesuiyx;
 
-  int *orderSample_ux;
-  int *orderSample_uyx;
+  vector<int> orderSample_ux(n);
+  vector<int> orderSample_uyx(n);
   // declaration
   if (!tooManyLevels) {
     vecZeroOnesui = (int *)calloc(nbrLevelsJoint + 1, sizeof(int));
     vecZeroOnesuiy = (int *)calloc(nbrLevelsJoint + 1, sizeof(int));
     vecZeroOnesuix = (int *)calloc(nbrLevelsJoint + 1, sizeof(int));
     vecZeroOnesuiyx = (int *)calloc(nbrLevelsJoint + 1, sizeof(int));
-  } else {
-    orderSample_ux = new int[n];
-    orderSample_uyx = new int[n];
   }
 
   for (jj = 0; jj <= n - 1; jj++) {
@@ -251,236 +250,30 @@ void jointfactors_uiyx(int **datafactors, int dui, int n, int Mui, int *r,
     ruiyx[1]++;  // uiy
     ruiyx[2]++;  // uix
     ruiyx[3]++;  // uiyx
-    delete[] orderSample_ux;
-    delete[] orderSample_uyx;
   }
 
 #if _MY_DEBUG_NEW_UI
-  printf("j,dataui[j],datauiy[j]\n");
+  Rprintf("j,dataui[j],datauiy[j]\n");
   for (j = 0; j <= n - 1; j++) {
-    printf("%d-> %d %d\n", j, dataui[j], datauiy[j]);
+    Rprintf("%d-> %d %d\n", j, dataui[j], datauiy[j]);
   }
 #endif
 
 #if _MY_DEBUG_NEW_UI_2
-  printf(
+  Rprintf(
       "j, uiyxfactors[0][j], uiyxfactors[1][j], uiyxfactors[2][j], "
       "uiyxfactors[3][j]\n");
   for (j = 0; j <= n - 1; j++) {
-    printf("%d-> %d %d %d %d\n", j, uiyxfactors[0][j], uiyxfactors[1][j],
+    Rprintf("%d-> %d %d %d %d\n", j, uiyxfactors[0][j], uiyxfactors[1][j],
         uiyxfactors[2][j], uiyxfactors[3][j]);
   }
 #endif
-  free(datauix);
-  free(datauiy);
-  free(datauiyx);
-  free(dataui);
   if (!tooManyLevels) {
     free(vecZeroOnesui);
     free(vecZeroOnesuiy);
     free(vecZeroOnesuix);
     free(vecZeroOnesuiyx);
   }
-  return;
-}
-
-// INPUT:
-// datarank, datafactors, cut
-// ptrVar Index_x, Index_y, Index_u1,..Index_uMui
-// OUTPUT
-// return joint datafactors ui and uiy uix uixy, with number of levels
-// ruiyx[0,1,2,3]
-void jointfactors_uyx(int **datafactors, int *ptrVar, int n, int Mui, int *r,
-    int **uyxfactors, int *ruyx) {
-  int df, Pbin_ui;
-  int *datauix = (int *)calloc(n, sizeof(int));
-  int *datauiy = (int *)calloc(n, sizeof(int));
-  int *datauiyx = (int *)calloc(n, sizeof(int));
-  int *dataui = (int *)calloc(n, sizeof(int));
-
-  int j, jj, l;
-  bool tooManyLevels = false;
-
-  // From single datafactors to joint datafactors ui; (ui,y);(ui,x);(ui,y,x)
-  int nbrLevelsJoint = 1;
-  for (jj = 0; jj < Mui + 2 && !tooManyLevels; jj++) {
-    nbrLevelsJoint *= r[ptrVar[jj]];
-    if (nbrLevelsJoint > 8 * n) tooManyLevels = true;
-  }
-
-  // decl
-  int *vecZeroOnesui;
-  int *vecZeroOnesuiy;
-  int *vecZeroOnesuix;
-  int *vecZeroOnesuiyx;
-
-  int *orderSample_ux;
-  int *orderSample_uyx;
-
-  if (!tooManyLevels) {
-    vecZeroOnesui = (int *)calloc(nbrLevelsJoint, sizeof(int));
-    vecZeroOnesuiy = (int *)calloc(nbrLevelsJoint, sizeof(int));
-    vecZeroOnesuix = (int *)calloc(nbrLevelsJoint, sizeof(int));
-    vecZeroOnesuiyx = (int *)calloc(nbrLevelsJoint, sizeof(int));
-  } else {
-    orderSample_ux = new int[n];
-    orderSample_uyx = new int[n];
-  }
-
-  for (jj = 0; jj <= n - 1; jj++) {
-    datauiyx[jj] = datafactors[ptrVar[0]][jj];  // yx
-    datauiyx[jj] += datafactors[ptrVar[1]][jj] * r[ptrVar[0]];
-    datauix[jj] = datafactors[ptrVar[0]][jj];  // x
-    datauiy[jj] = datafactors[ptrVar[1]][jj];  // y
-    dataui[jj] = 0;
-
-    Pbin_ui = 1;
-    for (l = Mui + 1; l >= 2; l--) {
-      df = datafactors[ptrVar[l]][jj] * Pbin_ui;
-      datauiyx[jj] += df * r[ptrVar[1]] * r[ptrVar[0]];
-      datauix[jj] += df * r[ptrVar[0]];
-      datauiy[jj] += df * r[ptrVar[1]];
-
-      dataui[jj] += df;
-      Pbin_ui *= r[ptrVar[l]];
-    }
-    // init
-    if (!tooManyLevels) {
-      vecZeroOnesui[dataui[jj]] = 1;
-      vecZeroOnesuiy[datauiy[jj]] = 1;
-      vecZeroOnesuix[datauix[jj]] = 1;
-      vecZeroOnesuiyx[datauiyx[jj]] = 1;
-    } else {
-      orderSample_ux[jj] = jj;
-      orderSample_uyx[jj] = jj;
-    }
-  }
-
-  if (!tooManyLevels) {
-    // create the vector for storing the position
-    int pos = 0;
-    int pos1 = 0;
-    int pos2 = 0;
-    int pos3 = 0;
-    for (jj = 0; jj <= nbrLevelsJoint; jj++) {
-      if (vecZeroOnesui[jj] == 1) {
-        vecZeroOnesui[jj] = pos;
-        pos += 1;
-      }
-
-      if (vecZeroOnesuiy[jj] == 1) {
-        vecZeroOnesuiy[jj] = pos1;
-        pos1 += 1;
-      }
-
-      if (vecZeroOnesuix[jj] == 1) {
-        vecZeroOnesuix[jj] = pos2;
-        pos2 += 1;
-      }
-
-      if (vecZeroOnesuiyx[jj] == 1) {
-        vecZeroOnesuiyx[jj] = pos3;
-        pos3 += 1;
-      }
-    }
-
-    ruyx[0] = pos;   // ui
-    ruyx[1] = pos1;  // uiy
-    ruyx[2] = pos2;  // uix
-    ruyx[3] = pos3;  // uiyx
-
-    for (j = 0; j <= n - 1; j++) {
-      uyxfactors[0][j] = vecZeroOnesui[dataui[j]];  // ui
-      uyxfactors[1][j] = vecZeroOnesuiy[datauiy[j]];
-      ;  // uiy
-      uyxfactors[2][j] = vecZeroOnesuix[datauix[j]];
-      ;  // uix
-      uyxfactors[3][j] = vecZeroOnesuiyx[datauiyx[j]];
-      ;  // uiyx
-    }
-  } else {
-    sort2arraysConfidence(n, datauix, orderSample_ux);
-    sort2arraysConfidence(n, datauiyx, orderSample_uyx);
-
-    // joint datafactors without gaps
-    // compute term constant H(y,Ui) and H(Ui)
-    int ix, iyx, iix, iiyx;
-
-    ruyx[0] = 0;  // ui
-    ruyx[1] = 0;  // uiy
-    ruyx[2] = 0;  // uix
-    ruyx[3] = 0;  // uiyx
-
-    ix = orderSample_ux[0];
-    iyx = orderSample_uyx[0];
-    uyxfactors[0][ix] = 0;   // ui
-    uyxfactors[1][iyx] = 0;  // uiy
-    uyxfactors[2][ix] = 0;   // uix
-    uyxfactors[3][iyx] = 0;  // uiyx
-
-    for (j = 0; j < n - 1; j++) {
-      iix = ix;
-      iiyx = iyx;
-      ix = orderSample_ux[j + 1];
-      iyx = orderSample_uyx[j + 1];
-
-      if (dataui[ix] > dataui[iix]) {
-        ruyx[0]++;
-      }
-      uyxfactors[0][ix] = ruyx[0];  // ui
-
-      if (datauiy[iyx] > datauiy[iiyx]) {
-        ruyx[1]++;
-      }
-      uyxfactors[1][iyx] = ruyx[1];  // uiy
-
-      if (datauix[ix] > datauix[iix]) {
-        ruyx[2]++;
-      }
-      uyxfactors[2][ix] = ruyx[2];  // uix
-
-      if (datauiyx[iyx] > datauiyx[iiyx]) {
-        ruyx[3]++;
-      }
-      uyxfactors[3][iyx] = ruyx[3];  // uiyx
-    }
-    // number joint levels
-    ruyx[0]++;  // ui
-    ruyx[1]++;  // uiy
-    ruyx[2]++;  // uix
-    ruyx[3]++;  // uiyx
-
-    delete[] orderSample_ux;
-    delete[] orderSample_uyx;
-  }
-
-#if _MY_DEBUG_NEW_UI
-  printf("j,dataui[j],datauiy[j]\n");
-  for (j = 0; j <= n - 1; j++) {
-    printf("%d-> %d %d\n", j, dataui[j], datauiy[j]);
-  }
-#endif
-
-#if _MY_DEBUG_NEW_UI_2
-  printf(
-      "j,uyxfactors[0][j],uyxfactors[1][j],uyxfactors[2][j],uyxfactors[3][j]"
-      "\n");
-  for (j = 0; j <= n - 1; j++) {
-    printf("%d-> %d %d %d %d\n", j, uyxfactors[0][j], uyxfactors[1][j],
-        uyxfactors[2][j], uyxfactors[3][j]);
-  }
-#endif
-  free(datauix);
-  free(datauiy);
-  free(datauiyx);
-  free(dataui);
-  if (!tooManyLevels) {
-    free(vecZeroOnesui);
-    free(vecZeroOnesuiy);
-    free(vecZeroOnesuix);
-    free(vecZeroOnesuiyx);
-  }
-
   return;
 }
 
@@ -503,7 +296,7 @@ void jointfactors_u(int **datafactors, int *ptrIdx, int n, int Mui, int *r,
   }
   // update joint datafactors (with gaps) ui and (ui,y)
   int df, Pbin_ui;
-  int *datau = (int *)calloc(n, sizeof(int));
+  vector<int> datau(n, 0);
 
   bool tooManyLevels = false;
 
@@ -514,16 +307,12 @@ void jointfactors_u(int **datafactors, int *ptrIdx, int n, int Mui, int *r,
   }
   // decl
   int *vecZeroOnesui;
-  int *orderSample_u;
+  vector<int> orderSample_u(n);
   if (!tooManyLevels) {
     vecZeroOnesui = (int *)calloc(nbrLevelsJoint + 1, sizeof(int));
-  } else {
-    orderSample_u = new int[n];
   }
 
   for (jj = 0; jj <= n - 1; jj++) {
-    datau[jj] = 0;
-
     Pbin_ui = 1;
     for (l = Mui - 1; l >= 0; l--) {
       df = datafactors[ptrIdx[l]][jj] * Pbin_ui;
@@ -572,45 +361,41 @@ void jointfactors_u(int **datafactors, int *ptrIdx, int n, int Mui, int *r,
       }
       ufactors[ix] = *ru;  // ui
     }
-
     *ru = *ru + 1;
-
-    delete[] orderSample_u;
   }
 
 #if DEBUG_JOINT
-  printf("\nj -> datau[j]\n");
+  Rprintf("\nj -> datau[j]\n");
   for (j = 0; j <= n - 1; j++) {
-    printf("%d -> %d \n", j, datau[j]);
+    Rprintf("%d -> %d \n", j, datau[j]);
   }
-  fflush(stdout);
+  R_FlushConsole();
 #endif
 
 #if DEBUG_JOINT
-  printf("j,orderSample[j+1],sampleKey[j+1],datau[orderSample[j+1]]\n");
+  Rprintf("j,orderSample[j+1],sampleKey[j+1],datau[orderSample[j+1]]\n");
   for (j = 0; j <= n - 1; j++) {
-    printf("%d: %d %d, %d \n", j, orderSample[j + 1], sampleKey[j + 1],
+    Rprintf("%d: %d %d, %d \n", j, orderSample[j + 1], sampleKey[j + 1],
         datau[orderSample[j + 1]]);
   }
-  fflush(stdout);
+  R_FlushConsole();
 #endif
 
   // joint datafactors without gaps
   // compute term constant H(y,Ui) and H(Ui)
 
 #if DEBUG
-  printf("Hu=%lf\n", *Hu);
+  Rprintf("Hu=%lf\n", *Hu);
 #endif
 
 #if DEBUG_JOINT
-  printf("j,uiyfactors[0][i] (ru=%d)\n", *ru);
+  Rprintf("j,uiyfactors[0][i] (ru=%d)\n", *ru);
   for (j = 0; j <= n - 1; j++) {
-    printf("%d-> %d\n", j, ufactors[j]);
+    Rprintf("%d-> %d\n", j, ufactors[j]);
   }
-  fflush(stdout);
+  R_FlushConsole();
 #endif
 
-  free(datau);
   if (!tooManyLevels) {
     free(vecZeroOnesui);
   }
@@ -618,64 +403,11 @@ void jointfactors_u(int **datafactors, int *ptrIdx, int n, int Mui, int *r,
   return;
 }
 
-// ruyx -> 0:u,1:uy,2:ux,3:uyx
-double *computeMIcond_knml(int **uiyxfactors, int *ruiyx, int *r, int n,
-    double *c2terms, double *looklog) {
-  double *I = (double *)calloc(2, sizeof(double));
-
-  int j, u, ux, uy, uyx;
-
-  double Hux = 0, Huy = 0, Huyx = 0, Hu = 0, SC = 0;
-
-  int *nui = (int *)calloc(ruiyx[0], sizeof(int));
-  int *nuiy = (int *)calloc(ruiyx[1], sizeof(int));
-  int *nuix = (int *)calloc(ruiyx[2], sizeof(int));
-  int *nuiyx = (int *)calloc(ruiyx[3], sizeof(int));
-
-  for (j = 0; j < n; j++) {
-    nui[uiyxfactors[0][j]]++;
-    nuiy[uiyxfactors[1][j]]++;
-    nuix[uiyxfactors[2][j]]++;
-    nuiyx[uiyxfactors[3][j]]++;
-  }
-
-  for (u = 0; u < ruiyx[0]; u++) {
-    if (nui[u] > 0) Hu -= nui[u] * looklog[nui[u]];
-    SC -= 0.5 * computeLogC(nui[u], r[0], looklog, c2terms);
-    SC -= 0.5 * computeLogC(nui[u], r[1], looklog, c2terms);
-  }
-
-  for (uy = 0; uy < ruiyx[1]; uy++) {
-    if (nuiy[uy] > 0) Huy -= nuiy[uy] * looklog[nuiy[uy]];
-    SC += 0.5 * computeLogC(nuiy[uy], r[0], looklog, c2terms);
-  }
-
-  for (ux = 0; ux < ruiyx[2]; ux++) {
-    if (nuix[ux] > 0) Hux -= nuix[ux] * looklog[nuix[ux]];
-    SC += 0.5 * computeLogC(nuix[ux], r[1], looklog, c2terms);
-  }
-
-  for (uyx = 0; uyx < ruiyx[3]; uyx++) {
-    if (nuiyx[uyx] > 0) Huyx -= nuiyx[uyx] * looklog[nuiyx[uyx]];
-  }
-
-  I[0] = (Hux + Huy - Hu - Huyx) / n;
-
-  I[1] = I[0] - SC / n;
-
-  free(nui);
-  free(nuiy);
-  free(nuix);
-  free(nuiyx);
-
-  return I;
-}
-
 // rux -> 0:x,1;u,2:ux
-double *computeMI_knml(int *xfactors, int *ufactors, int *uxfactors, int *rux,
-    int n, int n_eff, double *c2terms, double *looklog,
-    std::vector<double> sample_weights, int flag) {
-  double *I = (double *)calloc(2, sizeof(double));
+vector<double> computeMI_knml(int *xfactors, int *ufactors, int *uxfactors, int *rux,
+    int n, int n_eff, std::vector<double> sample_weights,
+    std::shared_ptr<CtermCache> cache, int flag) {
+  vector<double> I(2);
 
   int j, x, u, ux;
 
@@ -695,14 +427,14 @@ double *computeMI_knml(int *xfactors, int *ufactors, int *uxfactors, int *rux,
     if (nx[x] > 0) {
       Hx -= nx[x] * log(nx[x]);
       if (flag == 0 || flag == 2)
-        SC += computeLogC(fmax(1,int(nx[x]+0.5)), rux[1], looklog, c2terms);
+        SC += cache->getLogC(fmax(1,int(nx[x]+0.5)), rux[1]);
     }
   }
   for (u = 0; u < rux[1]; u++) {
     if (nu[u] > 0){
       Hu -= nu[u] * log(nu[u]);
       if (flag == 0 || flag == 1)
-        SC += computeLogC(fmax(1,int(nu[u]+0.5)), rux[0], looklog, c2terms);
+        SC += cache->getLogC(fmax(1,int(nu[u]+0.5)), rux[0]);
     }
   }
 
@@ -710,10 +442,10 @@ double *computeMI_knml(int *xfactors, int *ufactors, int *uxfactors, int *rux,
     if (nux[ux] > 0) Hux -= nux[ux] * log(nux[ux]);
   }
 
-  if (flag == 0) SC -= computeLogC(n_eff, rux[0], looklog, c2terms);
-  if (flag == 0) SC -= computeLogC(n_eff, rux[1], looklog, c2terms);
+  if (flag == 0) SC -= cache->getLogC(n_eff, rux[0]);
+  if (flag == 0) SC -= cache->getLogC(n_eff, rux[1]);
 
-  I[0] = log(n_eff) + (Hu + Hx - Hux) / n_eff;
+  I[0] = cache->getLog(n_eff) + (Hu + Hx - Hux) / n_eff;
 
   if (flag == 0)
     I[1] = I[0] - 0.5 * SC / n_eff;
@@ -727,9 +459,9 @@ double *computeMI_knml(int *xfactors, int *ufactors, int *uxfactors, int *rux,
   return I;
 }
 
-double *computeMI_knml(int *xfactors, int *ufactors, int *uxfactors, int *rux,
-    int n, double *c2terms, double *looklog, int flag) {
-  double *I = (double *)calloc(2, sizeof(double));
+vector<double> computeMI_knml(int *xfactors, int *ufactors, int *uxfactors, int *rux,
+    int n, std::shared_ptr<CtermCache> cache, int flag) {
+  vector<double> I(2);
 
   int j, x, u, ux;
 
@@ -746,24 +478,24 @@ double *computeMI_knml(int *xfactors, int *ufactors, int *uxfactors, int *rux,
   }
 
   for (x = 0; x < rux[0]; x++) {
-    if (nx[x] > 0) Hx -= nx[x] * looklog[nx[x]];
+    if (nx[x] > 0) Hx -= nx[x] * cache->getLog(nx[x]);
     if (flag == 0 || flag == 2)
-      SC += computeLogC(nx[x], rux[1], looklog, c2terms);
+      SC += cache->getLogC(nx[x], rux[1]);
   }
   for (u = 0; u < rux[1]; u++) {
-    if (nu[u] > 0) Hu -= nu[u] * looklog[nu[u]];
+    if (nu[u] > 0) Hu -= nu[u] * cache->getLog(nu[u]);
     if (flag == 0 || flag == 1)
-      SC += computeLogC(nu[u], rux[0], looklog, c2terms);
+      SC += cache->getLogC(nu[u], rux[0]);
   }
 
   for (ux = 0; ux < rux[2]; ux++) {
-    if (nux[ux] > 0) Hux -= nux[ux] * looklog[nux[ux]];
+    if (nux[ux] > 0) Hux -= nux[ux] * cache->getLog(nux[ux]);
   }
 
-  if (flag == 0) SC -= computeLogC(n, rux[0], looklog, c2terms);
-  if (flag == 0) SC -= computeLogC(n, rux[1], looklog, c2terms);
+  if (flag == 0) SC -= cache->getLogC(n, rux[0]);
+  if (flag == 0) SC -= cache->getLogC(n, rux[1]);
 
-  I[0] = looklog[n] + (Hu + Hx - Hux) / n;
+  I[0] = cache->getLog(n) + (Hu + Hx - Hux) / n;
 
   if (flag == 0)
     I[1] = I[0] - 0.5 * SC / n;
@@ -777,58 +509,10 @@ double *computeMI_knml(int *xfactors, int *ufactors, int *uxfactors, int *rux,
   return I;
 }
 
-double *computeMIcond_kmdl(
-    int **uiyxfactors, int *ruiyx, int *r, int n, double *looklog) {
-  double *I = (double *)calloc(2, sizeof(double));
-
-  int j, u, ux, uy, uyx;
-
-  double Hux = 0, Huy = 0, Huyx = 0, Hu = 0, SC = 0;
-
-  int *nui = (int *)calloc(ruiyx[0], sizeof(int));
-  int *nuiy = (int *)calloc(ruiyx[1], sizeof(int));
-  int *nuix = (int *)calloc(ruiyx[2], sizeof(int));
-  int *nuiyx = (int *)calloc(ruiyx[3], sizeof(int));
-
-  for (j = 0; j < n; j++) {
-    nui[uiyxfactors[0][j]]++;
-    nuiy[uiyxfactors[1][j]]++;
-    nuix[uiyxfactors[2][j]]++;
-    nuiyx[uiyxfactors[3][j]]++;
-  }
-
-  for (u = 0; u < ruiyx[0]; u++) {
-    if (nui[u] > 0) Hu -= nui[u] * looklog[nui[u]];
-  }
-  for (uy = 0; uy < ruiyx[1]; uy++) {
-    if (nuiy[uy] > 0) Huy -= nuiy[uy] * looklog[nuiy[uy]];
-  }
-  for (ux = 0; ux < ruiyx[2]; ux++) {
-    if (nuix[ux] > 0) Hux -= nuix[ux] * looklog[nuix[ux]];
-  }
-  for (uyx = 0; uyx < ruiyx[3]; uyx++) {
-    if (nuiyx[uyx] > 0) Huyx -= nuiyx[uyx] * looklog[nuiyx[uyx]];
-  }
-
-  SC = 0.5 * (r[0] - 1) * (r[1] - 1) * looklog[n];
-  SC *= ruiyx[0];
-
-  I[0] = (Hux + Huy - Hu - Huyx) / n;
-
-  I[1] = I[0] - SC / n;
-
-  free(nui);
-  free(nuiy);
-  free(nuix);
-  free(nuiyx);
-
-  return I;
-}
-
 // rux -> 0:x,1;u,2:ux
-double *computeMI_kmdl(int *xfactors, int *ufactors, int *uxfactors, int *rux,
-    int n, double *looklog, int flag) {
-  double *I = (double *)calloc(2, sizeof(double));
+vector<double> computeMI_kmdl(int *xfactors, int *ufactors, int *uxfactors, int *rux,
+    int n, std::shared_ptr<CtermCache> cache, int flag) {
+  vector<double> I(2);
 
   int j, x, u, ux;
 
@@ -845,21 +529,21 @@ double *computeMI_kmdl(int *xfactors, int *ufactors, int *uxfactors, int *rux,
   }
 
   for (x = 0; x < rux[0]; x++) {
-    if (nx[x] > 0) Hx -= nx[x] * looklog[nx[x]];
+    if (nx[x] > 0) Hx -= nx[x] * cache->getLog(nx[x]);
   }
   for (u = 0; u < rux[1]; u++) {
-    if (nu[u] > 0) Hu -= nu[u] * looklog[nu[u]];
+    if (nu[u] > 0) Hu -= nu[u] * cache->getLog(nu[u]);
   }
 
   for (ux = 0; ux < rux[2]; ux++) {
-    if (nux[ux] > 0) Hux -= nux[ux] * looklog[nux[ux]];
+    if (nux[ux] > 0) Hux -= nux[ux] * cache->getLog(nux[ux]);
   }
 
-  SC = 0.5 * looklog[n];
+  SC = 0.5 * cache->getLog(n);
   if (flag == 0 || flag == 1) SC *= (rux[0] - 1);
   if (flag == 0 || flag == 2) SC *= (rux[1] - 1);
 
-  I[0] = looklog[n] + (Hu + Hx - Hux) / n;
+  I[0] = cache->getLog(n) + (Hu + Hx - Hux) / n;
 
   I[1] = I[0] - SC / n;
 

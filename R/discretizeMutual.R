@@ -6,19 +6,20 @@
 #'
 #' @details For a pair of variables \eqn{X} and \eqn{Y}, the algorithm will in turn choose cutpoints on \eqn{X}
 #' then on \eqn{Y}, maximizing \eqn{I(X_{d};Y_{d}) - cplx(X_{d};Y_{d})} where \eqn{cplx(X_{d};Y_{d})} is the
-#' complexity cost of the considered discretizations of \eqn{X} and \eqn{Y} (see Affeldt 2016).
+#' complexity cost of the considered discretizations of \eqn{X} and \eqn{Y} (see Affeldt 2016 and Cabeli 2020).
 #' When the value \eqn{I(X_{d};Y_{d})} is stable between two iterations the discretization scheme of
 #' \eqn{X_{d}} and \eqn{Y_{d}} is returned as well as \eqn{I(X_{d};Y_{d})} and \eqn{I(X_{d};Y_{d})-cplx(X_{d};Y_{d})}.
 #'
 #' With a set of conditioning variables \eqn{U}, the discretization scheme maximizes each term of the sum
 #' \eqn{I(X;Y|U) \sim 0.5*(I(X_{d};Y_{d}, U_{d}) - I(X_{d};U_{d}) + I(Y_{d};X_{d}, U_{d}) - I(Y_{d};U_{d}))}.
 #'
-#' Discrete variables can be passed as factors will be used "as is" to maximize each term.
+#' Discrete variables can be passed as factors and will be used "as is" to maximize each term.
 #'
 #'
 #' @references
 #' \itemize{
-#' \item verny et al., \emph{plos comp. bio. 2017.}
+#' \item Verny et al., \emph{PLoS Comp. Bio. 2017.}  https://doi.org/10.1371/journal.pcbi.1005662
+#' \item Cabeli et al., \emph{PLoS Comp. Bio. 2020.}  https://doi.org/10.1371/journal.pcbi.1007866
 #' \item Affeldt et al., \emph{Bioinformatics 2016}
 #' }
 #'
@@ -26,7 +27,7 @@
 #' A vector that contains the observational data of the first variable.
 #' @param Y [a vector]
 #' A vector that contains the observational data of the second variable.
-#' @param matrixU [a numeric matrix]
+#' @param matrix_u [a numeric matrix]
 #' The matrix with the observations of as many columns as conditioning variables.
 #' @param maxbins [an int]
 #' The maximum number of bins desired in the discretization. A lower number makes the computation faster, a higher
@@ -35,7 +36,7 @@
 #' The complexity used in the dynamic programming. Either "mdl" for Minimum description Length or
 #' "nml" for Normalized Maximum Likelihood, which is less costly in the finite sample case and
 #' will allow more bins than mdl.
-#' @param Neff [an int]
+#' @param n_eff [an int]
 #' The number of effective samples. When there is significant autocorrelation in the samples you may
 #' want to specify a number of effective samples that is lower than the number of points in the distribution.
 #' @param sample_weights [a vector of floats]
@@ -43,7 +44,7 @@
 #' precision.
 #' @param is_discrete [a vector of booleans]
 #' Specify if each variable is to be treated as discrete (TRUE) or continuous (FALSE) in a
-#' logical vector of length ncol(matrixU) + 2, in the order [X, Y, U1, U2...]. By default,
+#' logical vector of length ncol(matrix_u) + 2, in the order [X, Y, U1, U2...]. By default,
 #' factors and character vectors are treated as discrete, and numerical vectors as continuous.
 #' @param plot [a boolean]
 #' Specify if the XY joint space with discretization scheme is to be plotted or not (requires
@@ -51,64 +52,65 @@
 #'
 #' @return A list that contains :
 #' \itemize{
-#' \item{two vectors containing the cutpoints for each variable : \emph{cutpoints1}
-#' corresponds to /emph{myDist1}, /emph{cutpoints2} corresponds to /emph{myDist2}.}
+#' \item{two vectors containing the cutpoints for each variable : \emph{cutpoints1} corresponds to /emph{myDist1}, /emph{cutpoints2} corresponds to /emph{myDist2}.}
 #' \item{\emph{niterations} is the number of iterations performed before convergence of the (C)MI estimation.}
 #' \item{\emph{iterationN}, lists contatining the cutpoint vectors for each iteration.}
 #' \item{\emph{info} and \emph{infok}, the estimated (C)MI value and (C)MI minus the complexity cost.}
 #' \item{if $emph{plot} == T, a plot object (requires ggplot2 and gridExtra).}
+#' }
 #' @export
 #' @useDynLib miic
+#' @importFrom stats density sd
 #'
 #' @examples
 #' library(miic)
 #' \dontrun{
 #' N <- 1000
-#' # Dependence, conditional independence
+#' # Dependence, conditional independence : X <- Z -> Y
 #' Z <- runif(N)
 #' X <- Z * 2 + rnorm(N, sd = 0.2)
 #' Y <- Z * 2 + rnorm(N, sd = 0.2)
 #' res <- discretizeMutual(X, Y, plot = T)
-#' cat("I(X;Y) = ", res$info)
-#' res <- discretizeMutual(X, Y, matrixU = matrix(Z, ncol = 1), plot = T)
-#' cat("I(X;Y|Z) = ", res$info)
+#' message("I(X;Y) = ", res$info)
+#' res <- discretizeMutual(X, Y, matrix_u = matrix(Z, ncol = 1), plot = T)
+#' message("I(X;Y|Z) = ", res$info)
 #'
-#' # Conditional independence with categorical conditioning variable
+#' # Conditional independence with categorical conditioning variable : X <- Z -> Y
 #' Z <- sample(1:3, N, replace = T)
 #' X <- -as.numeric(Z == 1) + as.numeric(Z == 2) + 0.2 * rnorm(N)
 #' Y <- as.numeric(Z == 1) + as.numeric(Z == 2) + 0.2 * rnorm(N)
 #' res <- miic::discretizeMutual(X, Y, cplx = "nml")
-#' cat("I(X;Y) = ", res$info)
+#' message("I(X;Y) = ", res$info)
 #' res <- miic::discretizeMutual(X, Y, matrix(Z, ncol = 1), is_discrete = c(F, F, T))
-#' cat("I(X;Y|Z) = ", res$info)
+#' message("I(X;Y|Z) = ", res$info)
 #'
 #'
-#' # Independence, conditional dependence
+#' # Independence, conditional dependence : X -> Z <- Y
 #' X <- runif(N)
 #' Y <- runif(N)
 #' Z <- X + Y + runif(N, sd = 0.1)
 #' res <- discretizeMutual(X, Y, plot = T)
-#' cat("I(X;Y) = ", res$info)
-#' res <- discretizeMutual(X, Y, matrixU = matrix(Z, ncol = 1), plot = T)
-#' cat("I(X;Y|Z) = ", res$info)
+#' message("I(X;Y) = ", res$info)
+#' res <- discretizeMutual(X, Y, matrix_u = matrix(Z, ncol = 1), plot = T)
+#' message("I(X;Y|Z) = ", res$info)
 #' }
 #'
 discretizeMutual <- function(X,
                              Y,
-                             matrixU = NULL,
+                             matrix_u = NULL,
                              maxbins = NULL,
                              cplx = "nml",
-                             Neff = NULL,
+                             n_eff = NULL,
                              sample_weights = NULL,
                              is_discrete = NULL,
                              plot = T) {
   nameDist1 <- deparse(substitute(X))
   nameDist2 <- deparse(substitute(Y))
   # Check the input arguments
-  if (is.null(matrixU)) {
+  if (is.null(matrix_u)) {
     nbrU <- 0
   } else {
-    nbrU <- ncol(matrixU)
+    nbrU <- ncol(matrix_u)
   }
 
   if (is.null(is_discrete)) {
@@ -118,8 +120,8 @@ discretizeMutual <- function(X,
     )
     if (nbrU > 0) {
       for (z in 1:nbrU) {
-        is_discrete <- c(is_discrete, (is.character(matrixU[, z]) ||
-          is.factor(matrixU[, z])))
+        is_discrete <- c(is_discrete, (is.character(matrix_u[, z]) ||
+          is.factor(matrix_u[, z])))
       }
     }
   }
@@ -166,11 +168,11 @@ discretizeMutual <- function(X,
     )
   }
 
-  if ((!is.null(matrixU) && !is.matrix(matrixU)) ||
-    (!is.null(matrixU) && nrow(matrixU) != length(X))) {
+  if ((!is.null(matrix_u) && !is.matrix(matrix_u)) ||
+    (!is.null(matrix_u) && nrow(matrix_u) != length(X))) {
     stop(
       paste0(
-        "matrixU is not a matrix or its number of rows differs from",
+        "matrix_u is not a matrix or its number of rows differs from",
         " the number of observations."
       )
     )
@@ -180,7 +182,7 @@ discretizeMutual <- function(X,
     stop(
       paste0(
         "The vector passed as is_discrete argument must be the same",
-        " length as the number of variables, which is ncol(matrixU) ",
+        " length as the number of variables, which is ncol(matrix_u) ",
         "+ 2."
       )
     )
@@ -197,14 +199,15 @@ discretizeMutual <- function(X,
   }
 
   # Remove rows for which any input vector is NA
+  matrix_u_NA <- matrix()
   NArows <- logical(length(X))
   NArows <- NArows | is.na(X)
   NArows <- NArows | is.na(Y)
-  if (!is.null(matrixU)) {
-    for (k in 1:ncol(matrixU)) {
-      NArows <- NArows | is.na(matrixU[, k])
+  if (!is.null(matrix_u)) {
+    for (k in 1:ncol(matrix_u)) {
+      NArows <- NArows | is.na(matrix_u[, k])
     }
-    matrixU_NA <- matrix(nrow = length(which(!NArows)), ncol = ncol(matrixU))
+    matrix_u_NA <- matrix(nrow = length(which(!NArows)), ncol = ncol(matrix_u))
   }
 
   if (length(which(NArows)) > 0) {
@@ -216,10 +219,16 @@ discretizeMutual <- function(X,
     X <- X[!NArows]
     Y <- Y[!NArows]
   }
+  if (length(which(!NArows)) < 3) {
+    stop(paste0(
+      "There are only ", length(which(!NArows)),
+      " rows with complete data, not enough non-NA samples."
+    ))
+  }
 
-  if (!is.null(matrixU)) {
-    for (k in 1:ncol(matrixU)) {
-      matrixU_NA[, k] <- matrixU[!NArows, k]
+  if (!is.null(matrix_u)) {
+    for (k in 1:ncol(matrix_u)) {
+      matrix_u_NA[, k] <- matrix_u[!NArows, k]
     }
   }
 
@@ -239,21 +248,13 @@ discretizeMutual <- function(X,
   if (nbrU > 0) {
     for (l in 0:(nbrU - 1)) {
       if (is_discrete[l + 3]) {
-        matrixU_NA[, (l + 1)] <- as.factor(matrixU_NA[, (l + 1)])
-        levels(matrixU_NA[, (l + 1)]) <- 1:nlevels(matrixU_NA[, (l + 1)])
-        matrixU_NA[, (l + 1)] <- as.numeric(matrixU_NA[, (l + 1)])
+        matrix_u_NA[, (l + 1)] <- as.factor(matrix_u_NA[, (l + 1)])
+        levels(matrix_u_NA[, (l + 1)]) <- 1:nlevels(matrix_u_NA[, (l + 1)])
+        matrix_u_NA[, (l + 1)] <- as.numeric(matrix_u_NA[, (l + 1)])
       }
     }
   }
-  cnt_vec <- as.numeric(!is_discrete)
-
-  # Converting matrix to flat vector to pass to cpp
-  if (is.null(matrixU)) {
-    flatU <- c(0)
-  } else {
-    class(matrixU_NA) <- "numeric"
-    flatU <- as.vector(matrixU_NA)
-  }
+  is_continuous <- !is_discrete
 
   # Pass complexity parameter as int
   if (cplx == "mdl") {
@@ -271,44 +272,70 @@ discretizeMutual <- function(X,
     intcplx <- 1
   }
 
-  if (is.null(Neff)) {
-    Neff <- length(X)
+  if (is.null(n_eff)) {
+    n_eff <- length(X)
   }
 
   if (is.null(sample_weights)) {
-    sample_weights <- rep(-1, length(X))
+    sample_weights <- numeric(0);
   }
 
-  # Number of unique values for each input
-  nlevels <- numeric(nbrU + 2)
-  for (i in 1:(nbrU + 2)) {
-    if (i == 1) {
-      nlevels[i] <- length(unique(X))
-    } else if (i == 2) {
-      nlevels[i] <- length(unique(Y))
+  input_data = data.frame(X,Y)
+  if(!all(is.na(matrix_u_NA))) input_data = cbind(input_data, matrix_u_NA)
+  input_factor <- apply(input_data, 2, function(x)
+                        (as.numeric(factor(x, levels = unique(x))) - 1))
+  input_factor[is.na(input_factor)] <- -1
+  input_double <- list()
+  # Order list, order(column) for continuous columns (index starting from 0, NA
+  # mapped to -1), empty for others
+  input_order <- list()
+  for (i in c(1:length(input_data))) {
+    if (is_continuous[i]) {
+      input_double[[i]] <- as.numeric(input_data[, i])
+      n_NAs <- sum(is.na(input_data[, i]))
+      input_order[[i]] <- c(order(input_data[, i], na.last=NA) - 1,
+                            rep_len(-1, n_NAs))
     } else {
-      nlevels[i] <- length(unique(matrixU_NA[, i - 2]))
+      input_double[[i]] <- numeric(0)
+      input_order[[i]] <- numeric(0)
     }
   }
 
+  max_level_list <- as.numeric(apply(input_factor, 2, max)) + 1
+  input_factor <- data.frame(t(input_factor))
+  var_names <- colnames(input_data)
+
+  arg_list <- list(
+    "black_box" = list(),
+    "conf_threshold" = 0,
+    "consistent" = "no",
+    "cplx" = cplx,
+    "degenerate" = FALSE,
+    "eta" = 1,
+    "half_v_structure" = 0,
+    "is_continuous" = is_continuous,
+    "is_k23" = TRUE,
+    "latent" = "no",
+    "levels" = max_level_list,
+    "max_iteration" = 1,
+    "n_eff" = n_eff,
+    "n_shuffles" = 0,
+    "n_threads" = 1,
+    "no_init_eta" = FALSE,
+    "orientation" = T,
+    "ori_proba_ratio" = 1,
+    "propagation" = T,
+    "sample_weights" = sample_weights,
+    "test_mar" = F,
+    "max_bins" = maxbins,
+    "var_names" = var_names,
+    "verbose" = F
+  )
+  cpp_input <- list("factor" = input_factor, "double" = input_double,
+                    "order" = input_order)
   # Call cpp code
   if (base::requireNamespace("Rcpp", quietly = TRUE)) {
-    rescpp <-
-      .Call(
-        "mydiscretizeMutual",
-        X,
-        Y,
-        flatU,
-        nbrU,
-        maxbins,
-        initbins,
-        intcplx,
-        cnt_vec,
-        nlevels,
-        Neff,
-        sample_weights,
-        PACKAGE = "miic"
-      )
+    rescpp <- mydiscretizeMutual(cpp_input, arg_list)
   }
   niterations <- nrow(rescpp$cutpointsmatrix) / maxbins
 
@@ -328,7 +355,7 @@ discretizeMutual <- function(X,
           if (l == 2) {
             data <- Y
           } else {
-            data <- matrixU[, l - 2]
+            data <- matrix_u[, l - 2]
           }
         }
         uniquedata <- sort(unique(data))
@@ -365,10 +392,9 @@ discretizeMutual <- function(X,
 
   result$info <- rescpp$info
   result$infok <- rescpp$infok
-  result$efinfo <- rescpp$efinfo
 
   if (plot) {
-    if (require(ggplot2) & require(gridExtra)) {
+    if (base::requireNamespace("ggplot2", quietly = TRUE) & base::requireNamespace("gridExtra", quietly = TRUE)) {
       if (!any(is_discrete[1:2])) {
         result$plot <- jointplot_hist(X, Y, result, nameDist1, nameDist2)
       } else if (!all(is_discrete[1:2])) {
@@ -396,22 +422,22 @@ axisprint <- function(x) {
 }
 
 theme_side_hist <- function() {
-  theme_classic() %+replace%
-    theme(
-      title = element_text(
+  ggplot2::theme_classic() +
+    ggplot2::theme(
+      title = ggplot2::element_text(
         family = "",
         face = "plain",
         color = NA,
-        size = theme_classic()$text$size
+        size = ggplot2::theme_classic()$text$size
       ),
-      axis.text = element_text(
+      axis.text = ggplot2::element_text(
         color = NA,
-        size = theme_classic()$axis.text$size
+        size = ggplot2::theme_classic()$axis.text$size
       ),
-      axis.line.x = element_line(colour = NA),
-      axis.line.y = element_line(colour = NA),
-      axis.ticks = element_blank(),
-      panel.background = element_rect(fill = "white", colour = "white")
+      axis.line.x = ggplot2::element_line(colour = NA),
+      axis.line.y = ggplot2::element_line(colour = NA),
+      axis.ticks = ggplot2::element_blank(),
+      panel.background = ggplot2::element_rect(fill = "white", colour = "white")
     )
 }
 
@@ -453,120 +479,120 @@ jointplot_hist <- function(X, Y, result, nameDist1, nameDist2,
     }
   }
   fill_density_flat[fill_density_flat$density == 0, "density"] <- NA
+  fill_density_flat$logdensity = log(fill_density_flat$density)
 
-  hist2d <- ggplot(fill_density_flat) +
-    geom_rect(
-      aes(
-        xmin = xstart,
-        xmax = xend,
-        ymin = ystart,
-        ymax = yend,
-        fill = log(density)
+  hist2d <- ggplot2::ggplot(fill_density_flat) +
+    ggplot2::geom_rect(
+      ggplot2::aes_string(
+        xmin = "xstart",
+        xmax = "xend",
+        ymin = "ystart",
+        ymax = "yend",
+        fill = "logdensity"
       ),
       na.rm = T,
       show.legend = F
     ) +
-    scale_fill_gradient(
+    ggplot2::scale_fill_gradient(
       low = "#f4f5fc",
       high = "#0013a3",
       position = "left",
       na.value = "white",
       limits = log(c(
         min_density,
-        max(fill_density_flat$density,
-          na.rm = T
-        )
-      ))
+        max(fill_density_flat$density,na.rm = T))
+      )
     ) +
-    geom_vline(
+    ggplot2::geom_vline(
       xintercept = cut_points1,
       linetype = "dashed",
       color = "grey"
     ) +
-    geom_hline(
+    ggplot2::geom_hline(
       yintercept = cut_points2,
       linetype = "dashed",
       color = "grey"
     ) +
-    geom_point(
+    ggplot2::geom_point(
       data = data.frame(X, Y),
-      aes(x = X, y = Y),
+      ggplot2::aes(x = X, y = Y),
       shape = 21,
       alpha = .7,
       fill = "#ffef77",
       size = 2
     ) +
-    xlab(nameDist1) + ylab(nameDist2) +
-    theme_classic()
+    ggplot2::xlab(nameDist1) + ggplot2::ylab(nameDist2) +
+    ggplot2::theme_classic()
 
-  g <- ggplot_build(hist2d)
-  labels <- g$layout$panel_params[[1]]$y.labels
+  g <- ggplot2::ggplot_build(hist2d)
+  labels <- g$layout$panel_params[[1]]$y$get_labels()
+  labels <- labels[labels != "NA"]
 
-
-  side_hist_top <- ggplot(data.frame(X), aes(x = X)) +
-    # Histogram with density instead of count on y-axis
-    geom_histogram(
-      aes(y = ..density..),
+  side_hist_top <- ggplot2::ggplot(data.frame(X), ggplot2::aes(x = X)) +
+    ggplot2::geom_histogram(
+      ggplot2::aes(y = ggplot2::after_stat(density)),
       breaks = cut_points1,
       colour = "black",
       fill = "white"
     ) +
     # Overlay with transparent density plot
-    geom_density(
+    ggplot2::geom_density(
       adjust = 0.5,
       alpha = .5,
       fill = "#c1c6ee"
     ) +
-    theme_side_hist() %+replace% theme(plot.margin = margin(
-      5.5, 5.5, -25, 5.5,
-      "pt"
-    )) +
-    # , expand = c(0, 0)) + #Pass hist2d's labels to align both X axes
-    scale_y_continuous(
-      labels = labels,
+    theme_side_hist() +
+    ggplot2::theme(
+      plot.margin = ggplot2::margin(
+      5.5, 5.5, -30, 5.5, "pt")) +
+    ggplot2::scale_y_continuous(
+      labels = labels, # Pass hist2d's labels to align cutpoints on X axis
       breaks = seq(0, 0.1, length.out = length(labels))
     ) +
-    ylab("X")
-  # Histogram with density instead of count on y-axis
-  side_hist_bot <- ggplot(data.frame(Y), aes(x = Y)) +
-    geom_histogram(
-      aes(y = ..density..),
+    ggplot2::ylab("X")
+
+  side_hist_right <- ggplot2::ggplot(data.frame(Y), ggplot2::aes(x = Y)) +
+    ggplot2::geom_histogram(
+      ggplot2::aes(y = ggplot2::after_stat(density)),
       breaks = cut_points2,
       colour = "black",
       fill = "white"
     ) +
     # Overlay with transparent density plot
-    geom_density(
+    ggplot2::geom_density(
       adjust = 0.5,
       alpha = .5,
       fill = "#c1c6ee"
     ) +
-    theme_side_hist() %+replace% theme(plot.margin = margin(5.5, 5.5, 5.5, -30, "pt")) +
-    scale_y_continuous(expand = c(0, 0)) +
-    ylab("Y") +
-    coord_flip()
+    theme_side_hist() +
+    ggplot2::theme(
+      plot.margin = ggplot2::margin(
+      5.5, 5.5, 5.5, -30, "pt")) +
+    ggplot2::scale_y_continuous(expand = c(0, 0)) +
+    ggplot2::ylab("Y") +
+    ggplot2::coord_flip()
 
   I2 <- result$info
   I2p <- result$infok
 
-  empty <- ggplot() + geom_point(aes(1, 1), colour = "white") +
-    geom_text(aes(
+  empty <- ggplot2::ggplot() + ggplot2::geom_point(ggplot2::aes(1, 1), colour = "white") +
+    ggplot2::geom_text(ggplot2::aes(
       x = 1,
       y = 0.5,
       label = paste0("I = ", round(I2, 3))
     )) +
-    geom_text(aes(
+    ggplot2::geom_text(ggplot2::aes(
       x = 1,
       y = 0,
       label = paste0("Ik = ", round(I2p, 3))
     )) +
-    theme(
-      axis.ticks = element_blank(),
-      panel.background = element_blank(),
-      axis.text.x = element_blank(),
-      axis.text.y = element_blank(),
-      axis.title.x = element_blank(),
-      axis.title.y = element_blank()
+    ggplot2::theme(
+      axis.ticks = ggplot2::element_blank(),
+      panel.background = ggplot2::element_blank(),
+      axis.text.x = ggplot2::element_blank(),
+      axis.text.y = ggplot2::element_blank(),
+      axis.title.x = ggplot2::element_blank(),
+      axis.title.y = ggplot2::element_blank()
     )
 
 
@@ -575,7 +601,7 @@ jointplot_hist <- function(X, Y, result, nameDist1, nameDist2,
       side_hist_top,
       empty,
       hist2d,
-      side_hist_bot,
+      side_hist_right,
       ncol = 2,
       nrow = 2,
       widths = c(4.2, 1),
@@ -611,18 +637,18 @@ barplot_disc <- function(X,
     stringAsFactors = TRUE
   )
 
-  barplot <- ggplot(plot_df, aes(x = X, y = Y)) +
-    geom_boxplot(outlier.shape = NA, fill = "#c1c6ee") +
-    geom_jitter(width = 0.2, height = 0) +
-    geom_hline(
+  barplot <- ggplot2::ggplot(plot_df, ggplot2::aes(x = X, y = Y)) +
+    ggplot2::geom_boxplot(outlier.shape = NA, fill = "#c1c6ee") +
+    ggplot2::geom_jitter(width = 0.2, height = 0) +
+    ggplot2::geom_hline(
       yintercept = cut_points,
       linetype = "dashed",
       color = "grey",
       size = 1
     ) +
-    theme_classic() +
-    xlab(Xname) +
-    ylab(Yname)
+    ggplot2::theme_classic() +
+    ggplot2::xlab(Xname) +
+    ggplot2::ylab(Yname)
 
   return(barplot)
 }

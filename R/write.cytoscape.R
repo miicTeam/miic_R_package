@@ -20,7 +20,7 @@ miic.write.network.cytoscape <- function(g, layout = NULL, file) {
   }
 
   summary <- g$retained.edges.summary
-  adjMatrix <- g$adjMatrix
+  adj_matrix <- g$adj_matrix
 
   if (is.null(layout)) {
     line <- "<graphml>\n"
@@ -104,7 +104,7 @@ miic.write.network.cytoscape <- function(g, layout = NULL, file) {
     line <- paste(line, "\t<graph edgedefault=\"directed\">\n", sep = "")
 
     # cicle on nodes
-    for (node in colnames(adjMatrix)) {
+    for (node in colnames(adj_matrix)) {
       line <- paste(line, "\t\t<node id=\"", node, "\">\n", sep = "")
       line <- paste(line,
         "\t\t\t<data key=\"label\">",
@@ -420,7 +420,7 @@ miic.write.network.cytoscape <- function(g, layout = NULL, file) {
     if (ncol(layout) == 2) {
       xcol <- 1
       ycol <- 2
-      rownames(layout) <- colnames(adjMatrix)
+      rownames(layout) <- colnames(adj_matrix)
     } else {
       xcol <- 2
       ycol <- 3
@@ -445,7 +445,7 @@ miic.write.network.cytoscape <- function(g, layout = NULL, file) {
     line <- paste(line, " xmlns=\"http://www.cs.rpi.edu/XGMML\"", sep = "")
     line <- paste(line, " directed=\"1\">\n", sep = "")
     # cicle on nodes
-    for (node in colnames(adjMatrix)) {
+    for (node in colnames(adj_matrix)) {
       line <- paste(line,
         "\t\t<node label=\"",
         node,

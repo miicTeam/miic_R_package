@@ -4,7 +4,9 @@
 \name{ohno_stateOrder}
 \alias{ohno_stateOrder}
 \title{Tetraploidization in vertebrate evolution}
-\format{A data.frame object.}
+\format{
+A data.frame object.
+}
 \usage{
 data(ohno_stateOrder)
 }
@@ -12,7 +14,7 @@ data(ohno_stateOrder)
 20,415 protein-coding genes in the human genome from Ensembl (v70) and information on the
 retention of duplicates originating either from the two whole genome duplications at
 the onset of vertebrates (‘ohnolog’) or from subsequent small scale duplications (‘SSD’)
-as well as copy number variants (‘CNV’), cathegory order.
+as well as copy number variants (‘CNV’), category order.
 }
 \references{
 Verny et al., PLoS Comp. Bio. 2017.

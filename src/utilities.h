@@ -1,6 +1,7 @@
 #ifndef MIIC_UTILITIES_H_
 #define MIIC_UTILITIES_H_
 
+#include "environment.h"
 #include "structure.h"
 
 namespace miic {
@@ -8,69 +9,65 @@ namespace utility {
 
 void createMemorySpace(structure::Environment&, structure::MemorySpace&);
 void deleteMemorySpace(structure::Environment&, structure::MemorySpace&);
-void deleteStruct(structure::Environment&);
-std::string printNodesName(const structure::Environment&);
-void printEdges (structure::Environment&, bool filter_status=true, bool half_only=true);
-void printNoMoreAdress (structure::Environment&);
-void printAdjacencyMatrix (structure::Environment&, std::string status_field="status"); 
-void printMatrix(const structure::Environment&, std::string);
-void readData(structure::Environment&);
-// FRS 6 may 2020 parseCommandLine is not used anymore
-// bool parseCommandLine(structure::Environment&, int, char**);
-void printEnvironment(const structure::Environment&);
-void setEnvironment(structure::Environment&);
-int** copyMatrix(int**, int, int);
-void setNumberLevels(structure::Environment&);
-bool existsTest(const std::string&);
-bool checkNA(int**, int, int);
-void saveAdjMatrix(const structure::Environment&, const std::string);
-void saveAdjMatrixState(const structure::Environment&, const std::string);
-std::vector<std::vector<std::string> > saveEdgesListAsTable(
-    structure::Environment&);
-void saveExecTime(const structure::Environment&, const std::string);
-std::string arrayToString(const double*, const int);
-std::string vectorToString(const std::vector<int>&);
-std::string vectorToStringNodeName(
-    const structure::Environment&, const std::vector<int>&);
-void readTime(structure::Environment&, std::string);
-// FRS 6 may 2020 readFilesAndFillStructures is not used anymore
-// void readFilesAndFillStructures(
-//    std::vector<std::string> edgesVectorOneLine, structure::Environment&);
-bool readBlackbox(std::vector<std::string>, structure::Environment&);
-std::vector<std::vector<std::string> > getAdjMatrix(
+std::vector<std::vector<std::string>> getEdgesInfoTable(
     const structure::Environment&);
-int sign(double val);
-void transformToFactors(structure::Environment&, int);
-void transformToFactorsContinuous(structure::Environment&, int);
-void transformToFactorsContinuousIdx(structure::Environment&, int);
-void computeMeansandStandardDeviations(structure::Environment&);
-void computeCorrelations(structure::Environment&);
-void sort2arraysConfidence(int len, int a[], int brr[]);
-bool allVariablesDiscrete(int* array, int* posArray, int num);
+std::string toNameString(
+    const structure::Environment&, const std::vector<int>&);
+std::vector<std::vector<int>> getAdjMatrix(const structure::Environment&);
+void sort2arraysConfidence(
+    int len, const std::vector<int>& a, std::vector<int>& brr);
 void sort2arrays(int len, int a[], int brr[], int bridge[]);
 double get_wall_time();
 double ramanujan(int n);
-int printProgress(double percentage, double startTime, std::string outdir,
-    int prg_numSearchMore);
+int printProgress(double percentage, double startTime, int prg_numSearchMore);
 // KL divergence functions
-double compute_kl_divergence(int* posArray, structure::Environment&,
-    int samplesNotNA, int** dataNumeric_red, int* AllLevels_red,
-    int* samplesToEvaluate);
+double compute_kl_divergence(const std::vector<int>& posArray,
+    structure::Environment& environment, int samplesNotNA,
+    const std::vector<int>& AllLevels_red,
+    const std::vector<int>& sample_is_not_NA);
+double compute_kl_divergence_continuous(
+    std::vector<std::vector<double>>& space1,
+    std::vector<std::vector<double>>& space2, int n1, int n2, int ndims, int k,
+    bool* flag_break_ties, int* map_samples, double* noise_vec);
 
 double kl(double** freqs1, double** freqs2, int nrows, int ncols);
 double kl(int** counts1, double** freqs2, int nrows, int ncols);
-double kl(double* freqs1, double* freqs2, int nlevels);
-double kl(int* freqs1, int* freqs2, int n1, int n2, int nlevels);
+double kl(const std::vector<int>& freqs1, const std::vector<int>& freqs2,
+    int n1, int n2);
 
-void getJointMixed(structure::Environment&, int i, int j, int* mixedDiscrete,
-    double* mixedContinuous, int* curr_samplesToEvaluate);
-double** getJointFreqs(
-    structure::Environment&, int i, int j, int numSamples_nonNA);
-void getJointSpace(structure::Environment&, int i, int j, double** jointSpace,
-    int* curr_samplesToEvaluate);
-int getNumSamples_nonNA(structure::Environment&, int i, int j);
+void getJointMixed(const structure::Environment&, int i, int j,
+    int* mixedDiscrete, double* mixedContinuous, int* curr_sample_is_not_NA);
+double** getJointFreqs(const structure::Environment&, int i, int j,
+    const std::vector<int>& sample_is_not_NA = std::vector<int>());
+void getJointSpace(const structure::Environment&, int i, int j,
+    double** jointSpace, int* curr_sample_is_not_NA);
+int getNumSamplesNonNA(const structure::Environment&, int i, int j);
+
+int count_non_NAs(int nbrUi, std::vector<int> &sample_is_not_NA,
+    std::vector<int> &NAs_count, const std::vector<int>& posArray,
+    structure::Environment& environment, int z=-1);
+
+bool filter_NAs(int nbrUi, std::vector<int> &AllLevels, std::vector<int> &cnt,
+    std::vector<int> &posArray_red, const std::vector<int>& posArray,
+    std::vector<std::vector<int> > &dataNumeric,
+    std::vector<std::vector<int> > &dataNumericIdx,
+    std::vector<double> &sample_weights,
+    const std::vector<int> &sample_is_not_NA,
+    const std::vector<int> &NAs_count,
+    structure::Environment& environment, int z=-1);
 
 bool checkInterrupt(bool check = true);
+
+double lookupScore(const std::vector<int>& posArray, int nbrUi, int z,
+    structure::Environment& environment);
+void lookupScore(const std::vector<int>& posArray, int nbrUi, int z,
+    double* score, structure::Environment& environment);
+void saveScore(const std::vector<int>& posArray, int nbrUi, int z, double score,
+    structure::Environment& environment);
+void saveScore(const std::vector<int>& posArray, int nbrUi, int z,
+    double* score, structure::Environment& environment);
+
+bool SampleHasNoNA(const structure::Environment& env, int row, int i, int j);
 
 }  // namespace utility
 }  // namespace miic

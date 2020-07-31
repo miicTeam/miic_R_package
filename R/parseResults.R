@@ -1,13 +1,12 @@
-summarizeResults <- function(observations = NULL, edges = NULL,
-                             true_edges = NULL,
-                             state_order = NULL, adj_matrix = NULL,
-                             orientation_probabilities = NULL,
+summarizeResults <- function(observations = NULL, results = NULL,
+                             true_edges = NULL, state_order = NULL,
                              verbose = FALSE) {
   # Reduced list of edges that will be summarized. There are 3 categories:
   # - Edges that exist in the miic reconstruction (oriented or not)
   # - Edges that were conditioned away with a non-empty separating set
   # - If ground truth is known, any other positive edge
   summarized_edges <- matrix(ncol = 2)
+  adj_matrix <- results$adj_matrix
 
   # List of edges found by miic
   half_adj_matrix = adj_matrix
@@ -19,6 +18,7 @@ summarizeResults <- function(observations = NULL, edges = NULL,
   # Add to summarized edges list
   summarized_edges <- predicted_edges
 
+  edges <- results$edges
   # List of negative edges with non null conditioning set
   conditioned_edges <- as.matrix(edges[(!is.na(edges$ai.vect)) &
     edges$category != 1, c("x", "y")])
@@ -26,8 +26,8 @@ summarizeResults <- function(observations = NULL, edges = NULL,
   indep_null_cond_set_edges <- as.matrix(edges[(is.na(edges$ai.vect)) &
     edges$category != 1, c("x", "y")])
   # Add to summarized edges list
-  summarized_edges <- rbind(summarized_edges, conditioned_edges,
-                            indep_null_cond_set_edges)
+  summarized_edges <- rbind(summarized_edges, conditioned_edges)
+                            #indep_null_cond_set_edges)
 
   if (!is.null(true_edges)) {
     # List of False Negative edges
@@ -147,6 +147,7 @@ summarizeResults <- function(observations = NULL, edges = NULL,
     summary, observations, state_order
   )
 
+  orientation_probabilities <- results$orientations.prob
   # isCausal considers whether the source node of an oriented edge is also
   # at the tip of a V-structure. If so, then the source node has a stronger
   # indication of being causal.
@@ -162,6 +163,19 @@ summarizeResults <- function(observations = NULL, edges = NULL,
   summary$proba <- sapply(1:nrow(summary), function(i) {
     paste(findProba(summary, orientation_probabilities, i), collapse = ";")
   })
+
+  # If consistent parameter is turned on and the result graph is a union of more
+  # than one inconsistent graphs, get the possible orientations of each
+  # edge with the correponding frequencies.
+  if (length(results$adj_matrices) > 1) {
+    target <- which(names(summary) == "infOrt")[1]
+    summary <- cbind(
+      summary[, 1:target, drop = FALSE],
+      edge_stats = apply(summary, 1, get_edge_stats, colnames(adj_matrix),
+                         results$adj_matrices),
+      summary[, (target + 1):length(summary), drop = FALSE]
+    )
+  }
 
   # Sort summary by log confidence and return it
   summary <- summary[order(summary$log_confidence, decreasing = T), ]
@@ -210,9 +224,9 @@ compute_partial_correlation <- function(summary, observations, state_order) {
       rownames(state_order) <- state_order$var_names
       # Convert ordered categorical features to integers
       observations[, col] <- factor(observations[, col])
-      ordered_levels <- unlist(strsplit(
-        state_order[state_order$var_names == col, "levels_increasing_order"], ","
-      ))
+      ordered_levels <- as.character(
+        state_order[state_order$var_names == col, "levels_increasing_order"])
+      ordered_levels <- unlist(strsplit(ordered_levels, ","))
       # levels(observations[,col]) = ordered_levels
       observations[, col] <- ordered(observations[, col], ordered_levels)
       observations[, col] <- as.numeric(observations[, col])
@@ -242,19 +256,21 @@ compute_partial_correlation <- function(summary, observations, state_order) {
       !any(is.na(row[columns]))
     }, c(x, y, ai))
 
-    if (!is.null(ai)) {
-      ai <- unlist(strsplit(ai, ",")) # Character vector
-
-      edge_res <- ppcor::pcor.test(observations[non_na_rows, x],
-        observations[non_na_rows, y],
-        observations[non_na_rows, ai],
-        method = "spearman"
-      )
-    } else {
-      edge_res <- cor.test(observations[non_na_rows, x],
-        observations[non_na_rows, y],
-        method = "spearman"
-      )
+    OK <- stats::complete.cases(observations[non_na_rows, x], observations[non_na_rows, y])
+    if (sum(OK) >= 2) {
+      if (!is.null(ai)) {
+        ai <- unlist(strsplit(ai, ",")) # Character vector
+        edge_res <- ppcor::pcor.test(observations[non_na_rows, x],
+          observations[non_na_rows, y],
+          observations[non_na_rows, ai],
+          method = "spearman"
+        )
+      } else {
+        edge_res <- stats::cor.test(observations[non_na_rows, x],
+          observations[non_na_rows, y],
+          method = "spearman"
+        )
+      }
     }
 
     # Save sign and coef
@@ -379,7 +395,7 @@ findProba <- function(outputSummary.df, proba, index) {
     posProba <- which((proba[, 4] == outputSummary.df[index, 2] &
       proba[, 7] == outputSummary.df[index, 1]))
     if (length(posProba) > 0) {
-      found <- TRUE
+      posProba <- posProba[1]
       return(c(proba[posProba, "p4"], proba[posProba, "p3"]))
     }
   } else if (outputSummary.df[index, "infOrt"] == 6) {
@@ -412,4 +428,20 @@ findProba <- function(outputSummary.df, proba, index) {
     }
   }
   return(NA)
+}
+
+get_edge_stats <- function(row, var_names, adj_matrices) {
+  # row[1]: variable name of x
+  # row[2]: variable name of y
+  n_var <- length(var_names)
+  # adj_matrices is of dimention (n_var * n_var, n_cycle), i.e., each
+  # column is a 1-d adjacency matrix
+  index_1d <- n_var * (match(row[1], var_names) - 1) + match(row[2], var_names)
+  n_cycle <- dim(adj_matrices)[2]
+  # edge stats table, count replaced by frequency (percentage)
+  t <- table(adj_matrices[index_1d,]) / n_cycle
+  t <- t[order(t, decreasing = TRUE), drop = FALSE]
+  t <- apply(t, 1, scales::percent_format())
+  # return a ";" separated string of format "percentage(orientation)"
+  return(paste(t, "(", names(t), ")", sep = "", collapse = ";"))
 }

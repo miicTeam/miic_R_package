@@ -221,11 +221,11 @@ public:
 public:
   const DistanceType radius;
 
-  std::vector<std::pair<IndexType, DistanceType>> &m_indices_dists;
+  std::vector<std::pair<IndexType, DistanceType> > &m_indices_dists;
 
   inline RadiusResultSet(
       DistanceType radius_,
-      std::vector<std::pair<IndexType, DistanceType>> &indices_dists)
+      std::vector<std::pair<IndexType, DistanceType> > &indices_dists)
       : radius(radius_), m_indices_dists(indices_dists) {
     init();
   }
@@ -259,7 +259,7 @@ public:
       throw std::runtime_error("Cannot invoke RadiusResultSet::worst_item() on "
                                "an empty list of results.");
     typedef
-        typename std::vector<std::pair<IndexType, DistanceType>>::const_iterator
+        typename std::vector<std::pair<IndexType, DistanceType> >::const_iterator
             DistIt;
     DistIt it = std::max_element(m_indices_dists.begin(), m_indices_dists.end(),
                                  IndexDist_Sorter());
@@ -664,7 +664,7 @@ public:
       // use the standard C malloc to allocate memory
       void *m = ::malloc(blocksize);
       if (!m) {
-        fprintf(stderr, "Failed to allocate memory.\n");
+        REprintf("Failed to allocate memory.\n");
         return NULL;
       }
 
@@ -1272,7 +1272,7 @@ public:
    */
   size_t
   radiusSearch(const ElementType *query_point, const DistanceType &radius,
-               std::vector<std::pair<IndexType, DistanceType>> &IndicesDists,
+               std::vector<std::pair<IndexType, DistanceType> > &IndicesDists,
                const SearchParams &searchParams) const {
     RadiusResultSet<DistanceType, IndexType> resultSet(radius, IndicesDists);
     const size_t nFound =
@@ -1632,7 +1632,7 @@ public:
    */
   size_t
   radiusSearch(const ElementType *query_point, const DistanceType &radius,
-               std::vector<std::pair<IndexType, DistanceType>> &IndicesDists,
+               std::vector<std::pair<IndexType, DistanceType> > &IndicesDists,
                const SearchParams &searchParams) const {
     RadiusResultSet<DistanceType, IndexType> resultSet(radius, IndicesDists);
     const size_t nFound =

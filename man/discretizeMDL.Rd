@@ -4,13 +4,13 @@
 \alias{discretizeMDL}
 \title{Discretize a real valued distribution}
 \usage{
-discretizeMDL(myDist = NULL, maxbins = 20)
+discretizeMDL(x = NULL, max_bins = 20)
 }
 \arguments{
-\item{myDist}{[a vector]
+\item{x}{[a vector]
 A vector that contains the distribution to be discretized.}
 
-\item{maxbins}{[an int]
+\item{max_bins}{[an int]
 The maximum number of bins allowed by the algorithm.}
 }
 \value{
@@ -23,19 +23,26 @@ according to the MDL principle.
 }
 \examples{
 library(miic)
-
 \dontrun{
 # Bimodal normal distribution
-N=300
-modes = sample(1:2, size=N, replace=T)
-myDist = as.numeric(modes==1) * rnorm(N,mean=0,sd=1) + as.numeric(modes==2) * rnorm(N,mean=5,sd=2)
-MDL_disc = discretizeMDL(myDist)
-hist(myDist, breaks=MDL_disc$cutpoints)
+N <- 300
+modes <- sample(1:2, size = N, replace = T)
+x <- as.numeric(modes == 1) * rnorm(N, mean = 0, sd = 1) +
+     as.numeric(modes == 2) * rnorm(N, mean = 5, sd = 2)
+MDL_disc <- discretizeMDL(x)
+hist(x, breaks = MDL_disc$cutpoints)
 
-N=2000
-modes = sample(1:2, size=N, replace=T)
-myDist = as.numeric(modes==1) * rnorm(N,mean=0,sd=1) + as.numeric(modes==2) * rnorm(N,mean=5,sd=2)
-MDL_disc = discretizeMDL(myDist)
-hist(myDist, breaks=MDL_disc$cutpoints)
+N <- 2000
+modes <- sample(1:2, size = N, replace = T)
+x <- as.numeric(modes == 1) * rnorm(N, mean = 0, sd = 1) +
+     as.numeric(modes == 2) * rnorm(N, mean = 5, sd = 2)
+MDL_disc <- discretizeMDL(x)
+hist(x, breaks = MDL_disc$cutpoints)
+}
+
+}
+\references{
+\itemize{
+\item Kontkanen P, Myllymäki P. MDL histogram density estimation. Artificial Intelligence and Statistics 2007 Mar 11 (pp. 219-226).
 }
 }

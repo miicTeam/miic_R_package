@@ -1,14 +1,19 @@
 #ifndef MIIC_PROBA_ORIENTATION_H_
 #define MIIC_PROBA_ORIENTATION_H_
 
-#include "structure.h"
+#include <array>
+#include <vector>
+
+#include "environment.h"
 
 namespace miic {
 namespace reconstruction {
+using ProbaArray = std::array<double, 4>;
+using Triple = std::array<int, 3>;
 
-double *getOrientTplLVDegPropag(structure::Environment&, int, int *, double *, int, int, int, int);
-int OrientTpl_LV_Deg_Propag(int NbTpl, int *Tpl, double *I3,
-    double *ProbArrowhead, int LV, int deg, int Propag, int);
+std::vector<ProbaArray> getOriProbasList(structure::Environment&, const std::vector<Triple>&,
+    const std::vector<double>& I3_list, bool latent, bool degenerate,
+    bool propagation, bool half_v_structure);
 
 }  // namespace reconstruction
 }  // namespace miic

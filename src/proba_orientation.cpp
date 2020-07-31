@@ -1,725 +1,182 @@
 #include "proba_orientation.h"
 
-#include <math.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <regex>
-#include <time.h>
-#include <unistd.h>
+#include <Rcpp.h>
 
 #include <algorithm>
-#include <iostream>
+#define _USE_MATH_DEFINES
+#include <cmath>
+#include <numeric>
+#include <regex>
 
-#include "utilities.h"
+namespace miic {
+namespace reconstruction {
 
-using namespace std;
+using std::vector;
+using std::fabs;
 
-//#define M_PI		3.14159265358979323846	/* pi */
-#define eps 1.0e-12
-#define eps_diff 1.0e-12
+namespace {
+
+constexpr double kEps = 1.0e-12;
+constexpr double kEpsDiff = 1.0e-12;
+constexpr int kRemoveTripleMark = -1;
 #define _MY_PRINT_ 0
-#define _DEBUG 0
 
-static double dmaxarg1, dmaxarg2;
-#define DMAX(a, b)                 \
-  (dmaxarg1 = (a), dmaxarg2 = (b), \
-      (dmaxarg1) > (dmaxarg2) ? (dmaxarg1) : (dmaxarg2))
+struct TripleComparator {
+  const vector<double>& scores;
 
-static double dminarg1, dminarg2;
-#define DMIN(a, b)                 \
-  (dminarg1 = (a), dminarg2 = (b), \
-      (dminarg1) < (dminarg2) ? (dminarg1) : (dminarg2))
+  TripleComparator(const vector<double>& val_vec) : scores(val_vec) {}
 
-struct TripletComparator
-{
-    const double* scores;
-
-    TripletComparator(const double* val_vec):
-        scores(val_vec) {}
-
-    bool operator()(int i1, int i2)
-    {
-        return scores[i1] < scores[i2];
-    }
+  bool operator()(int i1, int i2) { return scores[i1] > scores[i2]; }
 };
 
-double logF2(double scoreTpl, double I3) {
-  double scoreN;
-  if (scoreTpl < (1 - eps))
-    scoreN = log(-2 / (scoreTpl * (1 / (1 + exp(-fabs(I3))) - 0.5) - 0.5) - 3);
-  else
-    scoreN = fabs(I3) + log1p(-2 * exp(-fabs(I3)));
-  return scoreN;
+bool isHead(double proba) { return proba > (0.5 + kEps); }
+bool isTail(double proba) { return proba < (0.5 - kEps); }
+bool isOriented(double proba) { return isHead(proba) || isTail(proba); }
+
+// Given a Triple t0 (X -- Z -- Y) with the highest log_score, and another
+// Triple t who shares one edge with t0, and whose probabilities can be updated
+// by those of t0. Suppose the shared edge is W -- Z (W can be X or Y), in the
+// triple t, Z is not necessarily the middle node.
+//
+// Input w2z, z2w the probabilities of t0 (W -* Z and W *- Z respectively),
+// where * can be head (< or >) or tail (-)
+// Input/Output probas, probas2, the ProbaArrays of t to be updated
+//
+// Denote by M (can be W or Z) the middle node of t, by U (can be Z or W) the
+// other node in the shared edge, and by V the third node, so t is either (U
+// -- M -- V) or (V -- M -- U)
+//
+// Input w2z_index, z2w_index value in [0, 1, 2, 3]. Index of the probabilites
+// in the ProbaArray of t that corresponds to w2z, z2w, If t is (U -- M -- V),
+// then (w2z_index, z2w_index) is (0, 1) or (1, 0), if t is (V -- M -- U), then
+// (w2z_index, z2w_index) is (2, 3) or (3, 2)
+void updateProba(int w2z_index, int z2w_index, double w2z, double z2w,
+    bool latent, bool propagation, ProbaArray& probas, ProbaArray& probas2,
+    bool& need_propagation, bool& remove_triple) {
+  probas[w2z_index] = w2z;
+  if ((!latent && isHead(probas[w2z_index])) ||
+      (propagation && isTail(probas[w2z_index])))
+    probas[z2w_index] = z2w;
+  double v2m = std::max(w2z_index, z2w_index) == 1 ? probas[2] : probas[1];
+  double u2m = (w2z_index == 1 || w2z_index == 2) ? w2z : z2w;
+  if (isOriented(u2m) && isOriented(v2m)) {
+    remove_triple = true;
+  } else {
+    probas2[w2z_index] = w2z;
+    if ((!latent && isHead(probas[w2z_index])) ||
+        (propagation && isTail(probas[w2z_index])))
+      probas2[z2w_index] = z2w;
+    need_propagation = true;
+  }
 }
 
-int miic::reconstruction::OrientTpl_LV_Deg_Propag(int NbTpl, int* Tpl,
-    double* I3, double* ProbArrowhead, int LV, int deg, int Propag,
-    int HALFVSTRUCT) {
-  int i, j, n1, n2, n3, TRUE = 1, FALSE = 0, *orderTpl, maxTpl, ok, count = 0;
-  double maxscoreTpl;
-  double p, pp, p1, p2, p3, p4, *ProbArrowhead2, *scoreTpl, *scoresN;
-  double logpp,*logscoreTpl;
-
-  ProbArrowhead2 = new double[4 * NbTpl];
-  scoreTpl = new double[NbTpl];
-  logscoreTpl = new double[NbTpl];
-  orderTpl = new int[NbTpl];
-  scoresN = new double[NbTpl];
-
-  // Initialization ProbArrowhead2
-  for (i = 0; i < 4 * NbTpl; i++) {
-    ProbArrowhead2[i] = ProbArrowhead[i];
-  }
-  // Initialization ScoreTpl for I3<0
-  for (i = 0; i < NbTpl; i++) {
-    if (I3[i] < 0) {       // Tpl negative
-      if (deg == FALSE) {  // no degenerescence
-			  //scoreTpl[i]=(1+exp(I3[i]))/(1+3*exp(I3[i])); //update 20150228
-			  logscoreTpl[i]=log1p(exp(I3[i])) -log1p(3*exp(I3[i]));
-			  scoreTpl[i]=expm1(logscoreTpl[i])+1;
-        scoresN[i] = -(I3[i]);
-      } else {  // degenerescence
-        scoreTpl[i] = (3 - 2 * exp(I3[i])) /
-                      (3 - exp(I3[i]));  // larger than p without deg
-      }
-      // modif 20150228
-      ProbArrowhead2[1 * NbTpl + i] = scoreTpl[i];
-      ProbArrowhead2[2 * NbTpl + i] = scoreTpl[i];
-
-      if (LV == FALSE) {  // no change 20151023
-        ProbArrowhead2[0 * NbTpl + i] = 1 - ProbArrowhead2[1 * NbTpl + i];
-        ProbArrowhead2[3 * NbTpl + i] = 1 - ProbArrowhead2[2 * NbTpl + i];
-      }
-
-    } else {  // Tpl positive
-      logscoreTpl[i]=log(0.5);
-      scoreTpl[i] = 0.5;
-      scoresN[i] = 0;
-    }
-  }
-
-#if _MY_PRINT_
-  printf("\n\n Orientation  (P>0.5: arrow-head; P<0.5: arrow-tail) :\n");
-  for (i = 0; i < NbTpl; i++) {
-    printf("!!! Tpl %i (%g-%g) %i (%g-%g) %i -- I3=%g scoreTpl=%g\n",
-        Tpl[0 * NbTpl + i], ProbArrowhead[0 * NbTpl + i],
-        ProbArrowhead[1 * NbTpl + i], Tpl[1 * NbTpl + i],
-        ProbArrowhead[2 * NbTpl + i], ProbArrowhead[3 * NbTpl + i],
-        Tpl[2 * NbTpl + i], I3[i], scoreTpl[i]);
-  }
-  for (i = 0; i < NbTpl; i++) {
-    printf("!!! Tpl2 %i (%g-%g) %i (%g-%g) %i -- I3=%g scoreTpl=%g\n",
-        Tpl[0 * NbTpl + i], ProbArrowhead2[0 * NbTpl + i],
-        ProbArrowhead2[1 * NbTpl + i], Tpl[1 * NbTpl + i],
-        ProbArrowhead2[2 * NbTpl + i], ProbArrowhead2[3 * NbTpl + i],
-        Tpl[2 * NbTpl + i], I3[i], scoreTpl[i]);
-  }
-
-  printf("!START LV=%i count=%i deg=%i maxTpl=%i maxscoreTpl=%g \n", LV, count,
-      deg, maxTpl, maxscoreTpl);
-#endif  // _MY_PRINT_
-
-  //  Order Tpl in increasing ScoreTpl /////////////////////
-  for (i = 0; i < NbTpl; i++) {
-    orderTpl[i] = i;
-  }
-  std::sort(orderTpl, orderTpl + NbTpl, TripletComparator(logscoreTpl));
-
-  maxTpl=orderTpl[NbTpl-1];
-  maxscoreTpl = scoreTpl[maxTpl];
-
-#if _MY_PRINT_
-  for (i = 0; i < NbTpl; i++) {
-    printf(" scoreTpl[orderTpl[%i]=%i]=%g  \n", i, orderTpl[i],
-        scoreTpl[orderTpl[i]]);
-  }
-  printf(" maxTpl=%i  maxscoreTpl=%g\n", maxTpl, maxscoreTpl);
-#endif
-
-  do {
-    count++;
-#if _MY_PRINT_
-    printf("! count=%i deg=%i maxTpl=%i maxscoreTpl=%g \n", count, deg, maxTpl,
-        maxscoreTpl);
-#endif  // _MY_PRINT_
-
-    // assign topTpl ///////////////////////////////////////////:
-    n1 = 0;
-    n3 = 0;
-    p1 = 0.5;
-    p2 = 0.5;
-    p3 = 0.5;
-    p4 = 0.5;
-
-    i = maxTpl;
-    logscoreTpl[i]=-__DBL_MAX__;
-    scoreTpl[i] = -1;
-    scoresN[i] = -1;
-
-#if _MY_PRINT_
-    printf("maxTpl=%i n1=%i  %g(%g)--%g(%g)  n2=%i  %g(%g)--%g(%g)  n3=%i \n",
-        maxTpl, Tpl[0 * NbTpl + i], ProbArrowhead[0 * NbTpl + i],
-        ProbArrowhead2[0 * NbTpl + i], ProbArrowhead[1 * NbTpl + i],
-        ProbArrowhead2[1 * NbTpl + i], Tpl[1 * NbTpl + i],
-        ProbArrowhead[2 * NbTpl + i], ProbArrowhead2[2 * NbTpl + i],
-        ProbArrowhead[3 * NbTpl + i], ProbArrowhead2[3 * NbTpl + i],
-        Tpl[2 * NbTpl + i]);
-#endif  // _MY_PRINT_
-
-    // arrowhead proba
-    p = DMAX(ProbArrowhead2[1 * NbTpl + i],
-        1 - ProbArrowhead2[1 * NbTpl + i]);  // change 20151031
-    // if arrowhead/tail on 1 (x 0-*1 z 2-3 y) is not already established
-    // (through an earlier propagation)
-    if((ProbArrowhead[1 * NbTpl + i] < (p - eps)) &&
-			 (ProbArrowhead[1 * NbTpl + i] > (1 - p + eps)) &&
-  		 (HALFVSTRUCT == TRUE || I3[i] > 0 ||
-            ProbArrowhead[2 * NbTpl + i] > (0.5 - eps)) ) {  // change 20151024
-      // establish arrowhead/tail final proba on 1 (x 0-*1 z 2-3 y)
-      ProbArrowhead[1 * NbTpl + i] = ProbArrowhead2[1 * NbTpl + i];
-
-      n1 = Tpl[0 * NbTpl + i];
-      n2 = Tpl[1 * NbTpl + i];
-      // not sure this is useful;) //change 20151023
-      p1 = ProbArrowhead2[0 * NbTpl + i];
-      // if no LV or tail on 1  (x 0<-1 z 2-3 y) // change 20151022 herve
-      if ((LV == FALSE && ProbArrowhead[1 * NbTpl + i] > (0.5 + eps)) ||
-          (Propag == TRUE && ProbArrowhead[1 * NbTpl + i] < (0.5 - eps))) {
-        // establish arrowhead/tail if no LV or
-        // arrowhead final proba on 0 (x 0<-1 z 2-3 y)
-        ProbArrowhead[0 * NbTpl + i] = ProbArrowhead2[0 * NbTpl + i];
-      }
-      p2 = ProbArrowhead[1 * NbTpl + i];
-    }
-
-    p = DMAX(ProbArrowhead2[2 * NbTpl + i],
-        1 - ProbArrowhead2[2 * NbTpl + i]);  // change 20151031
-
-    // change 20151024
-    if ((ProbArrowhead[2 * NbTpl + i] < (p - eps)) &&
-        (ProbArrowhead[2 * NbTpl + i] > (1 - p + eps)) &&
-        (HALFVSTRUCT == TRUE || I3[i] > 0 ||
-            ProbArrowhead[1 * NbTpl + i] > (0.5 - eps))) {
-      // establish arrowhead/tail final proba on 2 (x 0-1 z 2*-3 y)
-      ProbArrowhead[2 * NbTpl + i] = ProbArrowhead2[2 * NbTpl + i];
-
-      n2 = Tpl[1 * NbTpl + i];
-      n3 = Tpl[2 * NbTpl + i];
-      p3 = ProbArrowhead[2 * NbTpl + i];
-      // not sure this is useful;) //change 20151023
-      p4 = ProbArrowhead2[3 * NbTpl + i];
-      // if no LV or tail on 2  (x 0-1 z 2->3 y) // change 20151022 herve
-      if ((LV == FALSE && ProbArrowhead[2 * NbTpl + i] > (0.5 + eps)) ||
-          (Propag == TRUE && ProbArrowhead[2 * NbTpl + i] < (0.5 - eps))) {
-        // establish arrowhead/tail if no LV or
-        // arrowhead final proba on 3 (x 0-1 z 2->3 y)
-        ProbArrowhead[3 * NbTpl + i] = ProbArrowhead2[3 * NbTpl + i];
-      }
-    }
-
-#if _MY_PRINT_
-    printf("!n1=%i p1=%g p2=%g count=%i deg=%i maxTpl=%i maxscoreTpl=%g \n", n1,
-        p1, p2, count, deg, maxTpl, maxscoreTpl);
-#endif  // _MY_PRINT_
-
-    maxscoreTpl = 0.0;
-
-    if (n1 != 0) {
-      // only loop on relevant Tpl i != maxTpl, thanks to the sorting
-      // of their scoreTpl
-      for (j = NbTpl - 2; j >= 0; j--) {
-        i = orderTpl[j];
-        ok = TRUE;
-        // sharing fist edge, same symmetry
-        if (Tpl[0 * NbTpl + i] == n1 && Tpl[1 * NbTpl + i] == n2) {
-          ProbArrowhead[1 * NbTpl + i] = p2;
-          // if(LV==FALSE) ProbArrowhead[0*NbTpl+i] = p1;
-          if ((LV == FALSE && ProbArrowhead[1 * NbTpl + i] > (0.5 + eps)) ||
-              (Propag == TRUE && ProbArrowhead[1 * NbTpl + i] < (0.5 - eps)))
-            // edit HI 20150222 change 20151022 herve
-            ProbArrowhead[0 * NbTpl + i] = p1;
-          // if p2!=0.5 && other edge already oriented // change 20151101
-          if (((p2 > (0.5 + eps)) || (p2 < (0.5 - eps))) &&
-              ((ProbArrowhead[2 * NbTpl + i] > (0.5 + eps)) ||
-                  (ProbArrowhead[2 * NbTpl + i] < (0.5 - eps)))) {
-            logscoreTpl[i] = -__DBL_MAX__;
-            scoreTpl[i] = -1;  // remove tpl from the list of yet-unused Tpl
-            scoresN[i] = -1;
-            ok = FALSE;
-          } else {  // copy final proba on putative proba too
-            // edit HI 20150222 // change 20151022 herve
-            if ((LV == FALSE && ProbArrowhead[1 * NbTpl + i] > (0.5 + eps)) ||
-                (Propag == TRUE && ProbArrowhead[1 * NbTpl + i] < (0.5 - eps)))
-              ProbArrowhead2[0 * NbTpl + i] = p1;
-
-            ProbArrowhead2[1 * NbTpl + i] = p2;
-          }
-        } else if (Tpl[0 * NbTpl + i] == n2 && Tpl[1 * NbTpl + i] == n1) {
-          // sharing fist edge, antisymmetry
-          ProbArrowhead[0 * NbTpl + i] = p2;
-          if ((LV == FALSE && ProbArrowhead[0 * NbTpl + i] > (0.5 + eps)) ||
-              (Propag == TRUE && ProbArrowhead[0 * NbTpl + i] < (0.5 - eps)))
-            // edit HI 20150222 // change 20151022 herve
-            ProbArrowhead[1 * NbTpl + i] = p1;
-          // if other edge already oriented
-          // if p1!=0.5 && other edge already oriented // change 20151101
-          if (((p1 > (0.5 + eps)) || (p1 < (0.5 - eps))) &&
-              ((ProbArrowhead[2 * NbTpl + i] > (0.5 + eps)) ||
-                  (ProbArrowhead[2 * NbTpl + i] < (0.5 - eps)))) {
-            logscoreTpl[i]=-__DBL_MAX__;
-            scoreTpl[i] = -1;  // remove tpl from the list of yet-unused Tpl
-            scoresN[i] = -1;
-            ok = FALSE;
-          } else {  // copy final proba on putative proba too
-            ProbArrowhead2[0 * NbTpl + i] = p2;
-            if ((LV == FALSE && ProbArrowhead[0 * NbTpl + i] > (0.5 + eps)) ||
-                (Propag == TRUE && ProbArrowhead[0 * NbTpl + i] < (0.5 - eps)))
-              // edit HI 20150222 // change 20151022 herve
-              ProbArrowhead2[1 * NbTpl + i] = p1;
-          }
-        } else if (Tpl[2 * NbTpl + i] == n1 && Tpl[1 * NbTpl + i] == n2) {
-          // sharing second edge, antisymmetry
-          ProbArrowhead[2 * NbTpl + i] = p2;
-
-          if ((LV == FALSE && ProbArrowhead[2 * NbTpl + i] > (0.5 + eps)) ||
-              (Propag == TRUE && ProbArrowhead[2 * NbTpl + i] < (0.5 - eps)))
-            // edit HI 20150222  // change 20151022 herve
-            ProbArrowhead[3 * NbTpl + i] = p1;
-          // if p2!=0.5 && other edge already oriented // change 20151101
-          if (((p2 > (0.5 + eps)) || (p2 < (0.5 - eps))) &&
-              ((ProbArrowhead[1 * NbTpl + i] > (0.5 + eps)) ||
-                  (ProbArrowhead[1 * NbTpl + i] < (0.5 - eps)))) {
-            logscoreTpl[i]=-__DBL_MAX__;
-            scoreTpl[i] = -1;  // remove tpl from the list of yet-unused Tpl
-            scoresN[i] = -1;
-            ok = FALSE;
-          } else {  // copy final proba on putative proba too
-            if ((LV == FALSE && ProbArrowhead[2 * NbTpl + i] > (0.5 + eps)) ||
-                (Propag == TRUE && ProbArrowhead[2 * NbTpl + i] < (0.5 - eps)))
-              // edit HI 20150222  // change 20151022 herve
-              ProbArrowhead2[3 * NbTpl + i] = p1;
-
-            ProbArrowhead2[2 * NbTpl + i] = p2;
-          }
-        } else if (Tpl[2 * NbTpl + i] == n2 && Tpl[1 * NbTpl + i] == n1) {
-          // sharing second edge, same symmetry
-          ProbArrowhead[3 * NbTpl + i] = p2;
-          if ((LV == FALSE && ProbArrowhead[3 * NbTpl + i] > (0.5 + eps)) ||
-              (Propag == TRUE && ProbArrowhead[3 * NbTpl + i] < (0.5 - eps)))
-            // edit HI 20150222 // change 20151022 herve
-            ProbArrowhead[2 * NbTpl + i] = p1;
-          // if p1!=0.5 && other edge already oriented // change 20151101
-          if (((p1 > (0.5 + eps)) || (p1 < (0.5 - eps))) &&
-              ((ProbArrowhead[1 * NbTpl + i] > (0.5 + eps)) ||
-                  (ProbArrowhead[1 * NbTpl + i] < (0.5 - eps)))) {
-            logscoreTpl[i]=-__DBL_MAX__;
-            scoreTpl[i] = -1;  // remove tpl from the list of yet-unused Tpl
-            scoresN[i] = -1;
-            ok = FALSE;
-          } else {  // copy final proba on putative proba too
-            ProbArrowhead2[3 * NbTpl + i] = p2;
-            // edit HI 20150222 // change 20151022 herve
-            if ((LV == FALSE && ProbArrowhead[3 * NbTpl + i] > (0.5 + eps)) ||
-                (Propag == TRUE && ProbArrowhead[3 * NbTpl + i] < (0.5 - eps)))
-              ProbArrowhead2[2 * NbTpl + i] = p1;
-          }
-        } else {
-          ok = FALSE;  // non edited tpl
-        }
-
-#if _MY_PRINT_
-        printf(
-            "!n1=%i i=%i j=%i ok=%i count=%i deg=%i maxTpl=%i maxscoreTpl=%g "
-            "\n",
-            n1, i, j, ok, count, deg, maxTpl, maxscoreTpl);
-#endif  // _MY_PRINT_
-
-        // update score performing putative propagation
-        if (ok) {
-          if (I3[i] > 0) {
-            // define score in case of no true propagation below
-            scoreTpl[i] = DMIN(ProbArrowhead2[1 * NbTpl + i],
-                1 - ProbArrowhead2[2 * NbTpl + i]);
-            scoreTpl[i] =
-                DMAX(scoreTpl[i], DMIN(ProbArrowhead2[2 * NbTpl + i],
-                                      1 - ProbArrowhead2[1 * NbTpl + i]));
-            logscoreTpl[i]=log1p(scoreTpl[i]-1);
-            scoresN[i] = logF2(scoreTpl[i], I3[i]);
-
-            p = ProbArrowhead[1 * NbTpl + i];
-            logpp = log1p(p - 1) - log1p(exp(-I3[i]));   // only p*(1.0/(1+exp(-I3[i])) term
-						pp = expm1(logpp) + 1;
-            // change 20151031
-            // 2->3  condition of propagation (p > pp > 0.5) and no
-            // previously higher putative propagation
-            if (p > (0.5 + eps) && pp > (0.5 + eps) &&
-                (ProbArrowhead2[2 * NbTpl + i] > (1 - pp + eps))) {
-              logscoreTpl[i]=logpp;
-              scoreTpl[i] = pp;
-              scoresN[i] = logF2(scoreTpl[i], I3[i]);
-
-              ProbArrowhead2[2 * NbTpl + i] = 1 - pp;
-              if (Propag == TRUE && ProbArrowhead2[3 * NbTpl + i] < (pp - eps))
-                ProbArrowhead2[3 * NbTpl + i] = pp;  // change 20151031
-            } else {  // other direction? 2->1
-              p = ProbArrowhead[2 * NbTpl + i];
-              // update 20150228
-              logpp = log1p(p - 1) - log1p(exp(-I3[i]));   // only p*(1.0/(1+exp(-I3[i])) term
-              pp = expm1(logpp) + 1;
-              // change 20151031
-              if (p > (0.5 + eps) && pp > (0.5 + eps) &&
-                  (ProbArrowhead2[1 * NbTpl + i] > (1 - pp + eps))) {
-                logscoreTpl[i] = logpp;
-                scoreTpl[i] = pp;
-                scoresN[i] = logF2(scoreTpl[i], I3[i]);
-                ProbArrowhead2[1 * NbTpl + i] = 1 - pp;
-                // change 20151031
-                if (Propag == TRUE &&
-                    ProbArrowhead2[0 * NbTpl + i] < (pp - eps))
-                  ProbArrowhead2[0 * NbTpl + i] = pp;
-              }
-            }
-          } else if (I3[i] < 0) {
-            if (fabs(ProbArrowhead2[1 * NbTpl + i] -
-                     ProbArrowhead2[2 * NbTpl + i]) > eps_diff) {
-              scoreTpl[i] = DMIN(
-                  ProbArrowhead2[1 * NbTpl + i], ProbArrowhead2[2 * NbTpl + i]);
-              logscoreTpl[i] = log1p(scoreTpl[i] - 1);
-              scoresN[i] = logF2(scoreTpl[i], I3[i]);
-            }
-            p = ProbArrowhead[1 * NbTpl + i];
-            logpp = log1p(p - 1) - log1p(exp(I3[i]));   // only p*(1.0/(1+exp(I3[i])) term
-						pp = expm1(logpp) + 1;
-
-            if (pp > (0.5 + eps) &&
-                (ProbArrowhead2[2 * NbTpl + i] < (pp - eps))) {
-              // 2->3 condition of propagation (p > pp > 0.5) and no previously
-              // higher putative propagation
-
-              // update score which has decreased due to < 0 propagation!
-              logscoreTpl[i] = logpp;
-              scoreTpl[i] = pp;
-              scoresN[i] = logF2(scoreTpl[i], I3[i]);
-
-              ProbArrowhead2[2 * NbTpl + i] = pp;
-              // change 20151031
-              if (LV == FALSE &&
-                  (ProbArrowhead2[3 * NbTpl + i] > (1 - pp + eps)))
-                ProbArrowhead2[3 * NbTpl + i] =
-                    1 - ProbArrowhead2[2 * NbTpl + i];
-            } else {
-              p = ProbArrowhead[2 * NbTpl + i];
-              logpp = log1p(p - 1) - log1p(exp(I3[i]));   // only p*(1.0/(1+exp(I3[i])) term
-							pp = expm1(logpp) + 1;
-              // change 20151031
-              if (pp > (0.5 + eps) &&
-                  (ProbArrowhead2[1 * NbTpl + i] < (pp - eps))) {
-                // update score which has decreased due to < 0 propagation!
-                logscoreTpl[i] = logpp;
-                scoreTpl[i] = pp;
-                scoresN[i] = logF2(scoreTpl[i], I3[i]);
-                ProbArrowhead2[1 * NbTpl + i] = pp;
-                // change 20151031
-                if (LV == FALSE &&
-                    (ProbArrowhead2[0 * NbTpl + i] > (1 - pp + eps)))
-                  ProbArrowhead2[0 * NbTpl + i] =
-                      1 - ProbArrowhead2[1 * NbTpl + i];
-              }
-            }
-          }
-        }
-      }
-    }
-
-#if _MY_PRINT_
-    printf("!n3=%i p3=%g p4=%g count=%i deg=%i maxTpl=%i maxscoreTpl=%g \n", n3,
-        p3, p4, count, deg, maxTpl, maxscoreTpl);
-#endif  // _MY_PRINT_
-
-    if (n3 != 0) {
-      // only loop on relevant Tpl i != maxTpl, thanks to the sorting of their
-      // scoreTpl
-      for (j = NbTpl - 2; j >= 0; j--) {
-        i = orderTpl[j];
-        ok = TRUE;
-        // sharing fist edge, same symmetry
-        if (Tpl[0 * NbTpl + i] == n3 && Tpl[1 * NbTpl + i] == n2) {
-          ProbArrowhead[1 * NbTpl + i] = p3;
-          if ((LV == FALSE && ProbArrowhead[1 * NbTpl + i] > (0.5 + eps)) ||
-              (Propag == TRUE && ProbArrowhead[1 * NbTpl + i] < (0.5 - eps)))
-            // edit HI 20150222  // change 20151022 herve
-            ProbArrowhead[0 * NbTpl + i] = p4;
-          // if p3!=0.5 && other edge already oriented // change 20151101
-          if (((p3 > (0.5 + eps)) || (p3 < (0.5 - eps))) &&
-              ((ProbArrowhead[2 * NbTpl + i] > (0.5 + eps)) ||
-                  (ProbArrowhead[2 * NbTpl + i] < (0.5 - eps)))) {
-            logscoreTpl[i] = -__DBL_MAX__;
-            scoreTpl[i] = -1;  // remove tpl from the list of yet-unused Tpl
-            scoresN[i] = -1;
-            ok = FALSE;
-          } else {  // copy final proba on putative proba too
-            if ((LV == FALSE && ProbArrowhead[1 * NbTpl + i] > (0.5 + eps)) ||
-                (Propag == TRUE && ProbArrowhead[1 * NbTpl + i] < (0.5 - eps)))
-              // edit HI 20150222 // change 20151022 herve
-              ProbArrowhead2[0 * NbTpl + i] = p4;
-
-            ProbArrowhead2[1 * NbTpl + i] = p3;
-          }
-        } else if (Tpl[0 * NbTpl + i] == n2 && Tpl[1 * NbTpl + i] == n3) {
-          // sharing fist edge, antisymmetry
-          ProbArrowhead[0 * NbTpl + i] = p3;
-          if ((LV == FALSE && ProbArrowhead[0 * NbTpl + i] > (0.5 + eps)) ||
-              (Propag == TRUE && ProbArrowhead[0 * NbTpl + i] < (0.5 - eps)))
-            // edit HI 20150222 // change 20151022 herve
-            ProbArrowhead[1 * NbTpl + i] = p4;
-          // if p4!=0.5 && other edge already oriented // change 20151101
-          if (((p4 > (0.5 + eps)) || (p4 < (0.5 - eps))) &&
-              ((ProbArrowhead[2 * NbTpl + i] > (0.5 + eps)) ||
-                  (ProbArrowhead[2 * NbTpl + i] < (0.5 - eps)))) {
-            logscoreTpl[i] = -__DBL_MAX__;
-            scoreTpl[i] = -1;  // remove tpl from the list of yet-unused Tpl
-            scoresN[i] = -1;
-            ok = FALSE;
-          } else {  // copy final proba on putative proba too
-            ProbArrowhead2[0 * NbTpl + i] = p3;
-            if ((LV == FALSE && ProbArrowhead[0 * NbTpl + i] > (0.5 + eps)) ||
-                (Propag == TRUE && ProbArrowhead[0 * NbTpl + i] < (0.5 - eps)))
-              // edit HI 20150222 // change 20151022 herve
-              ProbArrowhead2[1 * NbTpl + i] = p4;
-          }
-        } else if (Tpl[2 * NbTpl + i] == n3 && Tpl[1 * NbTpl + i] == n2) {
-          // sharing second edge, antisymmetry
-          ProbArrowhead[2 * NbTpl + i] = p3;
-          if ((LV == FALSE && ProbArrowhead[2 * NbTpl + i] > (0.5 + eps)) ||
-              (Propag == TRUE && ProbArrowhead[2 * NbTpl + i] < (0.5 - eps)))
-            // edit HI 20150222 // change 20151022 herve
-            ProbArrowhead[3 * NbTpl + i] = p4;
-          // if p3!=0.5 && other edge already oriented // change 20151101
-          if (((p3 > (0.5 + eps)) || (p3 < (0.5 - eps))) &&
-              ((ProbArrowhead[1 * NbTpl + i] > (0.5 + eps)) ||
-                  (ProbArrowhead[1 * NbTpl + i] < (0.5 - eps)))) {
-            logscoreTpl[i] = -__DBL_MAX__;
-            scoreTpl[i] = -1;  // remove tpl from the list of yet-unused Tpl
-            scoresN[i] = -1;
-            ok = FALSE;
-          } else {  // copy final proba on putative proba too
-            if ((LV == FALSE && ProbArrowhead[2 * NbTpl + i] > (0.5 + eps)) ||
-                (Propag == TRUE && ProbArrowhead[2 * NbTpl + i] < (0.5 - eps)))
-              // edit HI 20150222 // change 20151022 herve
-              ProbArrowhead2[3 * NbTpl + i] = p4;
-
-            ProbArrowhead2[2 * NbTpl + i] = p3;
-          }
-        } else if (Tpl[2 * NbTpl + i] == n2 && Tpl[1 * NbTpl + i] == n3) {
-          // sharing second edge, same symmetry
-          ProbArrowhead[3 * NbTpl + i] = p3;
-          if ((LV == FALSE && ProbArrowhead[3 * NbTpl + i] > (0.5 + eps)) ||
-              (Propag == TRUE && ProbArrowhead[3 * NbTpl + i] < (0.5 - eps)))
-            // edit HI 20150222 // change 20151022 herve
-            ProbArrowhead[2 * NbTpl + i] = p4;
-          // if p4!=0.5 && other edge already oriented // change 20151101
-          if (((p4 > (0.5 + eps)) || (p4 < (0.5 - eps))) &&
-              ((ProbArrowhead[1 * NbTpl + i] > (0.5 + eps)) ||
-                  (ProbArrowhead[1 * NbTpl + i] < (0.5 - eps)))) {
-            logscoreTpl[i] = -__DBL_MAX__;
-            scoreTpl[i] = -1;  // remove tpl from the list of yet-unused Tpl
-            scoresN[i] = -1;
-            ok = FALSE;
-          } else {  // copy final proba on putative proba too
-            ProbArrowhead2[3 * NbTpl + i] = p3;
-            if ((LV == FALSE && ProbArrowhead[3 * NbTpl + i] > (0.5 + eps)) ||
-                (Propag == TRUE && ProbArrowhead[3 * NbTpl + i] < (0.5 - eps)))
-              // edit HI 20150222 // change 20151022 herve
-              ProbArrowhead2[2 * NbTpl + i] = p4;
-          }
-        } else {
-          ok = FALSE;  // non edited tpl
-        }
-
-#if _MY_PRINT_
-        printf(
-            "!n3=%i i=%i j=%i ok=%i count=%i deg=%i maxTpl=%i maxscoreTpl=%g "
-            "\n",
-            n3, i, j, ok, count, deg, maxTpl, maxscoreTpl);
-#endif  // _MY_PRINT_
-        // update score performing putative propagation
-        if (ok) {
-          if (I3[i] > 0) {
-            // define score in case of no true propagation below
-            scoreTpl[i] = DMIN(ProbArrowhead2[1 * NbTpl + i],
-                1 - ProbArrowhead2[2 * NbTpl + i]);
-            scoreTpl[i] =
-                DMAX(scoreTpl[i], DMIN(ProbArrowhead2[2 * NbTpl + i],
-                                      1 - ProbArrowhead2[1 * NbTpl + i]));
-            logscoreTpl[i] = log1p(scoreTpl[i] - 1);
-            scoresN[i] = logF2(scoreTpl[i], I3[i]);
-
-            p = ProbArrowhead[1 * NbTpl + i];
-            logpp = log1p(p - 1) - log1p(exp(-I3[i]));   // only p*(1.0/(1+exp(-I3[i])) term
-						pp = expm1(logpp) + 1;
-            // change 20151031
-            if (p > (0.5 + eps) && pp > (0.5 + eps) &&
-                (ProbArrowhead2[2 * NbTpl + i] > (1 - pp + eps))) {
-              // 2->3  condition of propagation (p > pp > 0.5) and no previously
-              // higher putative propagation
-              logscoreTpl[i] = logpp;
-              scoreTpl[i] = pp;
-              scoresN[i] = logF2(scoreTpl[i], I3[i]);
-              ProbArrowhead2[2 * NbTpl + i] = 1 - pp;
-              if (Propag == TRUE &&
-                  (ProbArrowhead2[3 * NbTpl + i] < (pp - eps)))
-                ProbArrowhead2[3 * NbTpl + i] = pp;  // change 20151031
-            } else {  // other direction? 2->1
-              p = ProbArrowhead[2 * NbTpl + i];
-              logpp = log1p(p - 1) - log1p(exp(-I3[i]));   // only p*(1.0/(1+exp(-I3[i])) term
-							pp = expm1(logpp) + 1;
-              // change 20151031
-              if (p > (0.5 + eps) && pp > (0.5 + eps) &&
-                  (ProbArrowhead2[1 * NbTpl + i] > (1 - pp + eps))) {
-                // 2->1   condition of propagation (p > pp > 0.5) and no
-                // previously higher putative propagation
-                logscoreTpl[i] = logpp;
-                scoreTpl[i] = pp;
-                scoresN[i] = logF2(scoreTpl[i], I3[i]);
-                ProbArrowhead2[1 * NbTpl + i] = 1 - pp;
-                if (Propag == TRUE &&
-                    (ProbArrowhead2[0 * NbTpl + i] < (pp - eps)))
-                  ProbArrowhead2[0 * NbTpl + i] = pp;  // change 20151031
-              }
-            }
-          } else if (I3[i] < 0) {
-            // define score in case of no true propagation below
-            if (fabs(ProbArrowhead2[1 * NbTpl + i] -
-                     ProbArrowhead2[2 * NbTpl + i]) > eps_diff) {  // modif 20150228
-              scoreTpl[i] = DMIN(
-                  ProbArrowhead2[1 * NbTpl + i], ProbArrowhead2[2 * NbTpl + i]);
-              logscoreTpl[i] = log1p(scoreTpl[i] - 1);
-              scoresN[i] = logF2(scoreTpl[i], I3[i]);
-            }
-            p = ProbArrowhead[1 * NbTpl + i];
-            logpp = log1p(p - 1) - log1p(exp(-I3[i]));   // only p*(1.0/(1+exp(-I3[i])) term
-						pp = expm1(logpp) + 1;
-            // change 20151031
-            if (pp > (0.5 + eps) &&
-                (ProbArrowhead2[2 * NbTpl + i] < (pp - eps))) {
-              // 2->3 condition of propagation (p > pp > 0.5) and no previously
-              // higher putative propagation
-              logscoreTpl[i] = logpp;
-              scoreTpl[i] = pp;  // update score which has decreased due to < 0
-                                 // propagation!
-              scoresN[i] = logF2(scoreTpl[i], I3[i]);
-              ProbArrowhead2[2 * NbTpl + i] = pp;
-              if (LV == FALSE &&
-                  (ProbArrowhead2[3 * NbTpl + i] > (1 - pp + eps)))
-                ProbArrowhead2[3 * NbTpl + i] =
-                    1 - ProbArrowhead2[2 * NbTpl + i];  // change 20151031
-            } else {
-              p = ProbArrowhead[2 * NbTpl + i];
-              logpp = log1p(p - 1) - log1p(exp(I3[i]));   // only p*(1.0/(1+exp(I3[i])) term
-							pp = expm1(logpp) + 1;
-              // change 20151031
-              if (pp > (0.5 + eps) &&
-                  (ProbArrowhead2[1 * NbTpl + i] < (pp - eps))) {
-                // 2->1
-                logscoreTpl[i] = logpp;
-                scoreTpl[i] = pp;  // update score which has decreased due to <0
-                                   // propagation!
-                scoresN[i] = logF2(scoreTpl[i], I3[i]);
-                ProbArrowhead2[1 * NbTpl + i] = pp;
-                if (LV == FALSE &&
-                    (ProbArrowhead2[0 * NbTpl + i] > (1 - pp + eps)))
-                  ProbArrowhead2[0 * NbTpl + i] =
-                      1 - ProbArrowhead2[1 * NbTpl + i];  // change 20151031
-              }
-            }
-          }
-        }
-      }
-    }
-#if _MY_PRINT_
-    printf("!n3=%i count=%i deg=%i maxTpl=%i maxscoreTpl=%g \n", n3, count, deg,
-        maxTpl, maxscoreTpl);
-#endif  // _MY_PRINT_
-
-    //  Order Tpl in increasing ScoreTpl of scoresN
-    std::sort(orderTpl, orderTpl + NbTpl, TripletComparator(scoreTpl));
-
-    maxTpl = orderTpl[NbTpl-1];
-    maxscoreTpl = scoreTpl[maxTpl];
-#if _MY_PRINT_
-    for (i = 0; i < NbTpl; i++) {
-      printf("count=%i scoreTpl[orderTpl[%i]=%i]=%g", count, i, orderTpl[i],
-          scoreTpl[orderTpl[i]]);
-    }
-    printf(" maxTpl=%i  maxscoreTpl=%g\n", maxTpl, maxscoreTpl);
-
-    printf("\n\n Orientation  (P>0.5: arrow-head; P<0.5: arrow-tail) :\n");
-    for (i = 0; i < NbTpl; i++) {
-      printf("!!! %i Tpl %i (%g-%g) %i (%g-%g) %i -- I3=%g scoreTpl=%g\n", i,
-          Tpl[0 * NbTpl + i], ProbArrowhead[0 * NbTpl + i],
-          ProbArrowhead[1 * NbTpl + i], Tpl[1 * NbTpl + i],
-          ProbArrowhead[2 * NbTpl + i], ProbArrowhead[3 * NbTpl + i],
-          Tpl[2 * NbTpl + i], I3[i], scoreTpl[i]);
-    }
-    printf("\n");
-    for (i = 0; i < NbTpl; i++) {
-      printf("!!! %i Tpl2 %i (%g-%g) %i (%g-%g) %i -- I3=%g scoreTpl=%g\n", i,
-          Tpl[0 * NbTpl + i], ProbArrowhead2[0 * NbTpl + i],
-          ProbArrowhead2[1 * NbTpl + i], Tpl[1 * NbTpl + i],
-          ProbArrowhead2[2 * NbTpl + i], ProbArrowhead2[3 * NbTpl + i],
-          Tpl[2 * NbTpl + i], I3[i], scoreTpl[i]);
-    }
-
-    printf("!INTER LV=%i count=%i deg=%i maxTpl=%i maxscoreTpl=%g \n", LV,
-        count, deg, maxTpl, maxscoreTpl);
-#endif  // _MY_PRINT_
-
-    i = maxTpl;
-  } while ((maxscoreTpl > (0.5 + eps)) && count < 200000);
-
-#if _MY_PRINT_
-  printf("\n\n consist-neg-pos\n");
-  printf("\n\n Orientation  (P>0.5: arrow-head; P<0.5: arrow-tail) :\n");
-  for (i = 0; i < NbTpl; i++) {
-    printf("!!! Tpl %i (%g-%g) %i (%g-%g) %i -- I3=%g scoreTpl=%g\n",
-        Tpl[0 * NbTpl + i], ProbArrowhead[0 * NbTpl + i],
-        ProbArrowhead[1 * NbTpl + i], Tpl[1 * NbTpl + i],
-        ProbArrowhead[2 * NbTpl + i], ProbArrowhead[3 * NbTpl + i],
-        Tpl[2 * NbTpl + i], I3[i], scoreTpl[i]);
-  }
-  for (i = 0; i < NbTpl; i++) {
-    printf("!!! Tpl2 %i (%g-%g) %i (%g-%g) %i -- I3=%g scoreTpl=%g\n",
-        Tpl[0 * NbTpl + i], ProbArrowhead2[0 * NbTpl + i],
-        ProbArrowhead2[1 * NbTpl + i], Tpl[1 * NbTpl + i],
-        ProbArrowhead2[2 * NbTpl + i], ProbArrowhead2[3 * NbTpl + i],
-        Tpl[2 * NbTpl + i], I3[i], scoreTpl[i]);
-  }
-
-  printf("!END LV=%i count=%i deg=%i maxTpl=%i maxscoreTpl=%g \n", LV, count,
-      deg, maxTpl, maxscoreTpl);
-#endif  // _MY_PRINT_
-
-  delete (ProbArrowhead2);
-  delete (scoreTpl);
-  delete (orderTpl);
-
-  return 0;
+// See Proposition 7.ii and 8 of Affeldt & Isambert, 2015
+// For an unshielded Triple X -- Z -- Y, given three point mutual infomation
+// I3 = I(X;Y;Z|ui) and probability w2z of orientation from one side node W (X
+// or Y) to Z, return the induced proba (and log proba) of orientation.
+// Suppose the other node is V (Y or X), if I3 > 0, then returned probability is
+// Z -> V (Proposition 8), otherwise it is V -> Z (Proposition 7.ii)
+std::pair<double, double> getInducedProbability(double I3, double w2z) {
+  // Calculate log version to retain precision in case of large abs(I3)
+  // FIXME: experimental
+  // Only keep w2z * (1.0 / (1 + exp(-abs(I3)))) term, drop 0.5 * (1 - w2z) to
+  // reduce the accumulation of orientation error if there is any
+  double logp_induced = log1p(w2z - 1) - log1p(exp(-fabs(I3)));
+  return std::make_pair(expm1(logp_induced) + 1, logp_induced);
 }
 
-double* miic::reconstruction::getOrientTplLVDegPropag(structure::Environment& environment, 
-    int nbrTpl, int* ptrAllTpl, double* ptrAllI3, int LV, int isDeg, int isPropag,
-    int halfVStructures) {
-  int nbrRetProbaValues = -1;  // Nbr proba to return
-  double*
-      ptrRetProbValues;  // To return ProbArrowhead
-                         // >> ProbArrowhead[1][i] 1<-->2 ProbArrowhead[2][i]
-                         // >> ProbArrowhead[3][i] 2<-->3 ProbArrowhead[4][i]
-                         //
-                         // ProbArrowhead > 0.5: an arrow head  (>)
-                         // ProbArrowhead < 0.5: an arrow tail  (-)
-  nbrRetProbaValues = (4 * nbrTpl);
-  ptrRetProbValues = new double[nbrRetProbaValues];
-  
+// See Proposition 7.ii and 8 of Affeldt & Isambert, 2015
+// Update score performing putative propagation
+void propagate(bool latent, bool propagation, double I3, double& score,
+    double& log_score, ProbaArray& probas, ProbaArray& probas2) {
+  double p_induced, logp_induced;
+  if (I3 > 0) {  // Proposition 8
+    // Define score in case of no true propagation below
+    score = fmax(
+        fmin(probas2[1], 1 - probas2[2]), fmin(probas2[2], 1 - probas2[1]));
+    log_score = log1p(score - 1);
+    // Try from X -> Z to Z -> Y
+    double x2z = probas[1];
+    std::tie(p_induced, logp_induced) = getInducedProbability(I3, x2z);
+    // Propagate to Z -> Y if (x2z > p_induced > 0.5) and no previously higher
+    // putative propagation
+    if (isHead(x2z) && isHead(p_induced) &&
+        (probas2[2] > (1 - p_induced + kEps))) {
+      log_score = logp_induced;
+      score = p_induced;
+      probas2[2] = 1 - p_induced;
+      if (propagation && probas2[3] < (p_induced - kEps))
+        probas2[3] = p_induced;
+    } else {  // Try from Y -> Z to Z -> X
+      double y2z = probas[2];
+      std::tie(p_induced, logp_induced) = getInducedProbability(I3, y2z);
+      if (isHead(y2z) && isHead(p_induced) &&
+          (probas2[1] > (1 - p_induced + kEps))) {
+        // Propagate to Z -> X if (y2z > p_induced > 0.5) and no previously
+        // higher putative propagation
+        log_score = logp_induced;
+        score = p_induced;
+        probas2[1] = 1 - p_induced;
+        if (propagation && probas2[0] < (p_induced - kEps))
+          probas2[0] = p_induced;
+      }
+    }
+  } else if (I3 < 0) {  // Proposition 7.ii
+    // define score in case of no true propagation below
+    if (fabs(probas2[1] - probas2[2]) > kEpsDiff) {
+      score = fmin(probas2[1], probas2[2]);
+      log_score = log1p(score - 1);
+    }
+    // Try from X -> Z to Y -> Z
+    double x2z = probas[1];
+    std::tie(p_induced, logp_induced) = getInducedProbability(I3, x2z);
+    // Propagate to Y -> Z if (x2z > p_induced > 0.5) and no previously higher
+    // putative propagation, update score that decreased due to < 0 propagation!
+    if (isHead(p_induced) && probas2[2] < (p_induced - kEps)) {
+      log_score = logp_induced;
+      score = p_induced;
+      probas2[2] = p_induced;
+      if (!latent && (probas2[3] > (1 - p_induced + kEps)))
+        probas2[3] = 1 - probas2[2];
+    } else {  // Try from Y -> Z to X -> Z
+      double y2z = probas[2];
+      std::tie(p_induced, logp_induced) = getInducedProbability(I3, y2z);
+      if (isHead(p_induced) && (probas2[1] < (p_induced - kEps))) {
+        // Propagate to X -> Z if (y2z > p_induced > 0.5) and no previously
+        // higher putative propagation, update score that decreased due to < 0
+        // propagation!
+        log_score = logp_induced;
+        score = p_induced;
+        probas2[1] = p_induced;
+        if (!latent && (probas2[0] > (1 - p_induced + kEps)))
+          probas2[0] = 1 - probas2[1];
+      }
+    }
+  }
+}
+
+}  // anonymous namespace
+
+// Iteratively converge towards partially oriented graphs including possible
+// latent variables and Propagation/Non-Propagation rules.
+// param triples list of unshielded Triple (X -- Z -- Y)
+// param I3_list the 3-point mutual info (N * I'(X;Y;Z|{ui})) of each Triple
+// return vector<ProbaArray> Each ProbaArray is bound to a unshielded Triple:
+// ProbaArray[i] > 0.5 means an arrowhead (< or >), otherwise it is a tail (-).
+// ProbaArray[0]: probability of the orientation X *- Z
+// ProbaArray[1]: probability of the orientation X -* Z
+// ProbaArray[2]: probability of the orientation Z *- Y
+// ProbaArray[3]: probability of the orientation Z -* Y
+// where * can be head (< or >) or tail (-)
+// X [0]--[1] Z [2]--[3] Y
+vector<ProbaArray> getOriProbasList(structure::Environment& environment, const vector<Triple>& triples,
+    const vector<double>& I3_list, bool latent, bool degenerate,
+    bool propagation, bool half_v_structure) {
+  int n_triples = triples.size();
+  vector<ProbaArray> probas_list(n_triples);  // to be returned
+  //
+  // Init probas_list
+  //
   if (environment.tau > 0)
     {
     // For tmiic, we force the orientation using time when possible
@@ -732,86 +189,261 @@ double* miic::reconstruction::getOrientTplLVDegPropag(structure::Environment& en
     // depends on latent variable discovery: 0 if not actived, 0.5 when actived
     //
     double proba_tail = 0;
-    if (LV)
+    if (latent)
       proba_tail = 0.5;
     //
     // Initialise the arrows head/tail probabilities using time
     //
-    for (int i = 0; i < nbrTpl; i++) 
+    for (int i = 0; i < n_triples; i++)
       {
-      // CAUTION : in ptrAllTpl, nodes indices start from 1 => needs to remove 1
-      //
-      int node0_idx  = ptrAllTpl[0 * nbrTpl + i] - 1;
-      int node1_idx  = ptrAllTpl[1 * nbrTpl + i] - 1;
-      int node2_idx  = ptrAllTpl[2 * nbrTpl + i] - 1;
+      int node0_idx  = triples[i][0];
+      int node1_idx  = triples[i][1];
+      int node2_idx  = triples[i][2];
       
-      string node0_name  = environment.nodes[node0_idx].name;
-      string node1_name  = environment.nodes[node1_idx].name;
-      string node2_name  = environment.nodes[node2_idx].name;
+      std::string node0_name  = environment.nodes[node0_idx].name;
+      std::string node1_name  = environment.nodes[node1_idx].name;
+      std::string node2_name  = environment.nodes[node2_idx].name;
       
-      regex lag_expr(".*lag");
+      std::regex lag_expr(".*lag");
       int node0_lag = stoi (regex_replace(node0_name, lag_expr, "") );
       int node1_lag = stoi (regex_replace(node1_name, lag_expr, "") );
       int node2_lag = stoi (regex_replace(node2_name, lag_expr, "") );
       
       if (node0_lag < node1_lag)
         {
-        ptrRetProbValues[i + 0 * nbrTpl] = 1;
-        ptrRetProbValues[i + 1 * nbrTpl] = proba_tail;
+        probas_list[i][0] = 1;
+        probas_list[i][1] = proba_tail;
         }
       else if (node0_lag > node1_lag)
         {
-        ptrRetProbValues[i + 0 * nbrTpl] = proba_tail;
-        ptrRetProbValues[i + 1 * nbrTpl] = 1;
+        probas_list[i][0] = proba_tail;
+        probas_list[i][1] = 1;
         }
       else
         {
-        ptrRetProbValues[i + 0 * nbrTpl] = 0.5;
-        ptrRetProbValues[i + 1 * nbrTpl] = 0.5;
+        probas_list[i][0] = 0.5;
+        probas_list[i][1] = 0.5;
         }
       
       if (node1_lag < node2_lag)
         {
-        ptrRetProbValues[i + 2 * nbrTpl] = 1;
-        ptrRetProbValues[i + 3 * nbrTpl] = proba_tail;
+        probas_list[i][2] = 1;
+        probas_list[i][3] = proba_tail;
         }
       else if (node1_lag > node2_lag)
         {
-        ptrRetProbValues[i + 2 * nbrTpl] = proba_tail;
-        ptrRetProbValues[i + 3 * nbrTpl] = 1;
+        probas_list[i][2] = proba_tail;
+        probas_list[i][3] = 1;
         }
       else
         {
-        ptrRetProbValues[i + 2 * nbrTpl] = 0.5;
-        ptrRetProbValues[i + 3 * nbrTpl] = 0.5;
+        probas_list[i][2] = 0.5;
+        probas_list[i][3] = 0.5;
         }
-      
+     
 #if _DEBUG
-      std::cout << "!!! Tpl init " << node0_idx << "=" << node0_name << ", lag=" << node0_lag;
-      std::cout << " (" << ptrRetProbValues[0 * nbrTpl + i] << "-" << ptrRetProbValues[1 * nbrTpl + i] << ") "; 
-      std::cout << node1_idx<< "=" << node1_name << ", lag=" << node1_lag;;
-      std::cout << " (" << ptrRetProbValues[2 * nbrTpl + i] << "-" << ptrRetProbValues[3 * nbrTpl + i] << ") "; 
-      std::cout << node2_idx << "=" << node2_name << ", lag=" << node2_lag;;
-      std::cout << " -- I3=" << ptrAllI3[i] << "\n";
+      Rcout << "probas_list init " << node0_idx << "=" << node0_name << ", lag=" << node0_lag;
+      Rcout << " (" << probas_list[i][0] << "-" << probas_list[i][1] << ") "; 
+      Rcout << node1_idx<< "=" << node1_name << ", lag=" << node1_lag;;
+      Rcout << " (" << probas_list[i][2] << "-" << probas_list[i][3] << ") "; 
+      Rcout << node2_idx << "=" << node2_name << ", lag=" << node2_lag;;
 #endif
       }    
     }
   else
     {
-    // Classical (non temporal) mode of miic:
-    // Initialise the arrowhead probabilities to 0.5
-    //
-    for (int i = 0; i < nbrTpl; i++) {
-      for (int j = 0; j < 4; j++) {
-        ptrRetProbValues[i + j * nbrTpl] = 0.5;
+    for (auto& p_array : probas_list) p_array.fill(0.5);
+    }
+
+  auto probas_list2 = probas_list;  // copy
+  // For a Triple X -- Z -- Y, if I3_list < 0, gives the probability of the
+  // orientation Pr(X -> Z) = Pr(Y -> Z) = (1 + exp(I3)) / (1 + 3 * exp(I3))
+  // See Proposition 7 of S. Affeldt & H. Isambert, 2015
+  vector<double> score(n_triples, 0.5);
+  // For dataset with large n_samples, use log score for numerical presicion
+  vector<double> log_score(n_triples);
+  vector<int> orderTpl(n_triples);
+  std::iota(begin(orderTpl), end(orderTpl), 0);
+  // Initialize ScoreTpl
+  for (int i = 0; i < n_triples; i++) {
+    if (I3_list[i] >= 0) {
+      log_score[i] = log(score[i]);  // log(0.5)
+    } else {
+      if (!degenerate) {
+        // use log1p and expm1 to accommodate large N(n_samples) case
+        log_score[i] = log1p(exp(I3_list[i])) - log1p(3 * exp(I3_list[i]));
+        score[i] = expm1(log_score[i]) + 1;
+      } else {
+        // larger than p without degenerate
+        score[i] = (3 - 2 * exp(I3_list[i])) / (3 - exp(I3_list[i]));
+      }
+      probas_list2[i][1] = score[i];  // Pr(X -> Z)
+      probas_list2[i][2] = score[i];  // Pr(Y -> Z)
+      if (!latent) {
+        probas_list2[i][0] = 1 - probas_list2[i][1];
+        probas_list2[i][3] = 1 - probas_list2[i][2];
       }
     }
-    }
-    
-  // Iteratively converge towards partially oriented graphs including possible
-  // latent variables and Propagation/Non-Propagation rules.
-  OrientTpl_LV_Deg_Propag(nbrTpl, ptrAllTpl, ptrAllI3, ptrRetProbValues, LV,
-      isDeg, isPropag, halfVStructures);
+  }
 
-  return ptrRetProbValues;
+  // FIXME: Hard cap to avoid infinite loop, make no "real sense"
+  int count{0};
+  while (++count < 200000 && !orderTpl.empty()) {
+    // Order triples in decreasing log score
+    std::sort(begin(orderTpl), end(orderTpl), TripleComparator(log_score));
+    int max_idx = orderTpl[0];
+    double maxscoreTpl = score[max_idx];
+    if (!(maxscoreTpl > 0.5 + kEps)) break;
+    orderTpl.erase(begin(orderTpl));  // Remove the triple with max score
+
+    auto& max_triple = triples[max_idx];
+    auto& max_probas = probas_list[max_idx];
+    auto& max_probas2 = probas_list2[max_idx];
+
+#if _MY_PRINT_
+    for (size_t i = 0; i < orderTpl.size(); i++) {
+      Rprintf("count=%i scoreTpl[orderTpl[%i]=%i]=%g", count, i, orderTpl[i],
+          score[orderTpl[i]]);
+    }
+    Rprintf(" maxTpl=%i  maxscoreTpl=%g\n", max_idx, maxscoreTpl);
+
+    Rprintf("\n\n Orientation  (P>0.5: arrow-head; P<0.5: arrow-tail) :\n");
+    for (int i = 0; i < n_triples; i++) {
+      Rprintf(
+          "!!! %i triples %i (%g-%g) %i (%g-%g) %i -- I3_list=%g scoreTpl=%g\n",
+          i, triples[i][0], probas_list[i][0], probas_list[i][1], triples[i][1],
+          probas_list[i][2], probas_list[i][3], triples[i][2], I3_list[i],
+          score[i]);
+    }
+    Rprintf("\n");
+    for (int i = 0; i < n_triples; i++) {
+      Rprintf(
+          "!!! %i Tpl2 %i (%g-%g) %i (%g-%g) %i -- I3_list=%g scoreTpl=%g\n", i,
+          triples[i][0], probas_list2[i][0], probas_list2[i][1], triples[i][1],
+          probas_list2[i][2], probas_list2[i][3], triples[i][2], I3_list[i],
+          score[i]);
+    }
+
+    Rprintf(
+        "!INTER latent=%i count=%i degenerate=%i maxTpl=%i maxscoreTpl=%g \n",
+        latent, count, degenerate, max_idx, maxscoreTpl);
+
+    Rprintf("maxTpl=%i X=%i  %g(%g)--%g(%g)  n2=%i  %g(%g)--%g(%g)  Y=%i \n",
+        max_idx, max_triple[0], max_probas[0], max_probas2[0], max_probas[1],
+        max_probas2[1], max_triple[1], max_probas[2], max_probas2[2],
+        max_probas[3], max_probas2[3], max_triple[2]);
+#endif  // _MY_PRINT_
+
+    int X{-1}, Z{-1}, Y{-1};
+    // Correspond to ProbaArray[0-3]: *2+, proba of orientation from * to +
+    double z2x{0.5}, x2z{0.5}, y2z{0.5}, z2y{0.5};
+    // if arrowhead/tail on Z (x 0-*1 z 2-3 y) is not already established
+    // through an earlier propagation
+    if ((fabs(max_probas[1] - 0.5) < (fabs(max_probas2[1] - 0.5) - kEps)) &&
+        (half_v_structure || I3_list[max_idx] > 0 ||
+            max_probas[2] > (0.5 - kEps))) {
+      // establish arrowhead/tail final proba on 1 (x 0-*1 z 2-3 y)
+      X = max_triple[0];
+      Z = max_triple[1];
+      z2x = max_probas2[0];
+      x2z = max_probas2[1];
+      max_probas[1] = max_probas2[1];
+      if ((!latent && isHead(max_probas[1])) ||
+          (propagation && isTail(max_probas[1]))) {
+        // establish arrowhead/tail if no latent or
+        // arrowhead final proba on 0 (x 0<-1 z 2-3 y)
+        max_probas[0] = max_probas2[0];
+      }
+    }
+    if ((fabs(max_probas[2] - 0.5) < (fabs(max_probas2[2] - 0.5) - kEps)) &&
+        (half_v_structure || I3_list[max_idx] > 0 ||
+            max_probas[1] > (0.5 - kEps))) {
+      // establish arrowhead/tail final proba on 2 (x 0-1 z 2*-3 y)
+      Z = max_triple[1];
+      Y = max_triple[2];
+      y2z = max_probas2[2];
+      z2y = max_probas2[3];
+      max_probas[2] = max_probas2[2];
+      if ((!latent && isHead(max_probas[2])) ||
+          (propagation && isTail(max_probas[2]))) {
+        // establish arrowhead/tail if no latent or
+        // arrowhead final proba on 3 (x 0-1 z 2->3 y)
+        max_probas[3] = max_probas2[3];
+      }
+    }
+
+    for (auto i : orderTpl) {
+      bool need_propagation = false;
+      bool remove_triple = false;
+      if (X != -1) {
+        if (triples[i][0] == X && triples[i][1] == Z) {
+          updateProba(1, 0, x2z, z2x, latent, propagation, probas_list[i],
+              probas_list2[i], need_propagation, remove_triple);
+        } else if (triples[i][0] == Z && triples[i][1] == X) {
+          updateProba(0, 1, x2z, z2x, latent, propagation, probas_list[i],
+              probas_list2[i], need_propagation, remove_triple);
+        } else if (triples[i][2] == X && triples[i][1] == Z) {
+          updateProba(2, 3, x2z, z2x, latent, propagation, probas_list[i],
+              probas_list2[i], need_propagation, remove_triple);
+        } else if (triples[i][2] == Z && triples[i][1] == X) {
+          updateProba(3, 2, x2z, z2x, latent, propagation, probas_list[i],
+              probas_list2[i], need_propagation, remove_triple);
+        }
+        if (need_propagation)
+          propagate(latent, propagation, I3_list[i], score[i], log_score[i],
+              probas_list[i], probas_list2[i]);
+      }    // if (X != -1)
+      need_propagation = false;
+      if (Y != -1) {
+        if (triples[i][0] == Y && triples[i][1] == Z) {
+          updateProba(1, 0, y2z, z2y, latent, propagation, probas_list[i],
+              probas_list2[i], need_propagation, remove_triple);
+        } else if (triples[i][0] == Z && triples[i][1] == Y) {
+          updateProba(0, 1, y2z, z2y, latent, propagation, probas_list[i],
+              probas_list2[i], need_propagation, remove_triple);
+        } else if (triples[i][2] == Y && triples[i][1] == Z) {
+          updateProba(2, 3, y2z, z2y, latent, propagation, probas_list[i],
+              probas_list2[i], need_propagation, remove_triple);
+        } else if (triples[i][2] == Z && triples[i][1] == Y) {
+          updateProba(3, 2, y2z, z2y, latent, propagation, probas_list[i],
+              probas_list2[i], need_propagation, remove_triple);
+        }
+        if (need_propagation)
+          propagate(latent, propagation, I3_list[i], score[i], log_score[i],
+              probas_list[i], probas_list2[i]);
+      }
+      if (remove_triple) i = kRemoveTripleMark;
+    }  // for (auto i : orderTpl)
+    orderTpl.erase(remove(begin(orderTpl), end(orderTpl), kRemoveTripleMark),
+        end(orderTpl));
+  }
+
+#if _MY_PRINT_
+  Rprintf("\n\n consist-neg-pos\n");
+  Rprintf("\n\n Orientation  (P>0.5: arrow-head; P<0.5: arrow-tail) :\n");
+  for (int i = 0; i < n_triples; i++) {
+    Rprintf("!!! triples %i (%g-%g) %i (%g-%g) %i -- I3_list=%g scoreTpl=%g\n",
+        triples[i][0], probas_list[i][0], probas_list[i][1], triples[i][1],
+        probas_list[i][2], probas_list[i][3], triples[i][2], I3_list[i],
+        score[i]);
+  }
+  for (int i = 0; i < n_triples; i++) {
+    Rprintf("!!! Tpl2 %i (%g-%g) %i (%g-%g) %i -- I3_list=%g scoreTpl=%g\n",
+        triples[i][0], probas_list2[i][0], probas_list2[i][1], triples[i][1],
+        probas_list2[i][2], probas_list2[i][3], triples[i][2], I3_list[i],
+        score[i]);
+  }
+
+  if (!orderTpl.empty()) {
+    int max_idx = orderTpl[0];
+    double maxscoreTpl = score[max_idx];
+    Rprintf("!END latent=%i count=%i degenerate=%i maxTpl=%i maxscoreTpl=%g \n",
+        latent, count, degenerate, max_idx, maxscoreTpl);
+  }
+#endif  // _MY_PRINT_
+
+  return probas_list;
 }
+
+}  // namespace reconstruction
+}  // namespace miic
