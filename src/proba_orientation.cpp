@@ -18,7 +18,6 @@ namespace {
 constexpr double kEps = 1.0e-12;
 constexpr double kEpsDiff = 1.0e-12;
 constexpr int kRemoveTripleMark = -1;
-#define _MY_PRINT_ 0
 
 struct TripleComparator {
   const vector<double>& scores;
@@ -210,40 +209,6 @@ vector<ProbaArray> getOriProbasList(const vector<Triple>& triples,
     auto& max_probas = probas_list[max_idx];
     auto& max_probas2 = probas_list2[max_idx];
 
-#if _MY_PRINT_
-    for (size_t i = 0; i < orderTpl.size(); i++) {
-      Rprintf("count=%i scoreTpl[orderTpl[%i]=%i]=%g", count, i, orderTpl[i],
-          score[orderTpl[i]]);
-    }
-    Rprintf(" maxTpl=%i  maxscoreTpl=%g\n", max_idx, maxscoreTpl);
-
-    Rprintf("\n\n Orientation  (P>0.5: arrow-head; P<0.5: arrow-tail) :\n");
-    for (int i = 0; i < n_triples; i++) {
-      Rprintf(
-          "!!! %i triples %i (%g-%g) %i (%g-%g) %i -- I3_list=%g scoreTpl=%g\n",
-          i, triples[i][0], probas_list[i][0], probas_list[i][1], triples[i][1],
-          probas_list[i][2], probas_list[i][3], triples[i][2], I3_list[i],
-          score[i]);
-    }
-    Rprintf("\n");
-    for (int i = 0; i < n_triples; i++) {
-      Rprintf(
-          "!!! %i Tpl2 %i (%g-%g) %i (%g-%g) %i -- I3_list=%g scoreTpl=%g\n", i,
-          triples[i][0], probas_list2[i][0], probas_list2[i][1], triples[i][1],
-          probas_list2[i][2], probas_list2[i][3], triples[i][2], I3_list[i],
-          score[i]);
-    }
-
-    Rprintf(
-        "!INTER latent=%i count=%i degenerate=%i maxTpl=%i maxscoreTpl=%g \n",
-        latent, count, degenerate, max_idx, maxscoreTpl);
-
-    Rprintf("maxTpl=%i X=%i  %g(%g)--%g(%g)  n2=%i  %g(%g)--%g(%g)  Y=%i \n",
-        max_idx, max_triple[0], max_probas[0], max_probas2[0], max_probas[1],
-        max_probas2[1], max_triple[1], max_probas[2], max_probas2[2],
-        max_probas[3], max_probas2[3], max_triple[2]);
-#endif  // _MY_PRINT_
-
     int X{-1}, Z{-1}, Y{-1};
     // Correspond to ProbaArray[0-3]: *2+, proba of arrowhead from * to +
     double z2x{0.5}, x2z{0.5}, y2z{0.5}, z2y{0.5};
@@ -327,30 +292,6 @@ vector<ProbaArray> getOriProbasList(const vector<Triple>& triples,
     orderTpl.erase(remove(begin(orderTpl), end(orderTpl), kRemoveTripleMark),
         end(orderTpl));
   }
-
-#if _MY_PRINT_
-  Rprintf("\n\n consist-neg-pos\n");
-  Rprintf("\n\n Orientation  (P>0.5: arrow-head; P<0.5: arrow-tail) :\n");
-  for (int i = 0; i < n_triples; i++) {
-    Rprintf("!!! triples %i (%g-%g) %i (%g-%g) %i -- I3_list=%g scoreTpl=%g\n",
-        triples[i][0], probas_list[i][0], probas_list[i][1], triples[i][1],
-        probas_list[i][2], probas_list[i][3], triples[i][2], I3_list[i],
-        score[i]);
-  }
-  for (int i = 0; i < n_triples; i++) {
-    Rprintf("!!! Tpl2 %i (%g-%g) %i (%g-%g) %i -- I3_list=%g scoreTpl=%g\n",
-        triples[i][0], probas_list2[i][0], probas_list2[i][1], triples[i][1],
-        probas_list2[i][2], probas_list2[i][3], triples[i][2], I3_list[i],
-        score[i]);
-  }
-
-  if (!orderTpl.empty()) {
-    int max_idx = orderTpl[0];
-    double maxscoreTpl = score[max_idx];
-    Rprintf("!END latent=%i count=%i degenerate=%i maxTpl=%i maxscoreTpl=%g \n",
-        latent, count, degenerate, max_idx, maxscoreTpl);
-  }
-#endif  // _MY_PRINT_
 
   return probas_list;
 }
