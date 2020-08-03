@@ -71,7 +71,7 @@ class CycleTracker {
     // key: index of edge
     // value: status of edge in the previous iteration
     std::map<int, int> changed_edges;
-    std::vector<int> adj_matrix_1d;
+    vector<int> adj_matrix_1d;
 
     Iteration(const Environment& env, int i)
         : index(i), adj_matrix_1d(env.n_nodes * env.n_nodes, 0) {
@@ -99,8 +99,9 @@ class CycleTracker {
     std::deque<Iteration> iteration_list_;
 
    public:
-    void add(Iteration&& i) {
-      iteration_list_.push_front(std::move(i));
+    template <class... Args>
+    void add(Args&&... args) {
+      iteration_list_.emplace_front(std::forward<Args>(args)...);
     }
     Iteration& get(int i) { return iteration_list_[i]; }
 
@@ -125,7 +126,7 @@ class CycleTracker {
     int index = n_saved++;
     edge_index_map_.insert(std::make_pair(n_edge, index));
     // skip the first iteration as its previous step is the initial graph
-    if (index != 0) iterations_.add(Iteration(env_, index));
+    if (index != 0) iterations_.add(env_, index);
   }
 
  public:
@@ -136,15 +137,14 @@ class CycleTracker {
   }
   // convert 1d index to lower triangular indices
   std::pair<int, int> getEdgeIndex2D(int k) {
-    // floor is equivalent to a int cast for positive number
-    int i = static_cast<int>(0.5 + std::sqrt(0.25 + 2 * k));
+    int i = std::floor(0.5 + std::sqrt(0.25 + 2 * k));
     int j = k - i * (i - 1) / 2;
     return std::make_pair(i, j);
   }
   // check if a cycle exists between the current and the past iterations
   bool hasCycle();
   // when a cycle is found, hold the adj_matrix of all iterations in the cycle
-  std::vector<std::vector<int>> adj_matrices;
+  vector<vector<int>> adj_matrices;
 };
 }  // namespace reconstruction_impl
 using reconstruction_impl::BCC;
