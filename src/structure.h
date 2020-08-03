@@ -209,15 +209,12 @@ struct MemorySpace {
 };
 
 struct ExecutionTime {
-  double start_time_init{0};
-  double start_time_iter{0};
-  long double init{0};
-  long double iter{0};
-  long double init_iter{0};
-  long double ort{0};
-  long double cut{0};
-  long double ort_after_cut{0};
-  long double total{0};
+  double init{0};  // skeletonInitialization
+  double iter{0};  // firstStepIteration + skeletonIteration
+  double cut{0};   // setConfidence + confidenceCut
+  double ori{0};   // orientationProbability
+
+  double getTotal() const { return init + iter + cut + ori; }
 };
 
 }  // namespace structure_impl

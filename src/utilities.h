@@ -1,11 +1,13 @@
 #ifndef MIIC_UTILITIES_H_
 #define MIIC_UTILITIES_H_
+#include <chrono>
 
 #include "environment.h"
 #include "structure.h"
 
 namespace miic {
 namespace utility {
+using TimePoint = std::chrono::time_point<std::chrono::steady_clock>;
 
 void createMemorySpace(structure::Environment&, structure::MemorySpace&);
 void deleteMemorySpace(structure::Environment&, structure::MemorySpace&);
@@ -17,9 +19,10 @@ std::vector<std::vector<int>> getAdjMatrix(const structure::Environment&);
 void sort2arraysConfidence(
     int len, const std::vector<int>& a, std::vector<int>& brr);
 void sort2arrays(int len, int a[], int brr[], int bridge[]);
-double get_wall_time();
 double ramanujan(int n);
-int printProgress(double percentage, double startTime, int prg_numSearchMore);
+TimePoint getLapStartTime();
+double getLapInterval(TimePoint);
+int printProgress(double percentage, TimePoint, int n_unsettled);
 // KL divergence functions
 double compute_kl_divergence(const std::vector<int>& posArray,
     structure::Environment& environment, int samplesNotNA,

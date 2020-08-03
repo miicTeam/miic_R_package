@@ -1,12 +1,8 @@
 #include "reconstruct.h"
 
 #include <Rcpp.h>
-#include <unistd.h>
 
-#include <ctime>
-#include <fstream>
-#include <iostream>
-#include <sstream>
+#include <chrono>
 #include <string>
 
 #include "confidence_cut.h"
@@ -14,8 +10,6 @@
 #include "utilities.h"
 
 using Rcpp::_;
-using Rcpp::as;
-using Rcpp::DataFrame;
 using Rcpp::List;
 using Rcpp::Rcout;
 using std::string;
@@ -24,17 +18,11 @@ using namespace miic::reconstruction;
 using namespace miic::structure;
 using namespace miic::utility;
 
-List empty_results() {
-  List result;
-  result = List::create(_["interrupted"] = true);
-  return (result);
-}
+List empty_results() { return List::create(_["interrupted"] = true); }
 
 // [[Rcpp::export]]
 List reconstruct(List input_data, List arg_list) {
   Environment environment(input_data, arg_list);
-
-  double startTime = get_wall_time();
 
   environment.memoryThreads = new MemorySpace[environment.n_threads];
   for (int i = 0; i < environment.n_threads; i++) {
@@ -42,35 +30,29 @@ List reconstruct(List input_data, List arg_list) {
   }
   createMemorySpace(environment, environment.m);
 
+  auto lap_start = getLapStartTime();
   // Initialize skeleton, find unconditional independence
   if (!skeletonInitialization(environment)) {
-    List result =
-        List::create(
-            _["error"]       = "error during skeleton initialization",
-            _["interrupted"] = true);
-    return result;
+    return List::create(
+        _["error"]       = "error during skeleton initialization",
+        _["interrupted"] = true);
   }
+  environment.exec_time.init += getLapInterval(lap_start);
 
-  long double spentTime = (get_wall_time() - startTime);
-  environment.exec_time.init = spentTime;
-  environment.exec_time.init_iter = spentTime;
-  if (environment.verbose) {
-    Rcout << "\n# ----> First contributing node elapsed time:" << spentTime
-              << "sec\n\n";
-  }
   BCC bcc(environment);
-  auto cycle_tracker = CycleTracker(environment);
+  CycleTracker cycle_tracker(environment);
   vector<vector<string>> orientations;
   do {
     if (environment.consistent > 0) bcc.analyse();
-    // Save the neighbours in the status_prev structure
-    // and revert to the structure at the moment of initialization
+    // Store current status in status_prev and revert to the structure at the
+    // moment of initialization
     for (int i = 0; i < environment.n_nodes; i++) {
       for (int j = 0; j < environment.n_nodes; j++) {
         environment.edges[i][j].status_prev = environment.edges[i][j].status;
         environment.edges[i][j].status = environment.edges[i][j].status_init;
       }
     }
+    lap_start = getLapStartTime();
     // If interrupted
     if (!firstStepIteration(environment, bcc)) return empty_results();
 
@@ -83,29 +65,25 @@ List reconstruct(List input_data, List arg_list) {
       if (environment.verbose) {
         Rcout << "\n# ---- Other Contributing node(s) ----\n\n";
       }
-      startTime = get_wall_time();
-
       // If interrupted
       if (!skeletonIteration(environment)) return (empty_results());
-
-      long double spentTime = (get_wall_time() - startTime);
-      environment.exec_time.iter += spentTime;
-      environment.exec_time.init_iter += spentTime;
     }
+    environment.exec_time.iter += getLapInterval(lap_start);
 
     if (environment.n_shuffles > 0) {
-      startTime = get_wall_time();
+      lap_start = getLapStartTime();
       Rcout << "Computing confidence cut with permutations..." << std::flush;
       setConfidence(environment);
-      long double spentTime = (get_wall_time() - startTime);
-      environment.exec_time.cut += spentTime;
       Rcout << " done.\n";
       confidenceCut(environment);
+      environment.exec_time.cut += getLapInterval(lap_start);
     }
     // Oriente edges for non-consistent/orientation consistent algorithm
     if (environment.orientation_phase && environment.numNoMore > 0 &&
         environment.consistent <= 1) {
+      lap_start = getLapStartTime();
       orientations = orientationProbability(environment);
+      environment.exec_time.ori += getLapInterval(lap_start);
     }
     Rcout << "Number of edges: " << environment.numNoMore << std::endl;
   } while (environment.consistent > 0 && !cycle_tracker.hasCycle());
@@ -122,7 +100,9 @@ List reconstruct(List input_data, List arg_list) {
 
   // skeleton consistent algorithm
   if (environment.numNoMore > 0 && environment.consistent == 2) {
+    lap_start = getLapStartTime();
     orientations = orientationProbability(environment);
+    environment.exec_time.ori += getLapInterval(lap_start);
     // Check inconsistency after orientation, add undirected edge to
     // pairs with inconsistent conditional independence.
     bcc.analyse();
@@ -152,18 +132,13 @@ List reconstruct(List input_data, List arg_list) {
               << " found after orientation." << std::endl;
   }
 
-  vector<double> time;
-  time.push_back(environment.exec_time.init);
-  time.push_back(environment.exec_time.iter);
-  time.push_back(environment.exec_time.cut);
-  time.push_back(environment.exec_time.init_iter + environment.exec_time.cut);
-
-  List result;
-  result = List::create(
+  const auto& time = environment.exec_time;
+  List result = List::create(
       _["adj_matrix"]        = getAdjMatrix(environment),
       _["edges"]             = getEdgesInfoTable(environment),
       _["orientations.prob"] = orientations,
-      _["time"]              = time,
+      _["time"]              = vector<double>{
+        time.init, time.iter, time.cut, time.ori, time.getTotal()},
       _["interrupted"]       = false);
   if (environment.consistent > 0) {
     result.push_back(cycle_tracker.adj_matrices, "adj_matrices");

@@ -26,6 +26,7 @@
 namespace miic {
 namespace utility {
 
+using clock = std::chrono::steady_clock;
 using std::endl;
 using std::string;
 using std::stringstream;
@@ -133,15 +134,6 @@ double ramanujan(int n) {
   double N = n * log(1.0 * n) - n +
              log(1.0 * n * (1 + 4 * n * (1 + 2 * n))) / 6 + log(M_PI) / 2L;
   return N;
-}
-
-double get_wall_time() {
-  struct timeval time;
-  if (gettimeofday(&time, NULL)) {
-    // Handle error
-    return 0;
-  }
-  return (double)time.tv_sec + (double)time.tv_usec * .000001;
 }
 
 class sort_confidence {
@@ -412,16 +404,23 @@ bool checkInterrupt(bool check /*=true*/) {
     return false;
 }
 
-int printProgress(double percentage, double startTime, int prg_numSearchMore) {
+TimePoint getLapStartTime() { return clock::now(); }
+
+double getLapInterval(TimePoint start_time) {
+  using second = std::chrono::duration<double>;
+  return second(clock::now() - start_time).count();
+}
+
+int printProgress(double percentage, TimePoint start_time, int n_unsettled) {
   int pbwidth(40);
   string pbstr = string(pbwidth, '|');
   if (std::isnan(percentage) || std::isinf(percentage)) return 0;
   int val = (int)(percentage * 100);
-  if (val != prg_numSearchMore) {
+  if (val != n_unsettled) {
     int lpad = (int)(percentage * pbwidth);
     int rpad = pbwidth - lpad;
     double remaining_time =
-        (get_wall_time() - startTime) / percentage * (1 - percentage);
+        getLapInterval(start_time) / percentage * (1 - percentage);
     stringstream sremaining_time;
     if (std::isinf(remaining_time) || remaining_time < 0){
       remaining_time = 0;

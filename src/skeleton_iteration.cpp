@@ -79,7 +79,7 @@ bool firstStepIteration(Environment& environment, BCC& bcc) {
 
   int threadnum = 0;
   bool interrupt = false;
-  int prg_numSearchMore = -1;
+  int n_unsettled = -1;
   Rcout << "First round of conditional independences :\n";
   if (environment.numSearchMore > 0) {
     if (environment.verbose)
@@ -103,7 +103,7 @@ bool firstStepIteration(Environment& environment, BCC& bcc) {
       Rcout << "SEARCH OF BEST Z: ";
     }
 
-    environment.exec_time.start_time_init = get_wall_time();
+    auto loop_start_time = getLapStartTime();
 #ifdef _OPENMP
 #pragma omp parallel for shared(interrupt) firstprivate(threadnum) \
     schedule(dynamic)
@@ -134,13 +134,12 @@ bool firstStepIteration(Environment& environment, BCC& bcc) {
       // Dynamic thread allocation makes it so we can't know the end point of
       // thread 0, on average it will be numSearchMore - n_threads/2
       if (threadnum == 0)
-        prg_numSearchMore = printProgress(
+        n_unsettled = printProgress(
             1.0 * i / (environment.numSearchMore - environment.n_threads / 2),
-            environment.exec_time.start_time_init, prg_numSearchMore);
+            loop_start_time, n_unsettled);
     }
     // Print finished progress bar
-    prg_numSearchMore = printProgress(
-        1.0, environment.exec_time.start_time_init, prg_numSearchMore);
+    n_unsettled = printProgress(1.0, loop_start_time, n_unsettled);
 
     if (interrupt) return false;
 
@@ -194,10 +193,10 @@ bool skeletonIteration(Environment& environment) {
     Rcout << "Number of numSearchMore: " << environment.numSearchMore << endl;
 
   Rcout << "\nSkeleton iteration :\n";
-  environment.exec_time.start_time_iter = get_wall_time();
+  auto loop_start_time = getLapStartTime();
   int start_numSearchMore = environment.numSearchMore;
 
-  int prg_numSearchMore = -1;
+  int n_unsettled = -1;
 
   while (environment.numSearchMore > 0) {
     if (checkInterrupt()) {
@@ -348,10 +347,10 @@ bool skeletonIteration(Environment& environment) {
               .shared_info->Rxyz_ui)
         max = i;
     }
-    prg_numSearchMore =
+    n_unsettled =
         printProgress(1.0 * (start_numSearchMore - environment.numSearchMore) /
                           (start_numSearchMore),
-            environment.exec_time.start_time_iter, prg_numSearchMore);
+            loop_start_time, n_unsettled);
   }
   Rcout << "\n";
   std::sort(
