@@ -2,21 +2,21 @@
 % Please edit documentation in R/write.cytoscape.R
 \name{miic.write.network.cytoscape}
 \alias{miic.write.network.cytoscape}
-\title{Graphml writing function for the miic graph}
+\title{GraphML converting function for miic graph}
 \usage{
-miic.write.network.cytoscape(g, layout = NULL, file)
+miic.write.network.cytoscape(g, file, layout = NULL)
 }
 \arguments{
-\item{g}{[a miic graph object] The graph object returned by the miic execution.}
+\item{g}{The graph object returned by \link[=miic]{miic}.}
 
-\item{layout}{[a data frame]. An optional data frame of 2 (or 3) columns containing the coordinate x and y for each node. The optional first
-column can contain node names. If node names is not given, the order of the input file will be assigned to the list of positions.}
+\item{file}{A string. Path to the output file containing file name without
+extension (.graphml will be appended).}
 
-\item{file}{[a string] The file path of the output file (containing the file name without extension).}
+\item{layout}{An optional data frame of 2 (or 3) columns containing the
+coordinate \code{x} and \code{y} for each node. The optional first column can contain
+node names. If node names is not given, the order of the input file will be
+assigned to the list of positions.}
 }
 \description{
-This function writes the network using the graphml format (http://graphml.graphdrawing.org/).
-}
-\details{
-The network is written in the graphml file format with all the features contained in the retained.edges.summary data frame
+Convert miic graph to \href{http://graphml.graphdrawing.org/}{GraphML format}.
 }
