@@ -1,13 +1,11 @@
 #include "utilities.h"
 
 #include <Rcpp.h>
-#include <sys/time.h>
-#include <unistd.h>
 
 #define _USE_MATH_DEFINES
 #include <cmath>
-#include <fstream>
-#include <iostream>
+#include <sstream>
+#include <iterator>
 #include <limits>
 #include <map>
 #include <string>
@@ -26,10 +24,7 @@
 namespace miic {
 namespace utility {
 
-using clock = std::chrono::steady_clock;
-using std::endl;
 using std::string;
-using std::stringstream;
 using std::vector;
 using namespace miic::computation;
 using namespace miic::structure;
@@ -276,9 +271,9 @@ string toNameString(const Environment& env, const vector<int>& vec) {
   if (vec.empty()) {
     return "NA";
   } else {
-    stringstream ss;
+    std::stringstream ss;
     std::transform(vec.begin(), vec.end() - 1,
-        std::ostream_iterator<std::string>(ss, ","),
+        std::ostream_iterator<string>(ss, ","),
         [&env](int i) { return env.nodes[i].name; });
     ss << env.nodes[vec.back()].name;
     return ss.str();
@@ -404,41 +399,45 @@ bool checkInterrupt(bool check /*=true*/) {
     return false;
 }
 
-TimePoint getLapStartTime() { return clock::now(); }
+TimePoint getLapStartTime() { return std::chrono::steady_clock::now(); }
 
 double getLapInterval(TimePoint start_time) {
   using second = std::chrono::duration<double>;
-  return second(clock::now() - start_time).count();
+  return second(std::chrono::steady_clock::now() - start_time).count();
 }
 
-int printProgress(double percentage, TimePoint start_time, int n_unsettled) {
-  int pbwidth(40);
-  string pbstr = string(pbwidth, '|');
-  if (std::isnan(percentage) || std::isinf(percentage)) return 0;
-  int val = (int)(percentage * 100);
-  if (val != n_unsettled) {
-    int lpad = (int)(percentage * pbwidth);
-    int rpad = pbwidth - lpad;
-    double remaining_time =
-        getLapInterval(start_time) / percentage * (1 - percentage);
-    stringstream sremaining_time;
-    if (std::isinf(remaining_time) || remaining_time < 0){
-      remaining_time = 0;
-    }
-    if (remaining_time > 60) {
-      int minutes = remaining_time / 60;
+void printProgress(double percent, TimePoint start_time, int& percentile_prev) {
+  constexpr int bar_length_total{40};
+  if (std::isnan(percent) || std::isinf(percent) || percent < 0 || percent > 1)
+    return;
+  int percentile = static_cast<int>(percent * 100);
+  // Only update progress bar if the percentile has changed
+  if (percentile == percentile_prev) return;
+  percentile_prev = percentile;
+  int lpad = static_cast<int>(percent * bar_length_total);
+  int rpad = bar_length_total - lpad;
+  double sec_elapsed = getLapInterval(start_time);
+  double sec_remaining = sec_elapsed / percent * (1 - percent);
+  std::stringstream eta;
+  if (std::isinf(sec_remaining)) {
+    eta << "--";
+  } else {
+    if (sec_remaining > 60) {
+      int minutes = sec_remaining / 60;
       if (minutes > 60) {
         int hours = minutes / 60;
-        sremaining_time << hours << "h";
+        eta << hours << "h";
       }
-      sremaining_time << minutes % 60 << "m";
+      eta << minutes % 60 << "m";
     }
-    sremaining_time << int(remaining_time) % 60 << "s";
-    Rprintf("\r\t %3d%% [%.*s%*s] est. remaining time : %10s", val, lpad,
-        pbstr.c_str(), rpad, "", sremaining_time.str().c_str());
-    R_FlushConsole();
+    eta << static_cast<int>(sec_remaining) % 60 << "s";
   }
-  return val;
+  string lpad_str = string(bar_length_total, '=');
+  string rpad_str = ">" + string(bar_length_total - 1, '-');
+  // To stderr
+  REprintf("\r[%.*s%.*s] %3d%% eta: %-10s", lpad, lpad_str.c_str(), rpad,
+      rpad_str.c_str(), percentile, eta.str().c_str());
+  R_FlushConsole();
 }
 
 // Compute the distance to the kth nearest neigbhour of the given point in the

@@ -22,7 +22,7 @@ void sort2arrays(int len, int a[], int brr[], int bridge[]);
 double ramanujan(int n);
 TimePoint getLapStartTime();
 double getLapInterval(TimePoint);
-int printProgress(double percentage, TimePoint, int n_unsettled);
+void printProgress(double percentage, TimePoint, int& n_unsettled);
 // KL divergence functions
 double compute_kl_divergence(const std::vector<int>& posArray,
     structure::Environment& environment, int samplesNotNA,
