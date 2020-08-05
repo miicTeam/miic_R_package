@@ -20,20 +20,19 @@ MIIC contains R and C++ sources.
 - To compile from source, a compiler with support for c++14 language features is required.
 - MIIC imports the following R packages: igraph, ppcor, scales, stats, Rcpp
 
-## Installing
+## Installation
 
-Install the latest stable version on CRAN directly from R:
-```{r}
+From CRAN (release):
+```R
 install.packages("miic")
 ```
-Or try the latest version under development by compiling from source:
-```
-git clone https://github.com/miicTeam/miic_R_package.git
-cd miic_R_package
-R CMD INSTALL .
+Or from GitHub (development):
+```R
+# install.packages("remotes")
+remotes::install_github("miicTeam/miic_R_package")
 ```
 ## Documentation
-You can find the documentation pages in the "man" folder.
+You can find the documentation pages in the "man" folder, in the auto generated [PDF](https://cran.r-project.org/web/packages/miic/miic.pdf), or use R functions `help()` and `?`.
 
 ## Authors
 - Vincent Cabeli
