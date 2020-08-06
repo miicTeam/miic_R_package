@@ -72,9 +72,8 @@ List reconstruct(List input_data, List arg_list) {
 
     if (environment.n_shuffles > 0) {
       lap_start = getLapStartTime();
-      Rcout << "Computing confidence cut with permutations..." << std::flush;
+      Rcout << "Compute confidence cut with permutations... " << std::flush;
       setConfidence(environment);
-      Rcout << " done.\n";
       confidenceCut(environment);
       environment.exec_time.cut += getLapInterval(lap_start);
     }
@@ -82,10 +81,11 @@ List reconstruct(List input_data, List arg_list) {
     if (environment.orientation_phase && environment.numNoMore > 0 &&
         environment.consistent <= 1) {
       lap_start = getLapStartTime();
+      Rcout << "Search for edge directions... \n";
       orientations = orientationProbability(environment);
       environment.exec_time.ori += getLapInterval(lap_start);
     }
-    Rcout << "Number of edges: " << environment.numNoMore << std::endl;
+    Rcout << "Number of edges: " << environment.numNoMore << '\n';
   } while (environment.consistent > 0 && !cycle_tracker.hasCycle());
 
   int union_n_edges = 0;
@@ -107,7 +107,7 @@ List reconstruct(List input_data, List arg_list) {
     // pairs with inconsistent conditional independence.
     bcc.analyse();
     int n_inconsistency = 0;
-    std::vector<std::pair<int, int> > inconsistent_edges;
+    vector<std::pair<int, int>> inconsistent_edges;
     for (int i = 1; i < environment.n_nodes; i++) {
       for (int j = 0; j < i; j++) {
         const Edge& edge = environment.edges[i][j];

@@ -90,8 +90,7 @@ bool miic::reconstruction::skeletonInitialization(Environment& environment) {
   }
 
   int threadnum = 0;
-  Rcout << "Computing pairwise independencies...";
-  R_FlushConsole();
+  Rcout << "Search all pairs for unconditional independence relations... \n";
 
   bool interrupt = false;
 
@@ -128,7 +127,6 @@ bool miic::reconstruction::skeletonInitialization(Environment& environment) {
     }
   }
   if (interrupt) return false;
-  Rcout << " done.\n";
   for (int i = 0; i < environment.n_nodes; i++) {
     for (int j = 0; j < environment.n_nodes; j++) {
       environment.edges[i][j].status_init = environment.edges[i][j].status;

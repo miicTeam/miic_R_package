@@ -77,7 +77,7 @@ bool firstStepIteration(Environment& environment, BCC& bcc) {
     }
   }
 
-  Rcout << "First round of conditional independences :\n";
+  Rcout << "Collect candidate separating nodes... \n";
   if (environment.numSearchMore > 0) {
     if (environment.verbose)
       Rcout << "\n# -> searchMore edges, to get zi and noMore...\n";
@@ -143,6 +143,7 @@ bool firstStepIteration(Environment& environment, BCC& bcc) {
     }
     // Print finished progress bar
     printProgress(1.0, loop_start_time, progress_percentile);
+    Rcout << '\n';
 
     if (interrupt) return false;
 
@@ -195,7 +196,7 @@ bool skeletonIteration(Environment& environment) {
   if (environment.verbose)
     Rcout << "Number of numSearchMore: " << environment.numSearchMore << endl;
 
-  Rcout << "\nSkeleton iteration :\n";
+  Rcout << "Search for conditional independence relations... \n";
   auto loop_start_time = getLapStartTime();
   int start_numSearchMore = environment.numSearchMore;
 
