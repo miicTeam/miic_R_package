@@ -18,6 +18,7 @@
 #include "utilities.h"
 
 using Rcpp::Rcout;
+using Rcpp::Rcerr;
 using std::endl;
 using std::vector;
 using namespace miic::computation;
@@ -77,7 +78,6 @@ bool firstStepIteration(Environment& environment, BCC& bcc) {
     }
   }
 
-  Rcout << "Collect candidate separating nodes... \n";
   if (environment.numSearchMore > 0) {
     if (environment.verbose)
       Rcout << "\n# -> searchMore edges, to get zi and noMore...\n";
@@ -123,10 +123,6 @@ bool firstStepIteration(Environment& environment, BCC& bcc) {
       }
       int posX = environment.unsettled_list[i].i;
       int posY = environment.unsettled_list[i].j;
-      if (environment.verbose)
-        Rcout << "##  "
-             << "XY: " << environment.nodes[posX].name << " "
-             << environment.nodes[posY].name << "\n\n";
       if (environment.edges[posX][posY].shared_info->zi_list.size() > 0) {
         // Search for new contributing node and its rank
         SearchForNewContributingNodeAndItsRank(
@@ -143,7 +139,7 @@ bool firstStepIteration(Environment& environment, BCC& bcc) {
     }
     // Print finished progress bar
     printProgress(1.0, loop_start_time, progress_percentile);
-    Rcout << '\n';
+    Rcerr << '\n';
 
     if (interrupt) return false;
 
@@ -196,7 +192,6 @@ bool skeletonIteration(Environment& environment) {
   if (environment.verbose)
     Rcout << "Number of numSearchMore: " << environment.numSearchMore << endl;
 
-  Rcout << "Search for conditional independence relations... \n";
   auto loop_start_time = getLapStartTime();
   int start_numSearchMore = environment.numSearchMore;
 
@@ -355,7 +350,7 @@ bool skeletonIteration(Environment& environment) {
                       (start_numSearchMore),
         loop_start_time, progress_percentile);
   }
-  Rcout << "\n";
+  Rcerr << "\n";
   std::sort(
       environment.connected_list.begin(), environment.connected_list.end());
   return (true);

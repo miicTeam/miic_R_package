@@ -31,12 +31,9 @@ List reconstruct(List input_data, List arg_list) {
   createMemorySpace(environment, environment.m);
 
   auto lap_start = getLapStartTime();
+  Rcout << "Search all pairs for unconditional independence relations...\n";
   // Initialize skeleton, find unconditional independence
-  if (!skeletonInitialization(environment)) {
-    return List::create(
-        _["error"]       = "error during skeleton initialization",
-        _["interrupted"] = true);
-  }
+  if (!skeletonInitialization(environment)) return empty_results();
   environment.exec_time.init += getLapInterval(lap_start);
 
   BCC bcc(environment);
@@ -53,6 +50,7 @@ List reconstruct(List input_data, List arg_list) {
       }
     }
     lap_start = getLapStartTime();
+    Rcout << "Collect candidate separating nodes...\n";
     // If interrupted
     if (!firstStepIteration(environment, bcc)) return empty_results();
 
@@ -65,6 +63,7 @@ List reconstruct(List input_data, List arg_list) {
       if (environment.verbose) {
         Rcout << "\n# ---- Other Contributing node(s) ----\n\n";
       }
+      Rcout << "Search for conditional independence relations...\n";
       // If interrupted
       if (!skeletonIteration(environment)) return (empty_results());
     }
@@ -72,7 +71,7 @@ List reconstruct(List input_data, List arg_list) {
 
     if (environment.n_shuffles > 0) {
       lap_start = getLapStartTime();
-      Rcout << "Compute confidence cut with permutations... " << std::flush;
+      Rcout << "Compute confidence cut with permutations..." << std::flush;
       setConfidence(environment);
       confidenceCut(environment);
       environment.exec_time.cut += getLapInterval(lap_start);
@@ -81,7 +80,7 @@ List reconstruct(List input_data, List arg_list) {
     if (environment.orientation_phase && environment.numNoMore > 0 &&
         environment.consistent <= 1) {
       lap_start = getLapStartTime();
-      Rcout << "Search for edge directions... \n";
+      Rcout << "Search for edge directions...\n";
       orientations = orientationProbability(environment);
       environment.exec_time.ori += getLapInterval(lap_start);
     }
@@ -129,7 +128,7 @@ List reconstruct(List input_data, List arg_list) {
       environment.edges[k.first][k.second].shared_info->setUndirected();
     }
     Rcout << n_inconsistency << " inconsistent conditional independences"
-              << " found after orientation." << std::endl;
+          << " found after orientation.\n";
   }
 
   const auto& time = environment.exec_time;

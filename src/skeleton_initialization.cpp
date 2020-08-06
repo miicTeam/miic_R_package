@@ -11,7 +11,6 @@
 using namespace miic::computation;
 using namespace miic::structure;
 using namespace miic::utility;
-using Rcpp::Rcout;
 
 // Initialize the edges of the network
 int initEdgeElt(Environment& environment, int i, int j, MemorySpace& m) {
@@ -33,21 +32,7 @@ int initEdgeElt(Environment& environment, int i, int j, MemorySpace& m) {
   }
   delete[] res;
 
-  if (environment.verbose) {
-    Rcout << "# --> Ixy_ui = "
-              << environment.edges[i][j].shared_info->Ixy_ui /
-                     environment.edges[i][j].shared_info->Nxy_ui
-              << "[Ixy_ui*Nxy_ui ="
-              << environment.edges[i][j].shared_info->Ixy_ui << "]\n"
-              << "# --> Cplx = " << environment.edges[i][j].shared_info->cplx
-              << "\n"
-              << "# --> Nxy_ui = "
-              << environment.edges[i][j].shared_info->Nxy_ui << "\n"
-              << "# --> nbrProp P = " << environment.n_nodes << "\n";
-  }
-
   double myTest = 0;
-  std::string category;
   environment.edges[i][j].shared_info->Ixy =
       environment.edges[i][j].shared_info->Ixy_ui;
   environment.edges[i][j].shared_info->cplx_no_u =
@@ -67,16 +52,11 @@ int initEdgeElt(Environment& environment, int i, int j, MemorySpace& m) {
     environment.edges[i][j].shared_info->connected = 0;
     environment.edges[i][j].status = 0;
     environment.edges[j][i].status = 0;
-    category = "phantom";
   } else {
     environment.edges[i][j].shared_info->connected = 1;
     environment.edges[i][j].status = 1;
     environment.edges[j][i].status = 1;
-    category = "searchMore";
   }
-
-  if (environment.verbose)
-    Rcout << "# --> Category = " << category << "\n";
 
   return environment.edges[i][j].status;
 }
@@ -90,10 +70,7 @@ bool miic::reconstruction::skeletonInitialization(Environment& environment) {
   }
 
   int threadnum = 0;
-  Rcout << "Search all pairs for unconditional independence relations... \n";
-
   bool interrupt = false;
-
 #ifdef _OPENMP
 #pragma omp parallel for shared(interrupt) firstprivate(threadnum) \
     schedule(dynamic)
@@ -109,10 +86,6 @@ bool miic::reconstruction::skeletonInitialization(Environment& environment) {
       interrupt = true;
     }
     for (int j = i + 1; j < environment.n_nodes && !interrupt; j++) {
-      if (environment.verbose) {
-        Rcout << "\n# Edge " << environment.nodes[i].name << ","
-                  << environment.nodes[j].name << "\n";
-      }
       environment.edges[i][j].shared_info = std::make_shared<EdgeSharedInfo>();
       environment.edges[j][i].shared_info = environment.edges[i][j].shared_info;
       if (environment.edges[i][j].status) {

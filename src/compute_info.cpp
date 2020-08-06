@@ -489,8 +489,6 @@ double* getAllInfoNEW(int* ptrAllData, const vector<int>& ptrAllLevels,
             info_ui_y += NlogN;
 
             if (modCplx != MDL) {
-              if (Nyui > Ntot)
-                Rprintf("# ==$$$===> Ntot=%d Nyui=%d \n", Ntot, Nyui);
               logC_yui_x += cache->getLogC(Nyui, dBin[0][0]);
             }
           }
@@ -506,8 +504,6 @@ double* getAllInfoNEW(int* ptrAllData, const vector<int>& ptrAllLevels,
                 info_xui_y -= NlogN;
                 info_ui_x += NlogN;
                 if (modCplx != MDL) {
-                  if (Nxuij > Ntot)
-                    Rprintf("# ==$$$===> Ntot=%d Nxuij=%d \n", Ntot, Nxuij);
                   logC_xui_y += cache->getLogC(Nxuij, dBin[0][1]);
                 }
 
@@ -521,8 +517,6 @@ double* getAllInfoNEW(int* ptrAllData, const vector<int>& ptrAllLevels,
               info_ui_y -= NlogN;
               info_ui_x -= NlogN;
               if (modCplx != MDL) {
-                if (Nui > Ntot)
-                  Rprintf("# ==$$$===> Ntot=%d Nui=%d \n", Ntot, Nui);
                 logC_ui_x += cache->getLogC(Nui, dBin[0][0]);
                 logC_ui_y += cache->getLogC(Nui, dBin[0][1]);
               }
