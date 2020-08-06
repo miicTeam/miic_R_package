@@ -115,7 +115,8 @@ class CycleTracker {
 
   Environment& env_;
   IterationList iterations_;
-  int n_saved = 0;  // Number of saving operations performed
+  int n_saved{0};  // Number of saving operations performed
+  int cycle_size{0};
   // key: number of edges in the graph
   // value: index of iteration
   std::multimap<int, int> edge_index_map_;
@@ -141,10 +142,10 @@ class CycleTracker {
     int j = k - i * (i - 1) / 2;
     return std::make_pair(i, j);
   }
+  vector<vector<int>> getAdjMatrices(int size);
+  int getCycleSize() { return cycle_size; }
   // check if a cycle exists between the current and the past iterations
   bool hasCycle();
-  // when a cycle is found, hold the adj_matrix of all iterations in the cycle
-  vector<vector<int>> adj_matrices;
 };
 }  // namespace reconstruction_impl
 using reconstruction_impl::BCC;

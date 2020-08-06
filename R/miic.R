@@ -143,6 +143,19 @@
 #' is set to "skeleton" or "orientation", the maximum number of iterations
 #' allowed when trying to find a consistent graph. Set to 100 by default.
 #'
+#' @param consensus_threshold [a floating point between 0.5 and 1.0]
+#' When the \emph{consistent} parameter is set to "skeleton" or "orientation",
+#' and when the result graph is inconsistent, or is a union of more than one
+#' inconsistent graphs, a consensus graph will be produced based on a pool of
+#' graphs. If the result graph is inconsistent, then the pool is made of
+#' [max_iteration] graphs from the iterations, otherwise it is made of those
+#' graphs in the union. In the consensus graph, the status of each edge is
+#' determined as follows: Choose from the pool the most probable status. For
+#' example, if the pool contains [A, B, B, B, C], then choose status B, if the
+#' frequency of presence of B (0.6 in the example) is equal to or higher than
+#' [consensus_threshold], then set B as the status of the edge in the consensus
+#' graph, otherwise set undirected edge as the status. Set to 0.8 by default.
+#'
 #' @param verbose [a boolean value] If TRUE, debugging output is printed.
 #'
 #' @param n_threads [a positive integer]
@@ -165,13 +178,13 @@
 #'  \item \emph{info:} provides the pairwise mutual information times \emph{Nxyi} for
 #'  the pair (\emph{x}, \emph{y}).
 #'  \item \emph{info_cond:} provides the conditional mutual information times \emph{Nxy_ai} for
-#'  the pair (\emph{x}, \emph{y}) when conditioned on the collected nodes \emph{ai}. It is 
+#'  the pair (\emph{x}, \emph{y}) when conditioned on the collected nodes \emph{ai}. It is
 #'  equal to the \emph{info} column when \emph{ai} is an empty set.
 #'  \item \emph{cplx:} gives the computed complexity between the (\emph{x}, \emph{y})
 #'  variables taking into account the contributing nodes \emph{ai}. Edges that have
 #'  have more conditional information \emph{info_cond} than \emph{cplx} are retained in the
 #'  final graph.
-#'  \item \emph{Nxy_ai:} gives the number of complete samples on which the information and 
+#'  \item \emph{Nxy_ai:} gives the number of complete samples on which the information and
 #'  the  complexity have been computed. If the input dataset has no missing value, the
 #'  number of samples is the same for all pairs and corresponds to the total
 #'  number of samples.
@@ -199,7 +212,7 @@
 #'  does imply that the cause-effect relationship is not the other way around. An arrow-tip
 #'  which is itself downstream of another directed edge suggests stronger causal sense and is
 #'  marked by a 'Y', or 'N' otherwise.
-#'  \item \emph{proba:} probabilities for the inferred orientation, derived from the three-point 
+#'  \item \emph{proba:} probabilities for the inferred orientation, derived from the three-point
 #'  mutual information (cf Affeldt & Isambert, UAI 2015 proceedings) and noted as p(x->y);p(x<-y).
 #'  }
 #'  }
@@ -311,6 +324,7 @@ miic <- function(input_data,
                  test_mar = TRUE,
                  consistent = c("no", "orientation", "skeleton"),
                  max_iteration = 100,
+                 consensus_threshold = 0.8,
                  verbose = FALSE) {
   res <- NULL
 
@@ -504,6 +518,13 @@ miic <- function(input_data,
       state_order = state_order,
       verbose = verbose
     )
+
+    # If consistent parameter is turned on and the result graph is a union of
+    # more than one inconsistent graphs, get the possible orientations of each
+    # edge with the correponding frequencies and the consensus graph.
+    if (length(res$adj_matrices) > 1) {
+      res <- setConsensusGraph(res, consensus_threshold)
+    }
   }
 
   res

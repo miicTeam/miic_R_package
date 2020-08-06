@@ -90,11 +90,15 @@ List reconstruct(List input_data, List arg_list) {
       Rcout << "Iteration " << iter_count << ' ';
     Rcout << "Number of edges: " << environment.numNoMore << '\n';
     is_consistent = cycle_tracker.hasCycle();
+    if (is_consistent) {
+      Rcout << "cycle found of size " << cycle_tracker.getCycleSize() << '\n';
+      break;
+    }
     if (++iter_count > environment.max_iteration) {
       Rcout << "Iteration limit " << environment.max_iteration << " reached\n";
       break;
     }
-  } while (environment.consistent != 0 && !is_consistent);
+  } while (environment.consistent != 0);
 
   int union_n_edges = 0;
   for (int i = 1; i < environment.n_nodes; i++) {
@@ -149,7 +153,9 @@ List reconstruct(List input_data, List arg_list) {
         time.init, time.iter, time.cut, time.ori, time.getTotal()},
       _["interrupted"]       = false);
   if (environment.consistent != 0) {
-    result.push_back(cycle_tracker.adj_matrices, "adj_matrices");
+    int size = is_consistent ? cycle_tracker.getCycleSize()
+                             : environment.max_iteration;
+    result.push_back(cycle_tracker.getAdjMatrices(size), "adj_matrices");
     result.push_back(is_consistent, "is_consistent");
   }
 
@@ -191,43 +197,41 @@ bool CycleTracker::hasCycle() {
   // of iterations).
   vector<int> changed(env_.n_nodes * (env_.n_nodes - 1) / 2, 0);
   // backtracking over iteration to get changed_edges
-  int cycle_size = 0;
+  cycle_size = 0;
   for (const auto& iter : iterations_) {
     ++cycle_size;
     for (const auto& k : iter.changed_edges) {
       edges_union.insert(k.first);
-      // compare edge status in the previous iteration against the latest edge
-      // status
+      // compare the status in the previous iteration against the latest status
       std::pair<int, int> p = getEdgeIndex2D(k.first);
       changed[k.first] = (k.second != env_.edges[p.first][p.second].status);
     }
     if (iter.index != iter_indices.front()) continue;
     iter_indices.pop_front();
-    // if any edge has been changed
-    if (std::any_of(
-            changed.begin(), changed.end(), [](int j) { return j != 0; })) {
-      // no cycle
-      if (iter_indices.empty())
-        return false;
-      else
-        continue;
+    using std::none_of;
+    if (none_of(begin(changed), end(changed), [](int j) { return j != 0; })) {
+      for (auto& k : edges_union) {
+        std::pair<int, int> p = getEdgeIndex2D(k);
+        env_.edges[p.first][p.second].status = 1;
+        env_.edges[p.second][p.first].status = 1;
+        env_.edges[p.first][p.second].shared_info->setUndirected();
+      }
+      return true;
     }
-    for (auto& k : edges_union) {
-      std::pair<int, int> p = getEdgeIndex2D(k);
-      env_.edges[p.first][p.second].status = 1;
-      env_.edges[p.second][p.first].status = 1;
-      env_.edges[p.first][p.second].shared_info->setUndirected();
-    }
-
-    Rcout << "cycle found of size " << cycle_size << std::endl;
-    break;
+    if (iter_indices.empty()) return false;  // no cycle
   }
-  // fill the adj_matrices
-  for (auto i = iterations_.begin(), e = iterations_.begin() + cycle_size;
-       i != e; ++i) {
+  // Never reached since iter_indices.size() < iterations_.size() by definition
+  return false;
+}
+
+vector<vector<int>> CycleTracker::getAdjMatrices(int size) {
+  vector<vector<int>> adj_matrices;
+  for (auto i = iterations_.begin(), e = iterations_.begin() + size; i != e;
+      ++i) {
     adj_matrices.push_back(i->adj_matrix_1d);
   }
-  return true;
+  return adj_matrices;
 }
+
 }  // namespace reconstruction
 }  // namespace miic

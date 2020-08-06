@@ -164,23 +164,57 @@ summarizeResults <- function(observations = NULL, results = NULL,
     paste(findProba(summary, orientation_probabilities, i), collapse = ";")
   })
 
-  # If consistent parameter is turned on and the result graph is a union of more
-  # than one inconsistent graphs, get the possible orientations of each
-  # edge with the correponding frequencies.
-  if (length(results$adj_matrices) > 1) {
-    target <- which(names(summary) == "infOrt")[1]
-    summary <- cbind(
-      summary[, 1:target, drop = FALSE],
-      edge_stats = apply(summary, 1, get_edge_stats, colnames(adj_matrix),
-                         results$adj_matrices),
-      summary[, (target + 1):length(summary), drop = FALSE]
-    )
-  }
-
   # Sort summary by log confidence and return it
   summary <- summary[order(summary$log_confidence, decreasing = T), ]
   rownames(summary) <- c()
   return(summary)
+}
+
+setConsensusGraph <- function(results, consensus_threshold) {
+  summary <- results$all.edges.summary
+  edge_stats_table <- apply(summary, 1, get_edge_stats_table,
+                            colnames(results$adj_matrix), results$adj_matrices)
+  results$adj_consensus <- getConsensusGraph(results$adj_matrix,
+                                             summary,
+                                             edge_stats_table,
+                                             consensus_threshold)
+  target <- which(names(summary) == "infOrt")[1]
+  results$all.edges.summary <- cbind(
+    summary[, 1:target, drop = FALSE],
+    edge_stats = sapply(edge_stats_table, function(t) {
+        t <- sapply(t, scales::percent_format())
+        return(paste(t, "(", names(t), ")", sep = "", collapse = ";"))
+    }),
+    summary[, (target + 1):length(summary), drop = FALSE]
+  )
+  return(results)
+}
+
+getConsensusGraph <- function(adj_matrix, summary, table_list,
+                              consensus_threshold) {
+  var_names <- colnames(adj_matrix)
+  for (i in c(1:nrow(summary))) {
+    x <- match(summary[i, 1], var_names)
+    y <- match(summary[i, 2], var_names)
+    table <- table_list[[i]]
+    if (length(table) <= 1)
+      next
+    # table is sorted
+    if (table[[1]] < consensus_threshold) {
+      adj_matrix[x, y] <- 1
+      adj_matrix[y, x] <- 1
+    } else {
+      edge_status <- as.numeric(names(table)[[1]])
+      if (edge_status == 2 || edge_status == -2) {
+        adj_matrix[x, y] <- edge_status
+        adj_matrix[y, x] <- -edge_status
+      } else {
+        adj_matrix[x, y] <- edge_status
+        adj_matrix[y, x] <- edge_status
+      }
+    }
+  }
+  return(adj_matrix)
 }
 
 matrix_from_3_columns <- function(matrix, rows, columns, values) {
@@ -230,7 +264,7 @@ compute_partial_correlation <- function(summary, observations, state_order) {
       # levels(observations[,col]) = ordered_levels
       observations[, col] <- ordered(observations[, col], ordered_levels)
       observations[, col] <- as.numeric(observations[, col])
-    } else if (is.factor(observations[,col]) && 
+    } else if (is.factor(observations[,col]) &&
       suppressWarnings(all(!is.na(as.numeric(levels(observations[,col])))))) {
       # If the variable is not described but numerical, assume its order from
       # the numerical categories.
@@ -430,7 +464,7 @@ findProba <- function(outputSummary.df, proba, index) {
   return(NA)
 }
 
-get_edge_stats <- function(row, var_names, adj_matrices) {
+get_edge_stats_table <- function(row, var_names, adj_matrices) {
   # row[1]: variable name of x
   # row[2]: variable name of y
   n_var <- length(var_names)
@@ -441,7 +475,5 @@ get_edge_stats <- function(row, var_names, adj_matrices) {
   # edge stats table, count replaced by frequency (percentage)
   t <- table(adj_matrices[index_1d,]) / n_cycle
   t <- t[order(t, decreasing = TRUE), drop = FALSE]
-  t <- apply(t, 1, scales::percent_format())
-  # return a ";" separated string of format "percentage(orientation)"
-  return(paste(t, "(", names(t), ")", sep = "", collapse = ";"))
+  return(t)
 }
