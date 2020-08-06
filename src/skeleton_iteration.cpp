@@ -356,7 +356,7 @@ bool skeletonIteration(Environment& environment) {
   return (true);
 }
 
-bool BCC::is_consistent(int x, int y, const vector<int>& vect_z) const {
+bool BCC::isConsistent(int x, int y, const vector<int>& vect_z) const {
   // For each node z in vect_z, check if
   // (1) z lies on a path between node x and node y, and
   // (2) z is a non-child of either x or y.

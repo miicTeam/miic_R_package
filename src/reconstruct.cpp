@@ -39,8 +39,10 @@ List reconstruct(List input_data, List arg_list) {
   BCC bcc(environment);
   CycleTracker cycle_tracker(environment);
   vector<vector<string>> orientations;
+  int iter_count{0};
+  bool is_consistent{false};
   do {
-    if (environment.consistent > 0) bcc.analyse();
+    if (environment.consistent != 0) bcc.analyse();
     // Store current status in status_prev and revert to the structure at the
     // moment of initialization
     for (int i = 0; i < environment.n_nodes; i++) {
@@ -84,8 +86,15 @@ List reconstruct(List input_data, List arg_list) {
       orientations = orientationProbability(environment);
       environment.exec_time.ori += getLapInterval(lap_start);
     }
+    if (environment.consistent != 0)
+      Rcout << "Iteration " << iter_count << ' ';
     Rcout << "Number of edges: " << environment.numNoMore << '\n';
-  } while (environment.consistent > 0 && !cycle_tracker.hasCycle());
+    is_consistent = cycle_tracker.hasCycle();
+    if (++iter_count > environment.max_iteration) {
+      Rcout << "Iteration limit " << environment.max_iteration << " reached\n";
+      break;
+    }
+  } while (environment.consistent != 0 && !is_consistent);
 
   int union_n_edges = 0;
   for (int i = 1; i < environment.n_nodes; i++) {
@@ -110,7 +119,7 @@ List reconstruct(List input_data, List arg_list) {
     for (int i = 1; i < environment.n_nodes; i++) {
       for (int j = 0; j < i; j++) {
         const Edge& edge = environment.edges[i][j];
-        if (edge.status || bcc.is_consistent(i, j, edge.shared_info->ui_list))
+        if (edge.status || bcc.isConsistent(i, j, edge.shared_info->ui_list))
           continue;
         if (environment.verbose) {
           Rcout << environment.nodes[i].name << ",\t"
@@ -139,8 +148,9 @@ List reconstruct(List input_data, List arg_list) {
       _["time"]              = vector<double>{
         time.init, time.iter, time.cut, time.ori, time.getTotal()},
       _["interrupted"]       = false);
-  if (environment.consistent > 0) {
+  if (environment.consistent != 0) {
     result.push_back(cycle_tracker.adj_matrices, "adj_matrices");
+    result.push_back(is_consistent, "is_consistent");
   }
 
   for (int i = 0; i < environment.n_threads; i++) {
@@ -170,11 +180,6 @@ bool CycleTracker::hasCycle() {
   for (auto it = range.first; it != range.second; ++it)
     iter_indices.push_back(it->second + 1);
   saveIteration();
-  if (n_saved > env_.max_iteration) {
-    Rcout << "Max number of iterations reached: " << env_.max_iteration
-              << '\n';
-    return true;
-  }
   if (no_cycle_found) return false;
   // Backtracking requires starting from the largest index first
   std::sort(iter_indices.begin(), iter_indices.end(), std::greater<int>());

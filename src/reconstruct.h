@@ -57,7 +57,7 @@ class BCC {
 
   std::set<int> get_candidate_z(int x, int y) const;
   void set_candidate_z(int x, int y);
-  bool is_consistent(int x, int y, const vector<int>& vect_z) const;
+  bool isConsistent(int x, int y, const vector<int>& vect_z) const;
 };
 
 // During each consistent iteration of the network reconstruction, keep track of
