@@ -30,18 +30,31 @@ double CtermCache::getLogC(int n, int level) {
     // Use the recurrence C(n, r) = C(n, r - 1) + n / (r - 2) * C(n, r - 2)
     // When n and r are relatively large (e.g., n = 20000, r = 100), C(n, r)
     // will cause overflow of double (of the order pow(n, r)), thus we need the
-    // log version of the above recurrence:
+    // log version of the above recursion:
     // C(n, r) / C(n, r - 1) = 1 + n / ((r - 2) * C(n, r - 1) / C(n, r - 2))
     // log(C(n, r)) = sum_(i=r_0)^(i=r)[log(C(n, i) / C(n, i - 1))]
-    int r_0 = level <= kLevelLimit ? level : kLevelLimit + 1;
-    double res = getLogC(n, r_0 - 1);
-    double c_ratio = exp(res - getLogC(n, r_0 - 2));
-    for (int i = r_0; i <= level; ++i) {
-      c_ratio = 1 + static_cast<double>(n) / ((i - 2) * c_ratio);
-      res += log(c_ratio);
+
+    int r = level <= kLevelLimit ? level : kLevelLimit + 1;
+    // res stores log(C(n, r)), res_aux stores log(C(n, r - 1))
+    double res{-1}, res_aux{-1};
+    while (res == -1 || res_aux == -1) {
+      --r;  // Backtrack to find nearest cached results, avoid recursive call
+      if (r > 2) {
+        res = log_c_(n - 1, r - 1);      // log(C(n, r))
+        res_aux = log_c_(n - 1, r - 2);  // log(C(n, r - 1))
+      } else {
+        res = getLogC(n, 2);
+        res_aux = getLogC(n, 1);
+        // will break
+      }
     }
-    if (level <= kLevelLimit)
-      log_c_(n - 1, level - 1) = res;
+    double c_ratio = exp(res - res_aux);  // C(n, r) / C(n, r - 1)
+    for (int l = r + 1; l <= level; ++l) {
+      c_ratio = 1 + static_cast<double>(n) / ((l - 2) * c_ratio);  // recursion
+      res += log(c_ratio);  // res == log(C(n, l))
+      if (l <= kLevelLimit)
+        log_c_(n - 1, l - 1) = res;
+    }
     return res;
   }
 }
