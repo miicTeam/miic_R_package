@@ -166,7 +166,7 @@ summarizeResults <- function(observations = NULL, results = NULL,
   # If consistent parameter is turned on and the result graph is a union of
   # more than one inconsistent graphs, get the possible orientations of each
   # edge with the correponding frequencies and the consensus status.
-  if (length(results$adj_matrices) > 1) {
+  if (ncol(results$adj_matrices) > 1) {
     edge_stats_table <- apply(summary, 1,
       get_edge_stats_table,
       var_names,
