@@ -1,39 +1,62 @@
-Type: Package
-Title: Learning Causal or Non-Causal Graphical Models Using Information
-        Theory
-Version: 1.4.2
-Date: 2020-07-27
 Package: miic
-Description: We report an information-theoretic method which learns a large class of causal or non-causal graphical models from purely observational data, while including the effects of unobserved latent variables, commonly found in many datasets. Starting from a complete graph, the method iteratively removes dispensable edges, by uncovering significant information contributions from indirect paths, and assesses edge-specific confidences from randomization of available data. The remaining edges are then oriented based on the signature of causality in observational data. This approach can be applied on a wide range of datasets and provide new biological insights on regulatory networks from single cell expression data, genomic alterations during tumor development and co-evolving residues in protein structures. For more information you can refer to: Cabeli et al. PLoS Comp. Bio. 2020 <doi:10.1371/journal.pcbi.1007866>, Verny et al. PLoS Comp. Bio. 2017 <doi:10.1371/journal.pcbi.1005662>.
-Authors@R: c(
-           person("Vincent", "Cabeli", role = c("aut", "cre"), email="vincent.cabeli@curie.fr"),
-           person("Honghao", "Li", role = "aut", email="honghao.li@curie.fr"),
-           person("Marcel", "Ribeiro Dantas", role = "aut", email = "marcel.ribeiro-dantas@curie.fr"),
-           person("Nadir", "Sella", role = "aut", email = "nadir.sella@curie.fr"),
-           person("Louis", "Verny",role = "aut"),
-           person("Severine", "Affeldt", role = "aut"),
-           person("Hervé", "Isambert", role = c("aut"), email = "Herve.Isambert@curie.fr"))
-Maintainer: Vincent Cabeli <vincent.cabeli@curie.fr>
-Imports:
-        igraph,
-        ppcor,
-        scales,
-        stats,
-        Rcpp
-Suggests:
-        ggplot2 (>= 3.3.0),
-        gridExtra
+Title: Learning Causal or Non-Causal Graphical Models Using Information Theory
+Version: 1.4.2
+Authors@R:
+    c(person(given = "Vincent",
+             family = "Cabeli",
+             role = c("aut", "cre"),
+             email = "vincent.cabeli@curie.fr"),
+      person(given = "Honghao",
+             family = "Li",
+             role = "aut",
+             email = "honghao.li@curie.fr"),
+      person(given = "Marcel",
+             family = "Ribeiro Dantas",
+             role = "aut",
+             email = "marcel.ribeiro-dantas@curie.fr"),
+      person(given = "Nadir",
+             family = "Sella",
+             role = "aut",
+             email = "nadir.sella@curie.fr"),
+      person(given = "Louis",
+             family = "Verny",
+             role = "aut"),
+      person(given = "Severine",
+             family = "Affeldt",
+             role = "aut"),
+      person(given = "Hervé",
+             family = "Isambert",
+             role = "aut",
+             email = "Herve.Isambert@curie.fr"))
+Description: We report an information-theoretic method which learns a large
+    class of causal or non-causal graphical models from purely observational
+    data, while including the effects of unobserved latent variables, commonly
+    found in many datasets. Starting from a complete graph, the method
+    iteratively removes dispensable edges, by uncovering significant information
+    contributions from indirect paths, and assesses edge-specific confidences
+    from randomization of available data. The remaining edges are then oriented
+    based on the signature of causality in observational data. This approach can
+    be applied on a wide range of datasets and provide new biological insights
+    on regulatory networks from single cell expression data, genomic alterations
+    during tumor development and co-evolving residues in protein structures.
+    For more information you can refer to:
+    Cabeli et al. PLoS Comp. Bio. 2020 <doi:10.1371/journal.pcbi.1007866>,
+    Verny et al. PLoS Comp. Bio. 2017 <doi:10.1371/journal.pcbi.1005662>.
 License: GPL (>= 2)
-NeedsCompilation: yes
-Encoding: UTF-8
+URL: https://github.com/miicTeam/miic_R_package
+BugReports: https://github.com/miicTeam/miic_R_package/issues
+Imports:
+    igraph,
+    ppcor,
+    Rcpp,
+    scales,
+    stats
+Suggests:
+    ggplot2 (>= 3.3.0),
+    gridExtra
+LinkingTo:
+    Rcpp
 SystemRequirements: C++14
 LazyData: true
+Encoding: UTF-8
 RoxygenNote: 7.1.1
-LinkingTo: Rcpp
-Author: Vincent Cabeli [aut, cre],
-  Honghao Li [aut],
-  Marcel Ribeiro Dantas [aut],
-  Nadir Sella [aut],
-  Louis Verny [aut],
-  Severine Affeldt [aut],
-  Hervé Isambert [aut]
