@@ -100,11 +100,6 @@
 #' @param true_edges [a data frame]  An optional data frame containing all the
 #' true edges of the graph. Each line corresponds to one edge.
 #'
-#' @param edges [a data frame] The miic$edges object returned by an execution
-#' of the miic function. It represents the result of the skeleton step. If this
-#' object is provided, the skeleton step will not be done, and the required
-#' orientation will be performed using this edges data frame.
-#'
 #' @param n_shuffles [a positive integer] The number of shufflings of
 #' the original dataset in order to evaluate the edge specific confidence
 #' ratio of all inferred edges.
@@ -112,13 +107,6 @@
 #' @param conf_threshold [a positive floating point] The threshold used
 #' to filter the less probable edges following the skeleton step. See Verny
 #' \emph{et al.}, PLoS Comp. Bio. 2017.
-#'
-#' @param confList [a data frame] An optional data frame containing the
-#' confFile data frame returned by a miic execution. It is useful when a
-#' second run of the same input data set has to be performed with a different
-#' confidence threshold and the same n_shuffles value. In
-#' this way the computations based on the randomized dataset do not need to
-#' be performed again, and the values in this data frame are used instead.
 #'
 #' @param sample_weights [a numeric vector]
 #' An optional vector containing the weight of each observation.
@@ -316,10 +304,8 @@ miic <- function(input_data,
                  propagation = TRUE,
                  latent = c("no", "yes", "orientation"),
                  n_eff = -1,
-                 edges = NULL,
                  n_shuffles = 0,
                  conf_threshold = 0,
-                 confList = NULL,
                  sample_weights = NULL,
                  test_mar = TRUE,
                  consistent = c("no", "orientation", "skeleton"),
@@ -391,11 +377,6 @@ miic <- function(input_data,
         "number of samples."
       )
     )
-  }
-  # skip skeleton step when edges are present
-  skeleton <- TRUE
-  if (!is.null(edges)) {
-    skeleton <- FALSE
   }
 
   if (propagation != TRUE && propagation != FALSE) {

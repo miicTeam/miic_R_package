@@ -16,10 +16,8 @@ miic(
   propagation = TRUE,
   latent = c("no", "yes", "orientation"),
   n_eff = -1,
-  edges = NULL,
   n_shuffles = 0,
   conf_threshold = 0,
-  confList = NULL,
   sample_weights = NULL,
   test_mar = TRUE,
   consistent = c("no", "orientation", "skeleton"),
@@ -100,11 +98,6 @@ Monte Carlo sampling approaches, the effective number of independent samples
 (Verny \emph{et al.}, PLoS Comp. Bio. 2017). This \emph{effective} number \emph{n_eff}
 of \emph{independent} samples can be provided using this parameter.}
 
-\item{edges}{[a data frame] The miic$edges object returned by an execution
-of the miic function. It represents the result of the skeleton step. If this
-object is provided, the skeleton step will not be done, and the required
-orientation will be performed using this edges data frame.}
-
 \item{n_shuffles}{[a positive integer] The number of shufflings of
 the original dataset in order to evaluate the edge specific confidence
 ratio of all inferred edges.}
@@ -112,13 +105,6 @@ ratio of all inferred edges.}
 \item{conf_threshold}{[a positive floating point] The threshold used
 to filter the less probable edges following the skeleton step. See Verny
 \emph{et al.}, PLoS Comp. Bio. 2017.}
-
-\item{confList}{[a data frame] An optional data frame containing the
-confFile data frame returned by a miic execution. It is useful when a
-second run of the same input data set has to be performed with a different
-confidence threshold and the same n_shuffles value. In
-this way the computations based on the randomized dataset do not need to
-be performed again, and the values in this data frame are used instead.}
 
 \item{sample_weights}{[a numeric vector]
 An optional vector containing the weight of each observation.}
