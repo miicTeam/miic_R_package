@@ -497,16 +497,9 @@ miic <- function(input_data,
       results = res,
       true_edges = true_edges,
       state_order = state_order,
+      consensus_threshold = consensus_threshold,
       verbose = verbose
     )
-
-    # If consistent parameter is turned on and the result graph is a union of
-    # more than one inconsistent graphs, get the possible orientations of each
-    # edge with the correponding frequencies and the consensus graph.
-    if (length(res$adj_matrices) > 1) {
-      res <- setConsensusGraph(res, consensus_threshold)
-    }
   }
-
-  res
+  return(res)
 }

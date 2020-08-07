@@ -1,20 +1,19 @@
 summarizeResults <- function(observations = NULL, results = NULL,
                              true_edges = NULL, state_order = NULL,
-                             verbose = FALSE) {
+                             consensus_threshold = 0.8, verbose = FALSE) {
   # Reduced list of edges that will be summarized. There are 3 categories:
   # - Edges that exist in the miic reconstruction (oriented or not)
   # - Edges that were conditioned away with a non-empty separating set
   # - If ground truth is known, any other positive edge
   summarized_edges <- matrix(ncol = 2)
   adj_matrix <- results$adj_matrix
+  var_names <- colnames(adj_matrix)
 
   # List of edges found by miic
   half_adj_matrix = adj_matrix
   half_adj_matrix[ lower.tri(adj_matrix, diag = TRUE) ] <- 0
   predicted_edges <- which(half_adj_matrix != 0, arr.ind = T, useNames = F)
-  predicted_edges <- apply(predicted_edges, 2, function(x) {
-    colnames(adj_matrix)[x]
-  })
+  predicted_edges <- apply(predicted_edges, 2, function(x) { var_names[x] })
   # Add to summarized edges list
   summarized_edges <- predicted_edges
 
@@ -125,8 +124,8 @@ summarizeResults <- function(observations = NULL, results = NULL,
       ncol = dim(adj_matrix)[1],
       nrow = dim(adj_matrix)[1]
     )
-    colnames(true_adj_matrix) <- colnames(adj_matrix)
-    rownames(true_adj_matrix) <- colnames(adj_matrix)
+    colnames(true_adj_matrix) <- var_names
+    rownames(true_adj_matrix) <- var_names
     for (i in 1:nrow(true_edges)) {
       true_edge <- as.character(unlist(true_edges[i, ]))
       true_adj_matrix[true_edge[1], true_edge[2]] <- 2
@@ -164,57 +163,31 @@ summarizeResults <- function(observations = NULL, results = NULL,
     paste(findProba(summary, orientation_probabilities, i), collapse = ";")
   })
 
+  # If consistent parameter is turned on and the result graph is a union of
+  # more than one inconsistent graphs, get the possible orientations of each
+  # edge with the correponding frequencies and the consensus status.
+  if (length(results$adj_matrices) > 1) {
+    edge_stats_table <- apply(summary, 1,
+      get_edge_stats_table,
+      var_names,
+      results$adj_matrices
+    )
+    target <- which(names(summary) == "infOrt")[1]
+    summary <- cbind(
+      summary[, 1:target, drop = FALSE],
+      consensus = sapply(edge_stats_table,
+        get_consensus_status,
+        consensus_threshold
+      ),
+      edge_stats = sapply(edge_stats_table, get_edge_stats_str),
+      summary[, (target + 1):length(summary), drop = FALSE]
+    )
+  }
+
   # Sort summary by log confidence and return it
   summary <- summary[order(summary$log_confidence, decreasing = T), ]
   rownames(summary) <- c()
   return(summary)
-}
-
-setConsensusGraph <- function(results, consensus_threshold) {
-  summary <- results$all.edges.summary
-  edge_stats_table <- apply(summary, 1, get_edge_stats_table,
-                            colnames(results$adj_matrix), results$adj_matrices)
-  results$adj_consensus <- getConsensusGraph(results$adj_matrix,
-                                             summary,
-                                             edge_stats_table,
-                                             consensus_threshold)
-  target <- which(names(summary) == "infOrt")[1]
-  results$all.edges.summary <- cbind(
-    summary[, 1:target, drop = FALSE],
-    edge_stats = sapply(edge_stats_table, function(t) {
-        t <- sapply(t, scales::percent_format())
-        return(paste(t, "(", names(t), ")", sep = "", collapse = ";"))
-    }),
-    summary[, (target + 1):length(summary), drop = FALSE]
-  )
-  return(results)
-}
-
-getConsensusGraph <- function(adj_matrix, summary, table_list,
-                              consensus_threshold) {
-  var_names <- colnames(adj_matrix)
-  for (i in c(1:nrow(summary))) {
-    x <- match(summary[i, 1], var_names)
-    y <- match(summary[i, 2], var_names)
-    table <- table_list[[i]]
-    if (length(table) <= 1)
-      next
-    # table is sorted
-    if (table[[1]] < consensus_threshold) {
-      adj_matrix[x, y] <- 1
-      adj_matrix[y, x] <- 1
-    } else {
-      edge_status <- as.numeric(names(table)[[1]])
-      if (edge_status == 2 || edge_status == -2) {
-        adj_matrix[x, y] <- edge_status
-        adj_matrix[y, x] <- -edge_status
-      } else {
-        adj_matrix[x, y] <- edge_status
-        adj_matrix[y, x] <- edge_status
-      }
-    }
-  }
-  return(adj_matrix)
 }
 
 matrix_from_3_columns <- function(matrix, rows, columns, values) {
@@ -476,4 +449,19 @@ get_edge_stats_table <- function(row, var_names, adj_matrices) {
   t <- table(adj_matrices[index_1d,]) / n_cycle
   t <- t[order(t, decreasing = TRUE), drop = FALSE]
   return(t)
+}
+
+get_edge_stats_str <- function(stats_table) {
+  t <- sapply(stats_table, scales::percent_format())
+  # return a ";" separated string of format "percentage(orientation)"
+  return(paste(t, "(", names(t), ")", sep = "", collapse = ";"))
+}
+
+get_consensus_status <- function(stats_table, consensus_threshold) {
+  if (length(stats_table) < 1)
+    return(NA)
+  # stats_table is sorted, stats_table[[1]] is the highest frequency
+  if (stats_table[[1]] < consensus_threshold)
+    return(1)  # undirected
+  return(as.numeric(names(stats_table)[[1]]))
 }
