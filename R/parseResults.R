@@ -166,11 +166,17 @@ summarizeResults <- function(observations = NULL, results = NULL,
   # If consistent parameter is turned on and the result graph is a union of
   # more than one inconsistent graphs, get the possible orientations of each
   # edge with the correponding frequencies and the consensus status.
-  if (ncol(results$adj_matrices) > 1) {
-    edge_stats_table <- apply(summary, 1,
+  if (!is.null(results$adj_matrices) && ncol(results$adj_matrices) > 1) {
+    # use split to turn summary data frame to list only to be able to use sapply
+    # with simplify = FALSE, otherwise apply() will force simplification, which
+    # is annoying and surprising when the return value of the function is the
+    # same for all rows. Theoretically it can never happen here, but this is R!
+    # Always be careful.
+    edge_stats_table <- sapply(split(summary, seq(nrow(summary))),
       get_edge_stats_table,
       var_names,
-      results$adj_matrices
+      results$adj_matrices,
+      simplify = FALSE
     )
     target <- which(names(summary) == "infOrt")[1]
     summary <- cbind(
