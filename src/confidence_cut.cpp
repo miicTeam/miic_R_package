@@ -35,9 +35,11 @@ void setConfidence(Environment& environment) {
   std::set<int> columns_to_shuffle;
   for (int i = 1; i < environment.n_nodes; ++i) {
     for (int j = 0; j < i; ++j) {
-      if (!environment.edges[i][j].status) continue;
-      environment.edges[i][j].shared_info->exp_shuffle = 0;
-      edge_list.emplace_back(i, j, environment.edges[i][j]);
+      auto& edge = environment.edges[i][j];
+      if (!edge.status || edge.shared_info->exp_shuffle != -1)
+        continue;
+      edge.shared_info->exp_shuffle = 0;
+      edge_list.emplace_back(i, j, edge);
       columns_to_shuffle.insert(j);
     }
   }
