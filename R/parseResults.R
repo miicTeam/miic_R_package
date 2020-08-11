@@ -145,6 +145,7 @@ summarizeResults <- function(observations = NULL, results = NULL,
   summary[, c("sign", "partial_correlation")] <- compute_partial_correlation(
     summary, observations, state_order
   )
+  summary$partial_correlation <- as.numeric(summary$partial_correlation)
 
   orientation_probabilities <- results$orientations.prob
   # isCausal considers whether the source node of an oriented edge is also
@@ -196,11 +197,17 @@ summarizeResults <- function(observations = NULL, results = NULL,
   return(summary)
 }
 
-matrix_from_3_columns <- function(matrix, rows, columns, values) {
-  g <- igraph::graph.data.frame(matrix[, c(rows, columns, values)],
-    directed = FALSE
-  )
-  igraph::get.adjacency(g, attr = values, sparse = FALSE)
+matrix_from_3_columns <- function(df, rows, columns, values) {
+  x = df[[rows]]
+  y = df[[columns]]
+  nodes = unique(c(x,y))
+  with(df, {
+  out <- matrix(0, nrow=length(nodes), ncol=length(nodes),
+                dimnames=list(nodes, nodes))
+  out[cbind(x, y)] <- df[[values]]
+  out[cbind(y, x)] <- df[[values]]
+  out
+  })
 }
 
 fill_summary_column <- function(summary, matrix, rows, columns, values) {

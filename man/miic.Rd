@@ -268,9 +268,10 @@ miic.res <- miic(
   n_shuffles = 10, conf_threshold = 0.001
 )
 
-# plot graph
-miic.plot(miic.res)
 \dontrun{
+# plot graph
+library(igraph)
+plot(getIgraph(miic.res)) # Uses plot.igraph
 
 # write graph to graphml format. Note that to correctly visualize
 # the network we created the miic style for Cytoscape (http://www.cytoscape.org/).
@@ -287,7 +288,7 @@ miic.res <- miic(
 )
 
 # plot graph
-miic.plot(miic.res, igraphLayout = igraph::layout_on_grid)
+plot(getIgraph(miic.res))
 
 # write graph to graphml format. Note that to correctly visualize
 # the network we created the miic style for Cytoscape (http://www.cytoscape.org/).
@@ -303,7 +304,7 @@ miic.res <- miic(
 )
 
 # plot graph
-miic.plot(miic.res)
+plot(getIgraph(miic.res))
 
 # write graph to graphml format. Note that to correctly visualize
 # the network we created the miic style for Cytoscape (http://www.cytoscape.org/).
