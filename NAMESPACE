@@ -2,8 +2,8 @@
 
 export(discretizeMDL)
 export(discretizeMutual)
+export(getIgraph)
 export(miic)
-export(miic.plot)
 export(miic.write.network.cytoscape)
 export(miic.write.style.cytoscape)
 import(Rcpp)

@@ -1,6 +1,6 @@
 Package: miic
 Title: Learning Causal or Non-Causal Graphical Models Using Information Theory
-Version: 1.4.2.9000
+Version: 1.5.0
 Authors@R:
     c(person(given = "Vincent",
              family = "Cabeli",
@@ -46,12 +46,13 @@ License: GPL (>= 2)
 URL: https://github.com/miicTeam/miic_R_package
 BugReports: https://github.com/miicTeam/miic_R_package/issues
 Imports:
-    igraph,
     ppcor,
     Rcpp,
     scales,
-    stats
+    stats,
 Suggests:
+    igraph,
+    grDevices,
     ggplot2 (>= 3.3.0),
     gridExtra
 LinkingTo:
