@@ -253,7 +253,7 @@
 #'
 #' # plot graph
 #' if(require(igraph)) {
-#'  plot(miic.res)
+#'  plot(miic.res, method="igraph")
 #' }
 #'
 #' \dontrun{
@@ -516,7 +516,7 @@ miic <- function(input_data,
 #' Basic plot function of a miic network inference result
 #' 
 #' @description This function calls the generic \code{\link{miic.export}}
-#' function to build an igraph object from the resuts of a 
+#' function to build a plottable object from the resuts of a 
 #' \code{\link{miic}} call and plot it.
 #'
 #' @details See the documentation of \code{\link{miic.export}} and 
@@ -524,8 +524,11 @@ miic <- function(input_data,
 #'
 #' @param x [a miic graph object]
 #' The graph object returned by the miic execution.
-#' @param \dots Additional plotting parameters. See 
-#' \code{\link[igraph]{igraph.plotting}} for the complete list.
+#' @param method A string representing the plotting method. Currently only "igraph" 
+#' is supported. See \code{\link{miic.export}} for details.
+#' @param \dots Additional plotting parameters. See the corresponding plot function
+#' for the complete list.
+#' For igraph, see \code{\link[igraph]{igraph.plotting}}.
 #'
 #' @export
 #'
@@ -533,14 +536,18 @@ miic <- function(input_data,
 #' \code{\link{getIgraph}} for igraph export,
 #' \code{\link[igraph]{igraph.plotting}}
 #'
-plot.miic = function(x, ...){
+plot.miic = function(x, method='igraph', ...){
   if (class(x) != "miic"){
     stop("Not a miic object.")
   }
-  if (base::requireNamespace("igraph", quietly = TRUE)) {
-    igraph::plot.igraph(miic.export(x, 'igraph'), ...)
+  if (method == 'igraph'){
+    if (base::requireNamespace("igraph", quietly = TRUE)) {
+      igraph::plot.igraph(miic.export(x, 'igraph'), ...)
+    } else {
+      stop("igraph is required for basic plot functionality. See ?miic.export for
+            possible plotting methods.")
+    }
   } else {
-    stop("igraph is required for basic plot functionality. See ?miic.export for
-          possible plotting methods.")
+    stop("Method not supported")
   }
 }
