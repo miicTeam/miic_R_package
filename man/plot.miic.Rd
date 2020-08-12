@@ -8,23 +8,22 @@
 }
 \arguments{
 \item{x}{[a miic graph object]
-The graph object returned by the miic execution.}
+The graph object returned by \code{\link{miic}}.}
 
-\item{method}{A string representing the plotting method. Currently only "igraph" 
-is supported. See \code{\link{miic.export}} for details.}
+\item{method}{A string representing the plotting method. Default to "igraph".
+Currently only "igraph" is supported.}
 
 \item{\dots}{Additional plotting parameters. See the corresponding plot function
 for the complete list.
 For igraph, see \code{\link[igraph]{igraph.plotting}}.}
 }
 \description{
-This function calls the generic \code{\link{miic.export}}
-function to build a plottable object from the resuts of a 
-\code{\link{miic}} call and plot it.
+This function calls \code{\link{miic.export}} to build a
+plottable object from the result returned by \code{\link{miic}} and plot it.
 }
 \details{
-See the documentation of \code{\link{miic.export}} and 
-\code{\link{getIgraph}} for further details. Requires igraph.
+See the documentation of \code{\link{miic.export}} for further
+details.
 }
 \seealso{
 \code{\link{miic.export}} for generic exports,

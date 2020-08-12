@@ -3,7 +3,6 @@
 S3method(plot,miic)
 export(discretizeMDL)
 export(discretizeMutual)
-export(getIgraph)
 export(miic)
 export(miic.export)
 export(miic.write.network.cytoscape)

@@ -1,21 +1,22 @@
 #' Export miic result to different plotting methods
 #'
-#' @description This function returns an object built from the results
-#' of the miic main function that is ready to be fed to different
-#' plotting methods.
+#' @description This function creates an object built from the result returned
+#' by \code{\link{miic}} that is ready to be fed to different plotting methods.
 #'
 #' @details See the details of specific function for each method.
-#' 
+#' For igraph, see \code{\link{getIgraph}}.
+#'
 #' @param miic.res [a miic graph object]
 #' The graph object returned by the miic execution.
-#' @param method A string representing the plotting method. Currently only "igraph" is supported
-#' 
+#' @param method A string representing the plotting method.
+#' Currently only "igraph" is supported.
+#'
 #' @export
-#' 
+#'
 #' @return A graph object adapted to the method.
-#' 
+#'
 #' @seealso
-#' \code{\link{getIgraph}} for returning an igraph object built from the results.
+#' \code{\link{getIgraph}}
 #'
 #' @examples
 #' \dontrun{
@@ -35,7 +36,7 @@ miic.export <- function(miic.res, method = NULL) {
   }
   if (is.null(method)) {
     stop("Plotting method is required")
-  } 
+  }
   if (method == "igraph") {
     return(getIgraph(miic.res))
   } else {
@@ -45,8 +46,9 @@ miic.export <- function(miic.res, method = NULL) {
 
 
 #' Igraph plotting function for miic
-#' @description This functions returns an igraph object built from the results
-#' of the miic main function.
+#'
+#' @description This functions returns an igraph object built from the result
+#' returned by \code{\link{miic}}.
 #'
 #' @details
 #' Edges attributes are passed to the igraph graph and can be accessed with
@@ -58,8 +60,6 @@ miic.export <- function(miic.res, method = NULL) {
 #'
 #' @param miic.res [a miic graph object]
 #' The graph object returned by the miic execution.
-#' 
-#' @export
 #'
 #' @return An igraph graph object.
 #'
@@ -88,10 +88,10 @@ miic.export <- function(miic.res, method = NULL) {
 
 getIgraph <- function(miic.res) {
   if (is.null(miic.res$all.edges.summary)) {
-    stop("The inferred network does not exist")
+    stop("The inferred network does not exist.")
   }
   if (!base::requireNamespace("igraph", quietly = TRUE)) {
-    stop("igraph package is required to use this function")
+    stop("Package 'igraph' is required.")
   }
 
   #### summary
@@ -114,16 +114,17 @@ getIgraph <- function(miic.res) {
 
   igraph::E(ig_graph)$width <-
     log10(igraph::E(ig_graph)$info_cond - igraph::E(ig_graph)$cplx)
-  
+
   # Negative pcors are blue, null is dark grey and positive are red
   igraph::E(ig_graph)$color <- "darkgray"
   pcor_palette = grDevices::colorRampPalette(c("blue", "darkgrey", "red"))
-  edge_colors_indices = sapply(igraph::E(ig_graph)$partial_correlation,
-                               function(pcor) {
-                                 ifelse(is.na(pcor), 100, abs(round(pcor * 100)) + 100 * (pcor > 0))
-                               })
-  igraph::E(ig_graph)$color <-
-    pcor_palette(200)[edge_colors_indices]
+  edge_colors_indices = sapply(
+    igraph::E(ig_graph)$partial_correlation,
+    function(pcor) {
+      ifelse(is.na(pcor), 100, abs(round(pcor * 100)) + 100 * (pcor > 0))
+    }
+  )
+  igraph::E(ig_graph)$color <- pcor_palette(200)[edge_colors_indices]
 
   return(ig_graph)
 }
