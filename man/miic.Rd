@@ -270,7 +270,7 @@ miic.res <- miic(
 
 # plot graph
 if(require(igraph)) {
- plot(miic.res)
+ plot(miic.res, method="igraph")
 }
 
 \dontrun{

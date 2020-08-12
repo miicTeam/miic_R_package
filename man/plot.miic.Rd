@@ -4,18 +4,22 @@
 \alias{plot.miic}
 \title{Basic plot function of a miic network inference result}
 \usage{
-\method{plot}{miic}(x, ...)
+\method{plot}{miic}(x, method = "igraph", ...)
 }
 \arguments{
 \item{x}{[a miic graph object]
 The graph object returned by the miic execution.}
 
-\item{\dots}{Additional plotting parameters. See 
-\code{\link[igraph]{igraph.plotting}} for the complete list.}
+\item{method}{A string representing the plotting method. Currently only "igraph" 
+is supported. See \code{\link{miic.export}} for details.}
+
+\item{\dots}{Additional plotting parameters. See the corresponding plot function
+for the complete list.
+For igraph, see \code{\link[igraph]{igraph.plotting}}.}
 }
 \description{
 This function calls the generic \code{\link{miic.export}}
-function to build an igraph object from the resuts of a 
+function to build a plottable object from the resuts of a 
 \code{\link{miic}} call and plot it.
 }
 \details{
