@@ -145,6 +145,7 @@ summarizeResults <- function(observations = NULL, results = NULL,
   summary[, c("sign", "partial_correlation")] <- compute_partial_correlation(
     summary, observations, state_order
   )
+  summary$partial_correlation <- as.numeric(summary$partial_correlation)
 
   orientation_probabilities <- results$orientations.prob
   # isCausal considers whether the source node of an oriented edge is also
