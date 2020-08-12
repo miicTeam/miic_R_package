@@ -251,11 +251,12 @@
 #'   n_shuffles = 10, conf_threshold = 0.001
 #' )
 #'
-#' \dontrun{
 #' # plot graph
-#' library(igraph)
-#' plot(getIgraph(miic.res)) # Uses plot.igraph
+#' if(require(igraph)) {
+#'  plot(miic.res)
+#' }
 #'
+#' \dontrun{
 #' # write graph to graphml format. Note that to correctly visualize
 #' # the network we created the miic style for Cytoscape (http://www.cytoscape.org/).
 #'
@@ -271,7 +272,9 @@
 #' )
 #'
 #' # plot graph
-#' plot(getIgraph(miic.res))
+#' if(require(igraph)) {
+#'  plot(miic.res)
+#' }
 #'
 #' # write graph to graphml format. Note that to correctly visualize
 #' # the network we created the miic style for Cytoscape (http://www.cytoscape.org/).
@@ -287,7 +290,9 @@
 #' )
 #'
 #' # plot graph
-#' plot(getIgraph(miic.res))
+#' if(require(igraph)) {
+#'  plot(miic.res)
+#' }
 #'
 #' # write graph to graphml format. Note that to correctly visualize
 #' # the network we created the miic style for Cytoscape (http://www.cytoscape.org/).
@@ -502,5 +507,40 @@ miic <- function(input_data,
       verbose = verbose
     )
   }
+  
+  class(res) <- "miic"
   return(res)
+}
+
+
+#' Basic plot function of a miic network inference result
+#' 
+#' @description This function calls the generic \code{\link{miic.export}}
+#' function to build an igraph object from the resuts of a 
+#' \code{\link{miic}} call and plot it.
+#'
+#' @details See the documentation of \code{\link{miic.export}} and 
+#' \code{\link{getIgraph}} for further details. Requires igraph.
+#'
+#' @param x [a miic graph object]
+#' The graph object returned by the miic execution.
+#' @param \dots Additional plotting parameters. See 
+#' \code{\link[igraph]{igraph.plotting}} for the complete list.
+#'
+#' @export
+#'
+#' @seealso \code{\link{miic.export}} for generic exports,
+#' \code{\link{getIgraph}} for igraph export,
+#' \code{\link[igraph]{igraph.plotting}}
+#'
+plot.miic = function(x, ...){
+  if (class(x) != "miic"){
+    stop("Not a miic object.")
+  }
+  if (base::requireNamespace("igraph", quietly = TRUE)) {
+    igraph::plot.igraph(miic.export(x, 'igraph'), ...)
+  } else {
+    stop("igraph is required for basic plot functionality. See ?miic.export for
+          possible plotting methods.")
+  }
 }
