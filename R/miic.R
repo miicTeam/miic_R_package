@@ -507,25 +507,24 @@ miic <- function(input_data,
       verbose = verbose
     )
   }
-  
+
   class(res) <- "miic"
   return(res)
 }
 
 
 #' Basic plot function of a miic network inference result
-#' 
-#' @description This function calls the generic \code{\link{miic.export}}
-#' function to build a plottable object from the resuts of a 
-#' \code{\link{miic}} call and plot it.
 #'
-#' @details See the documentation of \code{\link{miic.export}} and 
-#' \code{\link{getIgraph}} for further details. Requires igraph.
+#' @description This function calls \code{\link{miic.export}} to build a
+#' plottable object from the result returned by \code{\link{miic}} and plot it.
+#'
+#' @details See the documentation of \code{\link{miic.export}} for further
+#' details.
 #'
 #' @param x [a miic graph object]
-#' The graph object returned by the miic execution.
-#' @param method A string representing the plotting method. Currently only "igraph" 
-#' is supported. See \code{\link{miic.export}} for details.
+#' The graph object returned by \code{\link{miic}}.
+#' @param method A string representing the plotting method. Default to "igraph".
+#' Currently only "igraph" is supported.
 #' @param \dots Additional plotting parameters. See the corresponding plot function
 #' for the complete list.
 #' For igraph, see \code{\link[igraph]{igraph.plotting}}.
@@ -536,7 +535,7 @@ miic <- function(input_data,
 #' \code{\link{getIgraph}} for igraph export,
 #' \code{\link[igraph]{igraph.plotting}}
 #'
-plot.miic = function(x, method='igraph', ...){
+plot.miic = function(x, method = 'igraph', ...) {
   if (class(x) != "miic"){
     stop("Not a miic object.")
   }
@@ -544,10 +543,9 @@ plot.miic = function(x, method='igraph', ...){
     if (base::requireNamespace("igraph", quietly = TRUE)) {
       igraph::plot.igraph(miic.export(x, 'igraph'), ...)
     } else {
-      stop("igraph is required for basic plot functionality. See ?miic.export for
-            possible plotting methods.")
+      stop("Package 'igraph' is required.")
     }
   } else {
-    stop("Method not supported")
+    stop("Method not supported. See ?miic.export for supported methods.")
   }
 }

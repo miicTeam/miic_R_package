@@ -14,8 +14,8 @@ The graph object returned by the miic execution.}
 An igraph graph object.
 }
 \description{
-This functions returns an igraph object built from the results
-of the miic main function.
+This functions returns an igraph object built from the result
+returned by \code{\link{miic}}.
 }
 \details{
 Edges attributes are passed to the igraph graph and can be accessed with

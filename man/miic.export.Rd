@@ -10,18 +10,19 @@ miic.export(miic.res, method = NULL)
 \item{miic.res}{[a miic graph object]
 The graph object returned by the miic execution.}
 
-\item{method}{A string representing the plotting method. Currently only "igraph" is supported}
+\item{method}{A string representing the plotting method.
+Currently only "igraph" is supported.}
 }
 \value{
 A graph object adapted to the method.
 }
 \description{
-This function returns an object built from the results
-of the miic main function that is ready to be fed to different
-plotting methods.
+This function creates an object built from the result returned
+by \code{\link{miic}} that is ready to be fed to different plotting methods.
 }
 \details{
 See the details of specific function for each method.
+For igraph, see \code{\link{getIgraph}}.
 }
 \examples{
 \dontrun{
@@ -36,5 +37,5 @@ plot(g) # Default visualisation, calls igraph::plot.igraph()
 
 }
 \seealso{
-\code{\link{getIgraph}} for returning an igraph object built from the results.
+\code{\link{getIgraph}}
 }
