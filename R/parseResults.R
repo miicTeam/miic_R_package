@@ -225,8 +225,6 @@ fill_summary_column <- function(summary, matrix, rows, columns, values) {
 }
 
 compute_partial_correlation <- function(summary, observations, state_order) {
-  ai_matrix <- matrix_from_3_columns(summary, "x", "y", "ai")
-
   ppcor_results <- data.frame(
     sign = character(nrow(summary)),
     partial_correlation = numeric(nrow(summary)),
@@ -261,36 +259,36 @@ compute_partial_correlation <- function(summary, observations, state_order) {
   for (i in which(summary$type=="P")) {
     x <- summary[i, "x"]
     y <- summary[i, "y"]
+    ai <- summary[i, "ai"]  # String with Ais separated by comma, or NA
     ppcor_results[i, ] <- c("NA", NA)
 
-    ai <- ai_matrix[x, y] # String with Ais separated by comma, or NA
     if (is.na(ai)) {
       ai <- NULL
     } else {
-      ai <- unlist(strsplit(ai, ","))
+      ai <- unlist(strsplit(ai, ","))  # Character vector
     }
 
     if (!all(sapply(observations[, c(x, y, ai)], is.numeric))) next
 
-    non_na_rows <- apply(observations, 1, function(row, columns) {
-      !any(is.na(row[columns]))
-    }, c(x, y, ai))
+    if (is.null(ai)) {
+      OK <- stats::complete.cases(observations[, c(x, y)])
+      if (sum(OK) < 2) next
 
-    OK <- stats::complete.cases(observations[non_na_rows, x], observations[non_na_rows, y])
-    if (sum(OK) >= 2) {
-      if (!is.null(ai)) {
-        ai <- unlist(strsplit(ai, ",")) # Character vector
-        edge_res <- ppcor::pcor.test(observations[non_na_rows, x],
-          observations[non_na_rows, y],
-          observations[non_na_rows, ai],
-          method = "spearman"
-        )
-      } else {
-        edge_res <- stats::cor.test(observations[non_na_rows, x],
-          observations[non_na_rows, y],
-          method = "spearman"
-        )
-      }
+      edge_res <- stats::cor.test(
+        observations[OK, x],
+        observations[OK, y],
+        method = "spearman"
+      )
+    } else {
+      OK <- stats::complete.cases(observations[, c(x, y, ai)])
+      if (sum(OK) < 2) next
+
+      edge_res <- ppcor::pcor.test(
+        observations[OK, x],
+        observations[OK, y],
+        observations[OK, ai],
+        method = "spearman"
+      )
     }
 
     # Save sign and coef
