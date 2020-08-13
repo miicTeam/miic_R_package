@@ -1,5 +1,7 @@
 # Development version
 
+# v1.5.0
+
 ## Features
 - Add a column `consensus` to the reconstructed graph's edges summary associated
   with the option `consistent`, and a new parameter `consensus_threshold`
@@ -9,6 +11,10 @@
   edges.
 
 ## Fixes and improvements
+- Faster post processing in R
+
+- Rework plot functionality
+
 - Fix a bug in the orientation part about the log score
 
 - Refactor of the C++ code base (orientation).
