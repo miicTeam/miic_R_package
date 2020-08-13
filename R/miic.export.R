@@ -112,8 +112,11 @@ getIgraph <- function(miic.res) {
   igraph::V(ig_graph)$label.cex <- 0.8
   igraph::V(ig_graph)$size <- 12
 
+  min_width = 0.2
   igraph::E(ig_graph)$width <-
-    log10(igraph::E(ig_graph)$info_cond - igraph::E(ig_graph)$cplx)
+    pmax(log10(igraph::E(ig_graph)$info_cond - igraph::E(ig_graph)$cplx),
+         min_width)
+  igraph::E(ig_graph)$arrow.size <- scales::rescale(igraph::E(ig_graph)$width, to=c(0.2,1))
 
   # Negative pcors are blue, null is dark grey and positive are red
   igraph::E(ig_graph)$color <- "darkgray"
