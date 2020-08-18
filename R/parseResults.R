@@ -277,7 +277,8 @@ compute_partial_correlation <- function(summary, observations, state_order) {
       edge_res <- stats::cor.test(
         observations[OK, x],
         observations[OK, y],
-        method = "spearman"
+        method = "spearman",
+        exact = FALSE
       )
     } else {
       OK <- stats::complete.cases(observations[, c(x, y, ai)])
