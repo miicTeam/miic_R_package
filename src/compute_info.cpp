@@ -36,21 +36,20 @@ double* getAllInfoNEW(int* ptrAllData, const vector<int>& ptrAllLevels,
   int l, ok;
   int **sample, **sortedSample, **Opt_sortedSample;  //[N+1][7]
 
-  int iii;
   int nrow = sampleSize + 1;
   int ncol = 7;
 
   sample = (*memory).sample;
 
-  int* sampleWithZ = new int[sampleSize];
+  vector<int> sampleWithZ(sampleSize);
 
   sortedSample = (*memory).sortedSample;
 
   Opt_sortedSample = (*memory).Opt_sortedSample;
 
-  int nSample0, *nSample, *orderSample, *sampleKey;  //[N+1 elements: 0 to N]
+  int nSample0, *orderSample, *sampleKey;  //[N+1 elements: 0 to N]
 
-  nSample = (int*)malloc(nbrZi * sizeof(int));
+  vector<int> nSample(nbrZi);
   orderSample = (*memory).orderSample;
   sampleKey = (*memory).sampleKey;
 
@@ -158,17 +157,12 @@ double* getAllInfoNEW(int* ptrAllData, const vector<int>& ptrAllLevels,
   // Define the total number of variables (xi, xj, {ui}, {zi})
   nbrAllVar = (nbrUi + 2);
 
-  int **dBin, **Opt_dBin;  //[1][Nb_ui+2]
   nrow = 0 + 1;
   ncol = nbrAllVar + 1;
-  dBin = (int**)malloc(nrow * sizeof(int*));
-  for (iii = 0; iii < nrow; iii++) dBin[iii] = (int*)malloc(ncol * sizeof(int));
+  vector<vector<int>> dBin(nrow, vector<int>(ncol));
+  vector<vector<int>> Opt_dBin(dBin);
 
-  int* nbrLevCorrect = (int*)malloc(ncol * sizeof(int));
-
-  Opt_dBin = (int**)malloc(nrow * sizeof(int*));
-  for (iii = 0; iii < nrow; iii++)
-    Opt_dBin[iii] = (int*)malloc(ncol * sizeof(int));
+  vector<int> nbrLevCorrect(ncol);
 
 #if _MY_DEBUG_NEW
   Rprintf("\n# ---- Printed from C [getAllInfo]: ----\n");
@@ -622,7 +616,8 @@ double* getAllInfoNEW(int* ptrAllData, const vector<int>& ptrAllLevels,
 
       max_info_logC = testinfo_xy_ui;
       min_info_logC = max_info_logC;
-      for (j = 0; j < nbrAllVar; j++) Opt_dBin[0][j] = dBin[0][j];
+      for (j = 0; j < nbrAllVar; j++)
+        Opt_dBin[0][j] = dBin[0][j];
       if (nbrZi > 0) {
         for (k = 0; k <= nSample0; k++) {
           for (j = 0; j < 6; j++) {
@@ -1354,17 +1349,6 @@ double* getAllInfoNEW(int* ptrAllData, const vector<int>& ptrAllLevels,
   Rprintf("\n# =====> test after z \n");
 #endif  // _MY_DEBUG_NEW
 
-  for (i = 0; i < 1; i++) free(dBin[i]);
-  free(dBin);
-
-  for (i = 0; i < 1; i++) free(Opt_dBin[i]);
-  free(Opt_dBin);
-
-  free(nbrLevCorrect);
-  free(nSample);
-
-  delete[] sampleWithZ;
-
 #if _MY_DEBUG_NEW
   Rprintf("\n# =====> end getAllInfoNEW \n");
   if (nbrZi == 0) {
@@ -1379,7 +1363,7 @@ double* getAllInfoNEW(int* ptrAllData, const vector<int>& ptrAllLevels,
   }
 #endif  // _MY_DEBUG_NEW
 
-  return (ptrRetValues);
+  return ptrRetValues;
 }
 
 }  // namespace computation
