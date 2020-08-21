@@ -196,16 +196,6 @@ struct MemorySpace {
   int** Nxuiz;
   int* bridge;
   double* Pxyuiz;
-  // continuous data
-  int* sample_is_not_NA;
-  int* NAs_count;
-
-  int** dataNumeric_red;
-  int** dataNumericIdx_red;
-
-  int* AllLevels_red;
-  int* cnt_red;
-  int* posArray_red;
 };
 
 struct ExecutionTime {

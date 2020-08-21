@@ -197,22 +197,6 @@ void createMemorySpace(Environment& environment, MemorySpace& m) {
     m.Nx = (int*)calloc((bin_max + 1), sizeof(int));
     m.bridge = (int*)calloc(sampleSize + 2, sizeof(int));
   }
-  // continuous part
-  if (std::any_of(environment.is_continuous.begin(),
-          environment.is_continuous.end(), [](int i) { return i == 1; })) {
-    m.sample_is_not_NA = (int*)new int[environment.n_samples];
-    m.NAs_count = (int*)new int[environment.n_samples];
-    m.dataNumericIdx_red = (int**)new int*[(MAX_NBRUI + 3)];
-    m.dataNumeric_red = (int**)new int*[(MAX_NBRUI + 3)];
-
-    for (int j = 0; (j < MAX_NBRUI + 3); j++) {
-      m.dataNumericIdx_red[j] = (int*)new int[environment.n_samples];
-      m.dataNumeric_red[j] = (int*)new int[environment.n_samples];
-    }
-    m.AllLevels_red = (int*)new int[(MAX_NBRUI + 3)];
-    m.cnt_red = (int*)new int[(MAX_NBRUI + 3)];
-    m.posArray_red = (int*)new int[(MAX_NBRUI + 3)];
-  }
 }
 
 void deleteMemorySpace(Environment& environment, MemorySpace& m) {
@@ -249,21 +233,6 @@ void deleteMemorySpace(Environment& environment, MemorySpace& m) {
     free(m.Nxui);
     free(m.Nx);
     free(m.bridge);
-  }
-  // cotinuous part
-  if (std::any_of(environment.is_continuous.begin(),
-          environment.is_continuous.end(), [](int i) { return i == 1; })) {
-    delete[] m.sample_is_not_NA;
-    delete[] m.NAs_count;
-    delete[] m.AllLevels_red;
-    delete[] m.cnt_red;
-    delete[] m.posArray_red;
-    for (int i = 0; i < MAX_NBRUI + 3; i++) {
-      delete[] m.dataNumericIdx_red[i];
-      delete[] m.dataNumeric_red[i];
-    }
-    delete[] m.dataNumericIdx_red;
-    delete[] m.dataNumeric_red;
   }
 }
 
