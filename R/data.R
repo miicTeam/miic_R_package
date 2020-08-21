@@ -12,7 +12,7 @@
 #' @keywords datasets
 #'
 #' @references Moignard et al. (2015) Nat Biotechnol 33(3):269-76
-#' (\href{https://www.ncbi.nlm.nih.gov/pubmed/25664528}{PubMed link})
+#' (\href{https://pubmed.ncbi.nlm.nih.gov/25355519/}{PubMed link})
 #'
 #' @keywords data
 NULL
@@ -34,7 +34,7 @@ NULL
 #' @keywords datasets
 #'
 #' @references Forbes SA, Beare D, Gunasekaran P, Leung K, Bindal N, et al. (2015)
-#' Nucleic Acids Res 43:D805–D811. (\href{https://www.ncbi.nlm.nih.gov/pubmed/25355519}{PubMed link})
+#' Nucleic Acids Res 43:D805–D811. (\href{https://pubmed.ncbi.nlm.nih.gov/25355519/}{PubMed link})
 #'
 #' @keywords data
 NULL
@@ -55,7 +55,7 @@ NULL
 #' @keywords datasets
 #'
 #' @references Forbes SA, Beare D, Gunasekaran P, Leung K, Bindal N, et al. (2015)
-#' Nucleic Acids Res 43:D805–D811. (\href{https://www.ncbi.nlm.nih.gov/pubmed/25355519}{PubMed link})
+#' Nucleic Acids Res 43:D805–D811. (\href{https://pubmed.ncbi.nlm.nih.gov/25355519/}{PubMed link})
 #'
 #' @keywords data
 NULL

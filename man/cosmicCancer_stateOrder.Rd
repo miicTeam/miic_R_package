@@ -17,7 +17,7 @@ and includes 204 somatic mutations (from whole exome sequencing) and expression
 }
 \references{
 Forbes SA, Beare D, Gunasekaran P, Leung K, Bindal N, et al. (2015)
-Nucleic Acids Res 43:D805–D811. (\href{https://www.ncbi.nlm.nih.gov/pubmed/25355519}{PubMed link})
+Nucleic Acids Res 43:D805–D811. (\href{https://pubmed.ncbi.nlm.nih.gov/25355519/}{PubMed link})
 }
 \keyword{data}
 \keyword{datasets}
