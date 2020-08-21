@@ -179,23 +179,45 @@ struct CacheScoreValue {
   double cplx;
 };
 
-struct MemorySpace {
-  int max_level;
-  int** sample;
-  int** sortedSample;
-  int** Opt_sortedSample;
-  int* orderSample;
-  int* sampleKey;
-  int* Nxyuiz;
-  int* Nyuiz;
-  int* Nuiz;
-  int* Nz;
-  int* Ny;
-  int* Nxui;
-  int* Nx;
-  int** Nxuiz;
-  int* bridge;
-  double* Pxyuiz;
+class MemorySpace {
+ public:
+  Grid2d<int> sample;
+  Grid2d<int> sortedSample;
+  Grid2d<int> Opt_sortedSample;
+  vector<int> orderSample;
+  vector<int> sampleKey;
+  vector<int> Nyuiz;
+  vector<int> Nuiz;
+  vector<int> Nz;
+  vector<int> Ny;
+  vector<int> Nxui;
+  vector<int> Nx;
+  Grid2d<int> Nxuiz;
+  vector<int> bridge;
+  vector<double> Pxyuiz;
+
+ public:
+  MemorySpace(int n_nodes, int n_samples, int max_level)
+      : sample(n_samples + 1, 7),
+        sortedSample(n_samples + 1, 7),
+        Opt_sortedSample(n_samples + 1, 7),
+        orderSample(n_samples + 2),
+        sampleKey(n_samples + 2),
+        Nyuiz(max_level + 1),
+        Nuiz(max_level + 1),
+        Nz(max_level + 1),
+        Ny(max_level + 1),
+        Nxui(max_level + 1),
+        Nx(max_level + 1),
+        Nxuiz(max_level + 1, max_level + 1),
+        bridge(n_samples + 2),
+        Pxyuiz(max_level + 1) {}
+
+  MemorySpace() = default;
+  MemorySpace(const MemorySpace&) = default;
+  MemorySpace(MemorySpace&&) = default;
+  MemorySpace& operator=(const MemorySpace&) = default;
+  MemorySpace& operator=(MemorySpace&&) = default;
 };
 
 struct ExecutionTime {

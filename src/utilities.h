@@ -9,8 +9,6 @@ namespace miic {
 namespace utility {
 using TimePoint = std::chrono::time_point<std::chrono::steady_clock>;
 
-void createMemorySpace(structure::Environment&, structure::MemorySpace&);
-void deleteMemorySpace(structure::Environment&, structure::MemorySpace&);
 std::vector<std::vector<std::string>> getEdgesInfoTable(
     const structure::Environment&);
 std::string toNameString(
@@ -18,7 +16,8 @@ std::string toNameString(
 std::vector<std::vector<int>> getAdjMatrix(const structure::Environment&);
 void sort2arraysConfidence(
     int len, const std::vector<int>& a, std::vector<int>& brr);
-void sort2arrays(int len, int a[], int brr[], int bridge[]);
+void sort2arrays(int len, std::vector<int>& a, std::vector<int>& brr,
+    std::vector<int>& bridge);
 double ramanujan(int n);
 TimePoint getLapStartTime();
 double getLapInterval(TimePoint);

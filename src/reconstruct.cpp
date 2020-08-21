@@ -24,12 +24,6 @@ List empty_results() { return List::create(_["interrupted"] = true); }
 List reconstruct(List input_data, List arg_list) {
   Environment environment(input_data, arg_list);
 
-  environment.memoryThreads = new MemorySpace[environment.n_threads];
-  for (int i = 0; i < environment.n_threads; i++) {
-    createMemorySpace(environment, environment.memoryThreads[i]);
-  }
-  createMemorySpace(environment, environment.m);
-
   auto lap_start = getLapStartTime();
   Rcout << "Search all pairs for unconditional independence relations...\n";
   // Initialize skeleton, find unconditional independence
@@ -158,12 +152,6 @@ List reconstruct(List input_data, List arg_list) {
     result.push_back(cycle_tracker.getAdjMatrices(size), "adj_matrices");
     result.push_back(is_consistent, "is_consistent");
   }
-
-  for (int i = 0; i < environment.n_threads; i++) {
-    deleteMemorySpace(environment, environment.memoryThreads[i]);
-  }
-  deleteMemorySpace(environment, environment.m);
-  delete[] environment.memoryThreads;
 
   return result;
 }

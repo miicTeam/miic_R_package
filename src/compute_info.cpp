@@ -34,24 +34,23 @@ double* getAllInfoNEW(int* ptrAllData, const vector<int>& ptrAllLevels,
 
   int bin_max = 100, MDL = 0, TRUE = 1, FALSE = 0;
   int l, ok;
-  int **sample, **sortedSample, **Opt_sortedSample;  //[N+1][7]
 
   int nrow = sampleSize + 1;
   int ncol = 7;
 
-  sample = (*memory).sample;
+  // [N+1][7]
+  auto& sample = (*memory).sample;
+  auto& sortedSample = (*memory).sortedSample;
+  auto& Opt_sortedSample = (*memory).Opt_sortedSample;
 
   vector<int> sampleWithZ(sampleSize);
 
-  sortedSample = (*memory).sortedSample;
-
-  Opt_sortedSample = (*memory).Opt_sortedSample;
-
-  int nSample0, *orderSample, *sampleKey;  //[N+1 elements: 0 to N]
+  int nSample0;
 
   vector<int> nSample(nbrZi);
-  orderSample = (*memory).orderSample;
-  sampleKey = (*memory).sampleKey;
+  //[N+1 elements: 0 to N]
+  auto& orderSample = (*memory).orderSample;
+  auto& sampleKey = (*memory).sampleKey;
 
   int bin, PBin, Prui, increment, X, Y, Z;
   int ptrzi, zi, z;
@@ -66,33 +65,30 @@ double* getAllInfoNEW(int* ptrAllData, const vector<int>& ptrAllLevels,
 
   int NNxyui, NNxyuiz, NNxyuizl, Ntot;  // for rescaling NML change 20160228
 
-  int *Nyuiz, *Nuiz, *Nz;  //[Z]
-  double* Pxyuiz = (*memory).Pxyuiz;
+  auto& Pxyuiz = (*memory).Pxyuiz;
 
-  int* bridge = (*memory).bridge;
+  auto& bridge = (*memory).bridge;
 
-  Nyuiz = (*memory).Nyuiz;
-  Nuiz = (*memory).Nuiz;
-  Nz = (*memory).Nz;
+  // [Z]
+  auto& Nyuiz = (*memory).Nyuiz;
+  auto& Nuiz = (*memory).Nuiz;
+  auto& Nz = (*memory).Nz;
   int Nzs, Nuizs, Nyuizs, Nxyuizs, Nxuizs;
 
   double Pxyuizl;
   int Nyuizl, Nuizl, Nzl;  //[Z]
 
-  int* Ny;
-  Ny = (*memory).Ny;
+  auto& Ny = (*memory).Ny;
   int Nyj, Nys;  //[Y]
 
-  int *Nxui, *Nx;  //[X]
-  Nxui = (*memory).Nxui;
-  Nx = (*memory).Nx;
+  // [X]
+  auto& Nxui = (*memory).Nxui;
+  auto& Nx = (*memory).Nx;
   int Nxuij, Nxj, Nxuis, Nxs;  //[X]
-
-  int** Nxuiz;  //[X][Z]
 
   nrow = bin_max + 1;
   ncol = bin_max + 1;
-  Nxuiz = (*memory).Nxuiz;
+  auto& Nxuiz = (*memory).Nxuiz;  // [X][Z]
   int Nxuizjl;  //[X][Z]
 
   double info_xui_y, info_yui_x, info_ui_y, info_ui_x;
@@ -237,7 +233,7 @@ double* getAllInfoNEW(int* ptrAllData, const vector<int>& ptrAllLevels,
   Rprintf("# %d\n\n", modCplx);
 #endif  // _MY_DEBUG_NEW
 
-  // find samples without NA in x,y,ui and store their id in sample[k][0]
+  // find samples without NA in x,y,ui and store their id in sample(k, 0)
   for (i = 0, k = 0; i < sampleSize; i++) {
     ok = TRUE;
     for (j = 0; j < nbrAllVar; j++) {
@@ -257,7 +253,7 @@ double* getAllInfoNEW(int* ptrAllData, const vector<int>& ptrAllLevels,
       }
     }
     if (ok == TRUE) {
-      sample[k][0] = i;  // sample number
+      sample(k, 0) = i;  // sample number
       k++;
     }
   }
@@ -267,7 +263,7 @@ double* getAllInfoNEW(int* ptrAllData, const vector<int>& ptrAllLevels,
     for (j = 0; j < nbrAllVar; j++) {
       std::set<int> s;
       for (k = 0; k < nSample0; k++) {
-        i = sample[k][0];
+        i = sample(k, 0);
         s.insert(ptrAllData[i + ptrVarIdx[j] * sampleSize]);
       }
       nbrLevCorrect[j] = s.size();
@@ -301,48 +297,48 @@ double* getAllInfoNEW(int* ptrAllData, const vector<int>& ptrAllLevels,
     countmin = 0;  // change 20160216
     // compute Lxyui, Lyui, Lui indices for later counting purpose
     for (k = 0; k < nSample0; k++) {
-      i = sample[k][0];  // sample number
+      i = sample(k, 0);  // sample number
 
       bin = ptrAllData[i + ptrVarIdx[0] * sampleSize];
 
-      sample[k][1] = bin;  // Lxyui initialisation
-      sample[k][4] = bin;  // X
+      sample(k, 1) = bin;  // Lxyui initialisation
+      sample(k, 4) = bin;  // X
 
       bin = ptrAllData[i + ptrVarIdx[1] * sampleSize];
 
-      sample[k][5] = bin;  // Y
+      sample(k, 5) = bin;  // Y
       PBin = dBin[0][0];
       increment = bin * PBin;
-      sample[k][1] += increment;  // Lxyui
-      sample[k][2] = increment;   // Lyui initialisation
-      sample[k][3] = 0;           // Lui initialisation
+      sample(k, 1) += increment;  // Lxyui
+      sample(k, 2) = increment;   // Lyui initialisation
+      sample(k, 3) = 0;           // Lui initialisation
 
       for (j = 2; j < nbrAllVar; j++) {
         bin = ptrAllData[i + ptrVarIdx[j] * sampleSize];
 
         PBin *= dBin[0][j - 1];
         increment = bin * PBin;
-        sample[k][1] += increment;  // Lxyui
-        sample[k][2] += increment;  // Lyui
-        sample[k][3] += increment;  // Lui
+        sample(k, 1) += increment;  // Lxyui
+        sample(k, 2) += increment;  // Lyui
+        sample(k, 3) += increment;  // Lui
       }
     }
     bin = PBin * dBin[0][nbrAllVar - 1];
 
     // extra sample id (useful for termination of counts)
-    sample[k][0] = nSample0;
-    sample[k][1] = bin;  // max Lxyui (useful for termination of counts)
-    sample[k][2] = bin;  // max Lyui  (useful for termination of counts)
-    sample[k][3] = bin;  // max Lui   (useful for termination of counts)
+    sample(k, 0) = nSample0;
+    sample(k, 1) = bin;  // max Lxyui (useful for termination of counts)
+    sample(k, 2) = bin;  // max Lyui  (useful for termination of counts)
+    sample(k, 3) = bin;  // max Lui   (useful for termination of counts)
 
 #if _MY_DEBUG_NEW
     Rprintf("\n# =====> test before sorting \n");
 #endif  // _MY_DEBUG_NEW
 
-    // sort sample in increasing Lxyui stored in sample[k][1]
+    // sort sample in increasing Lxyui stored in sample(k, 1)
     for (k = 1; k <= nSample0 + 1; k++) {
       orderSample[k] = k - 1;
-      sampleKey[k] = sample[k - 1][1];  // will sort in increasing Lxyui
+      sampleKey[k] = sample(k - 1, 1);  // will sort in increasing Lxyui
     }
 
 #if _MY_DEBUG_NEW
@@ -354,10 +350,10 @@ double* getAllInfoNEW(int* ptrAllData, const vector<int>& ptrAllLevels,
 #if _MY_DEBUG_NEW
     Rprintf("\n# =====> test after sort2int \n");
     for (k = 0; k <= nSample0; k++) {
-      // if(sample[k][0]<0)
+      // if(sample(k, 0)<0)
       // if(k>(nSample0-10))  Rprintf("@ nSample0=%d   sampleKey[k=%d]=%d
       // orderSample[k=%d]=%d  sample[i=%d][1]=%d  sample[i=%d][0]=%d
-      // \n",nSample0,k,sampleKey[k],k,orderSample[k],k,sample[k][1],k,sample[k][0]);
+      // \n",nSample0,k,sampleKey[k],k,orderSample[k],k,sample(k, 1),k,sample(k, 0));
     }
 #endif  // _MY_DEBUG_NEW
 
@@ -376,10 +372,10 @@ double* getAllInfoNEW(int* ptrAllData, const vector<int>& ptrAllLevels,
 #endif  // _MY_DEBUG_NEW
 
       for (j = 0; j < 6; j++) {
-        sortedSample[k - 1][j] = sample[i][j];
+        sortedSample(k - 1, j) = sample(i, j);
 #if _MY_DEBUG_NEW
         if (k > (nSample0 - 10))
-          Rprintf("sdS[k=%d][j=%d]=%d ", k - 1, j, sortedSample[k - 1][j]);
+          Rprintf("sdS[k=%d][j=%d]=%d ", k - 1, j, sortedSample(k - 1, j));
 #endif  // _MY_DEBUG_NEW
       }
     }
@@ -391,12 +387,12 @@ double* getAllInfoNEW(int* ptrAllData, const vector<int>& ptrAllLevels,
 #endif  // _MY_DEBUG_NEW
 
     // initialization of counts and mutual infos & logCs
-    Lxyui = sortedSample[0][1];  // min Lxyui
-    Lyui = sortedSample[0][2];   // min Lyui
-    Lui = sortedSample[0][3];    // min Lui
+    Lxyui = sortedSample(0, 1);  // min Lxyui
+    Lyui = sortedSample(0, 2);   // min Lyui
+    Lui = sortedSample(0, 3);    // min Lui
 
     // Nxyui = 1;
-    Pxyui = weights[sortedSample[0][0]];
+    Pxyui = weights[sortedSample(0, 0)];
     NNxyui = 0;
     Nyui = 0;
     Nui = 0;
@@ -407,8 +403,8 @@ double* getAllInfoNEW(int* ptrAllData, const vector<int>& ptrAllLevels,
     }
 
     for (k = 0; k < dBin[0][1]; k++) Ny[k] = 0;
-    X = sortedSample[0][4];
-    Y = sortedSample[0][5];
+    X = sortedSample(0, 4);
+    Y = sortedSample(0, 5);
 
     info_xui_y = 0.0;
     info_yui_x = 0.0;
@@ -436,13 +432,13 @@ double* getAllInfoNEW(int* ptrAllData, const vector<int>& ptrAllLevels,
             "before counts nSam0=%d  X=%d(%d) Y=%d(%d) k=%d sortS[%d][1]=%d "
             "Lxyui=%d sortS[%d][2]=%d Lyui=%d sortS[%d][3]=%d Lui=%d Nxyui=%d "
             "Nyui=%d Nui=%d  \n",
-            nSample0, X, dBin[0][0], Y, dBin[0][1], k, k, sortedSample[k][1],
-            Lxyui, k, sortedSample[k][2], Lyui, k, sortedSample[k][3], Lui,
+            nSample0, X, dBin[0][0], Y, dBin[0][1], k, k, sortedSample(k, 1),
+            Lxyui, k, sortedSample(k, 2), Lyui, k, sortedSample(k, 3), Lui,
             Nxyui, Nyui, Nui);
       }
 #endif  // _MY_DEBUG_NEW
 
-      if (sortedSample[k][1] > Lxyui) {
+      if (sortedSample(k, 1) > Lxyui) {
         NNxyui = 0;
         if (sampleSizeEff != sampleSize) {
           if (randomrescaling) {
@@ -468,15 +464,15 @@ double* getAllInfoNEW(int* ptrAllData, const vector<int>& ptrAllLevels,
           info_xui_y += NlogN;
           info_yui_x += NlogN;
         }
-        Lxyui = sortedSample[k][1];
+        Lxyui = sortedSample(k, 1);
         Nxyuis += NNxyui;
-        if (sortedSample[k][0] < sampleSize)
-          Pxyui = weights[sortedSample[k][0]];  // weights[k];
+        if (sortedSample(k, 0) < sampleSize)
+          Pxyui = weights[sortedSample(k, 0)];  // weights[k];
 
-        if (k < nSample0) X = sortedSample[k][4];
-        if (k < nSample0) Y = sortedSample[k][5];
+        if (k < nSample0) X = sortedSample(k, 4);
+        if (k < nSample0) Y = sortedSample(k, 5);
 
-        if (sortedSample[k][2] > Lyui) {
+        if (sortedSample(k, 2) > Lyui) {
           if (Nyui > 0) {
             NlogN = Nyui * cache->getLog(Nyui);
             info_yui_x -= NlogN;
@@ -486,11 +482,11 @@ double* getAllInfoNEW(int* ptrAllData, const vector<int>& ptrAllLevels,
               logC_yui_x += cache->getLogC(Nyui, dBin[0][0]);
             }
           }
-          Lyui = sortedSample[k][2];
+          Lyui = sortedSample(k, 2);
           Nyuis += Nyui;
           Nyui = 0;
 
-          if (sortedSample[k][3] > Lui) {
+          if (sortedSample(k, 3) > Lui) {
             for (j = 0; j < dBin[0][0]; j++) {
               Nxuij = Nxui[j];
               if (Nxuij > 0) {
@@ -515,14 +511,14 @@ double* getAllInfoNEW(int* ptrAllData, const vector<int>& ptrAllLevels,
                 logC_ui_y += cache->getLogC(Nui, dBin[0][1]);
               }
             }
-            Lui = sortedSample[k][3];
+            Lui = sortedSample(k, 3);
             Nuis += Nui;
             Nui = 0;
           }
         }
 
       } else {
-        Pxyui += weights[sortedSample[k][0]];  // weights[k];
+        Pxyui += weights[sortedSample(k, 0)];  // weights[k];
       }
     }
 
@@ -621,7 +617,7 @@ double* getAllInfoNEW(int* ptrAllData, const vector<int>& ptrAllLevels,
       if (nbrZi > 0) {
         for (k = 0; k <= nSample0; k++) {
           for (j = 0; j < 6; j++) {
-            Opt_sortedSample[k][j] = sortedSample[k][j];
+            Opt_sortedSample(k, j) = sortedSample(k, j);
           }
         }
       }
@@ -664,7 +660,7 @@ double* getAllInfoNEW(int* ptrAllData, const vector<int>& ptrAllLevels,
       }
       for (k = 0; k <= nSample0; k++) {
         for (j = 0; j < 6; j++) {
-          sortedSample[k][j] = Opt_sortedSample[k][j];
+          sortedSample(k, j) = Opt_sortedSample(k, j);
         }
       }
       // find optimum zi
@@ -690,7 +686,7 @@ double* getAllInfoNEW(int* ptrAllData, const vector<int>& ptrAllLevels,
         nSample[zi] = 0;
 
         for (k = 0; k < nSample0; k++) {
-          i = sortedSample[k][0];
+          i = sortedSample(k, 0);
           // find the first sample for which zi does not contain NA
           if (ptrAllData[i + ptrzi * sampleSize] > -1) {
             kz0 = k;
@@ -776,9 +772,9 @@ double* getAllInfoNEW(int* ptrAllData, const vector<int>& ptrAllLevels,
             countmin = 0;  // change 20160216
 
             nSample[zi] = 0;
-            Lxyui = sortedSample[kz0][1];  // min Lxyui
-            Lyui = sortedSample[kz0][2];   // min Lyui
-            Lui = sortedSample[kz0][3];    // min Lui
+            Lxyui = sortedSample(kz0, 1);  // min Lxyui
+            Lyui = sortedSample(kz0, 2);   // min Lyui
+            Lui = sortedSample(kz0, 3);    // min Lui
 
             NNxyuiz = 0;
             NNxyuizl = 0;
@@ -790,7 +786,7 @@ double* getAllInfoNEW(int* ptrAllData, const vector<int>& ptrAllLevels,
               Nx[k] = 0;
 
               for (l = 0; l < dBin[0][z]; l++) {
-                Nxuiz[k][l] = 0;
+                Nxuiz(k, l) = 0;
               }
             }
 
@@ -804,14 +800,14 @@ double* getAllInfoNEW(int* ptrAllData, const vector<int>& ptrAllLevels,
               Nz[l] = 0;
             }
 
-            X = sortedSample[kz0][4];
-            Y = sortedSample[kz0][5];
-            i = sortedSample[kz0][0];
+            X = sortedSample(kz0, 4);
+            Y = sortedSample(kz0, 5);
+            i = sortedSample(kz0, 0);
             Z = ptrAllData[i + ptrzi * sampleSize];  // first Z
 
-            Pxyuiz[Z] = weights[sortedSample[kz0][0]];
+            Pxyuiz[Z] = weights[sortedSample(kz0, 0)];
 
-            sortedSample[nSample0][0] = i;  // to terminate loop properly below
+            sortedSample(nSample0, 0) = i;  // to terminate loop properly below
 
             info_xui_y = 0.0;
             info_yui_x = 0.0;
@@ -863,12 +859,12 @@ double* getAllInfoNEW(int* ptrAllData, const vector<int>& ptrAllLevels,
 
             // make the counts and compute mutual infos & logCs
             for (k = kz0 + 1; k <= nSample0; k++) {  // change 20160220
-              i = sortedSample[k][0];
+              i = sortedSample(k, 0);
               // check whether zi does not contain NA
               if (ptrAllData[i + ptrzi * sampleSize] > -1) {
                 Z = ptrAllData[i + ptrzi * sampleSize];  // Z
 
-                if (sortedSample[k][1] > Lxyui) {
+                if (sortedSample(k, 1) > Lxyui) {
                   NNxyuiz = 0;
                   for (l = 0; l < dBin[0][z]; l++) {
                     // Nxyuizl=Nxyuiz[l];//
@@ -894,12 +890,12 @@ double* getAllInfoNEW(int* ptrAllData, const vector<int>& ptrAllLevels,
                         Nz[l] += NNxyuizl;  // 4
                         Nuiz[l] += NNxyuizl;
                         Nyuiz[l] += NNxyuizl;
-                        Nxuiz[X][l] += NNxyuizl;
+                        Nxuiz(X, l) += NNxyuizl;
                       }
                       Pxyuiz[l] = 0;
                     }
                   }
-                  Pxyuiz[Z] = weights[sortedSample[k][0]];
+                  Pxyuiz[Z] = weights[sortedSample(k, 0)];
 
                   if (NNxyuiz > 0) {
                     NlogN = NNxyuiz * cache->getLog(NNxyuiz);
@@ -921,12 +917,12 @@ double* getAllInfoNEW(int* ptrAllData, const vector<int>& ptrAllLevels,
                     Nxyuis += NNxyuiz;
                   }
 
-                  Lxyui = sortedSample[k][1];
+                  Lxyui = sortedSample(k, 1);
 
-                  if (k < nSample0) X = sortedSample[k][4];
-                  if (k < nSample0) Y = sortedSample[k][5];
+                  if (k < nSample0) X = sortedSample(k, 4);
+                  if (k < nSample0) Y = sortedSample(k, 5);
 
-                  if (sortedSample[k][2] > Lyui) {
+                  if (sortedSample(k, 2) > Lyui) {
                     if (Nyui > 0) {
                       NlogN = Nyui * cache->getLog(Nyui);
                       info_yui_x -= NlogN;
@@ -954,9 +950,9 @@ double* getAllInfoNEW(int* ptrAllData, const vector<int>& ptrAllLevels,
                       Nyuis += Nyui;
                       Nyui = 0;
                     }
-                    Lyui = sortedSample[k][2];
+                    Lyui = sortedSample(k, 2);
 
-                    if (sortedSample[k][3] > Lui) {
+                    if (sortedSample(k, 3) > Lui) {
                       if (Nui > 0) {
                         NlogN = Nui * cache->getLog(Nui);
                         info_ui_x -= NlogN;
@@ -1001,7 +997,7 @@ double* getAllInfoNEW(int* ptrAllData, const vector<int>& ptrAllLevels,
                             Nxui[j] = 0;
 
                             for (l = 0; l < dBin[0][z]; l++) {
-                              Nxuizjl = Nxuiz[j][l];
+                              Nxuizjl = Nxuiz(j, l);
                               if (Nxuizjl > 0) {
                                 NlogN = Nxuizjl * cache->getLog(Nxuizjl);
                                 info_xui_z += NlogN;
@@ -1012,18 +1008,18 @@ double* getAllInfoNEW(int* ptrAllData, const vector<int>& ptrAllLevels,
                                       cache->getLogC(Nxuizjl, dBin[0][1]);
                                 }
                                 Nxuizs += Nxuizjl;
-                                Nxuiz[j][l] = 0;
+                                Nxuiz(j, l) = 0;
                               }
                             }
                           }
                         }
                       }
-                      Lui = sortedSample[k][3];
+                      Lui = sortedSample(k, 3);
                     }
                   }
 
                 } else {
-                  Pxyuiz[Z] += weights[sortedSample[k][0]];
+                  Pxyuiz[Z] += weights[sortedSample(k, 0)];
                 }
               }
             }

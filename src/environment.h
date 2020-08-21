@@ -74,7 +74,7 @@ struct Environment {
   double* noise_vec;
 
   MemorySpace m;
-  MemorySpace* memoryThreads;
+  vector<MemorySpace> memoryThreads;
 
   double log_eta = 0;
   bool is_k23;

@@ -105,7 +105,8 @@ class sort_indices {
   bool operator()(int i, int j) const { return mparr[i] < mparr[j]; }
 };
 
-void sort2arrays(int len, int a[], int brr[], int bridge[]) {
+void sort2arrays(
+    int len, vector<int>& a, vector<int>& brr, vector<int>& bridge) {
   int i;
 
   int* pArray = &a[1];
@@ -153,87 +154,6 @@ vector<vector<int>> getAdjMatrix(const Environment& env) {
     }
   }
   return adj_matrix;
-}
-
-void createMemorySpace(Environment& environment, MemorySpace& m) {
-  if (std::count(environment.is_continuous.begin(),
-          environment.is_continuous.end(), 0) > 1) {
-    int max_level = 0;
-    for (int i = 0; i < environment.n_nodes; i++) {
-      if (environment.levels[i] > max_level)
-        max_level = environment.levels[i];
-    }
-    m.max_level = max_level;
-    int nrow = environment.n_samples + 1;
-    int sampleSize = environment.n_samples;
-    int ncol = 7;
-    int bin_max = max_level;
-    int iii;
-
-    m.sample = (int**)calloc(nrow, sizeof(int*));
-    for (iii = 0; iii < nrow; iii++)
-      m.sample[iii] = (int*)calloc(ncol, sizeof(int));
-
-    m.sortedSample = (int**)calloc(nrow, sizeof(int*));
-    for (iii = 0; iii < nrow; iii++)
-      m.sortedSample[iii] = (int*)calloc(ncol, sizeof(int));
-
-    m.Opt_sortedSample = (int**)calloc(nrow, sizeof(int*));
-    for (iii = 0; iii < nrow; iii++)
-      m.Opt_sortedSample[iii] = (int*)calloc(ncol, sizeof(int));
-
-    m.Nxuiz = (int**)calloc(bin_max + 1, sizeof(int*));
-    for (iii = 0; iii < bin_max + 1; iii++)
-      m.Nxuiz[iii] = (int*)calloc(bin_max + 1, sizeof(int));
-
-    m.orderSample = (int*)calloc((sampleSize + 2), sizeof(int));
-    m.sampleKey = (int*)calloc((sampleSize + 2), sizeof(int));
-    m.Pxyuiz = (double*)calloc((bin_max + 1), sizeof(double));
-    m.Nyuiz = (int*)calloc((bin_max + 1), sizeof(int));
-    m.Nuiz = (int*)calloc((bin_max + 1), sizeof(int));
-    m.Nz = (int*)calloc((bin_max + 1), sizeof(int));
-    m.Ny = (int*)calloc((bin_max + 1), sizeof(int));
-    m.Nxui = (int*)calloc((bin_max + 1), sizeof(int));
-    m.Nx = (int*)calloc((bin_max + 1), sizeof(int));
-    m.bridge = (int*)calloc(sampleSize + 2, sizeof(int));
-  }
-}
-
-void deleteMemorySpace(Environment& environment, MemorySpace& m) {
-  if (std::count(environment.is_continuous.begin(),
-          environment.is_continuous.end(), 0) > 1) {
-    int max_level = 0;
-    for (int i = 0; i < environment.n_nodes; i++) {
-      if (environment.levels[i] > max_level)
-        max_level = environment.levels[i];
-    }
-
-    int nrow = environment.n_samples + 1;
-    int bin_max = max_level;
-    int i;
-    for (i = 0; i < nrow; i++) free(m.sample[i]);
-    free(m.sample);
-
-    for (i = 0; i < nrow; i++) free(m.sortedSample[i]);
-    free(m.sortedSample);
-
-    for (i = 0; i < bin_max + 1; i++) free(m.Nxuiz[i]);
-    free(m.Nxuiz);
-
-    for (i = 0; i < nrow; i++) free(m.Opt_sortedSample[i]);
-    free(m.Opt_sortedSample);
-
-    free(m.orderSample);
-    free(m.sampleKey);
-    free(m.Pxyuiz);
-    free(m.Nyuiz);
-    free(m.Nuiz);
-    free(m.Nz);
-    free(m.Ny);
-    free(m.Nxui);
-    free(m.Nx);
-    free(m.bridge);
-  }
 }
 
 string toNameString(const Environment& env, const vector<int>& vec) {

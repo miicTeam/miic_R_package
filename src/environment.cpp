@@ -81,6 +81,10 @@ Environment::Environment(
   omp_set_num_threads(n_threads);
 #endif
 
+  int max_level = *std::max_element(begin(levels), end(levels));
+  m = MemorySpace(n_nodes, n_samples, max_level);
+  memoryThreads = vector<MemorySpace>(n_threads, m);
+
   edges = new Edge*[n_nodes];
   for (int i = 0; i < n_nodes; i++)
     edges[i] = new Edge[n_nodes];
