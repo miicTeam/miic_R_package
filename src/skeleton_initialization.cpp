@@ -13,19 +13,19 @@ using namespace miic::structure;
 using namespace miic::utility;
 
 // Initialize the edges of the network
-int initEdgeElt(Environment& environment, int i, int j, MemorySpace& m) {
+int initEdgeElt(Environment& environment, int i, int j) {
   // Compute the mutual information and the corresponding CPLX
   double* res = NULL;
   if (!environment.is_continuous[i] &&
       !environment.is_continuous[j]) {
     res = computeEnsInformationNew(
-        environment, NULL, 0, NULL, 0, -1, i, j, environment.cplx, m);
+        environment, NULL, 0, NULL, 0, -1, i, j, environment.cplx);
     environment.edges[i][j].shared_info->Ixy_ui = res[1];
     environment.edges[i][j].shared_info->cplx = res[2];
     environment.edges[i][j].shared_info->Nxy_ui = res[0];
   } else {
     res = computeEnsInformationContinuous(
-        environment, NULL, 0, NULL, 0, -1, i, j, environment.cplx, m);
+        environment, NULL, 0, NULL, 0, -1, i, j, environment.cplx);
     environment.edges[i][j].shared_info->Ixy_ui = res[1];
     environment.edges[i][j].shared_info->cplx = res[2];
     environment.edges[i][j].shared_info->Nxy_ui = res[0];
@@ -89,8 +89,7 @@ bool miic::reconstruction::skeletonInitialization(Environment& environment) {
       environment.edges[i][j].shared_info = std::make_shared<EdgeSharedInfo>();
       environment.edges[j][i].shared_info = environment.edges[i][j].shared_info;
       if (environment.edges[i][j].status) {
-        if (initEdgeElt(
-                environment, i, j, environment.memoryThreads[threadnum]) == 1) {
+        if (initEdgeElt(environment, i, j) == 1) {
 #ifdef _OPENMP
 #pragma omp critical
 #endif

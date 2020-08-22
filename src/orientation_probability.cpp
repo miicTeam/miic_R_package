@@ -38,18 +38,16 @@ double getI3(Environment& environment, const Triple& t) {
   double cplx = -1;
   if (!environment.is_continuous[posX] && !environment.is_continuous[posZ] &&
       !environment.is_continuous[posY]) {
-    res =
-        computeEnsInformationNew(environment, ui, ui_no_z.size(), zi, z.size(),
-            -1, posX, posY, environment.cplx, environment.memoryThreads[0]);
+    res = computeEnsInformationNew(environment, ui, ui_no_z.size(), zi,
+        z.size(), -1, posX, posY, environment.cplx);
     Ixyz_ui = res[7];
     cplx = res[8];
     if (environment.degenerate) cplx += log(3.0);
     // To fit eq(20) and eq(22) in BMC Bioinfo 2016
     if (environment.is_k23) Ixyz_ui += cplx;
   } else {
-    res = computeEnsInformationContinuous_Orientation(environment, ui,
-        ui_no_z.size(), zi, posX, posY, environment.cplx,
-        environment.memoryThreads[0]);
+    res = computeEnsInformationContinuous_Orientation(
+        environment, ui, ui_no_z.size(), zi, posX, posY, environment.cplx);
     Ixyz_ui = res[1];
     cplx = res[2];
     if (environment.degenerate) cplx += log(3.0);

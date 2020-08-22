@@ -73,8 +73,6 @@ struct Environment {
   bool flag_sample_weights;
   double* noise_vec;
 
-  vector<MemorySpace> memoryThreads;
-
   double log_eta = 0;
   bool is_k23;
   bool degenerate;

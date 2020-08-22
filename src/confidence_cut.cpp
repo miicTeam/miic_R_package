@@ -77,15 +77,15 @@ void setConfidence(Environment& environment) {
       int X = edge.i, Y = edge.j;
       if (!environment.is_continuous[X] && !environment.is_continuous[Y]) {
         // discrete case
-        double* res = computeEnsInformationNew(environment, NULL, 0, NULL, 0,
-            -1, X, Y, environment.cplx, environment.memoryThreads[0]);
+        double* res = computeEnsInformationNew(
+            environment, NULL, 0, NULL, 0, -1, X, Y, environment.cplx);
         NIxy_ui = res[1];
         k_xy_ui = res[2];
         delete[] res;
       } else {
         // mixed case
-        double* res = computeEnsInformationContinuous(environment, NULL, 0,
-            NULL, 0, -1, X, Y, environment.cplx, environment.memoryThreads[0]);
+        double* res = computeEnsInformationContinuous(
+            environment, NULL, 0, NULL, 0, -1, X, Y, environment.cplx);
         NIxy_ui = res[1];
         k_xy_ui = res[2];
         delete[] res;

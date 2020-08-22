@@ -28,7 +28,7 @@ using std::vector;
 // X;Y;Z|Ui
 double* computeEnsInformationContinuous_Orientation(Environment& environment,
     int* myCond, int myNbrUi, int* myZi, const int myVarIdxX,
-    const int myVarIdxY, const int cplx, MemorySpace& m) {
+    const int myVarIdxY, const int cplx) {
   vector<int> posArray(
       2 + environment.edges[myVarIdxX][myVarIdxY].shared_info->ui_list.size());
   posArray[0] = myVarIdxX;
@@ -130,7 +130,7 @@ double* computeEnsInformationContinuous_Orientation(Environment& environment,
 
 void computeContributingScores(Environment& environment, int* ziContPosIdx,
     int iz, int* myZi, int myNbrUi, int n_samples_nonNA,
-    const vector<int>& posArray, double* scoresZ, MemorySpace& m) {
+    const vector<int>& posArray, double* scoresZ) {
   // progressive data rank with repetition for same values
 
   int cplx = environment.cplx;
@@ -180,8 +180,8 @@ void computeContributingScores(Environment& environment, int* ziContPosIdx,
       double* res =
           getAllInfoNEW(environment.oneLineMatrix, environment.levels, posArray,
               myNbrUi, zz, 1, -1, environment.n_samples, environment.n_eff,
-              cplx, environment.is_k23, &m, environment.sample_weights,
-              jointFreqs, environment.test_mar, environment.cache.cterm);
+              cplx, environment.is_k23, environment.sample_weights, jointFreqs,
+              environment.test_mar, environment.cache.cterm);
 
       output_score = res[6];
       delete[] res;
@@ -241,7 +241,7 @@ void computeContributingScores(Environment& environment, int* ziContPosIdx,
 
 double* computeEnsInformationContinuous(Environment& environment, int* myCond,
     int myNbrUi, int* myZi, int myNbrZi, int myZiPos, const int myVarIdxX,
-    const int myVarIdxY, const int cplx, MemorySpace& m) {
+    const int myVarIdxY, const int cplx) {
   vector<int> posArray(
       2 + environment.edges[myVarIdxX][myVarIdxY].shared_info->ui_list.size());
   posArray[0] = myVarIdxX;
@@ -344,7 +344,7 @@ double* computeEnsInformationContinuous(Environment& environment, int* myCond,
             environment, posArray[0], posArray[1]);
         res = getAllInfoNEW(environment.oneLineMatrix, environment.levels,
             posArray, myNbrUi, zz, countZDiscrete, -1, environment.n_samples,
-            environment.n_eff, cplx, environment.is_k23, &m,
+            environment.n_eff, cplx, environment.is_k23,
             environment.sample_weights, jointFreqs, environment.test_mar,
             environment.cache.cterm);
 
@@ -384,16 +384,11 @@ double* computeEnsInformationContinuous(Environment& environment, int* myCond,
 #pragma omp parallel for if (parallelizable)
 #endif
     for (int iz = 0; iz < myNbrZi; iz++) {
-      auto& privateM = m;
-#ifdef _OPENMP
-      if (parallelizable)
-        privateM = environment.memoryThreads[omp_get_thread_num()];
-#endif
       int n_samples_nonNA =
           getNumSamplesNonNA(environment, posArray[0], posArray[1]);
 
       computeContributingScores(environment, ziContPosIdx, iz, myZi, myNbrUi,
-          n_samples_nonNA, posArray, scoresZ, privateM);
+          n_samples_nonNA, posArray, scoresZ);
     }  // parallel for on z
 
     for (int iz = 0; iz < myNbrZi; iz++) {  // find optimal z
@@ -439,7 +434,7 @@ double* computeEnsInformationContinuous(Environment& environment, int* myCond,
 
 double* computeEnsInformationNew(Environment& environment, int* myCond,
     int myNbrUi, int* myZi, int myNbrZi, int myZiPos, const int myVarIdxX,
-    const int myVarIdxY, const int cplx, MemorySpace& m) {
+    const int myVarIdxY, const int cplx) {
   vector<int> posArray(
       2 + environment.edges[myVarIdxX][myVarIdxY].shared_info->ui_list.size());
   posArray[0] = myVarIdxX;
@@ -462,9 +457,8 @@ double* computeEnsInformationNew(Environment& environment, int* myCond,
 
   double* res_new = getAllInfoNEW(environment.oneLineMatrix, environment.levels,
       posArray, myNbrUi, myZi, myNbrZi, myZiPos, environment.n_samples,
-      environment.n_eff, cplx, environment.is_k23, &m,
-      environment.sample_weights, jointFreqs, environment.test_mar,
-      environment.cache.cterm);
+      environment.n_eff, cplx, environment.is_k23, environment.sample_weights,
+      jointFreqs, environment.test_mar, environment.cache.cterm);
 
   for (int level0 = 0; level0 < environment.levels[posArray[0]]; level0++)
     delete[] jointFreqs[level0];
@@ -501,7 +495,7 @@ double* computeEnsInformationNew(Environment& environment, int* myCond,
 }
 
 void SearchForNewContributingNodeAndItsRank(
-    Environment& environment, const int posX, const int posY, MemorySpace& m) {
+    Environment& environment, const int posX, const int posY) {
   auto info = environment.edges[posX][posY].shared_info;
   if (!environment.latent) {
     // remove zi that is not connected to neither x nor y
@@ -536,8 +530,7 @@ void SearchForNewContributingNodeAndItsRank(
   if (std::all_of(environment.is_continuous.begin(),
           environment.is_continuous.end(), [](int i) { return i == 0; })) {
     vect = computeEnsInformationNew(environment, ui, info->ui_list.size(), zi,
-        info->zi_list.size(), info->ui_list.size() + 2, posX, posY, argEnsInfo,
-        m);
+        info->zi_list.size(), info->ui_list.size() + 2, posX, posY, argEnsInfo);
     if (vect[6] - info->Rxyz_ui > 0) {
       // The order matters: set first the z.name.idx, than get the corresponding
       // zi from the original vect / Doing this way, we make sure that the
@@ -548,7 +541,7 @@ void SearchForNewContributingNodeAndItsRank(
   } else {
     vect = computeEnsInformationContinuous(environment, ui,
         info->ui_list.size(), zi, info->zi_list.size(),
-        info->ui_list.size() + 2, posX, posY, argEnsInfo, m);
+        info->ui_list.size() + 2, posX, posY, argEnsInfo);
     if (vect[2] - info->Rxyz_ui > 0) {
       // The order matters: set first the z.name.idx, than get the corresponding
       // zi from the original vect / Doing this way, we make sure
