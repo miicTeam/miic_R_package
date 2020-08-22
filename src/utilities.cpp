@@ -134,14 +134,15 @@ double ramanujan(int n) {
 
 class sort_confidence {
  private:
-  const vector<int>& mparr;
+  const TempVector<int>& mparr;
 
  public:
-  sort_confidence(const vector<int>& parr) : mparr(parr) {}
+  sort_confidence(const TempVector<int>& parr) : mparr(parr) {}
   bool operator()(int i, int j) const { return mparr[i] < mparr[j]; }
 };
 
-void sort2arraysConfidence(int len, const vector<int>& a, vector<int>& brr) {
+void sort2arraysConfidence(
+    int len, const TempVector<int>& a, TempVector<int>& brr) {
   std::sort(begin(brr), begin(brr) + len, sort_confidence(a));
 }
 

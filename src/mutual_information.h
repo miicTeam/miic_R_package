@@ -4,6 +4,7 @@
 #include <vector>
 
 #include "computation_cache.h"
+#include "structure.h"
 
 namespace miic {
 namespace computation {
@@ -21,8 +22,8 @@ using std::vector;
 // cut: vector with cuts point-> [0 cut[0]][cut[0]+1 cut[1]]...[cut[r-2]
 // cut[r-1]] int reconstruction_cut_coarse(int *memory_cuts, int
 // *memory_cuts2,int np, int n, int *cut);
-int reconstruction_cut_coarse(vector<int> &memory_cuts,
-    vector<int> &memory_cuts2, int np, int n, int *cut);
+int reconstruction_cut_coarse(structure::TempVector<int> &memory_cuts,
+    structure::TempVector<int> &memory_cuts2, int np, int n, int *cut);
 void update_datafactors(
     vector<vector<int> > &sortidx, int varidx,
     int** datafactors, int d, int n, int **cut);

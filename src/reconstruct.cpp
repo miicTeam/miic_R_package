@@ -26,12 +26,15 @@ List reconstruct(List input_data, List arg_list) {
 
   int max_level =
       *std::max_element(begin(environment.levels), end(environment.levels));
-  size_t li_alloc_size =
-      8000 + sizeof(int) *
-              (3 * (environment.n_samples + 2) +
-                  3 * (environment.n_samples + 1) * 7 + 6 * (max_level + 1) +
-                  ((max_level + 1) * (max_level + 1)) +
-                  sizeof(double) * (max_level + 1));
+  size_t li_alloc_size = 8192;  // in bytes, extra space for fragmentation
+  size_t n_integers = 4 * (environment.n_samples + 2) + 6 * (max_level + 1) +
+                      3 * ((environment.n_samples + 1) * 7) +
+                      4 * environment.n_nodes +
+                      2 * (max_level + 1) * (max_level + 1) +
+                      2 * max_level * max_level * max_level;  // coarse_counts
+  size_t n_doubles = 3 * (max_level + 1) + 2 * environment.n_nodes;
+  li_alloc_size += sizeof(int) * n_integers;
+  li_alloc_size += sizeof(double) * n_doubles;
 #ifdef _OPENMP
 #pragma omp parallel  // each thread has its own instance of li_alloc_ptr
 #endif

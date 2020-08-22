@@ -27,6 +27,7 @@ namespace miic {
 namespace computation {
 
 using std::vector;
+using namespace miic::structure;
 using namespace miic::utility;
 
 // INPUT:
@@ -38,8 +39,8 @@ using namespace miic::utility;
 // r : number cuts
 // cut: vector with cuts point-> [0 cut[0]][cut[0]+1 cut[1]]...[cut[r-2]
 // cut[r-1]]
-int reconstruction_cut_coarse(vector<int> &memory_cuts,
-    vector<int> &memory_cuts2, int np, int n, int *cut) {
+int reconstruction_cut_coarse(TempVector<int>& memory_cuts,
+    TempVector<int>& memory_cuts2, int np, int n, int *cut) {
   int ncuts = 0;
   int l, s;
   if (memory_cuts[np - 1] == 0) {
@@ -93,67 +94,62 @@ void update_datafactors(
 // ruiyx[0,1,2,3] ruiyx -> 0:u,1:uy,2:ux,3:uyx
 void jointfactors_uiyx(int **datafactors, int dui, int n, int Mui, int *r,
     int **uiyxfactors, int *ruiyx) {
-  int df, Pbin_ui;
-  vector<int> datauix(n);
-  vector<int> datauiy(n);
-  vector<int> datauiyx(n);
-  vector<int> dataui(n);
+  TempAllocatorScope scope;
 
-  int j, jj, l;
   bool tooManyLevels = false;
-
   // From single datafactors to joint datafactors ui; (ui,y);(ui,x);(ui,y,x)
-  int nbrLevelsJoint = 1;
-  for (jj = 0; jj < Mui + 2 && !tooManyLevels; jj++) {
-    nbrLevelsJoint *= r[jj];
-    if (nbrLevelsJoint > 8 * n) {
+  int n_joint_levels = 1;
+  for (int i = 0; i < Mui + 2 && !tooManyLevels; ++i) {
+    n_joint_levels *= r[i];
+    if (n_joint_levels > 8 * n) {
       tooManyLevels = true;
     }
   }
 
-  int *vecZeroOnesui;
-  int *vecZeroOnesuiy;
-  int *vecZeroOnesuix;
-  int *vecZeroOnesuiyx;
-
-  vector<int> orderSample_ux(n);
-  vector<int> orderSample_uyx(n);
+  TempVector<int> vecZeroOnesui;
+  TempVector<int> vecZeroOnesuiy;
+  TempVector<int> vecZeroOnesuix;
+  TempVector<int> vecZeroOnesuiyx;
   // declaration
   if (!tooManyLevels) {
-    vecZeroOnesui = (int *)calloc(nbrLevelsJoint + 1, sizeof(int));
-    vecZeroOnesuiy = (int *)calloc(nbrLevelsJoint + 1, sizeof(int));
-    vecZeroOnesuix = (int *)calloc(nbrLevelsJoint + 1, sizeof(int));
-    vecZeroOnesuiyx = (int *)calloc(nbrLevelsJoint + 1, sizeof(int));
+    vecZeroOnesui   = TempVector<int>(n_joint_levels);
+    vecZeroOnesuiy  = TempVector<int>(n_joint_levels);
+    vecZeroOnesuix  = TempVector<int>(n_joint_levels);
+    vecZeroOnesuiyx = TempVector<int>(n_joint_levels);
   }
 
-  for (jj = 0; jj <= n - 1; jj++) {
-    datauiyx[jj] = datafactors[0][jj];  // yx
-    datauiyx[jj] += datafactors[1][jj] * r[0];
-    datauix[jj] = datafactors[0][jj];  // x
-    datauiy[jj] = datafactors[1][jj];  // y
-    dataui[jj] = 0;
+  TempVector<int> datauix(n);
+  TempVector<int> datauiy(n);
+  TempVector<int> datauiyx(n);
+  TempVector<int> dataui(n, 0);
+  TempVector<int> orderSample_ux(n);
+  TempVector<int> orderSample_uyx(n);
+  for (int i = 0; i < n; ++i) {
+    datauiyx[i] = datafactors[0][i];  // yx
+    datauiyx[i] += datafactors[1][i] * r[0];
+    datauix[i] = datafactors[0][i];  // x
+    datauiy[i] = datafactors[1][i];  // y
 
-    Pbin_ui = 1;
-    for (l = Mui + 1; l >= 2; l--) {
-      if (l != dui) {
-        df = datafactors[l][jj] * Pbin_ui;
-        datauiyx[jj] += df * r[1] * r[0];
-        datauix[jj] += df * r[0];
-        datauiy[jj] += df * r[1];
+    int Pbin_ui = 1;
+    for (int l = Mui + 1; l >= 2; --l) {
+      if (l == dui) continue;
 
-        dataui[jj] += df;
-        Pbin_ui *= r[l];
-      }
+      int df = datafactors[l][i] * Pbin_ui;
+      datauiyx[i] += df * r[1] * r[0];
+      datauix[i] += df * r[0];
+      datauiy[i] += df * r[1];
+      dataui[i] += df;
+      Pbin_ui *= r[l];
     }
     // init
     if (!tooManyLevels) {
-      vecZeroOnesui[dataui[jj]] = 1;
-      vecZeroOnesuiy[datauiy[jj]] = 1;
-      vecZeroOnesuix[datauix[jj]] = 1;
-      vecZeroOnesuiyx[datauiyx[jj]] = 1;
+      vecZeroOnesui[dataui[i]] = 1;
+      vecZeroOnesuiy[datauiy[i]] = 1;
+      vecZeroOnesuix[datauix[i]] = 1;
+      vecZeroOnesuiyx[datauiyx[i]] = 1;
     } else {
-      orderSample_ux[jj] = jj;
-      orderSample_uyx[jj] = jj;
+      orderSample_ux[i] = i;
+      orderSample_uyx[i] = i;
     }
   }
 
@@ -163,26 +159,18 @@ void jointfactors_uiyx(int **datafactors, int dui, int n, int Mui, int *r,
     int pos1 = 0;
     int pos2 = 0;
     int pos3 = 0;
-    for (jj = 0; jj <= nbrLevelsJoint; jj++) {
-      if (vecZeroOnesui[jj] == 1) {
-        vecZeroOnesui[jj] = pos;
-        pos += 1;
-      }
+    for (int i = 0; i < n_joint_levels; ++i) {
+      if (vecZeroOnesui[i] == 1)
+        vecZeroOnesui[i] = pos++;
 
-      if (vecZeroOnesuiy[jj] == 1) {
-        vecZeroOnesuiy[jj] = pos1;
-        pos1 += 1;
-      }
+      if (vecZeroOnesuiy[i] == 1)
+        vecZeroOnesuiy[i] = pos1++;
 
-      if (vecZeroOnesuix[jj] == 1) {
-        vecZeroOnesuix[jj] = pos2;
-        pos2 += 1;
-      }
+      if (vecZeroOnesuix[i] == 1)
+        vecZeroOnesuix[i] = pos2++;
 
-      if (vecZeroOnesuiyx[jj] == 1) {
-        vecZeroOnesuiyx[jj] = pos3;
-        pos3 += 1;
-      }
+      if (vecZeroOnesuiyx[i] == 1)
+        vecZeroOnesuiyx[i] = pos3++;
     }
 
     ruiyx[0] = pos;   // ui
@@ -190,14 +178,11 @@ void jointfactors_uiyx(int **datafactors, int dui, int n, int Mui, int *r,
     ruiyx[2] = pos2;  // uix
     ruiyx[3] = pos3;  // uiyx
 
-    for (j = 0; j <= n - 1; j++) {
-      uiyxfactors[0][j] = vecZeroOnesui[dataui[j]];  // ui
-      uiyxfactors[1][j] = vecZeroOnesuiy[datauiy[j]];
-      ;  // uiy
-      uiyxfactors[2][j] = vecZeroOnesuix[datauix[j]];
-      ;  // uix
-      uiyxfactors[3][j] = vecZeroOnesuiyx[datauiyx[j]];
-      ;  // uiyx
+    for (int i = 0; i < n; ++i) {
+      uiyxfactors[0][i] = vecZeroOnesui[dataui[i]];  // ui
+      uiyxfactors[1][i] = vecZeroOnesuiy[datauiy[i]];  // uiy
+      uiyxfactors[2][i] = vecZeroOnesuix[datauix[i]];  // uix
+      uiyxfactors[3][i] = vecZeroOnesuiyx[datauiyx[i]];  // uiyx
     }
   } else {
     sort2arraysConfidence(n, datauix, orderSample_ux);
@@ -219,11 +204,11 @@ void jointfactors_uiyx(int **datafactors, int dui, int n, int Mui, int *r,
     uiyxfactors[2][ix] = 0;   // uix
     uiyxfactors[3][iyx] = 0;  // uiyx
 
-    for (j = 0; j < n - 1; j++) {
+    for (int i = 1; i < n; ++i) {
       iix = ix;
       iiyx = iyx;
-      ix = orderSample_ux[j + 1];
-      iyx = orderSample_uyx[j + 1];
+      ix = orderSample_ux[i];
+      iyx = orderSample_uyx[i];
 
       if (dataui[ix] > dataui[iix]) {
         ruiyx[0]++;
@@ -251,29 +236,6 @@ void jointfactors_uiyx(int **datafactors, int dui, int n, int Mui, int *r,
     ruiyx[2]++;  // uix
     ruiyx[3]++;  // uiyx
   }
-
-#if _MY_DEBUG_NEW_UI
-  Rprintf("j,dataui[j],datauiy[j]\n");
-  for (j = 0; j <= n - 1; j++) {
-    Rprintf("%d-> %d %d\n", j, dataui[j], datauiy[j]);
-  }
-#endif
-
-#if _MY_DEBUG_NEW_UI_2
-  Rprintf(
-      "j, uiyxfactors[0][j], uiyxfactors[1][j], uiyxfactors[2][j], "
-      "uiyxfactors[3][j]\n");
-  for (j = 0; j <= n - 1; j++) {
-    Rprintf("%d-> %d %d %d %d\n", j, uiyxfactors[0][j], uiyxfactors[1][j],
-        uiyxfactors[2][j], uiyxfactors[3][j]);
-  }
-#endif
-  if (!tooManyLevels) {
-    free(vecZeroOnesui);
-    free(vecZeroOnesuiy);
-    free(vecZeroOnesuix);
-    free(vecZeroOnesuiyx);
-  }
   return;
 }
 
@@ -284,6 +246,7 @@ void jointfactors_uiyx(int **datafactors, int dui, int n, int Mui, int *r,
 // entropy term Hui
 void jointfactors_u(int **datafactors, int *ptrIdx, int n, int Mui, int *r,
     int *ufactors, int *ru) {
+  TempAllocatorScope scope;
   // from cuts to joint datafactors
   int jj;
   int j, l;
@@ -296,7 +259,7 @@ void jointfactors_u(int **datafactors, int *ptrIdx, int n, int Mui, int *r,
   }
   // update joint datafactors (with gaps) ui and (ui,y)
   int df, Pbin_ui;
-  vector<int> datau(n, 0);
+  TempVector<int> datau(n, 0);
 
   bool tooManyLevels = false;
 
@@ -306,10 +269,10 @@ void jointfactors_u(int **datafactors, int *ptrIdx, int n, int Mui, int *r,
     if (nbrLevelsJoint > 8 * n) tooManyLevels = true;
   }
   // decl
-  int *vecZeroOnesui;
-  vector<int> orderSample_u(n);
+  TempVector<int> vecZeroOnesui;
+  TempVector<int> orderSample_u(n);
   if (!tooManyLevels) {
-    vecZeroOnesui = (int *)calloc(nbrLevelsJoint + 1, sizeof(int));
+    vecZeroOnesui = TempVector<int>(nbrLevelsJoint + 1);
   }
 
   for (jj = 0; jj <= n - 1; jj++) {
@@ -395,10 +358,6 @@ void jointfactors_u(int **datafactors, int *ptrIdx, int n, int Mui, int *r,
   }
   R_FlushConsole();
 #endif
-
-  if (!tooManyLevels) {
-    free(vecZeroOnesui);
-  }
 
   return;
 }

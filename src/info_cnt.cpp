@@ -18,6 +18,7 @@ namespace computation {
 using std::min;
 using std::vector;
 using namespace miic::structure;
+using namespace miic::utility;
 
 void reset_u_cutpoints(int** cut, int nbrUi, vector<int> ptr_cnt,
     vector<int> ptrVarIdx, int init_nbin, int maxbins, int lbin, int* r,
@@ -117,13 +118,15 @@ void optfun_onerun_kmdl_coarse(vector<int> sortidx_var, vector<int> data, int nb
     int** factors, int* r, double sc, int sc_levels1, int previous_levels,
     int n, int nnr, int* cut, int* r_opt, vector<double> sample_weights,
     bool flag_sample_weights, Environment& environment) {
+  TempAllocatorScope scope;
+
   int coarse = ceil(1.0 * nnr / environment.maxbins);  // step coarse graining
   if (coarse < 1) coarse = 1;
-  int np = ceil(1.0 * nnr / coarse);  // number of possible cuts
+  int np = ceil(1.0 * nnr / coarse);  // number of possible cuts <= max_level
 
   // temp variables to memorize optimization cuts
-  vector<int> memory_cuts_idx(np);  // indexes of the cuts (1..np)
-  vector<int> memory_cuts_pos(np);  // positions of the cuts (1..n)
+  TempVector<int> memory_cuts_idx(np);  // indexes of the cuts (1..np)
+  TempVector<int> memory_cuts_pos(np);  // positions of the cuts (1..n)
 
   // dynamic programming optimize function and memorize of cuts
   double Imax;   // I
@@ -131,38 +134,34 @@ void optfun_onerun_kmdl_coarse(vector<int> sortidx_var, vector<int> data, int nb
 
   // function max value at each step
   // double* Ik=(double *)calloc(np,sizeof(double));
-  vector<double> I(np);   // The optimal information value found at each idx.
+  TempVector<double> I(np);   // The optimal information value found at each idx.
   double I_kj;            // The information value for a bin fom idx k to j.
-  vector<double> Ik(np);
+  TempVector<double> Ik(np);
   double Ik_kj;
 
   int njforward(0), nkforward(0);  // Indexes at current position of j and k
 
   // entropy in kj interval for the <nbrV>+1 terms
-  vector<double> H_kj(nbrV);
-  vector<double> Hk_kj(nbrV);
+  TempVector<double> H_kj(nbrV);
+  TempVector<double> Hk_kj(nbrV);
 
-  vector<vector<int> > counts(nbrV);
-  for (int m = 0; m < nbrV; m++) {
-    counts[m].resize(r[m]);
-  }
+  TempVector<int> counts_0(r[0]);
+  TempVector<int> counts_1(r[1]);
+  TempVector<int> counts_k_0(r[0]);
+  TempVector<int> counts_k_1(r[1]);
 
-  Grid2d<int> coarse_counts_marginal(np, r[1], 0);
-  Grid2d<int> coarse_counts_joint(np, r[0], 0);
+  TempGrid2d<int> coarse_counts_marginal(np, r[1], 0);
+  TempGrid2d<int> coarse_counts_joint(np, r[0], 0);
 
-  vector<vector<int> > counts_k(nbrV);
-  for (int m = 0; m < nbrV; m++) {
-    counts_k[m].resize(r[m]);
-  }
   int weighted_count;
 
-  vector<bool> check_repet(n);
+  TempVector<int> check_repet(n);
   for (int i = 0; i < (n - 1); i++) {
     check_repet[i] = (data[sortidx_var[i + 1]] != data[sortidx_var[i]]);
   }
 
-  vector<int> n_values(np);
-  vector<double> sum_sample_weights(np);
+  TempVector<int> n_values(np);
+  TempVector<double> sum_sample_weights(np);
   int ir(0);  // Iterator on non repeated values
   int level_marginal(0), level_joint(0);
   for (int i = 0; i < np; i++) {
@@ -179,7 +178,7 @@ void optfun_onerun_kmdl_coarse(vector<int> sortidx_var, vector<int> data, int nb
       if (flag_sample_weights)
         sum_sample_weights[i] += sample_weights[njforward];
       if (njforward + 1 < n) {  // check no repetition
-        ir += int(check_repet[njforward]);
+        ir += check_repet[njforward];
       }
       njforward++;
     }
@@ -201,10 +200,10 @@ void optfun_onerun_kmdl_coarse(vector<int> sortidx_var, vector<int> data, int nb
     njforward = n_values[j];
     ef_nj = sum_sample_weights[j];
     if (flag_sample_weights) efN_factor = ef_nj / njforward;
-    std::transform(counts[0].begin(), counts[0].end(),
-        coarse_counts_joint.row_cbegin(j), counts[0].begin(), std::plus<int>());
-    std::transform(counts[1].begin(), counts[1].end(),
-        coarse_counts_marginal.row_cbegin(j), counts[1].begin(),
+    std::transform(counts_0.begin(), counts_0.end(),
+        coarse_counts_joint.row_cbegin(j), counts_0.begin(), std::plus<int>());
+    std::transform(counts_1.begin(), counts_1.end(),
+        coarse_counts_marginal.row_cbegin(j), counts_1.begin(),
         std::plus<int>());
 
     Hk_kj[0] = 0;  // joint
@@ -213,20 +212,20 @@ void optfun_onerun_kmdl_coarse(vector<int> sortidx_var, vector<int> data, int nb
     H_kj[1] = 0;  // marginal
     for (int level = 0; level < r[0]; level++) {
       weighted_count = flag_sample_weights
-                           ? int(efN_factor * counts[0][level] + 0.5)
-                           : counts[0][level];
+                           ? int(efN_factor * counts_0[level] + 0.5)
+                           : counts_0[level];
       Hk_kj[0] += environment.cache.cterm->getH(weighted_count);
     }
     H_kj[0]   = Hk_kj[0];
 
     for (int level = 0; level < r[1]; level++) {
       weighted_count = flag_sample_weights
-                           ? int(efN_factor * counts[1][level] + 0.5)
-                           : counts[1][level];
+                           ? int(efN_factor * counts_1[level] + 0.5)
+                           : counts_1[level];
       Hk_kj[1] -= environment.cache.cterm->getH(weighted_count);
       H_kj[1]  -= environment.cache.cterm->getH(weighted_count);
 
-      if (environment.cplx == 0 && counts[1][level] > 0)
+      if (environment.cplx == 0 && counts_1[level] > 0)
         Hk_kj[1] -= sc * environment.cache.cterm->getLog(n);
       else if (environment.cplx == 1) {
         Hk_kj[1] -=
@@ -244,10 +243,8 @@ void optfun_onerun_kmdl_coarse(vector<int> sortidx_var, vector<int> data, int nb
     Imax = -DBL_MAX;
     Ikmax = -DBL_MAX;
 
-    for (int m = 0; m < nbrV; m++) {
-      for (int level = 0; level < r[m]; level++)
-        counts_k[m][level] = counts[m][level];
-    }
+    counts_k_0 = counts_0;
+    counts_k_1 = counts_1;
     ef_nk = ef_nj;
 
     // moving k
@@ -267,19 +264,19 @@ void optfun_onerun_kmdl_coarse(vector<int> sortidx_var, vector<int> data, int nb
       if (flag_sample_weights)
         efN_factor = ef_nk / (njforward - nkforward);
 
-      std::transform(counts_k[1].begin(), counts_k[1].end(),
-          coarse_counts_marginal.row_cbegin(k), counts_k[1].begin(),
+      std::transform(counts_k_1.begin(), counts_k_1.end(),
+          coarse_counts_marginal.row_cbegin(k), counts_k_1.begin(),
           std::minus<int>());
-      std::transform(counts_k[0].begin(), counts_k[0].end(),
-          coarse_counts_joint.row_cbegin(k), counts_k[0].begin(),
+      std::transform(counts_k_0.begin(), counts_k_0.end(),
+          coarse_counts_joint.row_cbegin(k), counts_k_0.begin(),
           std::minus<int>());
 
       H_kj[0]  = 0;
       Hk_kj[0] = 0;
       for (int level = 0; level < r[0]; level++) {
         weighted_count = flag_sample_weights
-                             ? int(efN_factor * counts_k[0][level] + 0.5)
-                             : counts_k[0][level];
+                             ? int(efN_factor * counts_k_0[level] + 0.5)
+                             : counts_k_0[level];
         Hk_kj[0] += environment.cache.cterm->getH(weighted_count);
       }
       H_kj[0] = Hk_kj[0];
@@ -288,12 +285,12 @@ void optfun_onerun_kmdl_coarse(vector<int> sortidx_var, vector<int> data, int nb
       Hk_kj[1] = 0;
       for (int level = 0; level < r[1]; level++) {
         weighted_count = flag_sample_weights
-                             ? int(efN_factor * counts_k[1][level] + 0.5)
-                             : counts_k[1][level];
+                             ? int(efN_factor * counts_k_1[level] + 0.5)
+                             : counts_k_1[level];
         Hk_kj[1] -= environment.cache.cterm->getH(weighted_count);
         H_kj[1]  -= environment.cache.cterm->getH(weighted_count);
 
-        if (environment.cplx == 0 && counts_k[1][level] > 0)
+        if (environment.cplx == 0 && counts_k_1[level] > 0)
           Hk_kj[1] -= sc * environment.cache.cterm->getLog(n);
         else if (environment.cplx == 1) {
           Hk_kj[1] -=
