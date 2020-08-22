@@ -73,7 +73,6 @@ struct Environment {
   bool flag_sample_weights;
   double* noise_vec;
 
-  MemorySpace m;
   vector<MemorySpace> memoryThreads;
 
   double log_eta = 0;

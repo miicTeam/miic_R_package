@@ -237,7 +237,7 @@ bool skeletonIteration(Environment& environment) {
       v = computeEnsInformationNew(environment,
           &environment.edges[posX][posY].shared_info->ui_list[0],
           environment.edges[posX][posY].shared_info->ui_list.size(), NULL, 0,
-          -1, posX, posY, environment.cplx, environment.m);
+          -1, posX, posY, environment.cplx, environment.memoryThreads[0]);
 
       topEdgeElt->Ixy_ui = v[1];
       topEdgeElt->Nxy_ui = v[0];
@@ -246,7 +246,7 @@ bool skeletonIteration(Environment& environment) {
       v = computeEnsInformationContinuous(environment,
           &environment.edges[posX][posY].shared_info->ui_list[0],
           environment.edges[posX][posY].shared_info->ui_list.size(), NULL, 0,
-          -1, posX, posY, environment.cplx, environment.m);
+          -1, posX, posY, environment.cplx, environment.memoryThreads[0]);
       topEdgeElt->Nxy_ui = v[0];
       topEdgeElt->Ixy_ui = v[1];
       topEdgeElt->cplx = v[2];
@@ -294,7 +294,7 @@ bool skeletonIteration(Environment& environment) {
 
       if (topEdgeElt->zi_list.size() > 0) {
         SearchForNewContributingNodeAndItsRank(
-            environment, posX, posY, environment.m);
+            environment, posX, posY, environment.memoryThreads[0]);
       }
 
       if (environment.verbose) {

@@ -77,13 +77,15 @@ Environment::Environment(
   }
 
 #ifdef _OPENMP
-  if (n_threads < 0) n_threads = omp_get_num_procs();
+  if (n_threads <= 0) n_threads = omp_get_num_procs();
   omp_set_num_threads(n_threads);
+#else
+  n_threads = 1;
 #endif
 
   int max_level = *std::max_element(begin(levels), end(levels));
-  m = MemorySpace(n_nodes, n_samples, max_level);
-  memoryThreads = vector<MemorySpace>(n_threads, m);
+  memoryThreads = vector<MemorySpace>(
+      n_threads, MemorySpace(n_nodes, n_samples, max_level));
 
   edges = new Edge*[n_nodes];
   for (int i = 0; i < n_nodes; i++)

@@ -130,7 +130,7 @@ double* computeEnsInformationContinuous_Orientation(Environment& environment,
 
 void computeContributingScores(Environment& environment, int* ziContPosIdx,
     int iz, int* myZi, int myNbrUi, int n_samples_nonNA,
-    const vector<int>& posArray, double* scoresZ, MemorySpace m) {
+    const vector<int>& posArray, double* scoresZ, MemorySpace& m) {
   // progressive data rank with repetition for same values
 
   int cplx = environment.cplx;
@@ -384,7 +384,7 @@ double* computeEnsInformationContinuous(Environment& environment, int* myCond,
 #pragma omp parallel for if (parallelizable)
 #endif
     for (int iz = 0; iz < myNbrZi; iz++) {
-      MemorySpace privateM = m;
+      auto& privateM = m;
 #ifdef _OPENMP
       if (parallelizable)
         privateM = environment.memoryThreads[omp_get_thread_num()];
