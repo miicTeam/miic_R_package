@@ -9,6 +9,8 @@
 #include <string>
 #include <vector>
 
+#include "linear_allocator.h"
+
 namespace miic {
 namespace structure {
 
@@ -17,11 +19,11 @@ namespace structure_impl {
 using std::string;
 using std::vector;
 
-template <typename T>
+template <typename T, typename Allocator = std::allocator<T>>
 struct Grid2d {
  private:
   size_t rows_, cols_;
-  vector<T> data_;
+  vector<T, Allocator> data_;
 
  public:
   Grid2d() = default;
@@ -239,6 +241,16 @@ using structure_impl::ExecutionTime;
 using structure_impl::Grid2d;
 using structure_impl::MemorySpace;
 using structure_impl::Node;
+
+// types using linear allocator
+using TempString = std::basic_string<char, std::char_traits<char>,
+    utility::TempStdAllocator<char>>;
+
+template <class T>
+using TempVector = std::vector<T, utility::TempStdAllocator<T>>;
+
+template <class T>
+using TempGrid2d = Grid2d<T, utility::TempStdAllocator<T>>;
 }  // namespace structure
 }  // namespace miic
 
