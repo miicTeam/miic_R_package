@@ -105,8 +105,8 @@ class sort_indices {
   bool operator()(int i, int j) const { return mparr[i] < mparr[j]; }
 };
 
-void sort2arrays(
-    int len, vector<int>& a, vector<int>& brr, vector<int>& bridge) {
+void sort2arrays(int len, TempVector<int>& a, TempVector<int>& brr,
+    TempVector<int>& bridge) {
   int i;
 
   int* pArray = &a[1];

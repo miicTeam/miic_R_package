@@ -29,19 +29,22 @@ double* getAllInfoNEW(int* ptrAllData, const vector<int>& ptrAllLevels,
     int ziPos, int sampleSize, int sampleSizeEff, int modCplx, int k23,
     MemorySpace* memory, const vector<double>& weights, double** freqs1,
     bool test_mar, std::shared_ptr<CtermCache> cache) {
+  TempAllocatorScope scope;
+
   int randomrescaling = 1;
   float r, rr;
 
-  int bin_max = 100, MDL = 0, TRUE = 1, FALSE = 0;
+  int MDL = 0, TRUE = 1, FALSE = 0;
   int l, ok;
 
+  int max_level = *std::max_element(begin(ptrAllLevels), end(ptrAllLevels));
   int nrow = sampleSize + 1;
   int ncol = 7;
 
   // [N+1][7]
-  auto& sample = (*memory).sample;
-  auto& sortedSample = (*memory).sortedSample;
-  auto& Opt_sortedSample = (*memory).Opt_sortedSample;
+  TempGrid2d<int> sample(nrow, ncol);
+  TempGrid2d<int> sortedSample(nrow, ncol);
+  TempGrid2d<int> Opt_sortedSample(nrow, ncol);
 
   vector<int> sampleWithZ(sampleSize);
 
@@ -49,8 +52,8 @@ double* getAllInfoNEW(int* ptrAllData, const vector<int>& ptrAllLevels,
 
   vector<int> nSample(nbrZi);
   //[N+1 elements: 0 to N]
-  auto& orderSample = (*memory).orderSample;
-  auto& sampleKey = (*memory).sampleKey;
+  TempVector<int> orderSample(sampleSize + 2);
+  TempVector<int> sampleKey(sampleSize + 2);
 
   int bin, PBin, Prui, increment, X, Y, Z;
   int ptrzi, zi, z;
@@ -65,30 +68,28 @@ double* getAllInfoNEW(int* ptrAllData, const vector<int>& ptrAllLevels,
 
   int NNxyui, NNxyuiz, NNxyuizl, Ntot;  // for rescaling NML change 20160228
 
-  auto& Pxyuiz = (*memory).Pxyuiz;
+  TempVector<double> Pxyuiz(max_level + 1);
 
-  auto& bridge = (*memory).bridge;
+  TempVector<int> bridge(sampleSize + 2);
 
   // [Z]
-  auto& Nyuiz = (*memory).Nyuiz;
-  auto& Nuiz = (*memory).Nuiz;
-  auto& Nz = (*memory).Nz;
+  TempVector<int> Nyuiz(max_level + 1);
+  TempVector<int> Nuiz(max_level + 1);
+  TempVector<int> Nz(max_level + 1);
   int Nzs, Nuizs, Nyuizs, Nxyuizs, Nxuizs;
 
   double Pxyuizl;
   int Nyuizl, Nuizl, Nzl;  //[Z]
 
-  auto& Ny = (*memory).Ny;
+  TempVector<int> Ny(max_level + 1);
   int Nyj, Nys;  //[Y]
 
   // [X]
-  auto& Nxui = (*memory).Nxui;
-  auto& Nx = (*memory).Nx;
+  TempVector<int> Nxui(max_level + 1);
+  TempVector<int> Nx(max_level + 1);
   int Nxuij, Nxj, Nxuis, Nxs;  //[X]
 
-  nrow = bin_max + 1;
-  ncol = bin_max + 1;
-  auto& Nxuiz = (*memory).Nxuiz;  // [X][Z]
+  TempGrid2d<int> Nxuiz(max_level + 1, max_level + 1);  // [X][Z]
   int Nxuizjl;  //[X][Z]
 
   double info_xui_y, info_yui_x, info_ui_y, info_ui_x;

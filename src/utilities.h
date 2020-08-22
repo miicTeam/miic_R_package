@@ -16,8 +16,8 @@ std::string toNameString(
 std::vector<std::vector<int>> getAdjMatrix(const structure::Environment&);
 void sort2arraysConfidence(
     int len, const std::vector<int>& a, std::vector<int>& brr);
-void sort2arrays(int len, std::vector<int>& a, std::vector<int>& brr,
-    std::vector<int>& bridge);
+void sort2arrays(int len, structure::TempVector<int>& a,
+    structure::TempVector<int>& brr, structure::TempVector<int>& bridge);
 double ramanujan(int n);
 TimePoint getLapStartTime();
 double getLapInterval(TimePoint);

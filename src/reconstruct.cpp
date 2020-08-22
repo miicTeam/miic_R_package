@@ -24,6 +24,19 @@ List empty_results() { return List::create(_["interrupted"] = true); }
 List reconstruct(List input_data, List arg_list) {
   Environment environment(input_data, arg_list);
 
+  int max_level =
+      *std::max_element(begin(environment.levels), end(environment.levels));
+  size_t li_alloc_size =
+      8000 + sizeof(int) *
+              (3 * (environment.n_samples + 2) +
+                  3 * (environment.n_samples + 1) * 7 + 6 * (max_level + 1) +
+                  ((max_level + 1) * (max_level + 1)) +
+                  sizeof(double) * (max_level + 1));
+#ifdef _OPENMP
+#pragma omp parallel  // each thread has its own instance of li_alloc_ptr
+#endif
+  li_alloc_ptr = std::make_unique<LinearAllocator>(li_alloc_size);
+
   auto lap_start = getLapStartTime();
   Rcout << "Search all pairs for unconditional independence relations...\n";
   // Initialize skeleton, find unconditional independence
