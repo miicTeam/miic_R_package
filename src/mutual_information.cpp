@@ -39,8 +39,8 @@ using namespace miic::utility;
 // r : number cuts
 // cut: vector with cuts point-> [0 cut[0]][cut[0]+1 cut[1]]...[cut[r-2]
 // cut[r-1]]
-int reconstruction_cut_coarse(TempVector<int>& memory_cuts,
-    TempVector<int>& memory_cuts2, int np, int n, int *cut) {
+int reconstruction_cut_coarse(const TempVector<int>& memory_cuts,
+    const TempVector<int>& memory_cuts2, int np, int n, int *cut) {
   int ncuts = 0;
   int l, s;
   if (memory_cuts[np - 1] == 0) {
@@ -72,171 +72,138 @@ int reconstruction_cut_coarse(TempVector<int>& memory_cuts,
 // INPUT:
 // d: index of variable in datafactors
 // varidx: index of variable in sortidx
-void update_datafactors(
-    vector<vector<int> > &sortidx, int varidx, int** datafactors,
-    int d, int n, int **cut) {
-
-  int j, sjj, uu = 0;
-  for (j = 0; j <= n - 1; j++) {
-    sjj = sortidx[varidx][j];
+void update_datafactors(const vector<vector<int>>& sortidx, int varidx,
+    int** datafactors, int d, int n, int** cut) {
+  int uu = 0;
+  for (int j = 0; j < n; ++j) {
+    int sjj = sortidx[varidx][j];
     if (j > cut[d][uu]) uu++;
     datafactors[d][sjj] = uu;
   }
   return;
 }
 
-// INPUT:
-// datarank, datafactors
-// take 0 1 as x y and 2..<Mui>+1 for {u} indexes
-// ignore index <dui> in the u
+// INPUT
+// datafactors: [0, ]: x, [1, ]: y, [2 ... <n_ui> + 1, ]: {ui}
+// exclude: ignore index <exclude> in the {ui}
+// n: Number of samples
+// n_ui: number of {ui}
+// r: number of levels of each variable [x, y, {ui}]
 // OUTPUT
-// return joint datafactors ui and uiy uix uixy, with number of levels
-// ruiyx[0,1,2,3] ruiyx -> 0:u,1:uy,2:ux,3:uyx
-void jointfactors_uiyx(int **datafactors, int dui, int n, int Mui, int *r,
-    int **uiyxfactors, int *ruiyx) {
+// uiyxfactors: Joint datafactors. [ui, uiy, uix, uixy]
+// ruiyx[0,1,2,3]: Number of joint levels. 0: u, 1: uy, 2: ux, 3: uyx
+void jointfactors_uiyx(int** datafactors, int exclude, int n, int n_ui, int* r,
+    int** uiyxfactors, int* ruiyx) {
   TempAllocatorScope scope;
-
-  bool tooManyLevels = false;
-  // From single datafactors to joint datafactors ui; (ui,y);(ui,x);(ui,y,x)
-  int n_joint_levels = 1;
-  for (int i = 0; i < Mui + 2 && !tooManyLevels; ++i) {
-    n_joint_levels *= r[i];
-    if (n_joint_levels > 8 * n) {
-      tooManyLevels = true;
-    }
-  }
-
-  TempVector<int> vecZeroOnesui;
-  TempVector<int> vecZeroOnesuiy;
-  TempVector<int> vecZeroOnesuix;
-  TempVector<int> vecZeroOnesuiyx;
-  // declaration
-  if (!tooManyLevels) {
-    vecZeroOnesui   = TempVector<int>(n_joint_levels);
-    vecZeroOnesuiy  = TempVector<int>(n_joint_levels);
-    vecZeroOnesuix  = TempVector<int>(n_joint_levels);
-    vecZeroOnesuiyx = TempVector<int>(n_joint_levels);
-  }
-
-  TempVector<int> datauix(n);
-  TempVector<int> datauiy(n);
-  TempVector<int> datauiyx(n);
-  TempVector<int> dataui(n, 0);
-  TempVector<int> orderSample_ux(n);
-  TempVector<int> orderSample_uyx(n);
+  // Compute unique hash values for each sample in each of the joint spaces
+  TempVector<int> hash_ui(n);
+  TempVector<int> hash_uiy(n);
+  TempVector<int> hash_uix(n);
+  TempVector<int> hash_uiyx(n);
   for (int i = 0; i < n; ++i) {
-    datauiyx[i] = datafactors[0][i];  // yx
-    datauiyx[i] += datafactors[1][i] * r[0];
-    datauix[i] = datafactors[0][i];  // x
-    datauiy[i] = datafactors[1][i];  // y
+    hash_ui[i] = 0;
+    hash_uiy[i] = datafactors[1][i];
+    hash_uix[i] = datafactors[0][i];
+    hash_uiyx[i] = hash_uix[i] + hash_uiy[i] * r[0];
 
     int Pbin_ui = 1;
-    for (int l = Mui + 1; l >= 2; --l) {
-      if (l == dui) continue;
+    for (int l = n_ui + 1; l >= 2; --l) {
+      if (l == exclude) continue;
 
       int df = datafactors[l][i] * Pbin_ui;
-      datauiyx[i] += df * r[1] * r[0];
-      datauix[i] += df * r[0];
-      datauiy[i] += df * r[1];
-      dataui[i] += df;
+      hash_uiyx[i] += df * r[1] * r[0];
+      hash_uix[i] += df * r[0];
+      hash_uiy[i] += df * r[1];
+      hash_ui[i] += df;
       Pbin_ui *= r[l];
-    }
-    // init
-    if (!tooManyLevels) {
-      vecZeroOnesui[dataui[i]] = 1;
-      vecZeroOnesuiy[datauiy[i]] = 1;
-      vecZeroOnesuix[datauix[i]] = 1;
-      vecZeroOnesuiyx[datauiyx[i]] = 1;
-    } else {
-      orderSample_ux[i] = i;
-      orderSample_uyx[i] = i;
     }
   }
 
-  if (!tooManyLevels) {
-    // create the vector for storing the position
-    int pos = 0;
-    int pos1 = 0;
-    int pos2 = 0;
-    int pos3 = 0;
-    for (int i = 0; i < n_joint_levels; ++i) {
-      if (vecZeroOnesui[i] == 1)
-        vecZeroOnesui[i] = pos++;
-
-      if (vecZeroOnesuiy[i] == 1)
-        vecZeroOnesuiy[i] = pos1++;
-
-      if (vecZeroOnesuix[i] == 1)
-        vecZeroOnesuix[i] = pos2++;
-
-      if (vecZeroOnesuiyx[i] == 1)
-        vecZeroOnesuiyx[i] = pos3++;
+  bool too_many_levels = false;
+  int n_joint_levels = 1;
+  for (int i = 0; i < n_ui + 2 && !too_many_levels; ++i) {
+    n_joint_levels *= r[i];
+    if (n_joint_levels > 8 * n) {
+      too_many_levels = true;  // Too large for the sparse vectors
     }
+  }
 
-    ruiyx[0] = pos;   // ui
-    ruiyx[1] = pos1;  // uiy
-    ruiyx[2] = pos2;  // uix
-    ruiyx[3] = pos3;  // uiyx
+  ruiyx[0] = 0;  // ui
+  ruiyx[1] = 0;  // uiy
+  ruiyx[2] = 0;  // uix
+  ruiyx[3] = 0;  // uiyx
+  if (!too_many_levels) {
+    // Use large sparse vectors to have O(n) time complexity (no sort)
+    TempVector<int> levels_ui(n_joint_levels);
+    TempVector<int> levels_uiy(n_joint_levels);
+    TempVector<int> levels_uix(n_joint_levels);
+    TempVector<int> levels_uiyx(n_joint_levels);
+    for (int i = 0; i < n; ++i) {
+      levels_ui[hash_ui[i]] = 1;
+      levels_uiy[hash_uiy[i]] = 1;
+      levels_uix[hash_uix[i]] = 1;
+      levels_uiyx[hash_uiyx[i]] = 1;
+    }
+    // Use ruiyx[0-3] as level indices, whose final values are the total numbers
+    // of joint levels. Order of the levels follow the order of the hash values,
+    // which are sorted automatically (as indices) with sparse vectors.
+    for (int i = 0; i < n_joint_levels; ++i) {
+      if (levels_ui[i] == 1) levels_ui[i] = ruiyx[0]++;
+      if (levels_uiy[i] == 1) levels_uiy[i] = ruiyx[1]++;
+      if (levels_uix[i] == 1) levels_uix[i] = ruiyx[2]++;
+      if (levels_uiyx[i] == 1) levels_uiyx[i] = ruiyx[3]++;
+    }
 
     for (int i = 0; i < n; ++i) {
-      uiyxfactors[0][i] = vecZeroOnesui[dataui[i]];  // ui
-      uiyxfactors[1][i] = vecZeroOnesuiy[datauiy[i]];  // uiy
-      uiyxfactors[2][i] = vecZeroOnesuix[datauix[i]];  // uix
-      uiyxfactors[3][i] = vecZeroOnesuiyx[datauiyx[i]];  // uiyx
+      uiyxfactors[0][i] = levels_ui[hash_ui[i]];      // ui
+      uiyxfactors[1][i] = levels_uiy[hash_uiy[i]];    // uiy
+      uiyxfactors[2][i] = levels_uix[hash_uix[i]];    // uix
+      uiyxfactors[3][i] = levels_uiyx[hash_uiyx[i]];  // uiyx
     }
   } else {
-    std::sort(begin(orderSample_ux), end(orderSample_ux),
-        [&datauix](int a, int b) { return datauix[a] < datauix[b]; });
-    std::sort(begin(orderSample_uyx), end(orderSample_uyx),
-        [&datauiyx](int a, int b) { return datauiyx[a] < datauiyx[b]; });
+    // Fall back to O(nlog(n)) time complexity (sort)
+    TempVector<int> orderSample_uix(n);
+    std::iota(begin(orderSample_uix), end(orderSample_uix), 0);  // [0 to n - 1]
+    TempVector<int> orderSample_uiyx(orderSample_uix);           // copy
 
-    // joint datafactors without gaps
-    // compute term constant H(y,Ui) and H(Ui)
-    int ix, iyx, iix, iiyx;
+    std::sort(begin(orderSample_uix), end(orderSample_uix),
+        [&hash_uix](int a, int b) { return hash_uix[a] < hash_uix[b]; });
+    std::sort(begin(orderSample_uiyx), end(orderSample_uiyx),
+        [&hash_uiyx](int a, int b) { return hash_uiyx[a] < hash_uiyx[b]; });
 
-    ruiyx[0] = 0;  // ui
-    ruiyx[1] = 0;  // uiy
-    ruiyx[2] = 0;  // uix
-    ruiyx[3] = 0;  // uiyx
+    // hash_uix[a] < hash_uix[b] -> hash_ui[a] <= hash_ui[b]
+    int hash_ui_prev = hash_ui[orderSample_uix[0]];
+    int hash_uix_prev = hash_uix[orderSample_uix[0]];
+    for (const auto index : orderSample_uix) {
+      auto hash_ui_current = hash_ui[index];
+      auto hash_uix_current = hash_uix[index];
+      if (hash_ui_current > hash_ui_prev) ++ruiyx[0];
+      if (hash_uix_current > hash_uix_prev) ++ruiyx[2];
 
-    ix = orderSample_ux[0];
-    iyx = orderSample_uyx[0];
-    uiyxfactors[0][ix] = 0;   // ui
-    uiyxfactors[1][iyx] = 0;  // uiy
-    uiyxfactors[2][ix] = 0;   // uix
-    uiyxfactors[3][iyx] = 0;  // uiyx
-
-    for (int i = 1; i < n; ++i) {
-      iix = ix;
-      iiyx = iyx;
-      ix = orderSample_ux[i];
-      iyx = orderSample_uyx[i];
-
-      if (dataui[ix] > dataui[iix]) {
-        ruiyx[0]++;
-      }
-      uiyxfactors[0][ix] = ruiyx[0];  // ui
-
-      if (datauiy[iyx] > datauiy[iiyx]) {
-        ruiyx[1]++;
-      }
-      uiyxfactors[1][iyx] = ruiyx[1];  // uiy
-
-      if (datauix[ix] > datauix[iix]) {
-        ruiyx[2]++;
-      }
-      uiyxfactors[2][ix] = ruiyx[2];  // uix
-
-      if (datauiyx[iyx] > datauiyx[iiyx]) {
-        ruiyx[3]++;
-      }
-      uiyxfactors[3][iyx] = ruiyx[3];  // uiyx
+      uiyxfactors[0][index] = ruiyx[0];  // ui
+      uiyxfactors[2][index] = ruiyx[2];  // uix
+      hash_ui_prev = hash_ui_current;
+      hash_uix_prev = hash_uix_current;
     }
-    // number joint levels
-    ruiyx[0]++;  // ui
-    ruiyx[1]++;  // uiy
-    ruiyx[2]++;  // uix
-    ruiyx[3]++;  // uiyx
+    // hash_uixy[a] < hash_uixy[b] -> hash_uiy[a] <= hash_uiy[b]
+    int hash_uiy_prev = hash_uiy[orderSample_uiyx[0]];
+    int hash_uiyx_prev = hash_uiyx[orderSample_uiyx[0]];
+    for (const auto index : orderSample_uiyx) {
+      auto hash_uiy_current = hash_uiy[index];
+      auto hash_uiyx_current = hash_uiyx[index];
+      if (hash_uiy_current > hash_uiy_prev) ++ruiyx[1];
+      if (hash_uiyx_current > hash_uiyx_prev) ++ruiyx[3];
+
+      uiyxfactors[1][index] = ruiyx[1];  // uiy
+      uiyxfactors[3][index] = ruiyx[3];  // uiyx
+      hash_uiy_prev = hash_uiy_current;
+      hash_uiyx_prev = hash_uiyx_current;
+    }
+    // number of joint levels
+    ++ruiyx[0];  // ui
+    ++ruiyx[1];  // uiy
+    ++ruiyx[2];  // uix
+    ++ruiyx[3];  // uiyx
   }
   return;
 }
@@ -246,122 +213,66 @@ void jointfactors_uiyx(int **datafactors, int dui, int n, int Mui, int *r,
 // OUTPUT
 // return joint datafactors ui , with number of levels rui
 // entropy term Hui
-void jointfactors_u(int **datafactors, int *ptrIdx, int n, int Mui, int *r,
-    int *ufactors, int *ru) {
-  TempAllocatorScope scope;
-  // from cuts to joint datafactors
-  int jj;
-  int j, l;
-  if (Mui == 1) {
-    for (jj = 0; jj <= n - 1; jj++) {
-      ufactors[jj] = datafactors[ptrIdx[0]][jj];
+void jointfactors_u(int** datafactors, int* ptrIdx, int n, int n_ui, int* r,
+    int* ufactors, int* ru) {
+  if (n_ui == 1) {
+    for (int i = 0; i < n; ++i) {
+      ufactors[i] = datafactors[ptrIdx[0]][i];
     }
     *ru = r[ptrIdx[0]];
     return;
   }
-  // update joint datafactors (with gaps) ui and (ui,y)
-  int df, Pbin_ui;
-  TempVector<int> datau(n, 0);
-
-  bool tooManyLevels = false;
-
-  int nbrLevelsJoint = 1;
-  for (l = 0; l < Mui && !tooManyLevels; l++) {
-    nbrLevelsJoint *= r[ptrIdx[l]];
-    if (nbrLevelsJoint > 8 * n) tooManyLevels = true;
-  }
-  // decl
-  TempVector<int> vecZeroOnesui;
-  TempVector<int> orderSample_u(n);
-  if (!tooManyLevels) {
-    vecZeroOnesui = TempVector<int>(nbrLevelsJoint + 1);
-  }
-
-  for (jj = 0; jj <= n - 1; jj++) {
-    Pbin_ui = 1;
-    for (l = Mui - 1; l >= 0; l--) {
-      df = datafactors[ptrIdx[l]][jj] * Pbin_ui;
-      datau[jj] += df;
+  TempAllocatorScope scope;
+  // Compute unique hash value for each sample in the joint space
+  TempVector<int> hash_u(n, 0);
+  for (int i = 0; i < n; ++i) {
+    int Pbin_ui = 1;
+    for (int l = n_ui - 1; l >= 0; --l) {
+      hash_u[i] += datafactors[ptrIdx[l]][i] * Pbin_ui;
       Pbin_ui *= r[ptrIdx[l]];
     }
-    // init
-    if (!tooManyLevels) {
-      vecZeroOnesui[datau[jj]] = 1;
-    } else {
-      orderSample_u[jj] = jj;
+  }
+
+  bool too_many_levels = false;
+  int n_joint_levels = 1;
+  for (int i = 0; i < n_ui && !too_many_levels; ++i) {
+    n_joint_levels *= r[ptrIdx[i]];
+    if (n_joint_levels > 8 * n) {
+      too_many_levels = true;  // Too large for the sparse vectors
     }
   }
 
-  if (!tooManyLevels) {
-    // create the vector for storing the position
-    int pos = 0;
+  *ru = 0;
+  if (!too_many_levels) {
+    // Use large sparse vectors to have O(n) time complexity (no sort)
+    TempVector<int> levels_ui(n_joint_levels);
+    for (const auto h : hash_u)
+      levels_ui[h] = 1;
+    // Use *ru as level indices, whose final value is the total numbers
+    // of joint levels. Order of the levels follow the order of the hash values,
+    // which are sorted automatically (as indices) with the sparse vector.
+    for (auto& l : levels_ui)
+      if (l == 1) l = (*ru)++;
 
-    for (jj = 0; jj <= nbrLevelsJoint; jj++) {
-      if (vecZeroOnesui[jj] == 1) {
-        vecZeroOnesui[jj] = pos;
-        pos += 1;
-      }
-    }
-
-    *ru = pos;  // ui
-
-    for (j = 0; j <= n - 1; j++) {
-      ufactors[j] = vecZeroOnesui[datau[j]];  // ui
-    }
-
+    for (int i = 0; i < n; ++i)
+      ufactors[i] = levels_ui[hash_u[i]];
   } else {
+    // Fall back to O(nlog(n)) time complexity (sort)
+    TempVector<int> orderSample_u(n);
+    std::iota(begin(orderSample_u), end(orderSample_u), 0);
     std::sort(begin(orderSample_u), end(orderSample_u),
-        [&datau](int a, int b) { return datau[a] < datau[b]; });
+        [&hash_u](int a, int b) { return hash_u[a] < hash_u[b]; });
 
-    int ix, iix;
-    ix = orderSample_u[0];
-    *ru = 0;
-    ufactors[ix] = 0;  // ui
+    int hash_u_prev = hash_u[orderSample_u[0]];
+    for (const auto index : orderSample_u) {
+      auto hash_u_current = hash_u[index];
+      if (hash_u_current > hash_u_prev) ++*ru;
 
-    for (j = 0; j < n - 1; j++) {
-      iix = ix;
-      ix = orderSample_u[j + 1];
-
-      if (datau[ix] > datau[iix]) {
-        *ru = *ru + 1;
-      }
-      ufactors[ix] = *ru;  // ui
+      ufactors[index] = *ru;
+      hash_u_prev = hash_u_current;
     }
-    *ru = *ru + 1;
+    ++*ru;
   }
-
-#if DEBUG_JOINT
-  Rprintf("\nj -> datau[j]\n");
-  for (j = 0; j <= n - 1; j++) {
-    Rprintf("%d -> %d \n", j, datau[j]);
-  }
-  R_FlushConsole();
-#endif
-
-#if DEBUG_JOINT
-  Rprintf("j,orderSample[j+1],sampleKey[j+1],datau[orderSample[j+1]]\n");
-  for (j = 0; j <= n - 1; j++) {
-    Rprintf("%d: %d %d, %d \n", j, orderSample[j + 1], sampleKey[j + 1],
-        datau[orderSample[j + 1]]);
-  }
-  R_FlushConsole();
-#endif
-
-  // joint datafactors without gaps
-  // compute term constant H(y,Ui) and H(Ui)
-
-#if DEBUG
-  Rprintf("Hu=%lf\n", *Hu);
-#endif
-
-#if DEBUG_JOINT
-  Rprintf("j,uiyfactors[0][i] (ru=%d)\n", *ru);
-  for (j = 0; j <= n - 1; j++) {
-    Rprintf("%d-> %d\n", j, ufactors[j]);
-  }
-  R_FlushConsole();
-#endif
-
   return;
 }
 
