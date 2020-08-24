@@ -14,8 +14,6 @@ std::vector<std::vector<std::string>> getEdgesInfoTable(
 std::string toNameString(
     const structure::Environment&, const std::vector<int>&);
 std::vector<std::vector<int>> getAdjMatrix(const structure::Environment&);
-void sort2arraysConfidence(int len, const structure::TempVector<int>& a,
-    structure::TempVector<int>& brr);
 void sort2arrays(int len, structure::TempVector<int>& a,
     structure::TempVector<int>& brr, structure::TempVector<int>& bridge);
 double ramanujan(int n);

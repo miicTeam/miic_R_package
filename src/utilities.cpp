@@ -132,20 +132,6 @@ double ramanujan(int n) {
   return N;
 }
 
-class sort_confidence {
- private:
-  const TempVector<int>& mparr;
-
- public:
-  sort_confidence(const TempVector<int>& parr) : mparr(parr) {}
-  bool operator()(int i, int j) const { return mparr[i] < mparr[j]; }
-};
-
-void sort2arraysConfidence(
-    int len, const TempVector<int>& a, TempVector<int>& brr) {
-  std::sort(begin(brr), begin(brr) + len, sort_confidence(a));
-}
-
 vector<vector<int>> getAdjMatrix(const Environment& env) {
   vector<vector<int>> adj_matrix(env.n_nodes, vector<int>(env.n_nodes, 0));
   for (int i = 1; i < env.n_nodes; i++) {

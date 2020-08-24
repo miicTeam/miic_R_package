@@ -185,8 +185,10 @@ void jointfactors_uiyx(int **datafactors, int dui, int n, int Mui, int *r,
       uiyxfactors[3][i] = vecZeroOnesuiyx[datauiyx[i]];  // uiyx
     }
   } else {
-    sort2arraysConfidence(n, datauix, orderSample_ux);
-    sort2arraysConfidence(n, datauiyx, orderSample_uyx);
+    std::sort(begin(orderSample_ux), end(orderSample_ux),
+        [&datauix](int a, int b) { return datauix[a] < datauix[b]; });
+    std::sort(begin(orderSample_uyx), end(orderSample_uyx),
+        [&datauiyx](int a, int b) { return datauiyx[a] < datauiyx[b]; });
 
     // joint datafactors without gaps
     // compute term constant H(y,Ui) and H(Ui)
@@ -308,7 +310,8 @@ void jointfactors_u(int **datafactors, int *ptrIdx, int n, int Mui, int *r,
     }
 
   } else {
-    sort2arraysConfidence(n, datau, orderSample_u);
+    std::sort(begin(orderSample_u), end(orderSample_u),
+        [&datau](int a, int b) { return datau[a] < datau[b]; });
 
     int ix, iix;
     ix = orderSample_u[0];
