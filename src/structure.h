@@ -21,9 +21,30 @@ using std::vector;
 
 template <typename T, typename Allocator = std::allocator<T>>
 struct Grid2d {
- private:
-  size_t rows_, cols_;
-  vector<T, Allocator> data_;
+ public:
+  typedef T value_type;
+  // Wrapper class
+  struct Row {
+   public:
+    typedef T value_type;
+    Row() = delete;
+    Row(Grid2d& parent, size_t row) : parent_(parent), row_(row) {}
+
+    T& operator()(size_t col) { return parent_(row_, col); }
+    const T& operator()(size_t col) const { return parent_(row_, col); }
+    T& operator[](size_t col) { return parent_(row_, col); }
+    const T& operator[](size_t col) const { return parent_(row_, col); }
+    size_t size() { return parent_.n_cols(); }
+
+    auto begin() { return parent_.row_begin(); }
+    auto end() { return parent_.row_end(); }
+    auto cbegin() const { return parent_.row_cbegin(); }
+    auto cend() const { return parent_.row_cend(); }
+
+   private:
+    Grid2d& parent_;
+    size_t row_;
+  };
 
  public:
   Grid2d() = default;
@@ -42,6 +63,7 @@ struct Grid2d {
   const T& operator()(size_t row, size_t col) const {
     return data_[row * cols_ + col];
   }
+  Row getRow(size_t row) { return Row(this, row); }
 
   size_t n_rows() { return rows_; }
   size_t n_cols() { return cols_; }
@@ -56,6 +78,10 @@ struct Grid2d {
   auto row_end(size_t row) { return data_.end() + (row + 1) * cols_; }
   auto row_cbegin(size_t row) const { return data_.cbegin() + row * cols_; }
   auto row_cend(size_t row) const { return data_.cend() + (row + 1) * cols_; }
+
+ private:
+  size_t rows_, cols_;
+  vector<T, Allocator> data_;
 };
 
 struct EdgeSharedInfo {
