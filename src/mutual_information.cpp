@@ -1,34 +1,17 @@
 #include "mutual_information.h"
 
-#include <float.h>
-#include <limits.h>
-#include <math.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <time.h>
-
-#include <algorithm>
-#include <iostream>
-
-#include "compute_info.h"
-#include "utilities.h"
-
-//#define _MY_DEBUG_NEW 1
-//#define _MY_DEBUG_NEW_UI_2 1
-//#define _MY_DEBUG_NEW_UI 1
-//#define _MY_DEBUG_NEW_OPTFUN 1
-//#define DEBUG_JOINT 1
-//#define _MY_DEBUG_NEW_UI_NML 1
-//#define _MY_DEBUG_NEW_3p 1
-//#define _MY_DEBUG_NEW_3p_f 1
-//#define DEBUG 1
+#include <algorithm>  // std::max, std::sort
+#define _USE_MATH_DEFINES
+#include <cmath>    // std::log
+#include <numeric>  // std::iota
 
 namespace miic {
 namespace computation {
 
+using std::log;
 using std::vector;
-using namespace miic::structure;
-using namespace miic::utility;
+using structure::TempVector;
+using utility::TempAllocatorScope;
 
 // INPUT:
 // memory_cuts: vector length n with recorded recursvely best cuts,
@@ -40,7 +23,7 @@ using namespace miic::utility;
 // cut: vector with cuts point-> [0 cut[0]][cut[0]+1 cut[1]]...[cut[r-2]
 // cut[r-1]]
 int reconstruction_cut_coarse(const TempVector<int>& memory_cuts,
-    const TempVector<int>& memory_cuts2, int np, int n, int *cut) {
+    const TempVector<int>& memory_cuts2, int np, int n, int* cut) {
   int ncuts = 0;
   int l, s;
   if (memory_cuts[np - 1] == 0) {
@@ -277,152 +260,133 @@ void jointfactors_u(int** datafactors, int* ptrIdx, int n, int n_ui, int* r,
 }
 
 // rux -> 0:x,1;u,2:ux
-vector<double> computeMI_knml(int *xfactors, int *ufactors, int *uxfactors, int *rux,
-    int n, int n_eff, std::vector<double> sample_weights,
+vector<double> computeMI_knml(int* xfactors, int* ufactors, int* uxfactors,
+    int* rux, int n, int n_eff, std::vector<double> sample_weights,
     std::shared_ptr<CtermCache> cache, int flag) {
-  vector<double> I(2);
+  TempAllocatorScope scope;
 
-  int j, x, u, ux;
+  TempVector<double> nx(rux[0]);
+  TempVector<double> nu(rux[1]);
+  TempVector<double> nux(rux[2]);
+  for (int i = 0; i < n; i++) {
+    nx[xfactors[i]] += sample_weights[i];
+    nu[ufactors[i]] += sample_weights[i];
+    nux[uxfactors[i]] += sample_weights[i];
+  }
 
   double Hux = 0, Hu = 0, Hx = 0, SC = 0;
+  for (const auto x : nx) {
+    if (x <= 0) continue;
 
-  double *nx = (double *)calloc(rux[0], sizeof(double));
-  double *nu = (double *)calloc(rux[1], sizeof(double));
-  double *nux = (double *)calloc(rux[2], sizeof(double));
+    Hx -= x * log(x);
+    if (flag == 0 || flag == 2)
+      SC += cache->getLogC(std::max(1, static_cast<int>(x + 0.5)), rux[1]);
+  }
+  for (const auto u : nu) {
+    if (u <= 0) continue;
 
-  for (j = 0; j < n; j++) {
-    nx[xfactors[j]] += sample_weights[j];
-    nu[ufactors[j]] += sample_weights[j];
-    nux[uxfactors[j]] += sample_weights[j];
+    Hu -= u * log(u);
+    if (flag == 0 || flag == 1)
+      SC += cache->getLogC(std::max(1, static_cast<int>(u + 0.5)), rux[0]);
+  }
+  for (const auto ux : nux) {
+    if (ux <= 0) continue;
+
+    Hux -= ux * log(ux);
   }
 
-  for (x = 0; x < rux[0]; x++) {
-    if (nx[x] > 0) {
-      Hx -= nx[x] * log(nx[x]);
-      if (flag == 0 || flag == 2)
-        SC += cache->getLogC(fmax(1,int(nx[x]+0.5)), rux[1]);
-    }
-  }
-  for (u = 0; u < rux[1]; u++) {
-    if (nu[u] > 0){
-      Hu -= nu[u] * log(nu[u]);
-      if (flag == 0 || flag == 1)
-        SC += cache->getLogC(fmax(1,int(nu[u]+0.5)), rux[0]);
-    }
+  if (flag == 0) {
+    SC -= cache->getLogC(n_eff, rux[0]);
+    SC -= cache->getLogC(n_eff, rux[1]);
   }
 
-  for (ux = 0; ux < rux[2]; ux++) {
-    if (nux[ux] > 0) Hux -= nux[ux] * log(nux[ux]);
-  }
-
-  if (flag == 0) SC -= cache->getLogC(n_eff, rux[0]);
-  if (flag == 0) SC -= cache->getLogC(n_eff, rux[1]);
-
+  vector<double> I(2);
   I[0] = cache->getLog(n_eff) + (Hu + Hx - Hux) / n_eff;
-
   if (flag == 0)
     I[1] = I[0] - 0.5 * SC / n_eff;
   else
     I[1] = I[0] - SC / n_eff;
 
-  free(nx);
-  free(nu);
-  free(nux);
-
   return I;
 }
 
-vector<double> computeMI_knml(int *xfactors, int *ufactors, int *uxfactors, int *rux,
-    int n, std::shared_ptr<CtermCache> cache, int flag) {
-  vector<double> I(2);
+vector<double> computeMI_knml(int* xfactors, int* ufactors, int* uxfactors,
+    int* rux, int n, std::shared_ptr<CtermCache> cache, int flag) {
+  TempAllocatorScope scope;
 
-  int j, x, u, ux;
+  TempVector<int> nx(rux[0]);
+  TempVector<int> nu(rux[1]);
+  TempVector<int> nux(rux[2]);
+  for (int i = 0; i < n; i++) {
+    ++nx[xfactors[i]];
+    ++nu[ufactors[i]];
+    ++nux[uxfactors[i]];
+  }
 
   double Hux = 0, Hu = 0, Hx = 0, SC = 0;
+  for (const auto x : nx) {
+    if (x <= 0) continue;
 
-  int *nx = (int *)calloc(rux[0], sizeof(int));
-  int *nu = (int *)calloc(rux[1], sizeof(int));
-  int *nux = (int *)calloc(rux[2], sizeof(int));
+    Hx -= x * cache->getLog(x);
+    if (flag == 0 || flag == 2) SC += cache->getLogC(x, rux[1]);
+  }
+  for (const auto u : nu) {
+    if (u <= 0) continue;
 
-  for (j = 0; j < n; j++) {
-    nx[xfactors[j]]++;
-    nu[ufactors[j]]++;
-    nux[uxfactors[j]]++;
+    Hu -= u * cache->getLog(u);
+    if (flag == 0 || flag == 1) SC += cache->getLogC(u, rux[0]);
   }
 
-  for (x = 0; x < rux[0]; x++) {
-    if (nx[x] > 0) Hx -= nx[x] * cache->getLog(nx[x]);
-    if (flag == 0 || flag == 2)
-      SC += cache->getLogC(nx[x], rux[1]);
-  }
-  for (u = 0; u < rux[1]; u++) {
-    if (nu[u] > 0) Hu -= nu[u] * cache->getLog(nu[u]);
-    if (flag == 0 || flag == 1)
-      SC += cache->getLogC(nu[u], rux[0]);
+  for (const auto ux : nux) {
+    if (ux <= 0) continue;
+
+    Hux -= ux * cache->getLog(ux);
   }
 
-  for (ux = 0; ux < rux[2]; ux++) {
-    if (nux[ux] > 0) Hux -= nux[ux] * cache->getLog(nux[ux]);
+  if (flag == 0) {
+    SC -= cache->getLogC(n, rux[0]);
+    SC -= cache->getLogC(n, rux[1]);
   }
 
-  if (flag == 0) SC -= cache->getLogC(n, rux[0]);
-  if (flag == 0) SC -= cache->getLogC(n, rux[1]);
-
+  vector<double> I(2);
   I[0] = cache->getLog(n) + (Hu + Hx - Hux) / n;
-
   if (flag == 0)
     I[1] = I[0] - 0.5 * SC / n;
   else
     I[1] = I[0] - SC / n;
 
-  free(nx);
-  free(nu);
-  free(nux);
-
   return I;
 }
 
 // rux -> 0:x,1;u,2:ux
-vector<double> computeMI_kmdl(int *xfactors, int *ufactors, int *uxfactors, int *rux,
-    int n, std::shared_ptr<CtermCache> cache, int flag) {
-  vector<double> I(2);
+vector<double> computeMI_kmdl(int* xfactors, int* ufactors, int* uxfactors,
+    int* rux, int n, std::shared_ptr<CtermCache> cache, int flag) {
+  TempAllocatorScope scope;
 
-  int j, x, u, ux;
+  TempVector<int> nx(rux[0]);
+  TempVector<int> nu(rux[1]);
+  TempVector<int> nux(rux[2]);
+  for (int i = 0; i < n; i++) {
+    ++nx[xfactors[i]];
+    ++nu[ufactors[i]];
+    ++nux[uxfactors[i]];
+  }
 
   double Hux = 0, Hu = 0, Hx = 0, SC = 0;
-
-  int *nx = (int *)calloc(rux[0], sizeof(int));
-  int *nu = (int *)calloc(rux[1], sizeof(int));
-  int *nux = (int *)calloc(rux[2], sizeof(int));
-
-  for (j = 0; j < n; j++) {
-    nx[xfactors[j]]++;
-    nu[ufactors[j]]++;
-    nux[uxfactors[j]]++;
-  }
-
-  for (x = 0; x < rux[0]; x++) {
-    if (nx[x] > 0) Hx -= nx[x] * cache->getLog(nx[x]);
-  }
-  for (u = 0; u < rux[1]; u++) {
-    if (nu[u] > 0) Hu -= nu[u] * cache->getLog(nu[u]);
-  }
-
-  for (ux = 0; ux < rux[2]; ux++) {
-    if (nux[ux] > 0) Hux -= nux[ux] * cache->getLog(nux[ux]);
-  }
+  for (const auto x : nx)
+    if (x > 0) Hx -= x * cache->getLog(x);
+  for (const auto u : nu)
+    if (u > 0) Hu -= u * cache->getLog(u);
+  for (const auto ux : nux)
+    if (ux > 0) Hux -= ux * cache->getLog(ux);
 
   SC = 0.5 * cache->getLog(n);
   if (flag == 0 || flag == 1) SC *= (rux[0] - 1);
   if (flag == 0 || flag == 2) SC *= (rux[1] - 1);
 
+  vector<double> I(2);
   I[0] = cache->getLog(n) + (Hu + Hx - Hux) / n;
-
   I[1] = I[0] - SC / n;
-
-  free(nx);
-  free(nu);
-  free(nux);
 
   return I;
 }
