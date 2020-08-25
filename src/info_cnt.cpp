@@ -1,5 +1,7 @@
 #include "info_cnt.h"
 
+#include <numeric>  // std::accumulate
+
 #include "compute_info.h"
 #include "mutual_information.h"
 #include "structure.h"
@@ -8,9 +10,6 @@
 #define EPS 1e-5
 #define FLAG_CPLX 1
 //#define _MY_DEBUG_MInoU 1
-//#define _MY_DEBUG_MI 1
-//#define _MY_DEBUG_NEW_OPTFUN 1
-//#define _MY_DEBUG_NEW 1
 
 namespace miic {
 namespace computation {
@@ -20,12 +19,15 @@ using std::vector;
 using namespace miic::structure;
 using namespace miic::utility;
 
-void reset_u_cutpoints(int** cut, int nbrUi, vector<int> ptr_cnt,
-    vector<int> ptrVarIdx, int init_nbin, int maxbins, int lbin, int* r,
-    vector<int> AllLevels, int n) {
+namespace {
 
+void reset_u_cutpoints(int** cut, int nbrUi, const vector<int>& ptr_cnt,
+    const vector<int>& ptrVarIdx, int init_nbin, int maxbins, int lbin, int* r,
+    const vector<int>& AllLevels, int n) {
   for (int l = 2; l < nbrUi + 2; l++) {
-    if (ptr_cnt[ptrVarIdx[l]] == 1) {
+    if (ptr_cnt[ptrVarIdx[l]] != 1) {
+      r[l] = AllLevels[ptrVarIdx[l]];
+    } else {
       for (int j = 0; j < init_nbin - 1; j++) {
         cut[l][j] = j * lbin + lbin - 1;
       }
@@ -34,8 +36,6 @@ void reset_u_cutpoints(int** cut, int nbrUi, vector<int> ptr_cnt,
         cut[l][j] = 0;
       }
       r[l] = min(init_nbin, AllLevels[ptrVarIdx[l]]);
-    } else {
-      r[l] = AllLevels[ptrVarIdx[l]];
     }
   }
 }
@@ -114,10 +114,11 @@ void reset_u_cutpoints(int** cut, int nbrUi, vector<int> ptr_cnt,
  * that will contain the cutpoints for X
  */
 // inline __attribute__((always_inline))
-void optfun_onerun_kmdl_coarse(vector<int> sortidx_var, vector<int> data, int nbrV,
-    int** factors, int* r, double sc, int sc_levels1, int previous_levels,
-    int n, int nnr, int* cut, int* r_opt, vector<double> sample_weights,
-    bool flag_sample_weights, Environment& environment) {
+void optfun_onerun_kmdl_coarse(const vector<int>& sortidx_var,
+    const vector<int>& data, int nbrV, int** factors, int* r, double sc,
+    int sc_levels1, int previous_levels, int n, int nnr, int* cut, int* r_opt,
+    const vector<double>& sample_weights, bool flag_sample_weights,
+    Environment& environment) {
   TempAllocatorScope scope;
 
   int coarse = ceil(1.0 * nnr / environment.maxbins);  // step coarse graining
@@ -134,9 +135,9 @@ void optfun_onerun_kmdl_coarse(vector<int> sortidx_var, vector<int> data, int nb
 
   // function max value at each step
   // double* Ik=(double *)calloc(np,sizeof(double));
-  TempVector<double> I(np);   // The optimal information value found at each idx.
-  double I_kj;            // The information value for a bin fom idx k to j.
+  TempVector<double> I(np);  // The optimal information value found at each idx.
   TempVector<double> Ik(np);
+  double I_kj;  // The information value for a bin fom idx k to j.
   double Ik_kj;
 
   int njforward(0), nkforward(0);  // Indexes at current position of j and k
@@ -208,22 +209,22 @@ void optfun_onerun_kmdl_coarse(vector<int> sortidx_var, vector<int> data, int nb
 
     Hk_kj[0] = 0;  // joint
     Hk_kj[1] = 0;  // marginal
-    H_kj[0] = 0;  // joint
-    H_kj[1] = 0;  // marginal
+    H_kj[0] = 0;   // joint
+    H_kj[1] = 0;   // marginal
     for (int level = 0; level < r[0]; level++) {
       weighted_count = flag_sample_weights
                            ? int(efN_factor * counts_0[level] + 0.5)
                            : counts_0[level];
       Hk_kj[0] += environment.cache.cterm->getH(weighted_count);
     }
-    H_kj[0]   = Hk_kj[0];
+    H_kj[0] = Hk_kj[0];
 
     for (int level = 0; level < r[1]; level++) {
       weighted_count = flag_sample_weights
                            ? int(efN_factor * counts_1[level] + 0.5)
                            : counts_1[level];
       Hk_kj[1] -= environment.cache.cterm->getH(weighted_count);
-      H_kj[1]  -= environment.cache.cterm->getH(weighted_count);
+      H_kj[1] -= environment.cache.cterm->getH(weighted_count);
 
       if (environment.cplx == 0 && counts_1[level] > 0)
         Hk_kj[1] -= sc * environment.cache.cterm->getLog(n);
@@ -233,10 +234,10 @@ void optfun_onerun_kmdl_coarse(vector<int> sortidx_var, vector<int> data, int nb
       }
     }
 
-    I[j]  = 0;
+    I[j] = 0;
     Ik[j] = 0;
     for (int m = 0; m < nbrV; m++) {
-      I[j]  += H_kj[m];  // herve
+      I[j] += H_kj[m];    // herve
       Ik[j] += Hk_kj[m];  // herve
     }
 
@@ -261,8 +262,7 @@ void optfun_onerun_kmdl_coarse(vector<int> sortidx_var, vector<int> data, int nb
 
       nkforward = n_values[k];
       ef_nk = sum_sample_weights[j] - sum_sample_weights[k];
-      if (flag_sample_weights)
-        efN_factor = ef_nk / (njforward - nkforward);
+      if (flag_sample_weights) efN_factor = ef_nk / (njforward - nkforward);
 
       std::transform(counts_k_1.begin(), counts_k_1.end(),
           coarse_counts_marginal.row_cbegin(k), counts_k_1.begin(),
@@ -271,7 +271,7 @@ void optfun_onerun_kmdl_coarse(vector<int> sortidx_var, vector<int> data, int nb
           coarse_counts_joint.row_cbegin(k), counts_k_0.begin(),
           std::minus<int>());
 
-      H_kj[0]  = 0;
+      H_kj[0] = 0;
       Hk_kj[0] = 0;
       for (int level = 0; level < r[0]; level++) {
         weighted_count = flag_sample_weights
@@ -281,14 +281,14 @@ void optfun_onerun_kmdl_coarse(vector<int> sortidx_var, vector<int> data, int nb
       }
       H_kj[0] = Hk_kj[0];
 
-      H_kj[1]  = 0;
+      H_kj[1] = 0;
       Hk_kj[1] = 0;
       for (int level = 0; level < r[1]; level++) {
         weighted_count = flag_sample_weights
                              ? int(efN_factor * counts_k_1[level] + 0.5)
                              : counts_k_1[level];
         Hk_kj[1] -= environment.cache.cterm->getH(weighted_count);
-        H_kj[1]  -= environment.cache.cterm->getH(weighted_count);
+        H_kj[1] -= environment.cache.cterm->getH(weighted_count);
 
         if (environment.cplx == 0 && counts_k_1[level] > 0)
           Hk_kj[1] -= sc * environment.cache.cterm->getLog(n);
@@ -301,7 +301,7 @@ void optfun_onerun_kmdl_coarse(vector<int> sortidx_var, vector<int> data, int nb
       I_kj = 0;
       Ik_kj = 0;
       for (int m = 0; m < nbrV; m++) {
-        I_kj  += H_kj[m];
+        I_kj += H_kj[m];
         Ik_kj += Hk_kj[m];
       }
       if (environment.cplx == 1) {
@@ -312,12 +312,12 @@ void optfun_onerun_kmdl_coarse(vector<int> sortidx_var, vector<int> data, int nb
       }
 
       if ((Ik[k] + Ik_kj) > Ik[j]) {
-        I_newbin  = I[k]  + I_kj;  //[0.. cuts.. k-1][k j] //herve
+        I_newbin = I[k] + I_kj;     //[0.. cuts.. k-1][k j] //herve
         Ik_newbin = Ik[k] + Ik_kj;  //[0.. cuts.. k-1][k j] //herve
         if (Ikmax < Ik_newbin) {
-          Imax  = I_newbin;
+          Imax = I_newbin;
           Ikmax = Ik_newbin;
-          I[j]  = Imax;  // optimized function for the interval [0 j]
+          I[j] = Imax;    // optimized function for the interval [0 j]
           Ik[j] = Ikmax;  // optimized function for the interval [0 j]
           if (memory_cuts_idx[k + 1] == 0) {
             memory_cuts_idx[j] = -k - 1;  // index  of the (last) optimal cut
@@ -340,14 +340,18 @@ void optfun_onerun_kmdl_coarse(vector<int> sortidx_var, vector<int> data, int nb
 // optimize on x I(x,y): Hx - Hxy - kmdl
 // optimize on y I(x,y): Hy - Hxy - kmdl
 // until convergence
-vector<double> compute_Ixy_alg1(vector<vector<int> > data, vector<vector<int> > sortidx,
-    vector<int> ptr_cnt, vector<int> ptrVarIdx, vector<int> AllLevels, int n,
-    int** cut, int* r, vector<double> sample_weights, bool flag_sample_weights,
-    Environment& environment, bool saveIterations) {
+vector<double> compute_Ixy_alg1(const vector<vector<int>>& data,
+    const vector<vector<int>>& sortidx, const vector<int>& ptr_cnt,
+    const vector<int>& ptrVarIdx, const vector<int>& AllLevels, int n,
+    int** cut, int* r, const vector<double>& sample_weights,
+    bool flag_sample_weights, Environment& environment, bool saveIterations) {
+  TempAllocatorScope scope;
+
   int maxbins = environment.maxbins;
   int initbins = environment.initbins;
   int cplx = environment.cplx;
-  double n_eff = accumulate(sample_weights.begin(), sample_weights.end(), 0.0);
+  double n_eff =
+      std::accumulate(sample_weights.begin(), sample_weights.end(), 0.0);
 
   int j, l;
 
@@ -395,7 +399,8 @@ vector<double> compute_Ixy_alg1(vector<vector<int> > data, vector<vector<int> > 
     free(r_temp);
     free(ptr);
 
-    for (l = 0; l < (2); l++) free(datafactors[l]);
+    for (l = 0; l < (2); l++)
+      free(datafactors[l]);
     free(datafactors);
 
     return res_temp;
@@ -487,8 +492,8 @@ vector<double> compute_Ixy_alg1(vector<vector<int> > data, vector<vector<int> > 
   }
   // Run dynamic optimization with the best initial conditions.
   double sc;
-  double* MI = (double*)calloc(STEPMAX, sizeof(double));
-  double* MIk = (double*)calloc(STEPMAX, sizeof(double));
+  TempVector<double> MI(STEPMAX);
+  TempVector<double> MIk(STEPMAX);
   double I_av, Ik_av;
 
   int stop, i, flag;
@@ -512,8 +517,8 @@ vector<double> compute_Ixy_alg1(vector<vector<int> > data, vector<vector<int> > 
       // I(x;y)
       factors1[0] = datafactors[1];  // y
       factors1[1] = singlefactor;    // One single bin at start
-      rt1[0] = ry;  // y
-      rt1[1] = 1;   // One single bin at start
+      rt1[0] = ry;                   // y
+      rt1[1] = 1;                    // One single bin at start
 
       sc_levels_y = ry;
       sc_levels1 = sc_levels_y;
@@ -659,27 +664,27 @@ vector<double> compute_Ixy_alg1(vector<vector<int> > data, vector<vector<int> > 
   free(r_temp);
   free(ptr);
 
-  for (l = 0; l < (2); l++) free(datafactors[l]);
+  for (l = 0; l < (2); l++)
+    free(datafactors[l]);
   free(datafactors);
 
   free(factors1);
   free(rt1);
-  free(MI);
-  free(MIk);
   free(singlefactor);
 
   return return_res;
 }
 
-vector<double> compute_Ixy_cond_u_new_alg1(vector<vector<int> > data,
-    vector<vector<int> > sortidx, vector<int> ptr_cnt, vector<int> ptrVarIdx,
-    vector<int> AllLevels, int nbrUi, int n, int** cut, int* r, int lbin,
-    vector<double> sample_weights, bool flag_sample_weights,
-    Environment& environment, bool saveIterations) {
+vector<double> compute_Ixy_cond_u_new_alg1(const vector<vector<int>>& data,
+    const vector<vector<int>>& sortidx, const vector<int>& ptr_cnt,
+    const vector<int>& ptrVarIdx, const vector<int>& AllLevels, int nbrUi,
+    int n, int** cut, int* r, int lbin, const vector<double>& sample_weights,
+    bool flag_sample_weights, Environment& environment, bool saveIterations) {
   int maxbins = environment.maxbins;
   int initbins = environment.initbins;
   int cplx = environment.cplx;
-  double n_eff = accumulate(sample_weights.begin(), sample_weights.end(), 0.0);
+  double n_eff =
+      std::accumulate(sample_weights.begin(), sample_weights.end(), 0.0);
 
   int j, l;
   int STEPMAX1 = 50;
@@ -878,7 +883,8 @@ vector<double> compute_Ixy_cond_u_new_alg1(vector<vector<int> > data,
           optfun_onerun_kmdl_coarse(sortidx[ptrVarIdx[l + 2]],
               data[ptrVarIdx[l + 2]], 2, factors1, rt1, sc, sc_levels1,
               sc_levels2, n, AllLevels[ptrVarIdx[l + 2]], cut[l + 2],
-              &(r[l + 2]), sample_weights, flag_sample_weights, environment);  // 2 factors
+              &(r[l + 2]), sample_weights, flag_sample_weights,
+              environment);  // 2 factors
         }
       }  // for all Uis
       for (int ll = 0; ll < nbrUi; ll++) {
@@ -936,7 +942,8 @@ vector<double> compute_Ixy_cond_u_new_alg1(vector<vector<int> > data,
       // Run optimization on X.
       optfun_onerun_kmdl_coarse(sortidx[ptrVarIdx[0]], data[ptrVarIdx[0]], 2,
           factors1, rt1, sc, sc_levels1, sc_levels2, n, AllLevels[ptrVarIdx[0]],
-          cut[0], &(r[0]), sample_weights, flag_sample_weights, environment);  // 2 factors
+          cut[0], &(r[0]), sample_weights, flag_sample_weights,
+          environment);  // 2 factors
     }
 
     // Reset cutpoints on U
@@ -975,11 +982,12 @@ vector<double> compute_Ixy_cond_u_new_alg1(vector<vector<int> > data,
           optfun_onerun_kmdl_coarse(sortidx[ptrVarIdx[l + 2]],
               data[ptrVarIdx[l + 2]], 2, factors1, rt1, sc, sc_levels1,
               sc_levels2, n, AllLevels[ptrVarIdx[l + 2]], cut[l + 2],
-              &(r[l + 2]), sample_weights, flag_sample_weights, environment);  // 2 factors
+              &(r[l + 2]), sample_weights, flag_sample_weights,
+              environment);  // 2 factors
         }
       }  // for all Uis
       for (int ll = 0; ll < nbrUi; ll++) {
-        if (ptr_cnt[ptrVarIdx[ll + 2]] == 1){
+        if (ptr_cnt[ptrVarIdx[ll + 2]] == 1) {
           update_datafactors(
               sortidx, ptrVarIdx[ll + 2], datafactors, ll + 2, n, cut);
           r_old[ll + 2] = r[ll + 2];
@@ -1004,7 +1012,8 @@ vector<double> compute_Ixy_cond_u_new_alg1(vector<vector<int> > data,
     if ((ptr_cnt[ptrVarIdx[1]] == 1) && (r_old[1] > 1)) {
       np = min(AllLevels[ptrVarIdx[1]], maxbins);
       if (r_old[1] < np) {
-        Ik_x_yu -= environment.cache.cterm->getLogChoose(np - 1, r_old[1] - 1) / n;
+        Ik_x_yu -=
+            environment.cache.cterm->getLogChoose(np - 1, r_old[1] - 1) / n;
       }
     }
 
@@ -1028,7 +1037,8 @@ vector<double> compute_Ixy_cond_u_new_alg1(vector<vector<int> > data,
       // Run optimization on Y.
       optfun_onerun_kmdl_coarse(sortidx[ptrVarIdx[1]], data[ptrVarIdx[1]], 2,
           factors1, rt1, sc, sc_levels1, sc_levels2, n, AllLevels[ptrVarIdx[1]],
-          cut[1], &(r[1]), sample_weights, flag_sample_weights, environment);  // 2 factors
+          cut[1], &(r[1]), sample_weights, flag_sample_weights,
+          environment);  // 2 factors
     }
     // Reset cutpoints on U
     reset_u_cutpoints(cut, nbrUi, ptr_cnt, ptrVarIdx, initbins, maxbins, lbin,
@@ -1060,7 +1070,8 @@ vector<double> compute_Ixy_cond_u_new_alg1(vector<vector<int> > data,
           optfun_onerun_kmdl_coarse(sortidx[ptrVarIdx[l + 2]],
               data[ptrVarIdx[l + 2]], 2, factors1, rt1, sc, sc_levels1,
               sc_levels2, n, AllLevels[ptrVarIdx[l + 2]], cut[l + 2],
-              &(r[l + 2]), sample_weights, flag_sample_weights, environment);  // 2 factors //herve
+              &(r[l + 2]), sample_weights, flag_sample_weights,
+              environment);  // 2 factors //herve
         }
       }  // for all Uis
       for (int ll = 0; ll < nbrUi; ll++) {
@@ -1113,17 +1124,18 @@ vector<double> compute_Ixy_cond_u_new_alg1(vector<vector<int> > data,
           sc_levels2 = r_old[l + 2];  // u
           sc = 0.5 * (sc_levels1 - 1) * ruiyx[0];
           // optimization run on ptrVarIdx[l+2]
-           optfun_onerun_kmdl_coarse(sortidx[ptrVarIdx[l + 2]],
+          optfun_onerun_kmdl_coarse(sortidx[ptrVarIdx[l + 2]],
               data[ptrVarIdx[l + 2]], 2, factors1, rt1, sc, sc_levels1,
               sc_levels2, n, AllLevels[ptrVarIdx[l + 2]], cut[l + 2],
-              &(r[l + 2]), sample_weights, flag_sample_weights, environment);  // 2 factors
+              &(r[l + 2]), sample_weights, flag_sample_weights,
+              environment);  // 2 factors
 
           // update_datafactors(sortidx, ptrVarIdx[l+2], datafactors, l+2, n,
           // cut);
         }
       }  // for all Uis
       for (int ll = 0; ll < nbrUi; ll++) {
-        if (ptr_cnt[ptrVarIdx[ll + 2]] == 1){
+        if (ptr_cnt[ptrVarIdx[ll + 2]] == 1) {
           update_datafactors(
               sortidx, ptrVarIdx[ll + 2], datafactors, ll + 2, n, cut);
           r_old[ll + 2] = r[ll + 2];
@@ -1224,9 +1236,11 @@ vector<double> compute_Ixy_cond_u_new_alg1(vector<vector<int> > data,
   }
 
   free(r_temp);
-  for (l = 0; l < (nbrUi + 2); l++) free(datafactors[l]);
+  for (l = 0; l < (nbrUi + 2); l++)
+    free(datafactors[l]);
   free(datafactors);
-  for (l = 0; l < 4; l++) free(uiyxfactors[l]);
+  for (l = 0; l < 4; l++)
+    free(uiyxfactors[l]);
   free(uiyxfactors);
   free(factors1);
   free(rt1);
@@ -1240,10 +1254,13 @@ vector<double> compute_Ixy_cond_u_new_alg1(vector<vector<int> > data,
   return return_res;
 }
 
-double* compute_mi_cond_alg1(vector<vector<int> > data,
-    vector<vector<int> > sortidx, vector<int> AllLevels, vector<int> ptr_cnt,
-    vector<int> ptrVarIdx, int nbrUi, int n, vector<double> sample_weights,
-    bool flag_sample_weights, Environment& environment, bool saveIterations) {
+}  // anonymous namespace
+
+double* compute_mi_cond_alg1(const vector<vector<int>>& data,
+    const vector<vector<int>>& sortidx, const vector<int>& AllLevels,
+    const vector<int>& ptr_cnt, const vector<int>& ptrVarIdx, int nbrUi, int n,
+    const vector<double>& sample_weights, bool flag_sample_weights,
+    Environment& environment, bool saveIterations) {
   int maxbins = environment.maxbins;
   int initbins = environment.initbins;
 
@@ -1288,7 +1305,8 @@ double* compute_mi_cond_alg1(vector<vector<int> > data,
     }
 
     res_temp = compute_Ixy_alg1(data, sortidx, ptr_cnt, ptrVarIdx, AllLevels, n,
-        cut, r, sample_weights, flag_sample_weights, environment, saveIterations);
+        cut, r, sample_weights, flag_sample_weights, environment,
+        saveIterations);
 
     res[0] = n;
     res[1] = res_temp[0];
@@ -1339,11 +1357,11 @@ double* compute_mi_cond_alg1(vector<vector<int> > data,
 // res[0]=Rscore
 // res[1]=N*Ixyz
 // res[2]=N*kxyz
-double* compute_Rscore_Ixyz_alg5(vector<vector<int> > data,
-    vector<vector<int> > sortidx, vector<int> AllLevels, vector<int> ptr_cnt,
-    vector<int> ptrVarIdx, int nbrUi, int ptrZiIdx, int n,
-    vector<double> sample_weights, bool flag_sample_weights,
-    Environment& environment, bool saveIterations) {
+double* compute_Rscore_Ixyz_alg5(const vector<vector<int>>& data,
+    const vector<vector<int>>& sortidx, const vector<int>& AllLevels,
+    const vector<int>& ptr_cnt, const vector<int>& ptrVarIdx, int nbrUi,
+    int ptrZiIdx, int n, const vector<double>& sample_weights,
+    bool flag_sample_weights, Environment& environment, bool saveIterations) {
   int maxbins = environment.maxbins;
   int initbins = environment.initbins;
 
@@ -1421,8 +1439,8 @@ double* compute_Rscore_Ixyz_alg5(vector<vector<int> > data,
 
   // I(x,y|u,z)
   res_temp = compute_Ixy_cond_u_new_alg1(data, sortidx, ptr_cnt, ptrVarIdx,
-      AllLevels, nbrUi + 1, n, cut, r, lbin, sample_weights, flag_sample_weights,
-      environment, saveIterations);
+      AllLevels, nbrUi + 1, n, cut, r, lbin, sample_weights,
+      flag_sample_weights, environment, saveIterations);
   I_xy_zu = res_temp[0];
   Ik_xy_zu = res_temp[1];
 
@@ -1457,7 +1475,8 @@ double* compute_Rscore_Ixyz_alg5(vector<vector<int> > data,
   // I(z,x|u)
   ptrVarIdx_t[0] = ptrVarIdx[0];          // X
   ptrVarIdx_t[1] = ptrVarIdx[nbrUi + 2];  // Z
-  for (ll = 0; ll < nbrUi; ll++) ptrVarIdx_t[ll + 2] = ll + 2;
+  for (ll = 0; ll < nbrUi; ll++)
+    ptrVarIdx_t[ll + 2] = ll + 2;
   // Reset cut
   for (l = 0; l < (nbrUi + 2); l++) {
     if (ptr_cnt[ptrVarIdx_t[l]] == 1) {
@@ -1488,7 +1507,8 @@ double* compute_Rscore_Ixyz_alg5(vector<vector<int> > data,
   // I(z,y|u)
   ptrVarIdx_t[0] = ptrVarIdx[1];          // Y
   ptrVarIdx_t[1] = ptrVarIdx[nbrUi + 2];  // Z
-  for (ll = 0; ll < nbrUi; ll++) ptrVarIdx_t[ll + 2] = ll + 2;
+  for (ll = 0; ll < nbrUi; ll++)
+    ptrVarIdx_t[ll + 2] = ll + 2;
   // Reset cut
   for (l = 0; l < (nbrUi + 2); l++) {
     if (ptr_cnt[ptrVarIdx_t[l]] == 1) {
@@ -1553,17 +1573,21 @@ double* compute_Rscore_Ixyz_alg5(vector<vector<int> > data,
   res[1] = n * I_xyz_u;
   res[2] = n * I_xyz_u - nv;
 
-  for (l = 0; l < (nbrUi + 3); l++) free(cut[l]);
-  for (l = 0; l < (nbrUi + 2); l++) free(cut_t[l]);
+  for (l = 0; l < (nbrUi + 3); l++)
+    free(cut[l]);
+  for (l = 0; l < (nbrUi + 2); l++)
+    free(cut_t[l]);
   free(cut);
   free(cut_t);
 
   free(r);
 
-  for (l = 0; l < (nbrUi + 3); l++) free(datafactors[l]);
+  for (l = 0; l < (nbrUi + 3); l++)
+    free(datafactors[l]);
   free(datafactors);
   free(ptr_u2_t);
-  for (l = 0; l < 4; l++) free(factors4_t[l]);
+  for (l = 0; l < 4; l++)
+    free(factors4_t[l]);
   free(factors4_t);
   free(r4_t);
   free(r_temp);
