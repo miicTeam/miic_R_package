@@ -22,8 +22,8 @@ using namespace miic::utility;
 namespace {
 
 void reset_u_cutpoints(int** cut, int nbrUi, const vector<int>& ptr_cnt,
-    const vector<int>& ptrVarIdx, int init_nbin, int maxbins, int lbin, int* r,
-    const vector<int>& AllLevels, int n) {
+    const vector<int>& ptrVarIdx, int init_nbin, int maxbins, int lbin,
+    TempVector<int>& r, const vector<int>& AllLevels, int n) {
   for (int l = 2; l < nbrUi + 2; l++) {
     if (ptr_cnt[ptrVarIdx[l]] != 1) {
       r[l] = AllLevels[ptrVarIdx[l]];
@@ -38,6 +38,45 @@ void reset_u_cutpoints(int** cut, int nbrUi, const vector<int>& ptr_cnt,
       r[l] = min(init_nbin, AllLevels[ptrVarIdx[l]]);
     }
   }
+}
+
+// INPUT:
+// memory_cuts: vector length n with recorded recursvely best cuts,
+// possible values 0...n :
+// 0->stops (one bins); -k -> stops (two bin ([0 k-1][k ..];
+// k->continute [.. k-1][k ...])
+// OUTPUT:
+// r : number cuts
+// cut: vector with cuts point-> [0 cut[0]][cut[0]+1 cut[1]]...[cut[r-2]
+// cut[r-1]]
+template <typename Ccut, typename = IsIntContainer<Ccut>>
+int reconstruction_cut_coarse(const TempVector<int>& memory_cuts,
+    const TempVector<int>& memory_cuts2, int np, int n, Ccut& cut) {
+  int ncuts = 0;
+  int l, s;
+  if (memory_cuts[np - 1] == 0) {
+    cut[0] = n - 1;
+    return 1;
+  }
+
+  l = memory_cuts[np - 1];
+  while (l > 0) {
+    ncuts++;
+    l = memory_cuts[l - 1];
+  }
+  if (l < 0) ncuts++;
+
+  cut[ncuts] = n - 1;  // conventional last cut
+  l = ncuts - 1;
+  s = memory_cuts[np - 1];
+  cut[l] = memory_cuts2[np - 1];  // truly last cut
+  l--;
+  while (s > 0 && l >= 0) {
+    cut[l] = memory_cuts2[s - 1];
+    s = memory_cuts[s - 1];
+    l--;
+  }
+  return ncuts + 1;  // number of levels (r)
 }
 
 // GENERAL VARIABLES NOTATION
@@ -114,9 +153,10 @@ void reset_u_cutpoints(int** cut, int nbrUi, const vector<int>& ptr_cnt,
  * that will contain the cutpoints for X
  */
 // inline __attribute__((always_inline))
+template <typename Ccut, typename = IsIntContainer<Ccut>>
 void optfun_onerun_kmdl_coarse(const vector<int>& sortidx_var,
     const vector<int>& data, int nbrV, int** factors, int* r, double sc,
-    int sc_levels1, int previous_levels, int n, int nnr, int* cut, int* r_opt,
+    int sc_levels1, int previous_levels, int n, int nnr, Ccut& cut, int* r_opt,
     const vector<double>& sample_weights, bool flag_sample_weights,
     Environment& environment) {
   TempAllocatorScope scope;
@@ -343,7 +383,7 @@ void optfun_onerun_kmdl_coarse(const vector<int>& sortidx_var,
 vector<double> compute_Ixy_alg1(const vector<vector<int>>& data,
     const vector<vector<int>>& sortidx, const vector<int>& ptr_cnt,
     const vector<int>& ptrVarIdx, const vector<int>& AllLevels, int n,
-    int** cut, int* r, const vector<double>& sample_weights,
+    int** cut, TempVector<int>& r, const vector<double>& sample_weights,
     bool flag_sample_weights, Environment& environment, bool saveIterations) {
   TempAllocatorScope scope;
 
@@ -375,7 +415,7 @@ vector<double> compute_Ixy_alg1(const vector<vector<int>>& data,
   // initialization of datafactors && sortidx
   for (l = 0; l < 2; l++) {
     if (ptr_cnt[ptrVarIdx[l]] == 1) {
-      update_datafactors(sortidx, ptrVarIdx[l], datafactors, l, n, cut);
+      update_datafactors(sortidx[ptrVarIdx[l]], datafactors[l], cut[l]);
     } else {
       for (j = 0; j <= n - 1; j++) {
         datafactors[l][j] = data[ptrVarIdx[l]][j];
@@ -438,7 +478,7 @@ vector<double> compute_Ixy_alg1(const vector<vector<int>>& data,
     // initialization of datafactors && sortidx
     for (l = 0; l < 2; l++) {
       if (ptr_cnt[ptrVarIdx[l]] == 1) {
-        update_datafactors(sortidx, ptrVarIdx[l], datafactors, l, n, cut);
+        update_datafactors(sortidx[ptrVarIdx[l]], datafactors[l], cut[l]);
       } else {
         for (j = 0; j <= n - 1; j++) {
           datafactors[l][j] = data[ptrVarIdx[l]][j];
@@ -483,7 +523,7 @@ vector<double> compute_Ixy_alg1(const vector<vector<int>>& data,
   // initialization of datafactors && sortidx
   for (l = 0; l < 2; l++) {
     if (ptr_cnt[ptrVarIdx[l]] == 1) {
-      update_datafactors(sortidx, ptrVarIdx[l], datafactors, l, n, cut);
+      update_datafactors(sortidx[ptrVarIdx[l]], datafactors[l], cut[l]);
     } else {
       for (j = 0; j <= n - 1; j++) {
         datafactors[l][j] = data[ptrVarIdx[l]][j];
@@ -555,11 +595,11 @@ vector<double> compute_Ixy_alg1(const vector<vector<int>>& data,
 
     // update both datafactors
     if (ptr_cnt[ptrVarIdx[0]] == 1) {
-      update_datafactors(sortidx, ptrVarIdx[0], datafactors, 0, n, cut);
+      update_datafactors(sortidx[ptrVarIdx[0]], datafactors[0], cut[0]);
       rx = r[0];
     }
     if (ptr_cnt[ptrVarIdx[1]] == 1) {
-      update_datafactors(sortidx, ptrVarIdx[1], datafactors, 1, n, cut);
+      update_datafactors(sortidx[ptrVarIdx[1]], datafactors[1], cut[1]);
       ry = r[1];
     }
 
@@ -678,8 +718,11 @@ vector<double> compute_Ixy_alg1(const vector<vector<int>>& data,
 vector<double> compute_Ixy_cond_u_new_alg1(const vector<vector<int>>& data,
     const vector<vector<int>>& sortidx, const vector<int>& ptr_cnt,
     const vector<int>& ptrVarIdx, const vector<int>& AllLevels, int nbrUi,
-    int n, int** cut, int* r, int lbin, const vector<double>& sample_weights,
-    bool flag_sample_weights, Environment& environment, bool saveIterations) {
+    int n, int** cut, TempVector<int>& r, int lbin,
+    const vector<double>& sample_weights, bool flag_sample_weights,
+    Environment& environment, bool saveIterations) {
+  TempAllocatorScope scope;
+
   int maxbins = environment.maxbins;
   int initbins = environment.initbins;
   int cplx = environment.cplx;
@@ -702,7 +745,7 @@ vector<double> compute_Ixy_cond_u_new_alg1(const vector<vector<int>>& data,
   for (l = 0; l < (nbrUi + 2); l++) {
     // compute datafactors based on the positions of cut points in vector <cut>
     if (ptr_cnt[ptrVarIdx[l]] == 1) {
-      update_datafactors(sortidx, ptrVarIdx[l], datafactors, l, n, cut);
+      update_datafactors(sortidx[ptrVarIdx[l]], datafactors[l], cut[l]);
     } else {  // discrete case
       for (j = 0; j <= n - 1; j++) {
         datafactors[l][j] = data[ptrVarIdx[l]][j];
@@ -775,7 +818,7 @@ vector<double> compute_Ixy_cond_u_new_alg1(const vector<vector<int>>& data,
     // compute datafactors based on the positions of cut points in vector <cut>
     for (l = 0; l < (nbrUi + 2); l++) {
       if (ptr_cnt[ptrVarIdx[l]] == 1) {
-        update_datafactors(sortidx, ptrVarIdx[l], datafactors, l, n, cut);
+        update_datafactors(sortidx[ptrVarIdx[l]], datafactors[l], cut[l]);
       } else {  // discrete case
         for (j = 0; j <= n - 1; j++) {
           datafactors[l][j] = data[ptrVarIdx[l]][j];
@@ -835,7 +878,7 @@ vector<double> compute_Ixy_cond_u_new_alg1(const vector<vector<int>>& data,
   // compute datafactors based on the positions of cut points in vector <cut>
   for (l = 0; l < (nbrUi + 2); l++) {
     if (ptr_cnt[ptrVarIdx[l]] == 1) {
-      update_datafactors(sortidx, ptrVarIdx[l], datafactors, l, n, cut);
+      update_datafactors(sortidx[ptrVarIdx[l]], datafactors[l], cut[l]);
     } else {
       for (j = 0; j <= n - 1; j++) {  // discrete case
         datafactors[l][j] = data[ptrVarIdx[l]][j];
@@ -844,10 +887,7 @@ vector<double> compute_Ixy_cond_u_new_alg1(const vector<vector<int>>& data,
   }
   // Run optimization with best initial equal freq.
   int* rt1 = (int*)calloc(2, sizeof(int));
-  int* r_old = (int*)calloc((nbrUi + 2), sizeof(int));
-  for (int ll = 0; ll < (nbrUi + 2); ll++) {
-    r_old[ll] = r[ll];
-  }
+  TempVector<int> r_old(r);  // copy
   int U_counter;
 
   int sc_levels_x;  // Number of levels of the first variable
@@ -890,7 +930,7 @@ vector<double> compute_Ixy_cond_u_new_alg1(const vector<vector<int>>& data,
       for (int ll = 0; ll < nbrUi; ll++) {
         if (ptr_cnt[ptrVarIdx[ll + 2]] == 1) {
           update_datafactors(
-              sortidx, ptrVarIdx[ll + 2], datafactors, ll + 2, n, cut);
+              sortidx[ptrVarIdx[ll + 2]], datafactors[ll + 2], cut[ll + 2]);
           r_old[ll + 2] = r[ll + 2];
         }
       }
@@ -952,7 +992,7 @@ vector<double> compute_Ixy_cond_u_new_alg1(const vector<vector<int>>& data,
     for (l = 0; l < nbrUi; l++) {
       if (ptr_cnt[ptrVarIdx[l + 2]] == 1)
         update_datafactors(
-            sortidx, ptrVarIdx[l + 2], datafactors, l + 2, n, cut);
+            sortidx[ptrVarIdx[l + 2]], datafactors[l + 2], cut[l + 2]);
       // r[l+2] is set to init_nbins during reset_u_cutpoints
       r_old[l + 2] = r[l + 2];
     }
@@ -989,7 +1029,7 @@ vector<double> compute_Ixy_cond_u_new_alg1(const vector<vector<int>>& data,
       for (int ll = 0; ll < nbrUi; ll++) {
         if (ptr_cnt[ptrVarIdx[ll + 2]] == 1) {
           update_datafactors(
-              sortidx, ptrVarIdx[ll + 2], datafactors, ll + 2, n, cut);
+              sortidx[ptrVarIdx[ll + 2]], datafactors[ll + 2], cut[ll + 2]);
           r_old[ll + 2] = r[ll + 2];
         }
       }
@@ -1046,7 +1086,7 @@ vector<double> compute_Ixy_cond_u_new_alg1(const vector<vector<int>>& data,
     for (l = 0; l < nbrUi; l++) {
       if (ptr_cnt[ptrVarIdx[l + 2]] == 1)
         update_datafactors(
-            sortidx, ptrVarIdx[l + 2], datafactors, l + 2, n, cut);
+            sortidx[ptrVarIdx[l + 2]], datafactors[l + 2], cut[l + 2]);
       r_old[l + 2] = r[l + 2];
     }
     // optimize I(x;u) over u
@@ -1077,7 +1117,7 @@ vector<double> compute_Ixy_cond_u_new_alg1(const vector<vector<int>>& data,
       for (int ll = 0; ll < nbrUi; ll++) {
         if (ptr_cnt[ptrVarIdx[ll + 2]] == 1) {
           update_datafactors(
-              sortidx, ptrVarIdx[ll + 2], datafactors, ll + 2, n, cut);
+              sortidx[ptrVarIdx[ll + 2]], datafactors[ll + 2], cut[ll + 2]);
           r_old[ll + 2] = r[ll + 2];
         }
       }
@@ -1103,7 +1143,7 @@ vector<double> compute_Ixy_cond_u_new_alg1(const vector<vector<int>>& data,
     for (l = 0; l < nbrUi; l++) {
       if (ptr_cnt[ptrVarIdx[l + 2]] == 1)
         update_datafactors(
-            sortidx, ptrVarIdx[l + 2], datafactors, l + 2, n, cut);
+            sortidx[ptrVarIdx[l + 2]], datafactors[l + 2], cut[l + 2]);
       r_old[l + 2] = r[l + 2];
     }
     // optimize I(y;u) over u
@@ -1130,14 +1170,14 @@ vector<double> compute_Ixy_cond_u_new_alg1(const vector<vector<int>>& data,
               &(r[l + 2]), sample_weights, flag_sample_weights,
               environment);  // 2 factors
 
-          // update_datafactors(sortidx, ptrVarIdx[l+2], datafactors, l+2, n,
+          // update_datafactors(sortidx[ptrVarIdx[l+2]], datafactors, l+2, n,
           // cut);
         }
       }  // for all Uis
       for (int ll = 0; ll < nbrUi; ll++) {
         if (ptr_cnt[ptrVarIdx[ll + 2]] == 1) {
           update_datafactors(
-              sortidx, ptrVarIdx[ll + 2], datafactors, ll + 2, n, cut);
+              sortidx[ptrVarIdx[ll + 2]], datafactors[ll + 2], cut[ll + 2]);
           r_old[ll + 2] = r[ll + 2];
         }
       }
@@ -1163,16 +1203,16 @@ vector<double> compute_Ixy_cond_u_new_alg1(const vector<vector<int>>& data,
     for (l = 0; l < nbrUi; l++) {
       if (ptr_cnt[ptrVarIdx[l + 2]] == 1)
         update_datafactors(
-            sortidx, ptrVarIdx[l + 2], datafactors, l + 2, n, cut);
+            sortidx[ptrVarIdx[l + 2]], datafactors[l + 2], cut[l + 2]);
       r_old[l + 2] = r[l + 2];
     }
     // Update X and Y
     if (ptr_cnt[ptrVarIdx[0]] == 1) {
-      update_datafactors(sortidx, ptrVarIdx[0], datafactors, 0, n, cut);
+      update_datafactors(sortidx[ptrVarIdx[0]], datafactors[0], cut[0]);
       r_old[0] = r[0];
     }
     if (ptr_cnt[ptrVarIdx[1]] == 1) {
-      update_datafactors(sortidx, ptrVarIdx[1], datafactors, 1, n, cut);
+      update_datafactors(sortidx[ptrVarIdx[1]], datafactors[1], cut[1]);
       r_old[1] = r[1];
     }
 
@@ -1244,7 +1284,6 @@ vector<double> compute_Ixy_cond_u_new_alg1(const vector<vector<int>>& data,
   free(uiyxfactors);
   free(factors1);
   free(rt1);
-  free(r_old);
   free(ruiyx);
   free(MI);
   free(MIk);
@@ -1261,6 +1300,8 @@ double* compute_mi_cond_alg1(const vector<vector<int>>& data,
     const vector<int>& ptr_cnt, const vector<int>& ptrVarIdx, int nbrUi, int n,
     const vector<double>& sample_weights, bool flag_sample_weights,
     Environment& environment, bool saveIterations) {
+  TempAllocatorScope scope;
+
   int maxbins = environment.maxbins;
   int initbins = environment.initbins;
 
@@ -1269,7 +1310,7 @@ double* compute_mi_cond_alg1(const vector<vector<int>>& data,
 
   int j, l;
 
-  int* r = (int*)calloc((nbrUi + 2), sizeof(int));
+  TempVector<int> r(nbrUi + 2);
 
   int** cut;
   cut = (int**)calloc(nbrUi + 2, sizeof(int*));
@@ -1312,7 +1353,6 @@ double* compute_mi_cond_alg1(const vector<vector<int>>& data,
     res[1] = res_temp[0];
     res[2] = res_temp[0] - res_temp[1];
 
-    free(r);
     for (l = 0; l < (nbrUi + 2); l++) {
       free(cut[l]);
     }
@@ -1341,7 +1381,6 @@ double* compute_mi_cond_alg1(const vector<vector<int>>& data,
     res[1] = res_temp[0];
     res[2] = res_temp[0] - res_temp[1];
 
-    free(r);
     for (l = 0; l < (nbrUi + 2); l++) {
       free(cut[l]);
     }
@@ -1362,6 +1401,8 @@ double* compute_Rscore_Ixyz_alg5(const vector<vector<int>>& data,
     const vector<int>& ptr_cnt, const vector<int>& ptrVarIdx, int nbrUi,
     int ptrZiIdx, int n, const vector<double>& sample_weights,
     bool flag_sample_weights, Environment& environment, bool saveIterations) {
+  TempAllocatorScope scope;
+
   int maxbins = environment.maxbins;
   int initbins = environment.initbins;
 
@@ -1379,7 +1420,7 @@ double* compute_Rscore_Ixyz_alg5(const vector<vector<int>>& data,
 
   vector<int> ptrVarIdx_t((nbrUi + 2));
 
-  int* r = (int*)calloc((nbrUi + 3), sizeof(int));
+  TempVector<int> r(nbrUi + 3);
   int** cut;
   cut = (int**)calloc(nbrUi + 3, sizeof(int*));
   for (l = 0; l < (nbrUi + 3); l++) {
@@ -1430,7 +1471,7 @@ double* compute_Rscore_Ixyz_alg5(const vector<vector<int>>& data,
 
   // if opt
   int** cut_t = (int**)calloc(nbrUi + 2, sizeof(int*));
-  int* r_t = (int*)calloc((nbrUi + 2), sizeof(int));
+  TempVector<int> r_t(nbrUi + 2);
   for (l = 0; l < (nbrUi + 2); l++) {
     cut_t[l] = (int*)calloc(maxbins, sizeof(int));
   }
@@ -1580,7 +1621,6 @@ double* compute_Rscore_Ixyz_alg5(const vector<vector<int>>& data,
   free(cut);
   free(cut_t);
 
-  free(r);
 
   for (l = 0; l < (nbrUi + 3); l++)
     free(datafactors[l]);
@@ -1591,7 +1631,6 @@ double* compute_Rscore_Ixyz_alg5(const vector<vector<int>>& data,
   free(factors4_t);
   free(r4_t);
   free(r_temp);
-  free(r_t);
 
   return res;
 }

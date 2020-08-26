@@ -13,59 +13,6 @@ using std::vector;
 using structure::TempVector;
 using utility::TempAllocatorScope;
 
-// INPUT:
-// memory_cuts: vector length n with recorded recursvely best cuts,
-// possible values 0...n :
-// 0->stops (one bins); -k -> stops (two bin ([0 k-1][k ..];
-// k->continute [.. k-1][k ...])
-// OUTPUT:
-// r : number cuts
-// cut: vector with cuts point-> [0 cut[0]][cut[0]+1 cut[1]]...[cut[r-2]
-// cut[r-1]]
-int reconstruction_cut_coarse(const TempVector<int>& memory_cuts,
-    const TempVector<int>& memory_cuts2, int np, int n, int* cut) {
-  int ncuts = 0;
-  int l, s;
-  if (memory_cuts[np - 1] == 0) {
-    cut[0] = n - 1;
-    return 1;
-  }
-
-  l = memory_cuts[np - 1];
-  while (l > 0) {
-    ncuts++;
-    l = memory_cuts[l - 1];
-  }
-  if (l < 0) ncuts++;
-
-  cut[ncuts] = n - 1;  // conventional last cut
-  l = ncuts - 1;
-  s = memory_cuts[np - 1];
-  cut[l] = memory_cuts2[np - 1];  // truly last cut
-  l--;
-  while (s > 0 && l >= 0) {
-    cut[l] = memory_cuts2[s - 1];
-    s = memory_cuts[s - 1];
-    l--;
-  }
-  return ncuts + 1;  // number of levels (r)
-}
-
-// update datafactors of a variable from the cut positions vector <cut>
-// INPUT:
-// d: index of variable in datafactors
-// varidx: index of variable in sortidx
-void update_datafactors(const vector<vector<int>>& sortidx, int varidx,
-    int** datafactors, int d, int n, int** cut) {
-  int uu = 0;
-  for (int j = 0; j < n; ++j) {
-    int sjj = sortidx[varidx][j];
-    if (j > cut[d][uu]) uu++;
-    datafactors[d][sjj] = uu;
-  }
-  return;
-}
-
 // INPUT
 // datafactors: [0, ]: x, [1, ]: y, [2 ... <n_ui> + 1, ]: {ui}
 // exclude: ignore index <exclude> in the {ui}
@@ -75,8 +22,8 @@ void update_datafactors(const vector<vector<int>>& sortidx, int varidx,
 // OUTPUT
 // uiyxfactors: Joint datafactors. [ui, uiy, uix, uixy]
 // ruiyx[0,1,2,3]: Number of joint levels. 0: u, 1: uy, 2: ux, 3: uyx
-void jointfactors_uiyx(int** datafactors, int exclude, int n, int n_ui, int* r,
-    int** uiyxfactors, int* ruiyx) {
+void jointfactors_uiyx(int** datafactors, int exclude, int n, int n_ui,
+    const TempVector<int>& r, int** uiyxfactors, int* ruiyx) {
   TempAllocatorScope scope;
   // Compute unique hash values for each sample in each of the joint spaces
   TempVector<int> hash_ui(n);
@@ -196,8 +143,8 @@ void jointfactors_uiyx(int** datafactors, int exclude, int n, int n_ui, int* r,
 // OUTPUT
 // return joint datafactors ui , with number of levels rui
 // entropy term Hui
-void jointfactors_u(int** datafactors, int* ptrIdx, int n, int n_ui, int* r,
-    int* ufactors, int* ru) {
+void jointfactors_u(int** datafactors, int* ptrIdx, int n, int n_ui,
+    const TempVector<int>& r, int* ufactors, int* ru) {
   if (n_ui == 1) {
     for (int i = 0; i < n; ++i) {
       ufactors[i] = datafactors[ptrIdx[0]][i];
@@ -231,8 +178,8 @@ void jointfactors_u(int** datafactors, int* ptrIdx, int n, int n_ui, int* r,
     TempVector<int> levels_ui(n_joint_levels);
     for (const auto h : hash_u)
       levels_ui[h] = 1;
-    // Use *ru as level indices, whose final value is the total numbers
-    // of joint levels. Order of the levels follow the order of the hash values,
+    // Use *ru as level indices, whose final value is the total numbers of
+    // joint levels. Order of the levels follow the order of the hash values,
     // which are sorted automatically (as indices) with the sparse vector.
     for (auto& l : levels_ui)
       if (l == 1) l = (*ru)++;
@@ -257,138 +204,6 @@ void jointfactors_u(int** datafactors, int* ptrIdx, int n, int n_ui, int* r,
     ++*ru;
   }
   return;
-}
-
-// rux -> 0:x,1;u,2:ux
-vector<double> computeMI_knml(int* xfactors, int* ufactors, int* uxfactors,
-    int* rux, int n, int n_eff, std::vector<double> sample_weights,
-    std::shared_ptr<CtermCache> cache, int flag) {
-  TempAllocatorScope scope;
-
-  TempVector<double> nx(rux[0]);
-  TempVector<double> nu(rux[1]);
-  TempVector<double> nux(rux[2]);
-  for (int i = 0; i < n; i++) {
-    nx[xfactors[i]] += sample_weights[i];
-    nu[ufactors[i]] += sample_weights[i];
-    nux[uxfactors[i]] += sample_weights[i];
-  }
-
-  double Hux = 0, Hu = 0, Hx = 0, SC = 0;
-  for (const auto x : nx) {
-    if (x <= 0) continue;
-
-    Hx -= x * log(x);
-    if (flag == 0 || flag == 2)
-      SC += cache->getLogC(std::max(1, static_cast<int>(x + 0.5)), rux[1]);
-  }
-  for (const auto u : nu) {
-    if (u <= 0) continue;
-
-    Hu -= u * log(u);
-    if (flag == 0 || flag == 1)
-      SC += cache->getLogC(std::max(1, static_cast<int>(u + 0.5)), rux[0]);
-  }
-  for (const auto ux : nux) {
-    if (ux <= 0) continue;
-
-    Hux -= ux * log(ux);
-  }
-
-  if (flag == 0) {
-    SC -= cache->getLogC(n_eff, rux[0]);
-    SC -= cache->getLogC(n_eff, rux[1]);
-  }
-
-  vector<double> I(2);
-  I[0] = cache->getLog(n_eff) + (Hu + Hx - Hux) / n_eff;
-  if (flag == 0)
-    I[1] = I[0] - 0.5 * SC / n_eff;
-  else
-    I[1] = I[0] - SC / n_eff;
-
-  return I;
-}
-
-vector<double> computeMI_knml(int* xfactors, int* ufactors, int* uxfactors,
-    int* rux, int n, std::shared_ptr<CtermCache> cache, int flag) {
-  TempAllocatorScope scope;
-
-  TempVector<int> nx(rux[0]);
-  TempVector<int> nu(rux[1]);
-  TempVector<int> nux(rux[2]);
-  for (int i = 0; i < n; i++) {
-    ++nx[xfactors[i]];
-    ++nu[ufactors[i]];
-    ++nux[uxfactors[i]];
-  }
-
-  double Hux = 0, Hu = 0, Hx = 0, SC = 0;
-  for (const auto x : nx) {
-    if (x <= 0) continue;
-
-    Hx -= x * cache->getLog(x);
-    if (flag == 0 || flag == 2) SC += cache->getLogC(x, rux[1]);
-  }
-  for (const auto u : nu) {
-    if (u <= 0) continue;
-
-    Hu -= u * cache->getLog(u);
-    if (flag == 0 || flag == 1) SC += cache->getLogC(u, rux[0]);
-  }
-
-  for (const auto ux : nux) {
-    if (ux <= 0) continue;
-
-    Hux -= ux * cache->getLog(ux);
-  }
-
-  if (flag == 0) {
-    SC -= cache->getLogC(n, rux[0]);
-    SC -= cache->getLogC(n, rux[1]);
-  }
-
-  vector<double> I(2);
-  I[0] = cache->getLog(n) + (Hu + Hx - Hux) / n;
-  if (flag == 0)
-    I[1] = I[0] - 0.5 * SC / n;
-  else
-    I[1] = I[0] - SC / n;
-
-  return I;
-}
-
-// rux -> 0:x,1;u,2:ux
-vector<double> computeMI_kmdl(int* xfactors, int* ufactors, int* uxfactors,
-    int* rux, int n, std::shared_ptr<CtermCache> cache, int flag) {
-  TempAllocatorScope scope;
-
-  TempVector<int> nx(rux[0]);
-  TempVector<int> nu(rux[1]);
-  TempVector<int> nux(rux[2]);
-  for (int i = 0; i < n; i++) {
-    ++nx[xfactors[i]];
-    ++nu[ufactors[i]];
-    ++nux[uxfactors[i]];
-  }
-
-  double Hux = 0, Hu = 0, Hx = 0, SC = 0;
-  for (const auto x : nx)
-    if (x > 0) Hx -= x * cache->getLog(x);
-  for (const auto u : nu)
-    if (u > 0) Hu -= u * cache->getLog(u);
-  for (const auto ux : nux)
-    if (ux > 0) Hux -= ux * cache->getLog(ux);
-
-  SC = 0.5 * cache->getLog(n);
-  if (flag == 0 || flag == 1) SC *= (rux[0] - 1);
-  if (flag == 0 || flag == 2) SC *= (rux[1] - 1);
-
-  vector<double> I(2);
-  I[0] = cache->getLog(n) + (Hu + Hx - Hux) / n;
-  I[1] = I[0] - SC / n;
-
-  return I;
 }
 
 }  // namespace computation
