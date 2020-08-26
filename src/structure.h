@@ -7,6 +7,7 @@
 #include <memory>  // std::shared_ptr
 #include <set>
 #include <string>
+#include <type_traits>
 #include <vector>
 
 #include "linear_allocator.h"
@@ -14,10 +15,30 @@
 namespace miic {
 namespace structure {
 
-namespace structure_impl {
+namespace detail {
 
 using std::string;
 using std::vector;
+// SFINAE classes
+template <typename T>
+class has_operator_bracket {
+ private:
+  template <typename C, class U = std::size_t,
+      class Reference = decltype((*std::declval<C*>())[std::declval<U>()]),
+      class = std::enable_if_t<!std::is_void<Reference>::value>>
+  static std::true_type test(int);
+  template <typename C>
+  static std::false_type test(...);
+
+ public:
+  enum { value = decltype(test<T>(0))::value };
+};
+
+template <typename C, typename Reduced = std::remove_reference_t<C>>
+constexpr bool is_int_container = has_operator_bracket<Reduced>::value&&
+    std::is_same<typename Reduced::value_type, int>::value;
+template <>
+constexpr bool is_int_container<int*> = true;  // FIXME: for legacy code
 
 template <typename T, typename Allocator = std::allocator<T>>
 struct Grid2d {
@@ -216,16 +237,18 @@ struct ExecutionTime {
   double getTotal() const { return init + iter + cut + ori; }
 };
 
-}  // namespace structure_impl
-using structure_impl::CacheInfoKey;
-using structure_impl::CacheScoreValue;
-using structure_impl::Edge;
-using structure_impl::EdgeID;
-using structure_impl::EdgeSharedInfo;
-using structure_impl::ExecutionTime;
-using structure_impl::Grid2d;
-using structure_impl::Node;
+}  // namespace detail
+using detail::CacheInfoKey;
+using detail::CacheScoreValue;
+using detail::Edge;
+using detail::EdgeID;
+using detail::EdgeSharedInfo;
+using detail::ExecutionTime;
+using detail::Grid2d;
+using detail::Node;
 
+template <typename T>
+using IsIntContainer = std::enable_if_t<detail::is_int_container<T>>;
 // types using linear allocator
 using TempString = std::basic_string<char, std::char_traits<char>,
     utility::TempStdAllocator<char>>;
