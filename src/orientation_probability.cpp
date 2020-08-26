@@ -28,18 +28,14 @@ double getI3(Environment& environment, const Triple& t) {
 
   vector<int> ui_no_z(environment.edges[posX][posY].shared_info->ui_list);
   ui_no_z.erase(remove(begin(ui_no_z), end(ui_no_z), posZ), end(ui_no_z));
-  int* ui = ui_no_z.empty() ? NULL : &ui_no_z[0];
-
-  vector<int> z{posZ};
-  int* zi = &z[0];
 
   double* res = NULL;
   double Ixyz_ui = -1;
   double cplx = -1;
   if (!environment.is_continuous[posX] && !environment.is_continuous[posZ] &&
       !environment.is_continuous[posY]) {
-    res = computeEnsInformationNew(environment, ui, ui_no_z.size(), zi,
-        z.size(), -1, posX, posY, environment.cplx);
+    res = computeEnsInformationNew(
+        environment, posX, posY, ui_no_z, vector<int>{posZ}, environment.cplx);
     Ixyz_ui = res[7];
     cplx = res[8];
     if (environment.degenerate) cplx += log(3.0);
@@ -47,7 +43,7 @@ double getI3(Environment& environment, const Triple& t) {
     if (environment.is_k23) Ixyz_ui += cplx;
   } else {
     res = computeEnsInformationContinuous_Orientation(
-        environment, ui, ui_no_z.size(), zi, posX, posY, environment.cplx);
+        environment, posX, posY, ui_no_z, posZ, environment.cplx);
     Ixyz_ui = res[1];
     cplx = res[2];
     if (environment.degenerate) cplx += log(3.0);

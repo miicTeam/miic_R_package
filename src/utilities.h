@@ -21,9 +21,8 @@ TimePoint getLapStartTime();
 double getLapInterval(TimePoint);
 void printProgress(double percentage, TimePoint, int& n_unsettled);
 // KL divergence functions
-double compute_kl_divergence(const std::vector<int>& posArray,
-    structure::Environment& environment, int samplesNotNA,
-    const std::vector<int>& AllLevels_red,
+double compute_kl_divergence(int X, int Y, structure::Environment& environment,
+    int samplesNotNA, const std::vector<int>& AllLevels_red,
     const std::vector<int>& sample_is_not_NA);
 double compute_kl_divergence_continuous(
     std::vector<std::vector<double>>& space1,
@@ -43,28 +42,27 @@ void getJointSpace(const structure::Environment&, int i, int j,
     double** jointSpace, int* curr_sample_is_not_NA);
 int getNumSamplesNonNA(const structure::Environment&, int i, int j);
 
-int count_non_NAs(int nbrUi, std::vector<int> &sample_is_not_NA,
-    std::vector<int> &NAs_count, const std::vector<int>& posArray,
-    structure::Environment& environment, int z=-1);
+int count_non_NAs(int X, int Y, const std::vector<int>& ui_list,
+    std::vector<int>& sample_is_not_NA, std::vector<int>& NAs_count,
+    structure::Environment& environment, int z = -1);
 
-bool filter_NAs(int nbrUi, std::vector<int> &AllLevels, std::vector<int> &cnt,
-    std::vector<int> &posArray_red, const std::vector<int>& posArray,
-    std::vector<std::vector<int> > &dataNumeric,
-    std::vector<std::vector<int> > &dataNumericIdx,
-    std::vector<double> &sample_weights,
-    const std::vector<int> &sample_is_not_NA,
-    const std::vector<int> &NAs_count,
-    structure::Environment& environment, int z=-1);
+bool filter_NAs(int X, int Y, const std::vector<int>& ui_list,
+    std::vector<int>& AllLevels, std::vector<int>& cnt,
+    std::vector<int>& posArray_red, std::vector<std::vector<int>>& dataNumeric,
+    std::vector<std::vector<int>>& dataNumericIdx,
+    std::vector<double>& sample_weights,
+    const std::vector<int>& sample_is_not_NA, const std::vector<int>& NAs_count,
+    structure::Environment& environment, int z = -1);
 
 bool checkInterrupt(bool check = true);
 
-double lookupScore(const std::vector<int>& posArray, int nbrUi, int z,
+double lookupScore(int X, int Y, const std::vector<int>& ui_list, int z,
     structure::Environment& environment);
-void lookupScore(const std::vector<int>& posArray, int nbrUi, int z,
+void lookupScore(int X, int Y, const std::vector<int>& ui_list, int z,
     double* score, structure::Environment& environment);
-void saveScore(const std::vector<int>& posArray, int nbrUi, int z, double score,
-    structure::Environment& environment);
-void saveScore(const std::vector<int>& posArray, int nbrUi, int z,
+void saveScore(int X, int Y, const std::vector<int>& ui_list, int z,
+    double score, structure::Environment& environment);
+void saveScore(int X, int Y, const std::vector<int>& ui_list, int z,
     double* score, structure::Environment& environment);
 
 bool SampleHasNoNA(const structure::Environment& env, int row, int i, int j);

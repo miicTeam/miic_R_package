@@ -78,14 +78,14 @@ void setConfidence(Environment& environment) {
       if (!environment.is_continuous[X] && !environment.is_continuous[Y]) {
         // discrete case
         double* res = computeEnsInformationNew(
-            environment, NULL, 0, NULL, 0, -1, X, Y, environment.cplx);
+            environment, X, Y, vector<int>(), vector<int>(), environment.cplx);
         NIxy_ui = res[1];
         k_xy_ui = res[2];
         delete[] res;
       } else {
         // mixed case
         double* res = computeEnsInformationContinuous(
-            environment, NULL, 0, NULL, 0, -1, X, Y, environment.cplx);
+            environment, X, Y, vector<int>(), vector<int>(), environment.cplx);
         NIxy_ui = res[1];
         k_xy_ui = res[2];
         delete[] res;

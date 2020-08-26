@@ -48,12 +48,14 @@ List mydiscretizeMutual(List input_data, List arg_list){
 
   vector<int> posArray(nbrU+2);
   for(int i=0; i<(nbrU+2); i++) posArray[i] = i;
+  vector<int> temp_ui_list(nbrU);
+  std::iota(begin(temp_ui_list), end(temp_ui_list), 2);
 
   // Mark rows containing NAs and count the number of complete samples
   vector<int> sample_nonNA(environment.n_samples);
   vector<int> NAs_count(environment.n_samples);
-  int samplesNotNA = count_non_NAs(nbrU, sample_nonNA,
-    NAs_count, posArray, environment);
+  int samplesNotNA =
+      count_non_NAs(0, 1, temp_ui_list, sample_nonNA, NAs_count, environment);
 
   // Allocate data reducted *_red without rows containing NAs
   // All *_red variables are passed to the optimization routine
@@ -64,10 +66,9 @@ List mydiscretizeMutual(List input_data, List arg_list){
   vector<vector<int> > dataNumeric_red(nbrU+2, vector<int> (samplesNotNA));
   vector<vector<int> > dataNumericIdx_red(nbrU+2, vector<int> (samplesNotNA));
 
-  bool flag_sample_weights = filter_NAs(nbrU, AllLevels_red, cnt_red,
-    posArray_red, posArray, dataNumeric_red, dataNumericIdx_red,
-    sample_weights_red, sample_nonNA, NAs_count,
-    environment);
+  bool flag_sample_weights = filter_NAs(0, 1, temp_ui_list, AllLevels_red,
+      cnt_red, posArray_red, dataNumeric_red, dataNumericIdx_red,
+      sample_weights_red, sample_nonNA, NAs_count, environment);
 
   int** iterative_cuts = (int**)calloc(STEPMAX + 1, sizeof(int*));
   for (int i = 0; i < STEPMAX + 1; i++) {

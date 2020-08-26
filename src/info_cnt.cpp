@@ -242,9 +242,9 @@ void optfun_onerun_kmdl_coarse(const vector<int>& sortidx_var,
     ef_nj = sum_sample_weights[j];
     if (flag_sample_weights) efN_factor = ef_nj / njforward;
     std::transform(counts_0.begin(), counts_0.end(),
-        coarse_counts_joint.row_cbegin(j), counts_0.begin(), std::plus<int>());
+        coarse_counts_joint.row_begin(j), counts_0.begin(), std::plus<int>());
     std::transform(counts_1.begin(), counts_1.end(),
-        coarse_counts_marginal.row_cbegin(j), counts_1.begin(),
+        coarse_counts_marginal.row_begin(j), counts_1.begin(),
         std::plus<int>());
 
     Hk_kj[0] = 0;  // joint
@@ -305,10 +305,10 @@ void optfun_onerun_kmdl_coarse(const vector<int>& sortidx_var,
       if (flag_sample_weights) efN_factor = ef_nk / (njforward - nkforward);
 
       std::transform(counts_k_1.begin(), counts_k_1.end(),
-          coarse_counts_marginal.row_cbegin(k), counts_k_1.begin(),
+          coarse_counts_marginal.row_begin(k), counts_k_1.begin(),
           std::minus<int>());
       std::transform(counts_k_0.begin(), counts_k_0.end(),
-          coarse_counts_joint.row_cbegin(k), counts_k_0.begin(),
+          coarse_counts_joint.row_begin(k), counts_k_0.begin(),
           std::minus<int>());
 
       H_kj[0] = 0;

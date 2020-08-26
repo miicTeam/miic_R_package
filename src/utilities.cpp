@@ -339,44 +339,36 @@ double compute_k_nearest_distance(
   return (sqrt(out_dists_sqr[k - 1]));
 }
 
-double compute_kl_divergence(const vector<int>& posArray,
-    Environment& environment, int samplesNotNA,
-    const vector<int>& AllLevels_red, const vector<int>& sample_is_not_NA) {
-  int current_samplesNotNA =
-      getNumSamplesNonNA(environment, posArray[0], posArray[1]);
+double compute_kl_divergence(int X, int Y, Environment& environment,
+    int samplesNotNA, const vector<int>& AllLevels_red,
+    const vector<int>& sample_is_not_NA) {
+  int current_samplesNotNA = getNumSamplesNonNA(environment, X, Y);
   double kldiv = 0;
 
   // 1 - XY discrete
-  if (!environment.is_continuous[posArray[0]] &&
-      !environment.is_continuous[posArray[1]]) {
-
+  if (!environment.is_continuous[X] && !environment.is_continuous[Y]) {
     // Joint freqs X,Y before adding the new contributor (with the current
     // conditioning Us)
-    double** jointFreqs = getJointFreqs(
-        environment, posArray[0], posArray[1]);
+    double** jointFreqs = getJointFreqs(environment, X, Y);
 
     // Joint freqs X,Y after adding the new contributor (Z)
-    double** freqs2 = getJointFreqs(
-        environment, posArray[0], posArray[1], sample_is_not_NA);
+    double** freqs2 = getJointFreqs(environment, X, Y, sample_is_not_NA);
 
-    kldiv = samplesNotNA * kl(freqs2, jointFreqs,
-                               environment.levels[posArray[0]],
-                               environment.levels[posArray[1]]);
+    kldiv = samplesNotNA * kl(freqs2, jointFreqs, environment.levels[X],
+                               environment.levels[Y]);
 
-    for (int j = 0; j < environment.levels[posArray[0]]; j++) {
+    for (int j = 0; j < environment.levels[X]; j++) {
       delete[] freqs2[j];
       delete[] jointFreqs[j];
     }
     delete[] freqs2;
     delete[] jointFreqs;
-  } else if (environment.is_continuous[posArray[0]] &&
-             environment.is_continuous[posArray[1]]) {
+  } else if (environment.is_continuous[X] && environment.is_continuous[Y]) {
     // 2 - XY continuous
     // Retrieve marginal distibutions with the current conditioning Us
     vector<vector<double> > joint_base(current_samplesNotNA, vector<double>(2));
     int* curr_sample_is_not_NA = new int[environment.n_samples];
-    getJointSpace(environment, posArray[0], posArray[1], joint_base,
-        curr_sample_is_not_NA);
+    getJointSpace(environment, X, Y, joint_base, curr_sample_is_not_NA);
 
     int* map_samples = new int[current_samplesNotNA];
     int i_map = 0;
@@ -393,9 +385,8 @@ double compute_kl_divergence(const vector<int>& posArray,
     int i_non_na = 0;
     for (int i = 0; i < environment.n_samples; i++) {
       if (sample_is_not_NA[i] == 1) {
-        for (int k = 0; k < 2; k++) {
-          joint_non_na[i_non_na][k] = environment.data_double[posArray[k]][i];
-        }
+        joint_non_na[i_non_na][0] = environment.data_double[X][i];
+        joint_non_na[i_non_na][1] = environment.data_double[Y][i];
         i_non_na++;
       }
     }
@@ -405,37 +396,36 @@ double compute_kl_divergence(const vector<int>& posArray,
                            (AllLevels_red[k] != current_samplesNotNA);
     }
 
-    kldiv =
-        samplesNotNA * compute_kl_divergence_continuous(joint_non_na, joint_base,
-                           samplesNotNA, current_samplesNotNA, 2, KNN_K,
-                           flag_break_ties, map_samples, environment.noise_vec);
+    kldiv = samplesNotNA * compute_kl_divergence_continuous(joint_non_na,
+                               joint_base, samplesNotNA, current_samplesNotNA,
+                               2, KNN_K, flag_break_ties, map_samples,
+                               environment.noise_vec);
 
     delete[] curr_sample_is_not_NA;
     delete[] map_samples;
     delete[] flag_break_ties;
   } else {
     // 3 - One discrete and one continuous
-    int discrete_pos, continuous_pos, discrete_pos_binary, continuous_pos_binary;
-    if (!environment.is_continuous[posArray[0]]) {
-      discrete_pos_binary = 0;
+    int discrete_pos, continuous_pos, continuous_pos_binary;
+    if (!environment.is_continuous[X]) {
+      discrete_pos = X;
+      continuous_pos = Y;
       continuous_pos_binary = 1;
     } else {
-      discrete_pos_binary = 1;
+      discrete_pos = Y;
+      continuous_pos = X;
       continuous_pos_binary = 0;
     }
-    discrete_pos = posArray[discrete_pos_binary];
-    continuous_pos = posArray[continuous_pos_binary];
     int n_discrete_levels = environment.levels[discrete_pos];
     // Full and reduced data may not have the same number of unique levels
 
     // Retrieve marginal distibutions with the current conditioning Us
-    int current_samplesNotNA =
-        getNumSamplesNonNA(environment, posArray[0], posArray[1]);
+    int current_samplesNotNA = getNumSamplesNonNA(environment, X, Y);
     int* mixedDiscrete = new int[current_samplesNotNA];
     double* mixedContinuous = new double[current_samplesNotNA];
     int* curr_sample_is_not_NA = new int[environment.n_samples];
-    getJointMixed(environment, posArray[0], posArray[1], mixedDiscrete,
-        mixedContinuous, curr_sample_is_not_NA);
+    getJointMixed(environment, X, Y, mixedDiscrete, mixedContinuous,
+        curr_sample_is_not_NA);
 
     // Create count vectors for the discrete variable
     vector<int> count_non_na(n_discrete_levels, 0);
@@ -458,7 +448,9 @@ double compute_kl_divergence(const vector<int>& posArray,
         if (environment.data_numeric[i][discrete_pos] == level) {
           if (curr_sample_is_not_NA[i]) {
             map_level[i_level] = 0;
-            if (sample_is_not_NA[i] == 1) map_level[i_level] = 1;
+            if (sample_is_not_NA[i] == 1) {
+              map_level[i_level] = 1;
+            }
             i_level++;
           }
         }
@@ -487,7 +479,7 @@ double compute_kl_divergence(const vector<int>& posArray,
       }
       bool flag_break_ties[1];
       flag_break_ties[0] =
-          false || (AllLevels_red[continuous_pos_binary] != samplesNotNA) ||
+          (AllLevels_red[continuous_pos_binary] != samplesNotNA) ||
           (AllLevels_red[continuous_pos_binary] != current_samplesNotNA);
 
       if (count_non_na[level] > KNN_K) {
@@ -557,12 +549,10 @@ double compute_kl_divergence_continuous(vector<vector<double>>& space1,
 // \a posArray ([0] is X, [1] is Y and above are Us) and an optional \a z.
 // \return The number of non NA samples and modifies the vectors
 // sample_is_not_NA and NAs_count
-int count_non_NAs(int nbrUi, vector<int> &sample_is_not_NA,
-    vector<int> &NAs_count, const vector<int>& posArray,
-    Environment& environment, int z){
-
+int count_non_NAs(int X, int Y, const vector<int>& ui_list,
+    vector<int>& sample_is_not_NA, vector<int>& NAs_count,
+    Environment& environment, int z) {
   int samplesNotNA = 0;
-  bool is_NA;
 
   for (int i = 0; i < environment.n_samples; i++) {
     sample_is_not_NA[i] = 1;
@@ -571,12 +561,15 @@ int count_non_NAs(int nbrUi, vector<int> &sample_is_not_NA,
     else
       NAs_count[i] = 0;
 
-    is_NA = false;
-    for (int j = 0; (j < nbrUi + 2) && (!is_NA); j++) {
-      is_NA = environment.data_numeric[i][posArray[j]] == -1;
-    }
-    if (z != -1) is_NA = is_NA || environment.data_numeric[i][z] == -1;
-    if (is_NA) {
+    bool has_NA = environment.data_numeric[i][X] == -1 ||
+                  environment.data_numeric[i][Y] == -1;
+    has_NA = has_NA || std::any_of(begin(ui_list), end(ui_list),
+                           [&environment, i](int ui) {
+                             return environment.data_numeric[i][ui] == -1;
+                           });
+    if (z != -1) has_NA = has_NA || environment.data_numeric[i][z] == -1;
+
+    if (has_NA) {
       sample_is_not_NA[i] = 0;
       NAs_count[i]++;
     } else
@@ -601,8 +594,8 @@ int count_non_NAs(int nbrUi, vector<int> &sample_is_not_NA,
  * \a dataNumericIdx contains the continuous ranks of the reduced data
  * \a sample_weights contains the individual sample weights of the reduced data
  */
-bool filter_NAs(int nbrUi, vector<int>& AllLevels, vector<int>& cnt,
-    vector<int>& posArray_red, const vector<int>& posArray,
+bool filter_NAs(int X, int Y, const vector<int>& ui_list,
+    vector<int>& AllLevels, vector<int>& cnt, vector<int>& posArray_red,
     vector<vector<int>>& dataNumeric, vector<vector<int>>& dataNumericIdx,
     vector<double>& sample_weights, const vector<int>& sample_is_not_NA,
     const vector<int>& NAs_count, Environment& environment, int z) {
@@ -610,11 +603,17 @@ bool filter_NAs(int nbrUi, vector<int>& AllLevels, vector<int>& cnt,
   int column;
   bool flag_sample_weights(false);
 
+  int n_ui = ui_list.size();
+  vector<int> posArray(2 + ui_list.size());
+  posArray[0] = X;
+  posArray[1] = Y;
+  std::copy(begin(ui_list), end(ui_list), begin(posArray) + 2);
+
   // Map to make sure that the levels of the reduced data start at zero
   std::map<int, int> new_levels;
 
-  for (int j = 0; j < (nbrUi + 2 + int(z!=-1)); j++) {
-    if(j < nbrUi+2) {
+  for (int j = 0; j < (n_ui + 2 + int(z != -1)); j++) {
+    if (j < n_ui + 2) {
       column = posArray[j];
     } else {
       column = z;
@@ -622,37 +621,38 @@ bool filter_NAs(int nbrUi, vector<int>& AllLevels, vector<int>& cnt,
     posArray_red[j] = j;
     cnt[j] = environment.is_continuous[column];
 
-    k1 = 0; // position in the full data
-    k2 = 0; // position in the reduced data
-    nnr = 0; // number of non repeated values
-    prev_val = -1; // previous value
+    k1 = 0;         // position in the full data
+    k2 = 0;         // position in the reduced data
+    nnr = 0;        // number of non repeated values
+    prev_val = -1;  // previous value
     new_levels.clear();
     new_val = 0;
     updated_discrete_level = 0;
 
     for (int i = 0; i < environment.n_samples; i++) {
-
       if (sample_is_not_NA[i] == 1) {
         // Row at index i does not contain any NA
         old_val = environment.data_numeric[i][column];
-        if (new_levels.count(old_val)==0){
+        if (new_levels.count(old_val) == 0) {
           // If level has not already been seen add it to the map
           // and increment the number of unique levels in reduced data
           new_levels.insert({old_val, updated_discrete_level});
-          updated_discrete_level ++;
+          updated_discrete_level++;
         }
         new_val = new_levels[old_val];
 
         dataNumeric[j][k1] = new_val;
-        if(j==0) {
+        if (j == 0) {
           sample_weights[k1] = environment.sample_weights[i];
-          if(sample_weights[k1] != 1.0) flag_sample_weights = true;
+          if (sample_weights[k1] != 1.0) flag_sample_weights = true;
         }
         k1++;
       }
       if (cnt[j] != 0) {
         // Variable j is continuous
-        si = environment.data_numeric_idx[column][i]; //position of ith sample (order)
+        si =
+            environment
+                .data_numeric_idx[column][i];  // position of ith sample (order)
         if (si != -1 && sample_is_not_NA[si] == 1) {
           // Row at position si does not contain any NA, rank is updated taking
           // into account the number of NAs up to si.
@@ -670,31 +670,31 @@ bool filter_NAs(int nbrUi, vector<int>& AllLevels, vector<int>& cnt,
     if (cnt[j] == 1) {
       if (nnr < 3) cnt[j] = 0;
       AllLevels[j] = nnr;
-    }
-    else AllLevels[j] = updated_discrete_level;
+    } else
+      AllLevels[j] = updated_discrete_level;
   }
-  return(flag_sample_weights);
+  return flag_sample_weights;
 }
 
-double lookupScore(const vector<int>& posArray, int nbrUi, int z,
-    Environment& environment) {
-  std::set<int> Ui_set(posArray.cbegin() + 2, posArray.cbegin() + 2 + nbrUi);
-  Ui_set.insert(z);
-  CacheInfoKey key {posArray[0], posArray[1], Ui_set};
+double lookupScore(
+    int X, int Y, const vector<int>& ui_list, int Z, Environment& environment) {
+  std::set<int> ui_set(begin(ui_list), end(ui_list));
+  ui_set.insert(Z);
+  CacheInfoKey key{X, Y, ui_set};
   double score = -1.0;
 
-  if (environment.look_scores.count(key) != 0){
+  if (environment.look_scores.count(key) != 0) {
     score = environment.look_scores[key];
   }
-  return(score);
+  return score;
 }
 
-void lookupScore(const vector<int>& posArray, int nbrUi, int z, double* res,
+void lookupScore(int X, int Y, const vector<int>& ui_list, int Z, double* res,
     Environment& environment) {
-  std::set<int> Ui_set(posArray.cbegin() + 2, posArray.cbegin() + 2 + nbrUi);
-  CacheInfoKey key {posArray[0], posArray[1], z, Ui_set};
+  std::set<int> ui_set(begin(ui_list), end(ui_list));
+  CacheInfoKey key{X, Y, Z, ui_set};
 
-  if (environment.look_scores_orientation.count(key) != 0){
+  if (environment.look_scores_orientation.count(key) != 0) {
     res[0] = environment.look_scores_orientation[key].n_samples;
     res[1] = environment.look_scores_orientation[key].I_xyzUi;
     res[2] = environment.look_scores_orientation[key].cplx;
@@ -702,25 +702,25 @@ void lookupScore(const vector<int>& posArray, int nbrUi, int z, double* res,
   return;
 }
 
-void saveScore(const vector<int>& posArray, int nbrUi, int z, double score,
+void saveScore(int X, int Y, const vector<int>& ui_list, int Z, double score,
     Environment& environment) {
-  std::set<int> Ui_set(posArray.cbegin() + 2, posArray.cbegin() + 2 + nbrUi);
-  Ui_set.insert(z);
-  CacheInfoKey key {posArray[0], posArray[1], Ui_set};
-  #ifdef _OPENMP
-  #pragma omp critical
-  #endif
+  std::set<int> ui_set(begin(ui_list), end(ui_list));
+  ui_set.insert(Z);
+  CacheInfoKey key{X, Y, ui_set};
+#ifdef _OPENMP
+#pragma omp critical
+#endif
   environment.look_scores.insert({key, score});
 }
 
-void saveScore(const vector<int>& posArray, int nbrUi, int z, double* score,
+void saveScore(int X, int Y, const vector<int>& ui_list, int Z, double* score,
     Environment& environment) {
-  std::set<int> Ui_set(posArray.cbegin() + 2, posArray.cbegin() + 2 + nbrUi);
-  CacheInfoKey key {posArray[0], posArray[1], z, Ui_set};
-  CacheScoreValue score_struct {int(score[0]), score[1], score[2]};
-  #ifdef _OPENMP
-  #pragma omp critical
-  #endif
+  std::set<int> ui_set(begin(ui_list), end(ui_list));
+  CacheInfoKey key{X, Y, Z, ui_set};
+  CacheScoreValue score_struct{int(score[0]), score[1], score[2]};
+#ifdef _OPENMP
+#pragma omp critical
+#endif
   environment.look_scores_orientation.insert({key, score_struct});
 }
 

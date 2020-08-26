@@ -7,19 +7,14 @@
 namespace miic {
 namespace computation {
 
-void computeContributingScores(structure::Environment&, int* ziContPosIdx,
-    int iz, int* myZi, int myNbrUi, int n_samples_nonNA,
-    const std::vector<int>& posArray, double* scoresZ);
-double* computeEnsInformationNew(structure::Environment&, int*, int, int*, int,
-    int, int, int, int);
+double* computeEnsInformationNew(structure::Environment&, int X, int Y,
+    const std::vector<int>& ui_list, const std::vector<int>& zi_list, int cplx);
 void SearchForNewContributingNodeAndItsRank(structure::Environment&, int, int);
 // Continuous data
-double* computeEnsInformationContinuous(structure::Environment&, int* myCond,
-    int myNbrUi, int* myZi, int myNbrZi, int myZiPos, int myVarIdxX,
-    int myVarIdxY, int cplx);
+double* computeEnsInformationContinuous(structure::Environment&, int X, int Y,
+    const std::vector<int>& ui_list, const std::vector<int>& zi_list, int cplx);
 double* computeEnsInformationContinuous_Orientation(structure::Environment&,
-    int* myCond, int myNbrUi, int* myZi, int myVarIdxX, int myVarIdxY,
-    int cplx);
+    int X, int Y, const std::vector<int>& ui_list, int Z, int cplx);
 
 }  // namespace computation
 }  // namespace miic

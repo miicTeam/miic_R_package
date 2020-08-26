@@ -18,14 +18,14 @@ int initEdgeElt(Environment& environment, int i, int j) {
   double* res = NULL;
   if (!environment.is_continuous[i] &&
       !environment.is_continuous[j]) {
-    res = computeEnsInformationNew(
-        environment, NULL, 0, NULL, 0, -1, i, j, environment.cplx);
+    res = computeEnsInformationNew(environment, i, j, std::vector<int>(),
+        std::vector<int>(), environment.cplx);
     environment.edges[i][j].shared_info->Ixy_ui = res[1];
     environment.edges[i][j].shared_info->cplx = res[2];
     environment.edges[i][j].shared_info->Nxy_ui = res[0];
   } else {
-    res = computeEnsInformationContinuous(
-        environment, NULL, 0, NULL, 0, -1, i, j, environment.cplx);
+    res = computeEnsInformationContinuous(environment, i, j, std::vector<int>(),
+        std::vector<int>(), environment.cplx);
     environment.edges[i][j].shared_info->Ixy_ui = res[1];
     environment.edges[i][j].shared_info->cplx = res[2];
     environment.edges[i][j].shared_info->Nxy_ui = res[0];

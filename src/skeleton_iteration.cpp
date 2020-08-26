@@ -233,19 +233,17 @@ bool skeletonIteration(Environment& environment) {
     if (!environment.is_continuous[posX] && !environment.is_continuous[posY] &&
         std::all_of(topEdgeElt->ui_list.cbegin(), topEdgeElt->ui_list.cend(),
             [&environment](int i) { return !environment.is_continuous[i]; })) {
-      v = computeEnsInformationNew(environment,
-          &environment.edges[posX][posY].shared_info->ui_list[0],
-          environment.edges[posX][posY].shared_info->ui_list.size(), NULL, 0,
-          -1, posX, posY, environment.cplx);
+      v = computeEnsInformationNew(environment, posX, posY,
+          environment.edges[posX][posY].shared_info->ui_list, vector<int>(),
+          environment.cplx);
 
       topEdgeElt->Ixy_ui = v[1];
       topEdgeElt->Nxy_ui = v[0];
       topEdgeElt->cplx = v[2];
     } else {
-      v = computeEnsInformationContinuous(environment,
-          &environment.edges[posX][posY].shared_info->ui_list[0],
-          environment.edges[posX][posY].shared_info->ui_list.size(), NULL, 0,
-          -1, posX, posY, environment.cplx);
+      v = computeEnsInformationContinuous(environment, posX, posY,
+          environment.edges[posX][posY].shared_info->ui_list, vector<int>(),
+          environment.cplx);
       topEdgeElt->Nxy_ui = v[0];
       topEdgeElt->Ixy_ui = v[1];
       topEdgeElt->cplx = v[2];

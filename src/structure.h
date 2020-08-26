@@ -23,7 +23,7 @@ using std::vector;
 template <typename T>
 class has_operator_bracket {
  private:
-  template <typename C, class U = std::size_t,
+  template <typename C, typename U = std::size_t,
       class Reference = decltype((*std::declval<C*>())[std::declval<U>()]),
       class = std::enable_if_t<!std::is_void<Reference>::value>>
   static std::true_type test(int);
@@ -86,19 +86,19 @@ struct Grid2d {
   }
   Row getRow(size_t row) { return Row(this, row); }
 
-  size_t n_rows() { return rows_; }
-  size_t n_cols() { return cols_; }
+  size_t n_rows() const { return rows_; }
+  size_t n_cols() const { return cols_; }
   size_t size() { return data_.size(); }
 
   auto begin() { return data_.begin(); }
   auto end() { return data_.end(); }
-  auto cbegin() const { return data_.cbegin(); }
-  auto cend() const { return data_.cend(); }
+  auto begin() const { return data_.cbegin(); }
+  auto end() const { return data_.cend(); }
 
   auto row_begin(size_t row) { return data_.begin() + row * cols_; }
   auto row_end(size_t row) { return data_.end() + (row + 1) * cols_; }
-  auto row_cbegin(size_t row) const { return data_.cbegin() + row * cols_; }
-  auto row_cend(size_t row) const { return data_.cend() + (row + 1) * cols_; }
+  auto row_begin(size_t row) const { return data_.cbegin() + row * cols_; }
+  auto row_end(size_t row) const { return data_.cend() + (row + 1) * cols_; }
 
  private:
   size_t rows_, cols_;
@@ -247,7 +247,7 @@ using detail::ExecutionTime;
 using detail::Grid2d;
 using detail::Node;
 
-template <typename T>
+template <class T>
 using IsIntContainer = std::enable_if_t<detail::is_int_container<T>>;
 // types using linear allocator
 using TempString = std::basic_string<char, std::char_traits<char>,

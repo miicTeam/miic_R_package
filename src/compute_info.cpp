@@ -25,11 +25,18 @@ using namespace miic::utility;
 using std::vector;
 
 double* getAllInfoNEW(int* ptrAllData, const vector<int>& ptrAllLevels,
-    const vector<int>& ptrVarIdx, int nbrUi, int* ptrZiIdx, int nbrZi,
-    int ziPos, int sampleSize, int sampleSizeEff, int modCplx, int k23,
+    int id_x, int id_y, const vector<int>& ui_list, const vector<int>& zi_list,
+    int sampleSize, int sampleSizeEff, int modCplx, int k23,
     const vector<double>& weights, double** freqs1, bool test_mar,
     std::shared_ptr<CtermCache> cache) {
   TempAllocatorScope scope;
+
+  int n_ui = ui_list.size();
+  int n_zi = zi_list.size();
+  TempVector<int> ptrVarIdx(ui_list.size() + 2);
+  ptrVarIdx[0] = id_x;
+  ptrVarIdx[1] = id_y;
+  std::copy(begin(ui_list), end(ui_list), begin(ptrVarIdx) + 2);
 
   int randomrescaling = 1;
   float r, rr;
@@ -50,7 +57,7 @@ double* getAllInfoNEW(int* ptrAllData, const vector<int>& ptrAllLevels,
 
   int nSample0;
 
-  TempVector<int> nSample(nbrZi);
+  TempVector<int> nSample(n_zi);
   //[N+1 elements: 0 to N]
   TempVector<int> orderSample(sampleSize + 2);
   TempVector<int> sampleKey(sampleSize + 2);
@@ -134,7 +141,7 @@ double* getAllInfoNEW(int* ptrAllData, const vector<int>& ptrAllLevels,
   // If nbrZi > 0, return nSample[z_top] & nSample[z_top]*I(xy|{ui}) & k_xy_ui
   //                      z_top & nSample[z_top]*I(xy|{ui}z) & k_xy_uiz
   //                      R_top & nSample[z_top]*I(xyz|{ui}) & k_xyz_ui
-  if (nbrZi > 0) nbrRetValues = 9;
+  if (n_zi > 0) nbrRetValues = 9;
 
   double* ptrRetValues = new double[nbrRetValues];
 
@@ -142,7 +149,7 @@ double* getAllInfoNEW(int* ptrAllData, const vector<int>& ptrAllLevels,
   ptrRetValues[1] = -1;
   ptrRetValues[2] = -1;
 
-  if (nbrZi > 0) {
+  if (n_zi > 0) {
     ptrRetValues[3] = -1;
     ptrRetValues[4] = -1;
     ptrRetValues[5] = -1;
@@ -152,7 +159,7 @@ double* getAllInfoNEW(int* ptrAllData, const vector<int>& ptrAllLevels,
   }
 
   // Define the total number of variables (xi, xj, {ui}, {zi})
-  nbrAllVar = (nbrUi + 2);
+  nbrAllVar = (n_ui + 2);
 
   nrow = 0 + 1;
   ncol = nbrAllVar + 1;
@@ -218,9 +225,6 @@ double* getAllInfoNEW(int* ptrAllData, const vector<int>& ptrAllLevels,
   }
   Rprintf("\n");
 
-  Rprintf("\n# ----> ZI POS\n");
-  Rprintf("# %d\n", ziPos);
-
   Rprintf("\n# ----> SAMPLE SIZE\n");
   Rprintf("# %d\n", sampleSize);
 
@@ -247,8 +251,8 @@ double* getAllInfoNEW(int* ptrAllData, const vector<int>& ptrAllLevels,
 
     // if only one variable zi (to estimate NI(xy|ui) and NI(xy|uiz) on the
     // exact same samples in case of NA)
-    if (nbrZi == 1) {
-      ptrzi = ptrZiIdx[0];
+    if (n_zi == 1) {
+      ptrzi = zi_list[0];
       if (ptrAllData[i + ptrzi * sampleSize] == -1) {
         ok = FALSE;
       }
@@ -589,7 +593,7 @@ double* getAllInfoNEW(int* ptrAllData, const vector<int>& ptrAllLevels,
     //  logC2xy_ui=0;
     //}
 
-    if (nbrUi == 0)
+    if (n_ui == 0)
       testinfo_xy_ui =
           info3xy_ui - info2xy_ui - logC3xy_ui + logC2xy_ui;  // change 20160221
     else
@@ -615,7 +619,7 @@ double* getAllInfoNEW(int* ptrAllData, const vector<int>& ptrAllLevels,
       min_info_logC = max_info_logC;
       for (j = 0; j < nbrAllVar; j++)
         Opt_dBin(0, j) = dBin(0, j);
-      if (nbrZi > 0) {
+      if (n_zi > 0) {
         for (k = 0; k <= nSample0; k++) {
           for (j = 0; j < 6; j++) {
             Opt_sortedSample(k, j) = sortedSample(k, j);
@@ -642,7 +646,7 @@ double* getAllInfoNEW(int* ptrAllData, const vector<int>& ptrAllLevels,
     Rprintf("\n# =====> test before z nbrZi=%d \n", nbrZi);
 #endif  // _MY_DEBUG_NEW
 
-    if (nbrZi == 0) {
+    if (n_zi == 0) {
       ptrRetValues[0] = N_xy_ui;
       ptrRetValues[1] = NIxy_ui;
       ptrRetValues[2] = k_xy_ui;
@@ -679,9 +683,9 @@ double* getAllInfoNEW(int* ptrAllData, const vector<int>& ptrAllLevels,
       NIxyz_ui_top = -1;
       k_xyz_ui_top = -1;
 
-      for (zi = 0; zi < nbrZi; zi++) {
+      for (zi = 0; zi < n_zi; zi++) {
         // initialisation of bin numbers for continuous variable zi
-        ptrzi = ptrZiIdx[zi];
+        ptrzi = zi_list[zi];
 
         dBin(0, z) = ptrAllLevels[ptrzi];
         nSample[zi] = 0;
@@ -706,7 +710,7 @@ double* getAllInfoNEW(int* ptrAllData, const vector<int>& ptrAllLevels,
             }
           }
 
-          ptrzi = ptrZiIdx[zi];
+          ptrzi = zi_list[zi];
           if (ptrAllData[i + ptrzi * sampleSize] == -1) {
             ok = FALSE;
           }
@@ -1134,7 +1138,7 @@ double* getAllInfoNEW(int* ptrAllData, const vector<int>& ptrAllLevels,
             //}
 
             // logC2xy_ui;
-            if (nbrUi == 0)
+            if (n_ui == 0)
               testinfo_xy_ui = info3xy_ui - info2xy_ui - logC3xy_ui +
                                logC2xy_ui;  // change 20160221
             else
@@ -1164,7 +1168,7 @@ double* getAllInfoNEW(int* ptrAllData, const vector<int>& ptrAllLevels,
             //}
 
             // logC2yz_ui;
-            if (nbrUi == 0)
+            if (n_ui == 0)
               testinfo_yz_ui = info3yz_ui - info2yz_ui - logC3yz_ui +
                                logC2yz_ui;  // change 20160221
             else
@@ -1193,7 +1197,7 @@ double* getAllInfoNEW(int* ptrAllData, const vector<int>& ptrAllLevels,
             //}
 
             // logC2xz_ui;
-            if (nbrUi == 0)
+            if (n_ui == 0)
               testinfo_xz_ui = info3xz_ui - info2xz_ui - logC3xz_ui +
                                logC2xz_ui;  // change 20160221
             else
