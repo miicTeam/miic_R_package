@@ -368,7 +368,9 @@ double* computeEnsInformationContinuous(Environment& environment, int* myCond,
 
         // update res new, it will be compared to the continuous variables
         res_new[2] = res[6];
-        res_new[1] = posZi[int(res[3])];
+        if (res[3] >= 0) {
+          res_new[1] = posZi[int(res[3])];
+        }
         res_new[0] = res[0];
         delete[] res;
         delete[] posZi;
