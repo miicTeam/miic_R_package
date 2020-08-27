@@ -17,28 +17,38 @@ namespace structure {
 
 namespace detail {
 
+using std::size_t;
 using std::string;
 using std::vector;
-// SFINAE classes
-template <typename T>
-class has_operator_bracket {
- private:
-  template <typename C, typename U = std::size_t,
-      class Reference = decltype((*std::declval<C*>())[std::declval<U>()]),
-      class = std::enable_if_t<!std::is_void<Reference>::value>>
-  static std::true_type test(int);
-  template <typename C>
-  static std::false_type test(...);
 
- public:
-  enum { value = decltype(test<T>(0))::value };
+// In absence of c++17 and to accomodate older compiler (ref: CWG 1558)
+template <typename... Ts>
+struct make_void {
+  typedef void type;
 };
+template <typename... Ts>
+using void_t = typename make_void<Ts...>::type;
 
-template <typename C, typename Reduced = std::remove_reference_t<C>>
-constexpr bool is_int_container = has_operator_bracket<Reduced>::value&&
-    std::is_same<typename Reduced::value_type, int>::value;
+// SFINAE classes
+template <class T, class Index = size_t, class = void>
+struct has_subscript_operator : std::false_type {};
+template <class T>
+struct has_subscript_operator<T, size_t,
+    void_t<decltype(std::declval<T>()[std::declval<size_t>()])>>
+    : std::true_type {};
+
+template <class T, class Reduced = std::remove_reference_t<T>, class = void>
+struct is_int_container : std::false_type {};
+template <class T>
+struct is_int_container<T, std::remove_reference_t<T>,
+    void_t<std::enable_if_t<
+               has_subscript_operator<std::remove_reference_t<T>>::value>,
+        std::enable_if_t<std::is_same<
+            typename std::remove_reference_t<T>::value_type, int>::value>>>
+    : std::true_type {};
+// FIXME: legacy specialization for int*
 template <>
-constexpr bool is_int_container<int*> = true;  // FIXME: for legacy code
+struct is_int_container<int*> : std::true_type {};
 
 template <typename T, typename Allocator = std::allocator<T>>
 struct Grid2d {
@@ -248,7 +258,7 @@ using detail::Grid2d;
 using detail::Node;
 
 template <class T>
-using IsIntContainer = std::enable_if_t<detail::is_int_container<T>>;
+using IsIntContainer = std::enable_if_t<detail::is_int_container<T>::value>;
 // types using linear allocator
 using TempString = std::basic_string<char, std::char_traits<char>,
     utility::TempStdAllocator<char>>;
