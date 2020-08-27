@@ -25,7 +25,7 @@ void update_datafactors(
   int index = 0;
   for (size_t j = 0; j < sortidx.size(); ++j) {
     int level = sortidx[j];
-    if (j > cut[index]) index++;
+    if (static_cast<int>(j) > cut[index]) index++;
     datafactor[level] = index;
   }
   return;

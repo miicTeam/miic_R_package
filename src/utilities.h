@@ -29,14 +29,13 @@ double compute_kl_divergence_continuous(
     std::vector<std::vector<double>>& space2, int n1, int n2, int ndims, int k,
     bool* flag_break_ties, int* map_samples, double* noise_vec);
 
-double kl(double** freqs1, double** freqs2, int nrows, int ncols);
-double kl(int** counts1, double** freqs2, int nrows, int ncols);
-double kl(const std::vector<int>& freqs1, const std::vector<int>& freqs2,
-    int n1, int n2);
+double kl(const structure::TempGrid2d<int>& counts1,
+    const structure::TempGrid2d<double>& freqs2);
 
 void getJointMixed(const structure::Environment&, int i, int j,
     int* mixedDiscrete, double* mixedContinuous, int* curr_sample_is_not_NA);
-double** getJointFreqs(const structure::Environment&, int i, int j,
+structure::TempGrid2d<double> getJointFreqs(const structure::Environment&,
+    int i, int j,
     const std::vector<int>& sample_is_not_NA = std::vector<int>());
 void getJointSpace(const structure::Environment&, int i, int j,
     double** jointSpace, int* curr_sample_is_not_NA);

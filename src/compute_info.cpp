@@ -27,8 +27,8 @@ using std::vector;
 double* getAllInfoNEW(int* ptrAllData, const vector<int>& ptrAllLevels,
     int id_x, int id_y, const vector<int>& ui_list, const vector<int>& zi_list,
     int sampleSize, int sampleSizeEff, int modCplx, int k23,
-    const vector<double>& weights, double** freqs1, bool test_mar,
-    std::shared_ptr<CtermCache> cache) {
+    const vector<double>& weights, const TempGrid2d<double>& freqs1,
+    bool test_mar, std::shared_ptr<CtermCache> cache) {
   TempAllocatorScope scope;
 
   int n_ui = ui_list.size();
@@ -737,30 +737,20 @@ double* getAllInfoNEW(int* ptrAllData, const vector<int>& ptrAllLevels,
           }
 
           if (test_mar) {
-            int** counts2 = new int*[ptrAllLevels[ptrVarIdx[0]]];
-            for (int j = 0; j < ptrAllLevels[ptrVarIdx[0]]; j++){
-              counts2[j] = new int[ptrAllLevels[ptrVarIdx[1]]];
-              for(int k = 0; k < ptrAllLevels[ptrVarIdx[1]]; k++){
-                counts2[j][k] = 0;
-              }
-            }
+            TempAllocatorScope scope;
+
+            TempGrid2d<int> counts2(
+                ptrAllLevels[ptrVarIdx[0]], ptrAllLevels[ptrVarIdx[1]], 0);
             // fill table
             for (int k = 0; k < nSampleZ; k++) {
               i = sampleWithZ[k];
-              counts2[ptrAllData[i + ptrVarIdx[0] * sampleSize]]
-                     [ptrAllData[i + ptrVarIdx[1] * sampleSize]]++;
+              ++counts2(ptrAllData[i + ptrVarIdx[0] * sampleSize],
+                  ptrAllData[i + ptrVarIdx[1] * sampleSize]);
             }
             double cplxMdl = cache->getLog(nSampleZ);
-            double kldiv =
-                exp(-nSampleZ * kl(counts2, freqs1, ptrAllLevels[ptrVarIdx[0]],
-                                    ptrAllLevels[ptrVarIdx[1]]) +
-                    cplxMdl);
+            double kldiv = exp(-nSampleZ * kl(counts2, freqs1) + cplxMdl);
 
             if (kldiv < 1) isGoodCandidate = false;
-
-            for (int j = 0; j < ptrAllLevels[ptrVarIdx[0]]; j++)
-              delete[] counts2[j];
-            delete[] counts2;
           }
         }
 

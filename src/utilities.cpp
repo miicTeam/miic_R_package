@@ -29,54 +29,16 @@ using std::vector;
 using namespace miic::computation;
 using namespace miic::structure;
 
-double kl(double** freqs1, double** freqs2, int nrows, int ncols) {
-  double** lr;
+namespace {
+
+double kl(const TempGrid2d<double>& freqs1, const TempGrid2d<double>& freqs2) {
   double kl_div = 0;
-
-  lr = new double*[nrows];
-  for (int i = 0; i < nrows; i++) lr[i] = new double[ncols];
-
-  for (int i = 0; i < nrows; i++) {
-    for (int j = 0; j < ncols; j++) {
-      if (freqs1[i][j] != 0) {
-        lr[i][j] = log(freqs1[i][j] / freqs2[i][j]);
-      } else
-        lr[i][j] = 0;
+  for (int i = 0; i < freqs1.n_rows(); i++) {
+    for (int j = 0; j < freqs1.n_cols(); j++) {
+      double freq1 = freqs1(i, j);
+      if (freq1 != 0) kl_div += freq1 * log(freq1 / freqs2(i, j));
     }
   }
-
-  for (int i = 0; i < nrows; i++) {
-    for (int j = 0; j < ncols; j++) {
-      kl_div += freqs1[i][j] * lr[i][j];
-    }
-  }
-
-  for (int i = 0; i < nrows; i++) delete[] lr[i];
-  delete[] lr;
-
-  return kl_div;
-}
-
-double kl(int** counts1, double** freqs2, int nrows, int ncols) {
-  double** freqs1 = new double*[nrows];
-  int n2 = 0;
-  for (int i = 0; i < nrows; i++) {
-    freqs1[i] = new double[ncols];
-    for (int j = 0; j < ncols; j++) {
-      n2 += counts1[i][j];
-    }
-  }
-  for (int i = 0; i < nrows; i++) {
-    for (int j = 0; j < ncols; j++) {
-      freqs1[i][j] = 1.0 * counts1[i][j] / n2;
-    }
-  }
-
-  double kl_div = kl(freqs1, freqs2, nrows, ncols);
-
-  for (int i = 0; i < nrows; i++) delete[] freqs1[i];
-  delete[] freqs1;
-
   return kl_div;
 }
 
@@ -94,6 +56,20 @@ double kl(const vector<int>& count1, const vector<int>& count2, int n_samples1,
     }
   }
   return kl_div;
+}
+
+}  // anonymous namespace
+
+double kl(const TempGrid2d<int>& counts1, const TempGrid2d<double>& freqs2) {
+  TempAllocatorScope scope;
+  TempGrid2d<double> freqs1(counts1.n_rows(), counts1.n_cols());
+  using std::begin;
+  using std::end;
+  int sum1 = std::accumulate(begin(counts1), end(counts1), 0);
+  std::transform(begin(counts1), end(counts1), begin(freqs1),
+      [sum1](int count) { return static_cast<double>(count) / sum1; });
+
+  return kl(freqs1, freqs2);
 }
 
 class sort_indices {
@@ -220,31 +196,24 @@ void getJointSpace(const Environment& environment, int i, int j,
   }
 }
 
-double** getJointFreqs(const Environment& environment, int i, int j,
+TempGrid2d<double> getJointFreqs(const Environment& environment, int i, int j,
     const vector<int>& sample_is_not_NA) {
-  double** jointFreqs = new double*[environment.levels[i]];
-  for (int k = 0; k < environment.levels[i]; k++) {
-    jointFreqs[k] = new double[environment.levels[j]];
-    for (int l = 0; l < environment.levels[j]; l++) {
-      jointFreqs[k][l] = 0;
-    }
-  }
+  TempGrid2d<double> joint_freqs(
+      environment.levels[i], environment.levels[j], 0);
 
   int n_samples_non_na = 0;
   for (int k = 0; k < environment.n_samples; k++) {
     if ((!sample_is_not_NA.empty() && sample_is_not_NA[k]) ||
         (sample_is_not_NA.empty() && SampleHasNoNA(environment, k, i, j))) {
-      jointFreqs[environment.data_numeric[k][i]]
-                [environment.data_numeric[k][j]]++;
-      n_samples_non_na++;
+      ++joint_freqs(
+          environment.data_numeric[k][i], environment.data_numeric[k][j]);
+      ++n_samples_non_na;
     }
   }
+  for (auto& freq : joint_freqs)
+    freq /= n_samples_non_na;
 
-  for (int k = 0; k < environment.levels[i]; k++)
-    for (int l = 0; l < environment.levels[j]; l++)
-      jointFreqs[k][l] /= n_samples_non_na;
-
-  return jointFreqs;
+  return joint_freqs;
 }
 
 void getJointMixed(const Environment& environment, int i, int j,
@@ -344,25 +313,15 @@ double compute_kl_divergence(int X, int Y, Environment& environment,
     const vector<int>& sample_is_not_NA) {
   int current_samplesNotNA = getNumSamplesNonNA(environment, X, Y);
   double kldiv = 0;
-
   // 1 - XY discrete
   if (!environment.is_continuous[X] && !environment.is_continuous[Y]) {
+    TempAllocatorScope scope;
+    // Joint freqs X,Y after adding the new contributor (Z)
+    auto freqs1 = getJointFreqs(environment, X, Y, sample_is_not_NA);
     // Joint freqs X,Y before adding the new contributor (with the current
     // conditioning Us)
-    double** jointFreqs = getJointFreqs(environment, X, Y);
-
-    // Joint freqs X,Y after adding the new contributor (Z)
-    double** freqs2 = getJointFreqs(environment, X, Y, sample_is_not_NA);
-
-    kldiv = samplesNotNA * kl(freqs2, jointFreqs, environment.levels[X],
-                               environment.levels[Y]);
-
-    for (int j = 0; j < environment.levels[X]; j++) {
-      delete[] freqs2[j];
-      delete[] jointFreqs[j];
-    }
-    delete[] freqs2;
-    delete[] jointFreqs;
+    auto freqs2 = getJointFreqs(environment, X, Y);
+    kldiv = samplesNotNA * kl(freqs1, freqs2);
   } else if (environment.is_continuous[X] && environment.is_continuous[Y]) {
     // 2 - XY continuous
     // Retrieve marginal distibutions with the current conditioning Us

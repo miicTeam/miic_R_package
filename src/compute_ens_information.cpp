@@ -65,11 +65,13 @@ void computeContributingScores(Environment& environment, int X, int Y,
 
     if (std::all_of(
             cnt_red.begin(), cnt_red.end(), [](int x) { return x == 0; })) {
-      // call discrete code
+      TempAllocatorScope scope;
 
-      double** jointFreqs = getJointFreqs(environment, X, Y, sample_is_not_NA);
+      TempGrid2d<double> jointFreqs =
+          getJointFreqs(environment, X, Y, sample_is_not_NA);
 
       vector<int> zi_list{z};
+      // call discrete code
       double* res = getAllInfoNEW(environment.oneLineMatrix, environment.levels,
           X, Y, ui_list, zi_list, environment.n_samples, environment.n_eff,
           cplx, environment.is_k23, environment.sample_weights, jointFreqs,
@@ -77,11 +79,6 @@ void computeContributingScores(Environment& environment, int X, int Y,
 
       output_score = res[6];
       delete[] res;
-
-      for (int level0 = 0; level0 < environment.levels[X]; level0++)
-        delete[] jointFreqs[level0];
-      delete[] jointFreqs;
-
     } else {
       // we do not want to add a z if x or y have only one bin
       bool ok = true;  // ok : do we compute I or return 0?
@@ -280,7 +277,9 @@ double* computeEnsInformationContinuous(Environment& environment, int X, int Y,
       }
 
       if (n_zi_discrete > 0) {
-        vector<int> posZi(n_zi_discrete);
+        TempAllocatorScope scope;
+
+        TempVector<int> posZi(n_zi_discrete);
         vector<int> zz(n_zi_discrete);
         int pos = 0;
         for (int iz = 0; iz < n_zi; iz++) {
@@ -291,15 +290,12 @@ double* computeEnsInformationContinuous(Environment& environment, int X, int Y,
             pos++;
           }
         }
-        double** jointFreqs = getJointFreqs(environment, X, Y);
+        TempGrid2d<double> jointFreqs = getJointFreqs(environment, X, Y);
         res = getAllInfoNEW(environment.oneLineMatrix, environment.levels, X, Y,
             ui_list, zz, environment.n_samples, environment.n_eff, cplx,
             environment.is_k23, environment.sample_weights, jointFreqs,
             environment.test_mar, environment.cache.cterm);
 
-        for (int level0 = 0; level0 < environment.levels[X]; level0++)
-          delete[] jointFreqs[level0];
-        delete[] jointFreqs;
         // keep in ziContPos only the position of the continuous variables
         zi_list_continuous = new int[n_zi - n_zi_discrete];
         pos = 0;
@@ -363,21 +359,17 @@ double* computeEnsInformationContinuous(Environment& environment, int X, int Y,
 
 double* computeEnsInformationNew(Environment& environment, int X, int Y,
     const vector<int>& ui_list, const vector<int>& zi_list, int cplx) {
-  double** jointFreqs = getJointFreqs(environment, X, Y);
+  TempAllocatorScope scope;
 
+  TempGrid2d<double> jointFreqs = getJointFreqs(environment, X, Y);
   double* res_new = getAllInfoNEW(environment.oneLineMatrix, environment.levels,
       X, Y, ui_list, zi_list, environment.n_samples, environment.n_eff, cplx,
       environment.is_k23, environment.sample_weights, jointFreqs,
       environment.test_mar, environment.cache.cterm);
 
-  for (int level0 = 0; level0 < environment.levels[X]; level0++)
-    delete[] jointFreqs[level0];
-  delete[] jointFreqs;
   int nbrRetValues = zi_list.empty()? 3 : 9;
-
   // If !zi_list.empty(), return {nSample[z1]*I(..|{ui})[z1], NML(..|{ui})[z1],
   // nSample[z1],nSample[z2]*I(..|{ui})[z2], NML(..|{ui})[z2], nSample[z2], ...}
-
   for (int i = 0; i < nbrRetValues; i++) {
     if (res_new[i] > -0.0000000001 && res_new[i] < 0.0000000001) {
       res_new[i] = 0.0;
