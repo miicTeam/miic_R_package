@@ -18,10 +18,10 @@ using std::vector;
 // INPUT:
 // d: index of variable in datafactors
 // varidx: index of variable in sortidx
-template <typename Cdf, typename = IsIntContainer<Cdf>, typename Ccut,
-    typename = IsIntContainer<Ccut>>
+template <typename Cdf, typename Ccut,
+    typename = void_t<IsIntContainer<Cdf>, IsIntContainer<Ccut>>>
 void update_datafactors(
-    const vector<int>& sortidx, Cdf& datafactor, const Ccut& cut) {
+    const vector<int>& sortidx, Cdf&& datafactor, const Ccut& cut) {
   int index = 0;
   for (size_t j = 0; j < sortidx.size(); ++j) {
     int level = sortidx[j];
@@ -32,12 +32,13 @@ void update_datafactors(
 }
 
 // rux -> 0:x,1;u,2:ux
-template <typename Cx, typename = IsIntContainer<Cx>, typename Cu,
-    typename = IsIntContainer<Cu>, typename Cux, typename = IsIntContainer<Cux>>
+template <typename Cx, typename Cu, typename Cux, typename Crux,
+    typename = void_t<IsIntContainer<Cx>, IsIntContainer<Cu>,
+        IsIntContainer<Cux>, IsIntContainer<Crux>>>
 vector<double> computeMI_knml(const Cx& xfactors, const Cu& ufactors,
-    const Cux& uxfactors, int* rux, int n, int n_eff,
-    std::vector<double> sample_weights, std::shared_ptr<CtermCache> cache,
-    int flag = 0) {
+    const Cux& uxfactors, const Crux& rux, int n, int n_eff,
+    const std::vector<double>& sample_weights,
+    std::shared_ptr<CtermCache> cache, int flag = 0) {
   TempAllocatorScope scope;
 
   TempVector<double> nx(rux[0]);
@@ -86,11 +87,12 @@ vector<double> computeMI_knml(const Cx& xfactors, const Cu& ufactors,
 }
 
 // rux -> 0:x,1;u,2:ux
-template <typename Cx, typename = IsIntContainer<Cx>, typename Cu,
-    typename = IsIntContainer<Cu>, typename Cux, typename = IsIntContainer<Cux>>
+template <typename Cx, typename Cu, typename Cux, typename Crux,
+    typename = void_t<IsIntContainer<Cx>, IsIntContainer<Cu>,
+        IsIntContainer<Cux>, IsIntContainer<Crux>>>
 vector<double> computeMI_kmdl(const Cx& xfactors, const Cu& ufactors,
-    const Cux& uxfactors, int* rux, int n, std::shared_ptr<CtermCache> cache,
-    int flag = 0) {
+    const Cux& uxfactors, const Crux& rux, int n,
+    std::shared_ptr<CtermCache> cache, int flag = 0) {
   TempAllocatorScope scope;
 
   TempVector<int> nx(rux[0]);
@@ -126,10 +128,13 @@ using detail::computeMI_knml;
 using detail::computeMI_kmdl;
 using detail::update_datafactors;
 
-void jointfactors_uiyx(int** datafactors, int exclude, int n, int n_ui,
-    const structure::TempVector<int>& r, int** uiyxfactors, int* ruiyx);
-void jointfactors_u(int** datafactors, int* ptrIdx, int n, int n_ui,
-    const structure::TempVector<int>& r, int* ufactors, int* ru);
+void jointfactors_uiyx(const structure::TempGrid2d<int>& datafactors,
+    const structure::TempVector<int>& r_list, int exclude,
+    structure::TempGrid2d<int>& uiyxfactors,
+    structure::TempVector<int>& r_joint_list);
+void jointfactors_u(const structure::TempGrid2d<int>& datafactors,
+    const structure::TempVector<int>& r_list,
+    structure::TempVector<int>& ufactors, int& r_joint);
 }  // namespace computation
 }  // namespace miic
 

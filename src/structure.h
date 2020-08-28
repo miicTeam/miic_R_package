@@ -46,15 +46,12 @@ struct is_int_container<T, std::remove_reference_t<T>,
         std::enable_if_t<std::is_same<
             typename std::remove_reference_t<T>::value_type, int>::value>>>
     : std::true_type {};
-// FIXME: legacy specialization for int*
-template <>
-struct is_int_container<int*> : std::true_type {};
 
 template <typename T, typename Allocator = std::allocator<T>>
 struct Grid2d {
  public:
   typedef T value_type;
-  // Wrapper class
+  // Wrapper class only for non-const instance
   struct Row {
    public:
     typedef T value_type;
@@ -67,13 +64,31 @@ struct Grid2d {
     const T& operator[](size_t col) const { return parent_(row_, col); }
     size_t size() { return parent_.n_cols(); }
 
-    auto begin() { return parent_.row_begin(); }
-    auto end() { return parent_.row_end(); }
-    auto cbegin() const { return parent_.row_cbegin(); }
-    auto cend() const { return parent_.row_cend(); }
+    auto begin() { return parent_.row_begin(row_); }
+    auto end() { return parent_.row_end(row_); }
+    auto begin() const { return parent_.row_begin(row_); }
+    auto end() const { return parent_.row_end(row_); }
 
    private:
     Grid2d& parent_;
+    size_t row_;
+  };
+  // Wrapper class for const instance
+  struct ConstRow {
+   public:
+    typedef T value_type;
+    ConstRow() = delete;
+    ConstRow(const Grid2d& parent, size_t row) : parent_(parent), row_(row) {}
+
+    const T& operator()(size_t col) const { return parent_(row_, col); }
+    const T& operator[](size_t col) const { return parent_(row_, col); }
+    size_t size() { return parent_.n_cols(); }
+
+    auto begin() const { return parent_.row_begin(row_); }
+    auto end() const { return parent_.row_end(row_); }
+
+   private:
+    const Grid2d& parent_;
     size_t row_;
   };
 
@@ -94,7 +109,8 @@ struct Grid2d {
   const T& operator()(size_t row, size_t col) const {
     return data_[row * cols_ + col];
   }
-  Row getRow(size_t row) { return Row(this, row); }
+  Row getRow(size_t row) { return Row(*this, row); }
+  ConstRow getConstRow(size_t row) const { return ConstRow(*this, row); }
 
   size_t n_rows() const { return rows_; }
   size_t n_cols() const { return cols_; }
@@ -106,9 +122,9 @@ struct Grid2d {
   auto end() const { return data_.cend(); }
 
   auto row_begin(size_t row) { return data_.begin() + row * cols_; }
-  auto row_end(size_t row) { return data_.end() + (row + 1) * cols_; }
+  auto row_end(size_t row) { return data_.begin() + (row + 1) * cols_; }
   auto row_begin(size_t row) const { return data_.cbegin() + row * cols_; }
-  auto row_end(size_t row) const { return data_.cend() + (row + 1) * cols_; }
+  auto row_end(size_t row) const { return data_.cbegin() + (row + 1) * cols_; }
 
  private:
   size_t rows_, cols_;
@@ -256,6 +272,7 @@ using detail::EdgeSharedInfo;
 using detail::ExecutionTime;
 using detail::Grid2d;
 using detail::Node;
+using detail::void_t;
 
 template <class T>
 using IsIntContainer = std::enable_if_t<detail::is_int_container<T>::value>;
