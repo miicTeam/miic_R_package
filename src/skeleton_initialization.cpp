@@ -69,21 +69,20 @@ bool miic::reconstruction::skeletonInitialization(Environment& environment) {
     }
   }
 
-  int threadnum = 0;
   bool interrupt = false;
 #ifdef _OPENMP
-#pragma omp parallel for shared(interrupt) firstprivate(threadnum) \
-    schedule(dynamic)
+#pragma omp parallel for schedule(dynamic)
 #endif
   for (int i = 0; i < environment.n_nodes - 1; i++) {
     if (interrupt) {
       continue;  // will continue until out of for loop
     }
+    int threadnum = 0;
 #ifdef _OPENMP
     threadnum = omp_get_thread_num();
 #endif
-    if (checkInterrupt(threadnum == 0)) {
-      interrupt = true;
+    if (threadnum == 0) {
+      if (checkInterrupt()) interrupt = true;
     }
     for (int j = i + 1; j < environment.n_nodes && !interrupt; j++) {
       environment.edges[i][j].shared_info = std::make_shared<EdgeSharedInfo>();

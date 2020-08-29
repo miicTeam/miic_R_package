@@ -410,9 +410,6 @@ void SearchForNewContributingNodeAndItsRank(
     vect = computeEnsInformationNew(
         environment, posX, posY, info->ui_list, info->zi_list, argEnsInfo);
     if (vect[6] - info->Rxyz_ui > 0) {
-      // The order matters: set first the z.name.idx, than get the corresponding
-      // zi from the original vect / Doing this way, we make sure that the
-      // z.name has the right bin xyzi key
       info->z_name_idx = vect[3];
       info->Rxyz_ui = vect[6];
     }
@@ -420,9 +417,6 @@ void SearchForNewContributingNodeAndItsRank(
     vect = computeEnsInformationContinuous(
         environment, posX, posY, info->ui_list, info->zi_list, argEnsInfo);
     if (vect[2] - info->Rxyz_ui > 0) {
-      // The order matters: set first the z.name.idx, than get the corresponding
-      // zi from the original vect / Doing this way, we make sure
-      // that the z.name has the right bin xyzi key
       info->z_name_idx = vect[1];
       info->Rxyz_ui = vect[2];
     }

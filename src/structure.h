@@ -211,6 +211,8 @@ class EdgeID {
   EdgeID(int i, int j, const Edge& edge) : edge_(edge), i(i), j(j) {}
   EdgeID(int i, int j, const Edge&&) = delete;  // forbid rvalue
 
+  const Edge& getEdge() const { return edge_.get(); }
+
   bool operator<(const EdgeID& rhs) const {
     const auto info1 = this->edge_.get().shared_info;
     const auto info2 = rhs.edge_.get().shared_info;

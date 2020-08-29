@@ -100,33 +100,28 @@ bool firstStepIteration(Environment& environment, BCC& bcc) {
       Rcout << "SEARCH OF BEST Z: ";
     }
 
-    int threadnum = 0;
     bool interrupt = false;
     int progress_percentile = -1;
     int n_jobs_done{0};
     auto loop_start_time = getLapStartTime();
 #ifdef _OPENMP
-#pragma omp parallel for shared(interrupt, n_jobs_done) \
-    firstprivate(threadnum) schedule(dynamic)
+#pragma omp parallel for schedule(dynamic)
 #endif
     for (int i = 0; i < environment.numSearchMore; i++) {
       if (interrupt) {
         continue;  // will continue until out of for loop
       }
+      int threadnum = 0;
 #ifdef _OPENMP
       threadnum = omp_get_thread_num();
 #endif
       if (threadnum == 0) {
-        if (checkInterrupt(i / environment.n_threads % 2 == 0)) {
-          interrupt = true;
-        }
+        if (checkInterrupt()) interrupt = true;
       }
-      int posX = environment.unsettled_list[i].i;
-      int posY = environment.unsettled_list[i].j;
-      if (environment.edges[posX][posY].shared_info->zi_list.size() > 0) {
-        // Search for new contributing node and its rank
-        SearchForNewContributingNodeAndItsRank(environment, posX, posY);
-      }
+      const auto& edgeid = environment.unsettled_list[i];
+      if (edgeid.getEdge().shared_info->zi_list.size() > 0)
+        SearchForNewContributingNodeAndItsRank(environment, edgeid.i, edgeid.j);
+
 #ifdef _OPENMP
 #pragma omp atomic
       ++n_jobs_done;
