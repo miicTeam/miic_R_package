@@ -37,34 +37,44 @@ using namespace miic::utility;
 
 // [[Rcpp::export]]
 List mydiscretizeMutual(List input_data, List arg_list){
-
-  //List mydiscretizeMutual(SEXP RmyDist1, SEXP RmyDist2, SEXP RflatU,
-  //  SEXP RnbrU, SEXP RmaxBins, SEXP Rinitbin, SEXP Rcplx, SEXP Rcnt_vec,
-  //  SEXP Rnlevels, SEXP ReffN, SEXP RsampleWeights) {
-
   miic::structure::Environment environment(input_data, arg_list);
   int maxbins = environment.maxbins;
   int nbrU = environment.n_nodes-2;
 
-  vector<int> posArray(nbrU+2);
-  for(int i=0; i<(nbrU+2); i++) posArray[i] = i;
+  int max_level =
+      *std::max_element(begin(environment.levels), end(environment.levels));
+  size_t li_alloc_size = 8192;  // in bytes, extra space for fragmentation
+  size_t n_integers = 4 * (environment.n_samples + 2) + 6 * (max_level + 1) +
+                      3 * ((environment.n_samples + 1) * 7) +
+                      4 * environment.n_nodes +
+                      2 * (max_level + 1) * (max_level + 1) +
+                      2 * max_level * max_level * max_level;  // coarse_counts
+  size_t n_doubles = 3 * (max_level + 1) + 2 * environment.n_nodes;
+  li_alloc_size += sizeof(int) * n_integers;
+  li_alloc_size += sizeof(double) * n_doubles;
+
+  li_alloc_ptr = std::make_unique<LinearAllocator>(li_alloc_size);
+
+  vector<int> posArray(nbrU + 2);
+  for (int i = 0; i < (nbrU + 2); i++)
+    posArray[i] = i;
   vector<int> temp_ui_list(nbrU);
   std::iota(begin(temp_ui_list), end(temp_ui_list), 2);
 
   // Mark rows containing NAs and count the number of complete samples
-  vector<int> sample_nonNA(environment.n_samples);
-  vector<int> NAs_count(environment.n_samples);
+  TempVector<int> sample_nonNA(environment.n_samples);
+  TempVector<int> NAs_count(environment.n_samples);
   int samplesNotNA =
       count_non_NAs(0, 1, temp_ui_list, sample_nonNA, NAs_count, environment);
 
   // Allocate data reducted *_red without rows containing NAs
   // All *_red variables are passed to the optimization routine
-  vector<int> AllLevels_red(nbrU+2);
-  vector<int> cnt_red(nbrU+2);
-  vector<int> posArray_red(nbrU+2);
-  vector<double> sample_weights_red(samplesNotNA);
-  vector<vector<int> > dataNumeric_red(nbrU+2, vector<int> (samplesNotNA));
-  vector<vector<int> > dataNumericIdx_red(nbrU+2, vector<int> (samplesNotNA));
+  TempVector<int> AllLevels_red(nbrU + 2);
+  TempVector<int> cnt_red(nbrU + 2);
+  TempVector<int> posArray_red(nbrU + 2);
+  TempVector<double> sample_weights_red(samplesNotNA);
+  TempGrid2d<int> dataNumeric_red(nbrU + 2, samplesNotNA);
+  TempGrid2d<int> dataNumericIdx_red(nbrU + 2, samplesNotNA);
 
   bool flag_sample_weights = filter_NAs(0, 1, temp_ui_list, AllLevels_red,
       cnt_red, posArray_red, dataNumeric_red, dataNumericIdx_red,

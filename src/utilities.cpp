@@ -33,8 +33,8 @@ namespace {
 
 double kl(const TempGrid2d<double>& freqs1, const TempGrid2d<double>& freqs2) {
   double kl_div = 0;
-  for (int i = 0; i < freqs1.n_rows(); i++) {
-    for (int j = 0; j < freqs1.n_cols(); j++) {
+  for (size_t i = 0; i < freqs1.n_rows(); i++) {
+    for (size_t j = 0; j < freqs1.n_cols(); j++) {
       double freq1 = freqs1(i, j);
       if (freq1 != 0) kl_div += freq1 * log(freq1 / freqs2(i, j));
     }
@@ -197,7 +197,7 @@ void getJointSpace(const Environment& environment, int i, int j,
 }
 
 TempGrid2d<double> getJointFreqs(const Environment& environment, int i, int j,
-    const vector<int>& sample_is_not_NA) {
+    const TempVector<int>& sample_is_not_NA) {
   TempGrid2d<double> joint_freqs(
       environment.levels[i], environment.levels[j], 0);
 
@@ -309,8 +309,8 @@ double compute_k_nearest_distance(
 }
 
 double compute_kl_divergence(int X, int Y, Environment& environment,
-    int samplesNotNA, const vector<int>& AllLevels_red,
-    const vector<int>& sample_is_not_NA) {
+    int samplesNotNA, const TempVector<int>& AllLevels_red,
+    const TempVector<int>& sample_is_not_NA) {
   int current_samplesNotNA = getNumSamplesNonNA(environment, X, Y);
   double kldiv = 0;
   // 1 - XY discrete
@@ -509,7 +509,7 @@ double compute_kl_divergence_continuous(vector<vector<double>>& space1,
 // \return The number of non NA samples and modifies the vectors
 // sample_is_not_NA and NAs_count
 int count_non_NAs(int X, int Y, const vector<int>& ui_list,
-    vector<int>& sample_is_not_NA, vector<int>& NAs_count,
+    TempVector<int>& sample_is_not_NA, TempVector<int>& NAs_count,
     Environment& environment, int z) {
   int samplesNotNA = 0;
 
@@ -554,10 +554,11 @@ int count_non_NAs(int X, int Y, const vector<int>& ui_list,
  * \a sample_weights contains the individual sample weights of the reduced data
  */
 bool filter_NAs(int X, int Y, const vector<int>& ui_list,
-    vector<int>& AllLevels, vector<int>& cnt, vector<int>& posArray_red,
-    vector<vector<int>>& dataNumeric, vector<vector<int>>& dataNumericIdx,
-    vector<double>& sample_weights, const vector<int>& sample_is_not_NA,
-    const vector<int>& NAs_count, Environment& environment, int z) {
+    TempVector<int>& AllLevels, TempVector<int>& cnt,
+    TempVector<int>& posArray_red, TempGrid2d<int>& dataNumeric,
+    TempGrid2d<int>& dataNumericIdx, TempVector<double>& sample_weights,
+    const TempVector<int>& sample_is_not_NA, const TempVector<int>& NAs_count,
+    Environment& environment, int z) {
   int k1, k2, nnr, prev_val, si, old_val, new_val, updated_discrete_level;
   int column;
   bool flag_sample_weights(false);
@@ -600,22 +601,20 @@ bool filter_NAs(int X, int Y, const vector<int>& ui_list,
         }
         new_val = new_levels[old_val];
 
-        dataNumeric[j][k1] = new_val;
+        dataNumeric(j, k1) = new_val;
         if (j == 0) {
           sample_weights[k1] = environment.sample_weights[i];
           if (sample_weights[k1] != 1.0) flag_sample_weights = true;
         }
         k1++;
       }
-      if (cnt[j] != 0) {
-        // Variable j is continuous
-        si =
-            environment
-                .data_numeric_idx[column][i];  // position of ith sample (order)
+      if (cnt[j] != 0) {  // Variable j is continuous
+        // position of ith sample (order)
+        si = environment.data_numeric_idx[column][i];
         if (si != -1 && sample_is_not_NA[si] == 1) {
           // Row at position si does not contain any NA, rank is updated taking
           // into account the number of NAs up to si.
-          dataNumericIdx[j][k2] = si - NAs_count[si];
+          dataNumericIdx(j, k2) = si - NAs_count[si];
           k2++;
           // check whether is a different values or repeated
           if (environment.data_numeric[si][column] != prev_val) {

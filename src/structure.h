@@ -82,7 +82,7 @@ struct Grid2d {
 
     const T& operator()(size_t col) const { return parent_(row_, col); }
     const T& operator[](size_t col) const { return parent_(row_, col); }
-    size_t size() { return parent_.n_cols(); }
+    size_t size() const { return parent_.n_cols(); }
 
     auto begin() const { return parent_.row_begin(row_); }
     auto end() const { return parent_.row_end(row_); }

@@ -13,19 +13,23 @@
 namespace miic {
 namespace computation {
 
-double* compute_mi_cond_alg1(const std::vector<std::vector<int>>& data,
-    const std::vector<std::vector<int>>& sortidx,
-    const std::vector<int>& AllLevels, const std::vector<int>& ptr_cnt,
-    const std::vector<int>& ptrVarIdx, int nbrUi, int n,
-    const std::vector<double>& sample_weights, bool flag_sample_weights,
-    structure::Environment& environment, bool saveIterations = false);
+double* compute_mi_cond_alg1(const structure::TempGrid2d<int>& data,
+    const structure::TempGrid2d<int>& sortidx,
+    const structure::TempVector<int>& AllLevels,
+    const structure::TempVector<int>& ptr_cnt,
+    const structure::TempVector<int>& ptrVarIdx, int nbrUi, int n,
+    const structure::TempVector<double>& sample_weights,
+    bool flag_sample_weights, structure::Environment& environment,
+    bool saveIterations = false);
 
-double* compute_Rscore_Ixyz_alg5(const std::vector<std::vector<int>>& data,
-    const std::vector<std::vector<int>>& sortidx,
-    const std::vector<int>& AllLevels, const std::vector<int>& ptr_cnt,
-    const std::vector<int>& ptrVarIdx, int nbrUi, int ptrZiIdx, int n,
-    const std::vector<double>& sample_weights, bool flag_sample_weights,
-    structure::Environment& environment, bool saveIterations = false);
+double* compute_Rscore_Ixyz_alg5(const structure::TempGrid2d<int>& data,
+    const structure::TempGrid2d<int>& sortidx,
+    const structure::TempVector<int>& AllLevels,
+    const structure::TempVector<int>& ptr_cnt,
+    const structure::TempVector<int>& ptrVarIdx, int nbrUi, int ptrZiIdx, int n,
+    const structure::TempVector<double>& sample_weights,
+    bool flag_sample_weights, structure::Environment& environment,
+    bool saveIterations = false);
 
 }  // namespace computation
 }  // namespace miic

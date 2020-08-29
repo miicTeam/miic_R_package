@@ -18,10 +18,11 @@ using std::vector;
 // INPUT:
 // d: index of variable in datafactors
 // varidx: index of variable in sortidx
-template <typename Cdf, typename Ccut,
-    typename = void_t<IsIntContainer<Cdf>, IsIntContainer<Ccut>>>
+template <typename Cidx, typename Cdf, typename Ccut,
+    typename =
+        void_t<IsIntContainer<Cidx>, IsIntContainer<Cdf>, IsIntContainer<Ccut>>>
 void update_datafactors(
-    const vector<int>& sortidx, Cdf&& datafactor, const Ccut& cut) {
+    const Cidx& sortidx, Cdf&& datafactor, const Ccut& cut) {
   int index = 0;
   for (size_t j = 0; j < sortidx.size(); ++j) {
     int level = sortidx[j];
@@ -37,7 +38,7 @@ template <typename Cx, typename Cu, typename Cux, typename Crux,
         IsIntContainer<Cux>, IsIntContainer<Crux>>>
 vector<double> computeMI_knml(const Cx& xfactors, const Cu& ufactors,
     const Cux& uxfactors, const Crux& rux, int n, int n_eff,
-    const std::vector<double>& sample_weights,
+    const TempVector<double>& sample_weights,
     std::shared_ptr<CtermCache> cache, int flag = 0) {
   TempAllocatorScope scope;
 

@@ -27,6 +27,8 @@ void computeContributingScores(Environment& environment, int X, int Y,
     const vector<int>& ui_list, int* ziContPosIdx, int iz,
     const vector<int>& zi_list, int myNbrUi, int n_samples_nonNA,
     double* scoresZ) {
+  TempAllocatorScope scope;
+
   int cplx = environment.cplx;
   int z;
   if (ziContPosIdx == NULL)
@@ -41,23 +43,23 @@ void computeContributingScores(Environment& environment, int X, int Y,
   }
 
   // Mark rows containing NAs and count the number of complete samples
-  vector<int> sample_is_not_NA(environment.n_samples);
-  vector<int> NAs_count(environment.n_samples);
+  TempVector<int> sample_is_not_NA(environment.n_samples);
+  TempVector<int> NAs_count(environment.n_samples);
   int samplesNotNA =
       count_non_NAs(X, Y, ui_list, sample_is_not_NA, NAs_count, environment, z);
 
   if (samplesNotNA <= 2) {
     output_score = -DBL_MAX;
   } else {
+    TempAllocatorScope scope;
     // Allocate data reducted *_red without rows containing NAs
     // All *_red variables are passed to the optimization routine
-    vector<double> sample_weights_red(samplesNotNA);
-    vector<vector<int>> dataNumericIdx_red(
-        myNbrUi + 3, vector<int>(samplesNotNA));
-    vector<vector<int>> dataNumeric_red(myNbrUi + 3, vector<int>(samplesNotNA));
-    vector<int> AllLevels_red(myNbrUi + 3);
-    vector<int> cnt_red(myNbrUi + 3);
-    vector<int> posArray_red(myNbrUi + 3);
+    TempVector<double> sample_weights_red(samplesNotNA);
+    TempGrid2d<int> dataNumericIdx_red(myNbrUi + 3, samplesNotNA);
+    TempGrid2d<int> dataNumeric_red(myNbrUi + 3, samplesNotNA);
+    TempVector<int> AllLevels_red(myNbrUi + 3);
+    TempVector<int> cnt_red(myNbrUi + 3);
+    TempVector<int> posArray_red(myNbrUi + 3);
 
     bool flag_sample_weights = filter_NAs(X, Y, ui_list, AllLevels_red, cnt_red,
         posArray_red, dataNumeric_red, dataNumericIdx_red, sample_weights_red,
@@ -87,7 +89,7 @@ void computeContributingScores(Environment& environment, int X, int Y,
         for (int i = 0; i < 2 && ok; i++) {
           s.clear();
           for (int j = 0; j < samplesNotNA; j++) {
-            s.insert(dataNumeric_red[i][j]);
+            s.insert(dataNumeric_red(i, j));
           }
 
           if (s.size() == 1) {
@@ -132,6 +134,8 @@ void computeContributingScores(Environment& environment, int X, int Y,
 // X;Y;Z|Ui
 double* computeEnsInformationContinuous_Orientation(Environment& environment,
     int X, int Y, const vector<int>& ui_list, int Z, const int cplx) {
+  TempAllocatorScope scope;
+
   int nbrRetValues = 3;
   int n_ui = ui_list.size();
 
@@ -144,9 +148,9 @@ double* computeEnsInformationContinuous_Orientation(Environment& environment,
 
   // Mark rows containing NAs and count the number of complete samples
   // 1: sample contains NA, 0: sample contains no NA
-  vector<int> sample_is_not_NA(environment.n_samples);
+  TempVector<int> sample_is_not_NA(environment.n_samples);
   // vector with the number of rows containing NAs seen at rank i
-  vector<int> NAs_count(environment.n_samples);
+  TempVector<int> NAs_count(environment.n_samples);
   int samplesNotNA =
       count_non_NAs(X, Y, ui_list, sample_is_not_NA, NAs_count, environment, Z);
 
@@ -155,14 +159,15 @@ double* computeEnsInformationContinuous_Orientation(Environment& environment,
     res_new[1] = 0;  // Ixyz
     res_new[2] = 0;  // cplx Ixyz
   } else {
+    TempAllocatorScope scope;
     // Allocate data reducted *_red without rows containing NAs
     // All *_red variables are passed to the optimization routine
-    vector<double> sample_weights_red(samplesNotNA);
-    vector<vector<int>> dataNumericIdx_red(n_ui + 3, vector<int>(samplesNotNA));
-    vector<vector<int>> dataNumeric_red(n_ui + 3, vector<int>(samplesNotNA));
-    vector<int> AllLevels_red(n_ui + 3);
-    vector<int> cnt_red(n_ui + 3);
-    vector<int> posArray_red(n_ui + 3);
+    TempVector<double> sample_weights_red(samplesNotNA);
+    TempGrid2d<int> dataNumericIdx_red(n_ui + 3, samplesNotNA);
+    TempGrid2d<int> dataNumeric_red(n_ui + 3, samplesNotNA);
+    TempVector<int> AllLevels_red(n_ui + 3);
+    TempVector<int> cnt_red(n_ui + 3);
+    TempVector<int> posArray_red(n_ui + 3);
 
     bool flag_sample_weights = filter_NAs(X, Y, ui_list, AllLevels_red, cnt_red,
         posArray_red, dataNumeric_red, dataNumericIdx_red, sample_weights_red,
@@ -202,6 +207,8 @@ double* computeEnsInformationContinuous_Orientation(Environment& environment,
 
 double* computeEnsInformationContinuous(Environment& environment, int X, int Y,
     const vector<int>& ui_list, const vector<int>& zi_list, int cplx) {
+  TempAllocatorScope scope;
+
   double* res_new;
   int nbrRetValues = 3;
   int n_ui = ui_list.size();
@@ -211,8 +218,8 @@ double* computeEnsInformationContinuous(Environment& environment, int X, int Y,
   if (zi_list.empty()) {
     // TODO : speedup by only removing NAs for marked columns
     // Mark rows containing NAs and count the number of complete samples
-    vector<int> sample_is_not_NA(environment.n_samples);
-    vector<int> NAs_count(environment.n_samples);
+    TempVector<int> sample_is_not_NA(environment.n_samples);
+    TempVector<int> NAs_count(environment.n_samples);
     int samplesNotNA =
         count_non_NAs(X, Y, ui_list, sample_is_not_NA, NAs_count, environment);
 
@@ -223,16 +230,15 @@ double* computeEnsInformationContinuous(Environment& environment, int X, int Y,
       res_new[2] = 0;                     // cplx
       return res_new;
     } else {
+      TempAllocatorScope scope;
       // Allocate data reducted *_red without rows containing NAs
       // All *_red variables are passed to the optimization routine
-      vector<int> AllLevels_red(n_ui + 2);
-      vector<int> cnt_red(n_ui + 2);
-      vector<int> posArray_red(n_ui + 2);
-      vector<double> sample_weights_red(samplesNotNA);
-      vector<vector<int>> dataNumeric_red(
-          (n_ui + 2), vector<int>(samplesNotNA));
-      vector<vector<int>> dataNumericIdx_red(
-          (n_ui + 2), vector<int>(samplesNotNA));
+      TempVector<int> AllLevels_red(n_ui + 2);
+      TempVector<int> cnt_red(n_ui + 2);
+      TempVector<int> posArray_red(n_ui + 2);
+      TempVector<double> sample_weights_red(samplesNotNA);
+      TempGrid2d<int> dataNumeric_red(n_ui + 2, samplesNotNA);
+      TempGrid2d<int> dataNumericIdx_red(n_ui + 2, samplesNotNA);
 
       bool flag_sample_weights = filter_NAs(X, Y, ui_list, AllLevels_red,
           cnt_red, posArray_red, dataNumeric_red, dataNumericIdx_red,
@@ -393,19 +399,6 @@ void SearchForNewContributingNodeAndItsRank(
         info->zi_list.end());
   }
   if (info->zi_list.empty()) return;
-
-  int* ui;
-  int* zi;
-
-  if (info->ui_list.empty())
-    ui = NULL;
-  else
-    ui = &info->ui_list[0];
-
-  if (info->zi_list.empty())
-    zi = NULL;
-  else
-    zi = &info->zi_list[0];
 
   int argEnsInfo = -1;
   if (environment.is_k23 == true) argEnsInfo = environment.cplx;
