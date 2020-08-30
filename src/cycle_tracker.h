@@ -1,64 +1,19 @@
-#ifndef MIIC_RECONSTRUCT_H_
-#define MIIC_RECONSTRUCT_H_
+#ifndef MIIC_CYCLE_TRACKER_H_
+#define MIIC_CYCLE_TRACKER_H_
 
-#include <cmath>
-#include <deque>
-#include <map>
 #include <set>
-#include <stack>
+#include <utility>  // std::pair
+#include <vector>
 
 #include "environment.h"
-#include "structure.h"
 
 namespace miic {
 namespace reconstruction {
 
-namespace reconstruction_impl {
+namespace detail {
 using std::set;
 using std::vector;
-
 using structure::Environment;
-
-// Class for biconnected component analysis
-class BCC {
-  Environment& environment;
-  vector<int> is_cp;
-  vector<int> degree_of;
-  vector<int> bc_tree_rep;
-  vector<int> bc_tree_inverse_index;
-  vector<int> bc_tree_node_is_cp;
-  vector<set<int> > bcc_list;
-  vector<set<int> > bcc_set_indices;
-  vector<set<int> > bc_tree_adj_list;
-
-  void bcc_aux(int u, int& time, vector<int>& parent, vector<int>& lowest,
-      vector<int>& depth, std::stack<std::pair<int, int> >& st);
-  void bcc();
-  vector<int> bc_tree_bfs(int start, int end) const;
-
- public:
-  BCC(Environment& env)
-      : environment(env),
-        is_cp(env.n_nodes, 0),
-        degree_of(env.n_nodes, 0),
-        bc_tree_rep(env.n_nodes, -1),
-        bcc_set_indices(env.n_nodes, set<int>()) {}
-
-  void analyse() {
-    // Reset members
-    std::fill(is_cp.begin(), is_cp.end(), 0);
-    std::fill(degree_of.begin(), degree_of.end(), 0);
-    std::fill(bc_tree_rep.begin(), bc_tree_rep.end(), -1);
-    bcc_list.clear();
-    for (auto& s : bcc_set_indices) s.clear();
-    // Set biconnected components
-    bcc();
-  }
-
-  std::set<int> get_candidate_z(int x, int y) const;
-  void set_candidate_z(int x, int y);
-  bool isConsistent(int x, int y, const vector<int>& vect_z) const;
-};
 
 // During each consistent iteration of the network reconstruction, keep track of
 // number of edges in the graph, edges with modified status with respect to the
@@ -147,15 +102,9 @@ class CycleTracker {
   // check if a cycle exists between the current and the past iterations
   bool hasCycle();
 };
-}  // namespace reconstruction_impl
-using reconstruction_impl::BCC;
-using reconstruction_impl::CycleTracker;
 
-bool skeletonInitialization(structure::Environment&);
-bool firstStepIteration(structure::Environment&, BCC&);
-bool skeletonIteration(structure::Environment&);
-
+}  // namespace detail
+using detail::CycleTracker;
 }  // namespace reconstruction
 }  // namespace miic
-
-#endif  // MIIC_RECONSTRUCT_H_
+#endif
