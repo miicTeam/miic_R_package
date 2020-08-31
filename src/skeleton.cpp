@@ -1,11 +1,8 @@
 #include "skeleton.h"
 
 #include <Rcpp.h>
-#include <math.h>
 
-#include <algorithm>
-#include <iostream>
-#include <queue>
+#include <algorithm>  // std::sort, std::max_element
 #include <string>
 #include <vector>
 
@@ -58,47 +55,44 @@ namespace reconstruction {
 // Initialize the edges of the network
 int initializeEdge(Environment& environment, int i, int j) {
   // Compute the mutual information and the corresponding CPLX
+  auto info = environment.edges[i][j].shared_info;
   double* res = NULL;
-  if (!environment.is_continuous[i] &&
-      !environment.is_continuous[j]) {
+  if (!environment.is_continuous[i] && !environment.is_continuous[j]) {
     res = computeEnsInformationNew(environment, i, j, std::vector<int>(),
         std::vector<int>(), environment.cplx);
-    environment.edges[i][j].shared_info->Ixy_ui = res[1];
-    environment.edges[i][j].shared_info->cplx = res[2];
-    environment.edges[i][j].shared_info->Nxy_ui = res[0];
+    info->Ixy_ui = res[1];
+    info->cplx = res[2];
+    info->Nxy_ui = res[0];
   } else {
     res = computeEnsInformationContinuous(environment, i, j, std::vector<int>(),
         std::vector<int>(), environment.cplx);
-    environment.edges[i][j].shared_info->Ixy_ui = res[1];
-    environment.edges[i][j].shared_info->cplx = res[2];
-    environment.edges[i][j].shared_info->Nxy_ui = res[0];
+    info->Ixy_ui = res[1];
+    info->cplx = res[2];
+    info->Nxy_ui = res[0];
   }
   delete[] res;
 
-  double myTest = 0;
-  environment.edges[i][j].shared_info->Ixy =
-      environment.edges[i][j].shared_info->Ixy_ui;
-  environment.edges[i][j].shared_info->cplx_no_u =
-      environment.edges[i][j].shared_info->cplx;
-  environment.edges[i][j].shared_info->Nxy =
-      environment.edges[i][j].shared_info->Nxy_ui;
+  info->Ixy = info->Ixy_ui;
+  info->cplx_no_u = info->cplx;
+  info->Nxy = info->Nxy_ui;
 
-  if (environment.no_init_eta)
-    myTest = environment.edges[i][j].shared_info->Ixy_ui -
-             environment.edges[i][j].shared_info->cplx;
-  else
-    myTest = environment.edges[i][j].shared_info->Ixy_ui -
-             environment.edges[i][j].shared_info->cplx - environment.log_eta;
+  double myTest = info->Ixy_ui - info->cplx;
+  if (!environment.no_init_eta)
+    myTest -= environment.log_eta;
 
   if (myTest <= 0) {
     // Unconditional independence
-    environment.edges[i][j].shared_info->connected = 0;
+    info->connected = 0;
     environment.edges[i][j].status = 0;
     environment.edges[j][i].status = 0;
+    environment.edges[i][j].status_init = 0;
+    environment.edges[j][i].status_init = 0;
   } else {
-    environment.edges[i][j].shared_info->connected = 1;
+    info->connected = 1;
     environment.edges[i][j].status = 1;
     environment.edges[j][i].status = 1;
+    environment.edges[i][j].status_init = 1;
+    environment.edges[j][i].status_init = 1;
   }
 
   return environment.edges[i][j].status;
@@ -125,27 +119,20 @@ bool skeletonInitialization(Environment& environment) {
     threadnum = omp_get_thread_num();
 #endif
     if (threadnum == 0) {
-      if (checkInterrupt()) interrupt = true;
+      if (checkInterrupt()) {
+        interrupt = true;
+        continue;
+      }
     }
     for (int j = i + 1; j < environment.n_nodes && !interrupt; j++) {
       environment.edges[i][j].shared_info = std::make_shared<EdgeSharedInfo>();
       environment.edges[j][i].shared_info = environment.edges[i][j].shared_info;
       if (environment.edges[i][j].status) {
-        if (initializeEdge(environment, i, j) == 1) {
-#ifdef _OPENMP
-#pragma omp critical
-#endif
-          environment.numSearchMore++;
-        }
+        initializeEdge(environment, i, j);
       }
     }
   }
   if (interrupt) return false;
-  for (int i = 0; i < environment.n_nodes; i++) {
-    for (int j = 0; j < environment.n_nodes; j++) {
-      environment.edges[i][j].status_init = environment.edges[i][j].status;
-    }
-  }
   return true;
 }
 
@@ -173,23 +160,6 @@ bool firstStepIteration(Environment& environment, BiconnectedComponent& bcc) {
   }
 
   if (environment.numSearchMore > 0) {
-    if (environment.verbose)
-      Rcout << "\n# -> searchMore edges, to get zi and noMore...\n";
-
-    for (int i = 0; i < environment.numSearchMore; i++) {
-      int posX = environment.unsettled_list[i].i;
-      int posY = environment.unsettled_list[i].j;
-      if (environment.verbose) {
-        Rcout << "\n# --------------------\n# ----> EDGE: "
-             << environment.nodes[posX].name << "--"
-             << environment.nodes[posY].name << "\n# --------------------";
-      }
-      if (environment.consistent > 0)
-        bcc.setCandidateZ(posX, posY);
-      else
-        searchAndSetZi(environment, posX, posY);
-    }
-
     if (environment.verbose) {
       Rcout << "SEARCH OF BEST Z: ";
     }
@@ -213,8 +183,19 @@ bool firstStepIteration(Environment& environment, BiconnectedComponent& bcc) {
         if (checkInterrupt()) interrupt = true;
       }
       const auto& edgeid = environment.unsettled_list[i];
+      int X = edgeid.X;
+      int Y = edgeid.Y;
+      if (environment.verbose) {
+        Rcout << "\n# --------------------\n# ----> EDGE: "
+             << environment.nodes[X].name << "--"
+             << environment.nodes[Y].name << "\n# --------------------";
+      }
+      if (environment.consistent > 0)
+        bcc.setCandidateZ(X, Y);
+      else
+        searchAndSetZi(environment, X, Y);
       if (edgeid.getEdge().shared_info->zi_list.size() > 0)
-        SearchForNewContributingNodeAndItsRank(environment, edgeid.i, edgeid.j);
+        SearchForNewContributingNodeAndItsRank(environment, X, Y);
 
 #ifdef _OPENMP
 #pragma omp atomic
@@ -232,8 +213,8 @@ bool firstStepIteration(Environment& environment, BiconnectedComponent& bcc) {
     if (interrupt) return false;
 
     for (int i = 0; i < environment.numSearchMore; i++) {
-      int posX = environment.unsettled_list[i].i;
-      int posY = environment.unsettled_list[i].j;
+      int posX = environment.unsettled_list[i].X;
+      int posY = environment.unsettled_list[i].Y;
       if (environment.edges[posX][posY].shared_info->z_name_idx != -1) {
         if (environment.verbose) {
           Rcout << "## ------!!--> Update the edge element in 'searchMore': "
@@ -265,26 +246,21 @@ bool firstStepIteration(Environment& environment, BiconnectedComponent& bcc) {
     if (checkInterrupt()) {
       return false;
     }
-    // sort the ranks
-    std::sort(
-        environment.unsettled_list.begin(), environment.unsettled_list.end());
   }
   environment.first_iter_done = true;
   return true;
 }
 
 bool skeletonIteration(Environment& environment) {
-  int iIteration_count = 0;
-  int max = 0;
-
   if (environment.verbose)
     Rcout << "Number of numSearchMore: " << environment.numSearchMore << endl;
 
+  auto& unsettled_list = environment.unsettled_list;
+
+  int iIteration_count = 0;
   auto loop_start_time = getLapStartTime();
   int start_numSearchMore = environment.numSearchMore;
-
   int progress_percentile = -1;
-
   while (environment.numSearchMore > 0) {
     if (checkInterrupt()) {
       return false;
@@ -293,152 +269,120 @@ bool skeletonIteration(Environment& environment) {
     if (environment.verbose) {
       Rcout << "\n# Iteration " << iIteration_count << "\n";
     }
-    // Get the first edge
-    int posX = environment.unsettled_list[max].i;
-    int posY = environment.unsettled_list[max].j;
 
+    auto it_max = std::max_element(begin(unsettled_list), end(unsettled_list),
+        [&environment](const EdgeID& a, const EdgeID& b) {
+          return environment.edges[a.X][a.Y].shared_info->Rxyz_ui <
+                 environment.edges[b.X][b.Y].shared_info->Rxyz_ui;
+        });
+    int X = it_max->X;
+    int Y = it_max->Y;
     if (environment.verbose)
-      Rcout << "Pos x : " << posX << " , pos y: " << posY << endl;
+      Rcout << "Pos x : " << X << " , pos y: " << Y << endl;
 
-    auto topEdgeElt = environment.edges[posX][posY].shared_info;
+    auto top_info = environment.edges[X][Y].shared_info;
 
     if (environment.verbose) Rcout << "# Before adding new zi to {ui}: ";
-
-    // Keep the previous z.name for this edge
-    std::string accepted_z_name =
-        environment.nodes[topEdgeElt->z_name_idx].name;
-
     // Reinit ui.vect, z.name, zi.vect, z.name.idx
     if (environment.verbose) {
-      Rcout << "# DO: Add new zi to {ui}: " << topEdgeElt->z_name_idx << endl;
+      Rcout << "# DO: Add new zi to {ui}: " << top_info->z_name_idx << endl;
     }
     // move top z_name_idx from zi_vect to ui_vect
-    topEdgeElt->ui_list.push_back(topEdgeElt->zi_list[topEdgeElt->z_name_idx]);
-    topEdgeElt->zi_list.erase(
-        topEdgeElt->zi_list.begin() + topEdgeElt->z_name_idx);
-    topEdgeElt->z_name_idx = -1;
+    top_info->ui_list.push_back(top_info->zi_list[top_info->z_name_idx]);
+    top_info->zi_list.erase(top_info->zi_list.begin() + top_info->z_name_idx);
+    top_info->z_name_idx = -1;
 
     double* v = NULL;
-    if (!environment.is_continuous[posX] && !environment.is_continuous[posY] &&
-        std::all_of(topEdgeElt->ui_list.cbegin(), topEdgeElt->ui_list.cend(),
+    if (!environment.is_continuous[X] && !environment.is_continuous[Y] &&
+        std::all_of(top_info->ui_list.cbegin(), top_info->ui_list.cend(),
             [&environment](int i) { return !environment.is_continuous[i]; })) {
-      v = computeEnsInformationNew(environment, posX, posY,
-          environment.edges[posX][posY].shared_info->ui_list, vector<int>(),
-          environment.cplx);
+      v = computeEnsInformationNew(environment, X, Y, top_info->ui_list,
+          vector<int>(), environment.cplx);
 
-      topEdgeElt->Ixy_ui = v[1];
-      topEdgeElt->Nxy_ui = v[0];
-      topEdgeElt->cplx = v[2];
+      top_info->Ixy_ui = v[1];
+      top_info->Nxy_ui = v[0];
+      top_info->cplx = v[2];
     } else {
-      v = computeEnsInformationContinuous(environment, posX, posY,
-          environment.edges[posX][posY].shared_info->ui_list, vector<int>(),
-          environment.cplx);
-      topEdgeElt->Nxy_ui = v[0];
-      topEdgeElt->Ixy_ui = v[1];
-      topEdgeElt->cplx = v[2];
+      v = computeEnsInformationContinuous(environment, X, Y, top_info->ui_list,
+          vector<int>(), environment.cplx);
+      top_info->Nxy_ui = v[0];
+      top_info->Ixy_ui = v[1];
+      top_info->cplx = v[2];
     }
     delete[] v;
-    double topEdgeElt_kxy_ui = topEdgeElt->cplx;
+    double top_info_kxy_ui = top_info->cplx;
 
     if (environment.degenerate)
-      topEdgeElt_kxy_ui =
-          topEdgeElt->cplx + (topEdgeElt->ui_list.size() * log(3.0));
+      top_info_kxy_ui = top_info->cplx + (top_info->ui_list.size() * log(3.0));
 
     int nRemainingEdges = environment.numSearchMore + environment.numNoMore;
 
     if (environment.verbose) {
       Rcout << "# --> nbrEdges L = " << nRemainingEdges << "\n";
       Rcout << "# --> nbrProp P = " << environment.n_nodes << "\n\n";
-      Rcout << "topEdgeElt->Ixy_ui " << topEdgeElt->Ixy_ui << "\n";
-      Rcout << "topEdgeElt_kxy_ui " << topEdgeElt_kxy_ui << "\n";
+      Rcout << "topEdgeElt->Ixy_ui " << top_info->Ixy_ui << "\n";
+      Rcout << "topEdgeElt_kxy_ui " << top_info_kxy_ui << "\n";
       Rcout << "environment.log_eta " << environment.log_eta << "\n";
       Rcout << "IsPhantom? "
-           << (topEdgeElt->Ixy_ui - topEdgeElt_kxy_ui - environment.log_eta <= 0)
-           << endl;
+            << (top_info->Ixy_ui - top_info_kxy_ui - environment.log_eta <= 0)
+            << endl;
     }
-    if (topEdgeElt->Ixy_ui - topEdgeElt_kxy_ui - environment.log_eta <= 0) {
+    if (top_info->Ixy_ui - top_info_kxy_ui - environment.log_eta <= 0) {
       // Conditional independence found, remove edge
       if (environment.verbose) {
-        Rcout << "# PHANTOM" << environment.nodes[posX].name << ","
-             << environment.nodes[posY].name << "\n";
+        Rcout << "# PHANTOM" << environment.nodes[X].name << ","
+              << environment.nodes[Y].name << "\n";
       }
-      environment.unsettled_list.erase(
-          environment.unsettled_list.begin() + max);
+      unsettled_list.erase(it_max);
       environment.numSearchMore--;
       // Set the connection to 0 on the adj matrix
-      environment.edges[posX][posY].status = 0;
-      environment.edges[posY][posX].status = 0;
+      environment.edges[X][Y].status = 0;
+      environment.edges[Y][X].status = 0;
       // Save the phantom status
-      topEdgeElt->connected = 0;
+      top_info->connected = 0;
     } else {
       // Reinit Rxyz_ui
-      topEdgeElt->Rxyz_ui = environment.thresPc;
+      top_info->Rxyz_ui = environment.thresPc;
 
       if (environment.verbose) {
         Rcout << "# Do SearchForNewContributingNodeAndItsRank\n";
       }
 
-      if (topEdgeElt->zi_list.size() > 0) {
-        SearchForNewContributingNodeAndItsRank(environment, posX, posY);
+      if (top_info->zi_list.size() > 0) {
+        SearchForNewContributingNodeAndItsRank(environment, X, Y);
       }
 
       if (environment.verbose) {
-        if (environment.edges[posX][posY].shared_info->z_name_idx == -1)
+        if (environment.edges[X][Y].shared_info->z_name_idx == -1)
           Rcout << "# See topEdgeElt[['z.name']]: NA\n";
         else
-          Rcout << "# See topEdgeElt[['z.name']]: "
-               << environment.nodes[topEdgeElt->zi_list[topEdgeElt->z_name_idx]]
-                      .name
-               << "\n";
+          Rcout
+              << "# See topEdgeElt[['z.name']]: "
+              << environment.nodes[top_info->zi_list[top_info->z_name_idx]].name
+              << "\n";
       }
-      //// Update the information about the edge
-      if (topEdgeElt->z_name_idx != -1) {
+      // Update the information about the edge
+      if (top_info->z_name_idx == -1) {
         if (environment.verbose) {
-          Rcout << "# Do update myAllEdges$searchMore\n";
-        }
-        // myGv$allEdges[["searchMore"]][[topEdgeElt[["key"]]]] = topEdgeElt
-
-      } else {
-        if (environment.verbose) {
-          Rcout << "# Do update myAllEdges$noMore\n";
+          Rcout << "Add edge to connected_list.\n";
         }
         // Move this edge from the list searchMore to noMore
-        environment.connected_list.push_back(environment.unsettled_list[max]);
+        environment.connected_list.push_back(*it_max);
         environment.numNoMore++;
-        environment.unsettled_list.erase(
-            environment.unsettled_list.begin() + max);
+        unsettled_list.erase(it_max);
         environment.numSearchMore--;
         // Update the status of the edge
-        topEdgeElt->connected = 1;
+        top_info->connected = 1;
       }
     }
 
-    // Sort all pairs xy with a contributing node z in decreasing order of
-    // their ranks, R(xy;z| )
-    if (environment.verbose) {
-      Rcout << "# Do Sort all pairs by Rxyz_ui\n";
-    }
-
-    max = 0;
-    for (int i = 0; i < environment.numSearchMore; i++) {
-      if (environment
-              .edges[environment.unsettled_list[i].i]
-                    [environment.unsettled_list[i].j]
-              .shared_info->Rxyz_ui >
-          environment
-              .edges[environment.unsettled_list[max].i]
-                    [environment.unsettled_list[max].j]
-              .shared_info->Rxyz_ui)
-        max = i;
-    }
     printProgress(1.0 * (start_numSearchMore - environment.numSearchMore) /
                       (start_numSearchMore),
         loop_start_time, progress_percentile);
   }
   Rcerr << "\n";
-  std::sort(
-      environment.connected_list.begin(), environment.connected_list.end());
-  return (true);
+  std::sort(begin(environment.connected_list), end(environment.connected_list));
+  return true;
 }
 
 }  // namespace reconstruction

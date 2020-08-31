@@ -83,10 +83,10 @@ vector<vector<string>> orientationProbability(Environment& environment) {
   vector<Triple> triples;
   const auto& edge_list = environment.connected_list;
   for (auto iter0 = begin(edge_list); iter0 != end(edge_list); ++iter0) {
-    int posX = iter0->i, posY = iter0->j;
+    int posX = iter0->X, posY = iter0->Y;
 
     for (auto iter1 = iter0 + 1; iter1 != end(edge_list); ++iter1) {
-      int posX1 = iter1->i, posY1 = iter1->j;
+      int posX1 = iter1->X, posY1 = iter1->Y;
       if (posY1 == posX && !environment.edges[posY][posX1].status)
         triples.emplace_back(Triple{posY, posX, posX1});
       else if (posY1 == posY && !environment.edges[posX][posX1].status)

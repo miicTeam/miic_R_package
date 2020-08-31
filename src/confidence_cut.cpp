@@ -74,7 +74,7 @@ void setConfidence(Environment& environment) {
     double NIxy_ui, k_xy_ui;
     // evaluate the mutual information for every edge
     for (const auto& edge : edge_list) {
-      int X = edge.i, Y = edge.j;
+      int X = edge.X, Y = edge.Y;
       if (!environment.is_continuous[X] && !environment.is_continuous[Y]) {
         // discrete case
         double* res = computeEnsInformationNew(
@@ -101,7 +101,7 @@ void setConfidence(Environment& environment) {
   }
   // evaluate average
   for (const auto& edge : edge_list) {
-    environment.edges[edge.i][edge.j].shared_info->exp_shuffle /=
+    environment.edges[edge.X][edge.Y].shared_info->exp_shuffle /=
         environment.n_shuffles;
   }
   // Copy data back
@@ -121,7 +121,7 @@ void confidenceCut(Environment& environment) {
   size_t n_connected = edge_list.size();
   // remove edges based on confidence
   auto to_delete = [&environment](EdgeID& id) {
-    int X = id.i, Y = id.j;
+    int X = id.X, Y = id.Y;
     auto info = environment.edges[X][Y].shared_info;
     double I_prime_original = info->Ixy_ui - info->cplx;
     // exp(I_shuffle - I_original)

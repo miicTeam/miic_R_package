@@ -248,7 +248,7 @@ vector<vector<string>> getEdgesInfoTable(const Environment& env) {
       "ai.vect", "zi.vect", "Ixy", "Ixy_ai", "cplx", "Rxyz_ai", "category",
       "Nxy_ai", "confidence"});
   for (const auto& edge : edge_list) {
-    auto i = edge.i, j = edge.j;
+    auto i = edge.X, j = edge.Y;
     auto info = env.edges[i][j].shared_info;
     double confidence = -1;
     if (info->exp_shuffle != -1)

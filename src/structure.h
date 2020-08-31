@@ -206,9 +206,9 @@ class EdgeID {
   std::reference_wrapper<const Edge> edge_;
 
  public:
-  int i, j;
+  int X, Y;
   EdgeID() = delete;
-  EdgeID(int i, int j, const Edge& edge) : edge_(edge), i(i), j(j) {}
+  EdgeID(int i, int j, const Edge& edge) : edge_(edge), X(i), Y(j) {}
   EdgeID(int i, int j, const Edge&&) = delete;  // forbid rvalue
 
   const Edge& getEdge() const { return edge_.get(); }
