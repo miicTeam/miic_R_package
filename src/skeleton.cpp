@@ -58,8 +58,9 @@ int initializeEdge(Environment& environment, int i, int j) {
   auto info = environment.edges[i][j].shared_info;
   double* res = NULL;
   if (!environment.is_continuous[i] && !environment.is_continuous[j]) {
-    res = computeEnsInformationNew(environment, i, j, std::vector<int>(),
-        std::vector<int>(), environment.cplx);
+    TempAllocatorScope scope;
+    res = computeEnsInformationNew(
+        environment, i, j, vector<int>(), TempVector<int>(), environment.cplx);
     info->Ixy_ui = res[1];
     info->cplx = res[2];
     info->Nxy_ui = res[0];
@@ -296,8 +297,9 @@ bool skeletonIteration(Environment& environment) {
     if (!environment.is_continuous[X] && !environment.is_continuous[Y] &&
         std::all_of(top_info->ui_list.cbegin(), top_info->ui_list.cend(),
             [&environment](int i) { return !environment.is_continuous[i]; })) {
+      TempAllocatorScope scope;
       v = computeEnsInformationNew(environment, X, Y, top_info->ui_list,
-          vector<int>(), environment.cplx);
+          TempVector<int>(), environment.cplx);
 
       top_info->Ixy_ui = v[1];
       top_info->Nxy_ui = v[0];

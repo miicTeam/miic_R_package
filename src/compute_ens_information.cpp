@@ -23,47 +23,38 @@ using std::vector;
 
 namespace {
 
-void computeContributingScores(Environment& environment, int X, int Y,
-    const vector<int>& ui_list, int* ziContPosIdx, int iz,
-    const vector<int>& zi_list, int myNbrUi, int n_samples_nonNA,
-    double* scoresZ) {
+double computeContributingScores(Environment& environment, int X, int Y, int Z,
+    const vector<int>& ui_list, int n_samples_nonNA) {
   TempAllocatorScope scope;
 
-  int cplx = environment.cplx;
-  int z;
-  if (ziContPosIdx == NULL)
-    z = zi_list[iz];
-  else
-    z = zi_list[ziContPosIdx[iz]];
-
-  double output_score = lookupScore(X, Y, ui_list, z, environment);
+  double output_score = lookupScore(X, Y, ui_list, Z, environment);
   if (output_score != -1) {
-    scoresZ[iz] = output_score;
-    return;
+    return output_score;
   }
 
   // Mark rows containing NAs and count the number of complete samples
   TempVector<int> sample_is_not_NA(environment.n_samples);
   TempVector<int> NAs_count(environment.n_samples);
   int samplesNotNA =
-      count_non_NAs(X, Y, ui_list, sample_is_not_NA, NAs_count, environment, z);
+      count_non_NAs(X, Y, ui_list, sample_is_not_NA, NAs_count, environment, Z);
 
   if (samplesNotNA <= 2) {
     output_score = -DBL_MAX;
   } else {
+    int n_ui = ui_list.size();
     TempAllocatorScope scope;
     // Allocate data reducted *_red without rows containing NAs
     // All *_red variables are passed to the optimization routine
     TempVector<double> sample_weights_red(samplesNotNA);
-    TempGrid2d<int> dataNumericIdx_red(myNbrUi + 3, samplesNotNA);
-    TempGrid2d<int> dataNumeric_red(myNbrUi + 3, samplesNotNA);
-    TempVector<int> AllLevels_red(myNbrUi + 3);
-    TempVector<int> cnt_red(myNbrUi + 3);
-    TempVector<int> posArray_red(myNbrUi + 3);
+    TempGrid2d<int> dataNumericIdx_red(n_ui + 3, samplesNotNA);
+    TempGrid2d<int> dataNumeric_red(n_ui + 3, samplesNotNA);
+    TempVector<int> AllLevels_red(n_ui + 3);
+    TempVector<int> cnt_red(n_ui + 3);
+    TempVector<int> posArray_red(n_ui + 3);
 
     bool flag_sample_weights = filter_NAs(X, Y, ui_list, AllLevels_red, cnt_red,
         posArray_red, dataNumeric_red, dataNumericIdx_red, sample_weights_red,
-        sample_is_not_NA, NAs_count, environment, z);
+        sample_is_not_NA, NAs_count, environment, Z);
 
     if (std::all_of(
             cnt_red.begin(), cnt_red.end(), [](int x) { return x == 0; })) {
@@ -72,12 +63,12 @@ void computeContributingScores(Environment& environment, int X, int Y,
       TempGrid2d<double> jointFreqs =
           getJointFreqs(environment, X, Y, sample_is_not_NA);
 
-      vector<int> zi_list{z};
       // call discrete code
       double* res = getAllInfoNEW(environment.oneLineMatrix, environment.levels,
-          X, Y, ui_list, zi_list, environment.n_samples, environment.n_eff,
-          cplx, environment.is_k23, environment.sample_weights, jointFreqs,
-          environment.test_mar, environment.cache.cterm);
+          X, Y, ui_list, TempVector<int>{Z}, environment.n_samples,
+          environment.n_eff, environment.cplx, environment.is_k23,
+          environment.sample_weights, jointFreqs, environment.test_mar,
+          environment.cache.cterm);
 
       output_score = res[6];
       delete[] res;
@@ -113,8 +104,8 @@ void computeContributingScores(Environment& environment, int X, int Y,
 
       if (ok) {
         double* res = compute_Rscore_Ixyz_alg5(dataNumeric_red,
-            dataNumericIdx_red, AllLevels_red, cnt_red, posArray_red, myNbrUi,
-            myNbrUi + 2, samplesNotNA, sample_weights_red, flag_sample_weights,
+            dataNumericIdx_red, AllLevels_red, cnt_red, posArray_red, n_ui,
+            n_ui + 2, samplesNotNA, sample_weights_red, flag_sample_weights,
             environment);
         output_score = res[0];
         delete[] res;
@@ -124,8 +115,8 @@ void computeContributingScores(Environment& environment, int X, int Y,
     }
   }  // jump cond no statistics
 
-  saveScore(X, Y, ui_list, z, output_score, environment);
-  scoresZ[iz] = output_score;
+  saveScore(X, Y, ui_list, Z, output_score, environment);
+  return output_score;
 }
 
 }  // anonymous namespace
@@ -215,7 +206,7 @@ double* computeEnsInformationContinuous(Environment& environment, int X, int Y,
   int n_zi = zi_list.size();
 
   // initialization part (no z)
-  if (zi_list.empty()) {
+  if (n_zi == 0) {
     // TODO : speedup by only removing NAs for marked columns
     // Mark rows containing NAs and count the number of complete samples
     TempVector<int> sample_is_not_NA(environment.n_samples);
@@ -267,52 +258,37 @@ double* computeEnsInformationContinuous(Environment& environment, int X, int Y,
     res_new[2] = -DBL_MAX;
     double* res;
 
-    int z;
-    int* zi_list_continuous = NULL;
+    TempVector<int> zi_indices;
 
     // If x, y and uis are discrete we can put togheter all zi that are discrete
     // in a vector and evaluate them in one shot as discrete.
     if (!environment.is_continuous[X] && !environment.is_continuous[Y] &&
         std::all_of(begin(ui_list), end(ui_list),
             [&environment](int i) { return !environment.is_continuous[i]; })) {
-      // search for z that are discrete
-      int n_zi_discrete = 0;
-      for (int iz = 0; iz < n_zi; iz++) {
-        z = zi_list[iz];
-        if (!environment.is_continuous[z]) n_zi_discrete++;
+      TempVector<int> zi_discrete;
+      zi_discrete.reserve(n_zi);
+      zi_indices.reserve(n_zi);
+      for (int i = 0; i < n_zi; ++i) {
+        if (environment.is_continuous[zi_list[i]])
+          zi_indices.push_back(i);
+        else
+          zi_discrete.push_back(zi_list[i]);
       }
-
-      if (n_zi_discrete > 0) {
+      zi_discrete.shrink_to_fit();
+      zi_indices.shrink_to_fit();
+      if (!zi_discrete.empty()) {
         TempAllocatorScope scope;
 
-        TempVector<int> posZi(n_zi_discrete);
-        vector<int> zz(n_zi_discrete);
+        TempVector<int> posZi(zi_discrete.size());
         int pos = 0;
-        for (int iz = 0; iz < n_zi; iz++) {
-          z = zi_list[iz];
-          if (!environment.is_continuous[z]) {
-            zz[pos] = z;
-            posZi[pos] = iz;
-            pos++;
-          }
+        for (int i = 0; i < n_zi; i++) {
+          if (!environment.is_continuous[zi_list[i]]) posZi[pos++] = i;
         }
         TempGrid2d<double> jointFreqs = getJointFreqs(environment, X, Y);
         res = getAllInfoNEW(environment.oneLineMatrix, environment.levels, X, Y,
-            ui_list, zz, environment.n_samples, environment.n_eff, cplx,
-            environment.is_k23, environment.sample_weights, jointFreqs,
+            ui_list, zi_discrete, environment.n_samples, environment.n_eff,
+            cplx, environment.is_k23, environment.sample_weights, jointFreqs,
             environment.test_mar, environment.cache.cterm);
-
-        // keep in ziContPos only the position of the continuous variables
-        zi_list_continuous = new int[n_zi - n_zi_discrete];
-        pos = 0;
-        for (int iz = 0; iz < n_zi; iz++) {
-          z = zi_list[iz];
-          if (environment.is_continuous[z]) {
-            zi_list_continuous[pos] = iz;
-            pos++;
-          }
-        }
-        n_zi = pos;
 
         // update res new, it will be compared to the continuous variables
         res_new[2] = res[6];
@@ -322,36 +298,29 @@ double* computeEnsInformationContinuous(Environment& environment, int X, int Y,
         res_new[0] = res[0];
         delete[] res;
       }
+      n_zi -= zi_discrete.size();
     }
 
-    double* scoresZ = new double[n_zi];
+    int n_samples_nonNA = getNumSamplesNonNA(environment, X, Y);
 #ifdef _OPENMP
     bool parallelizable =
         environment.first_iter_done && n_zi > environment.n_threads;
 #pragma omp parallel for if (parallelizable)
 #endif
     for (int iz = 0; iz < n_zi; iz++) {
-      int n_samples_nonNA = getNumSamplesNonNA(environment, X, Y);
-
-      computeContributingScores(environment, X, Y, ui_list, zi_list_continuous,
-          iz, zi_list, n_ui, n_samples_nonNA, scoresZ);
-    }  // parallel for on z
-
-    for (int iz = 0; iz < n_zi; iz++) {  // find optimal z
-      if (scoresZ[iz] > res_new[2]) {
-        res_new[2] = scoresZ[iz];
-        if (zi_list_continuous == NULL) {
+      int Z = zi_list[iz];
+      if (!zi_indices.empty()) Z = zi_list[zi_indices[iz]];
+      double score = computeContributingScores(
+          environment, X, Y, Z, ui_list, n_samples_nonNA);
+      if (score > res_new[2]) {
+        res_new[2] = score;
+        if (zi_indices.empty()) {
           res_new[1] = iz;
         } else {
-          res_new[1] = zi_list_continuous[iz];
+          res_new[1] = zi_indices[iz];
         }
-        // TO DEFINE
-        // res_new[0]=(double) samplesNotNA;
       }
-    }  // optimal z search
-    delete[] scoresZ;
-
-    if (zi_list_continuous != NULL) delete[] zi_list_continuous;
+    }
   }
 
   for (int i = 0; i < nbrRetValues; i++) {
@@ -364,7 +333,7 @@ double* computeEnsInformationContinuous(Environment& environment, int X, int Y,
 }
 
 double* computeEnsInformationNew(Environment& environment, int X, int Y,
-    const vector<int>& ui_list, const vector<int>& zi_list, int cplx) {
+    const vector<int>& ui_list, const TempVector<int>& zi_list, int cplx) {
   TempAllocatorScope scope;
 
   TempGrid2d<double> jointFreqs = getJointFreqs(environment, X, Y);
@@ -407,8 +376,10 @@ void SearchForNewContributingNodeAndItsRank(
 
   if (std::all_of(environment.is_continuous.begin(),
           environment.is_continuous.end(), [](int i) { return i == 0; })) {
+    TempAllocatorScope scope;
+    TempVector<int> zi_list(begin(info->zi_list), end(info->zi_list));
     vect = computeEnsInformationNew(
-        environment, posX, posY, info->ui_list, info->zi_list, argEnsInfo);
+        environment, posX, posY, info->ui_list, zi_list, argEnsInfo);
     if (vect[6] - info->Rxyz_ui > 0) {
       info->z_name_idx = vect[3];
       info->Rxyz_ui = vect[6];

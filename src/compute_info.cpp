@@ -25,10 +25,11 @@ using namespace miic::utility;
 using std::vector;
 
 double* getAllInfoNEW(int* ptrAllData, const vector<int>& ptrAllLevels,
-    int id_x, int id_y, const vector<int>& ui_list, const vector<int>& zi_list,
-    int sampleSize, int sampleSizeEff, int modCplx, int k23,
-    const vector<double>& weights, const TempGrid2d<double>& freqs1,
-    bool test_mar, std::shared_ptr<CtermCache> cache) {
+    int id_x, int id_y, const vector<int>& ui_list,
+    const TempVector<int>& zi_list, int sampleSize, int sampleSizeEff,
+    int modCplx, int k23, const vector<double>& weights,
+    const TempGrid2d<double>& freqs1, bool test_mar,
+    std::shared_ptr<CtermCache> cache) {
   TempAllocatorScope scope;
 
   int n_ui = ui_list.size();

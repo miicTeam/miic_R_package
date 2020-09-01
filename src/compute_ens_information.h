@@ -8,7 +8,8 @@ namespace miic {
 namespace computation {
 
 double* computeEnsInformationNew(structure::Environment&, int X, int Y,
-    const std::vector<int>& ui_list, const std::vector<int>& zi_list, int cplx);
+    const std::vector<int>& ui_list, const structure::TempVector<int>& zi_list,
+    int cplx);
 void SearchForNewContributingNodeAndItsRank(structure::Environment&, int, int);
 // Continuous data
 double* computeEnsInformationContinuous(structure::Environment&, int X, int Y,

@@ -76,9 +76,10 @@ void setConfidence(Environment& environment) {
     for (const auto& edge : edge_list) {
       int X = edge.X, Y = edge.Y;
       if (!environment.is_continuous[X] && !environment.is_continuous[Y]) {
+        utility::TempAllocatorScope scope;
         // discrete case
-        double* res = computeEnsInformationNew(
-            environment, X, Y, vector<int>(), vector<int>(), environment.cplx);
+        double* res = computeEnsInformationNew(environment, X, Y, vector<int>(),
+            TempVector<int>(), environment.cplx);
         NIxy_ui = res[1];
         k_xy_ui = res[2];
         delete[] res;

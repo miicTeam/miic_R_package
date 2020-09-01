@@ -34,8 +34,9 @@ double getI3(Environment& environment, const Triple& t) {
   double cplx = -1;
   if (!environment.is_continuous[posX] && !environment.is_continuous[posZ] &&
       !environment.is_continuous[posY]) {
-    res = computeEnsInformationNew(
-        environment, posX, posY, ui_no_z, vector<int>{posZ}, environment.cplx);
+    utility::TempAllocatorScope scope;
+    res = computeEnsInformationNew(environment, posX, posY, ui_no_z,
+        TempVector<int>{posZ}, environment.cplx);
     Ixyz_ui = res[7];
     cplx = res[8];
     if (environment.degenerate) cplx += log(3.0);
