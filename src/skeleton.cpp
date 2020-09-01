@@ -100,13 +100,6 @@ int initializeEdge(Environment& environment, int i, int j) {
 }
 
 bool skeletonInitialization(Environment& environment) {
-  for (int i = 0; i < environment.n_samples; i++) {
-    for (int j = 0; j < environment.n_nodes; j++) {
-      environment.oneLineMatrix[j * environment.n_samples + i] =
-          environment.data_numeric[i][j];
-    }
-  }
-
   bool interrupt = false;
 #ifdef _OPENMP
 #pragma omp parallel for schedule(dynamic)

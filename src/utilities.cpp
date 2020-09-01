@@ -184,32 +184,6 @@ double kl(const TempGrid2d<int>& counts1, const TempGrid2d<double>& freqs2) {
   return kl(freqs1, freqs2);
 }
 
-class sort_indices {
- private:
-  int* mparr;
-
- public:
-  sort_indices(int* parr) : mparr(parr) {}
-  bool operator()(int i, int j) const { return mparr[i] < mparr[j]; }
-};
-
-void sort2arrays(int len, TempVector<int>& a, TempVector<int>& brr,
-    TempVector<int>& bridge) {
-  int i;
-
-  int* pArray = &a[1];
-  int* pArray2 = &brr[1];
-
-  std::sort(pArray2, pArray2 + len, sort_indices(pArray));
-
-  for (i = 1; i < len + 1; i++) {
-    bridge[i] = pArray2[i - 1];
-  }
-
-  brr = bridge;
-  brr[0] = 0;
-}
-
 vector<vector<int>> getAdjMatrix(const Environment& env) {
   vector<vector<int>> adj_matrix(env.n_nodes, vector<int>(env.n_nodes, 0));
   for (int i = 1; i < env.n_nodes; i++) {

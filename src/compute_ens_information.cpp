@@ -64,11 +64,10 @@ double computeContributingScores(Environment& environment, int X, int Y, int Z,
           getJointFreqs(environment, X, Y, sample_is_not_NA);
 
       // call discrete code
-      double* res = getAllInfoNEW(environment.oneLineMatrix, environment.levels,
-          X, Y, ui_list, TempVector<int>{Z}, environment.n_samples,
-          environment.n_eff, environment.cplx, environment.is_k23,
-          environment.sample_weights, jointFreqs, environment.test_mar,
-          environment.cache.cterm);
+      double* res = getAllInfoNEW(environment.data_numeric, environment.levels,
+          X, Y, ui_list, TempVector<int>{Z}, environment.n_eff,
+          environment.cplx, environment.is_k23, environment.sample_weights,
+          jointFreqs, environment.test_mar, environment.cache.cterm);
 
       output_score = res[6];
       delete[] res;
@@ -285,10 +284,10 @@ double* computeEnsInformationContinuous(Environment& environment, int X, int Y,
           if (!environment.is_continuous[zi_list[i]]) posZi[pos++] = i;
         }
         TempGrid2d<double> jointFreqs = getJointFreqs(environment, X, Y);
-        res = getAllInfoNEW(environment.oneLineMatrix, environment.levels, X, Y,
-            ui_list, zi_discrete, environment.n_samples, environment.n_eff,
-            cplx, environment.is_k23, environment.sample_weights, jointFreqs,
-            environment.test_mar, environment.cache.cterm);
+        res = getAllInfoNEW(environment.data_numeric, environment.levels, X, Y,
+            ui_list, zi_discrete, environment.n_eff, cplx, environment.is_k23,
+            environment.sample_weights, jointFreqs, environment.test_mar,
+            environment.cache.cterm);
 
         // update res new, it will be compared to the continuous variables
         res_new[2] = res[6];
@@ -337,10 +336,10 @@ double* computeEnsInformationNew(Environment& environment, int X, int Y,
   TempAllocatorScope scope;
 
   TempGrid2d<double> jointFreqs = getJointFreqs(environment, X, Y);
-  double* res_new = getAllInfoNEW(environment.oneLineMatrix, environment.levels,
-      X, Y, ui_list, zi_list, environment.n_samples, environment.n_eff, cplx,
-      environment.is_k23, environment.sample_weights, jointFreqs,
-      environment.test_mar, environment.cache.cterm);
+  double* res_new = getAllInfoNEW(environment.data_numeric, environment.levels,
+      X, Y, ui_list, zi_list, environment.n_eff, cplx, environment.is_k23,
+      environment.sample_weights, jointFreqs, environment.test_mar,
+      environment.cache.cterm);
 
   int nbrRetValues = zi_list.empty()? 3 : 9;
   // If !zi_list.empty(), return {nSample[z1]*I(..|{ui})[z1], NML(..|{ui})[z1],

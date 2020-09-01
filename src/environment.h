@@ -27,7 +27,6 @@ struct Environment {
   vector<vector<double>> data_double;
   // data_numeric_idx[i] = index of i'th smallest value in data_double
   vector<vector<int>> data_numeric_idx;
-  int* oneLineMatrix;
 
   vector<int> is_continuous;
   vector<int> levels;
@@ -98,7 +97,6 @@ struct Environment {
   Environment() = default;
 
   ~Environment() {
-    delete[] oneLineMatrix;
     for (int i = 0; i < n_nodes; i++) delete[] edges[i];
     delete[] edges;
     delete[] noise_vec;

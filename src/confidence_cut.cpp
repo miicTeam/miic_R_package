@@ -63,14 +63,6 @@ void setConfidence(Environment& environment) {
         }
       }
     }
-
-    for (int i = 0; i < environment.n_samples; i++) {
-      for (int j = 0; j < environment.n_nodes; j++) {
-        environment.oneLineMatrix[j * environment.n_samples + i] =
-            environment.data_numeric[i][j];
-      }
-    }
-
     double NIxy_ui, k_xy_ui;
     // evaluate the mutual information for every edge
     for (const auto& edge : edge_list) {
@@ -108,13 +100,6 @@ void setConfidence(Environment& environment) {
   // Copy data back
   environment.data_numeric = std::move(original_data);
   environment.data_numeric_idx = std::move(original_data_idx);
-
-  for (int i = 0; i < environment.n_samples; i++) {
-    for (int j = 0; j < environment.n_nodes; j++) {
-      environment.oneLineMatrix[j * environment.n_samples + i] =
-          environment.data_numeric[i][j];
-    }
-  }
 }
 
 void confidenceCut(Environment& environment) {

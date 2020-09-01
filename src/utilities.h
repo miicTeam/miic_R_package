@@ -14,8 +14,6 @@ std::vector<std::vector<std::string>> getEdgesInfoTable(
 std::string toNameString(
     const structure::Environment&, const std::vector<int>&);
 std::vector<std::vector<int>> getAdjMatrix(const structure::Environment&);
-void sort2arrays(int len, structure::TempVector<int>& a,
-    structure::TempVector<int>& brr, structure::TempVector<int>& bridge);
 TimePoint getLapStartTime();
 double getLapInterval(TimePoint);
 void printProgress(double percentage, TimePoint, int& n_unsettled);
