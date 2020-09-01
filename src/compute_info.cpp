@@ -2,13 +2,12 @@
 
 #define _USE_MATH_DEFINES
 #include <cmath>
-#include <set>
+#include <limits>
+#include <unordered_set>
 
 #include "structure.h"
 #include "utilities.h"
 
-#define N_COL_NML 1000
-#define LARGE 1E+300
 constexpr int MDL = 0;
 constexpr int randomrescaling = 1;
 
@@ -73,39 +72,28 @@ double* getAllInfoNEW(const vector<vector<int>>& data,
   for (int i = 0; i < n_samples; i++) {
     bool ok = true;
     for (const auto node : var_idx) {
-      // check that X,Y,Uj do not contain NA
+      // check that X, Y, Uj do not contain NA
       if (data[i][node] == -1) {
         ok = false;
         break;
-      }
-    }
-    // if only one variable zi (to estimate NI(xy|ui) and NI(xy|uiz) on the
-    // exact same samples in case of NA)
-    if (n_zi == 1) {
-      int ptrzi = zi_list[0];
-      if (data[i][ptrzi] == -1) {
-        ok = false;
       }
     }
     if (ok) {
       sample(n_samples_non_na++, 0) = i;  // sample number
     }
   }
-  TempVector<int> reduced_levels(n_nodes_xyui + 1);
+  int rx_reduced = all_levels[id_x];
+  int ry_reduced = all_levels[id_y];
   // update dbin
   if (n_samples_non_na < n_samples) {
-    std::set<int> s;
-    for (int j = 0; j < n_nodes_xyui; j++) {
-      s.clear();
-      for (int k = 0; k < n_samples_non_na; k++) {
-        int i = sample(k, 0);
-        s.insert(data[i][var_idx[j]]);
-      }
-      reduced_levels[j] = s.size();
+    std::unordered_set<int> sx, sy;
+    for (int k = 0; k < n_samples_non_na; k++) {
+      int i = sample(k, 0);
+      sx.insert(data[i][id_x]);
+      sy.insert(data[i][id_y]);
     }
-  } else {
-    for (int j = 0; j < n_nodes_xyui; j++)
-      reduced_levels[j] = all_levels[var_idx[j]];
+    rx_reduced = sx.size();
+    ry_reduced = sy.size();
   }
 
   if (n_samples_non_na == 0) return ptrRetValues;
@@ -308,10 +296,6 @@ double* getAllInfoNEW(const vector<vector<int>>& data,
   //  logC2xy_ui=0;
   //}
 
-  double testinfo_xy_ui = info3xy_ui - logC3xy_ui + info2xy_ui - logC2xy_ui;
-  if (n_ui == 0)
-    testinfo_xy_ui = info3xy_ui - info2xy_ui - logC3xy_ui + logC2xy_ui;
-
   int N_xy_ui{0};
   double NIxy_ui = -1.0;
   double k_xy_ui = -1.0;
@@ -324,11 +308,9 @@ double* getAllInfoNEW(const vector<vector<int>>& data,
     ptrRetValues[1] = NIxy_ui;
     ptrRetValues[2] = k_xy_ui;
 
-    if (reduced_levels[0] == 1 || reduced_levels[1] == 1 ||
-        reduced_levels[0] == N_xy_ui || reduced_levels[1] == N_xy_ui) {
-      ptrRetValues[0] = N_xy_ui;
+    if (rx_reduced == 1 || ry_reduced == 1 || rx_reduced == N_xy_ui ||
+        ry_reduced == N_xy_ui) {
       ptrRetValues[1] = 0;
-      ptrRetValues[2] = k_xy_ui;
     }
     return ptrRetValues;
   }
@@ -342,7 +324,7 @@ double* getAllInfoNEW(const vector<vector<int>>& data,
   double NIxy_uiz_top = -1;
   double k_xy_uiz_top = -1;
 
-  double R_top = -LARGE;
+  double R_top = std::numeric_limits<double>::lowest();
   double NIxyz_ui_top = -1;
   double k_xyz_ui_top = -1;
 
@@ -385,14 +367,13 @@ double* getAllInfoNEW(const vector<vector<int>>& data,
 
     isGoodCandidate = true;
     if (n_samples_with_z < n_samples) {
-      std::set<int> s;
-      for (int j = 0; j < 2; ++j) {
-        s.clear();
-        for (const auto i : sample_non_na_with_z) {
-          s.insert(data[i][var_idx[j]]);
-        }
-        reduced_levels[j] = s.size();
+      std::unordered_set<int> sx, sy;
+      for (const auto i : sample_non_na_with_z) {
+        sx.insert(data[i][id_x]);
+        sy.insert(data[i][id_y]);
       }
+      rx_reduced = sx.size();
+      ry_reduced = sy.size();
 
       if (test_mar) {
         TempAllocatorScope scope;
@@ -430,8 +411,8 @@ double* getAllInfoNEW(const vector<vector<int>>& data,
     double info_xuiz_y{0}, info_yuiz_x{0}, info_uiz_y{0}, info_uiz_x{0};
     double logC_xuiz_y{0}, logC_yuiz_x{0}, logC_uiz_y{0}, logC_uiz_x{0};
 
-    double info_xui_z{0}, info_yui_z{0}, info_ui_z {0};
-    double logC_xui_z{0}, logC_yui_z{0}, logC_ui_z {0};
+    double info_xui_z{0}, info_yui_z{0}, info_ui_z{0};
+    double logC_xui_z{0}, logC_yui_z{0}, logC_ui_z{0};
 
     double info_xy_ui{0}, info_xy_uiz{0}, info_xz_ui{0}, info_yz_ui{0};
     double logC_xy_ui{0}, logC_xy_uiz{0}, logC_xz_ui{0}, logC_yz_ui{0};
@@ -442,9 +423,9 @@ double* getAllInfoNEW(const vector<vector<int>>& data,
 
     int Nyui{0}, Nui{0};
     int n_samples_zi{0};
-    std::fill(begin(Nxui), end(Nxui), 0);
-    std::fill(begin(Nx), end(Nx), 0);
-    std::fill(begin(Ny), end(Ny), 0);
+    TempVector<int> Nxui(r_list[0], 0);
+    TempVector<int> Nx(r_list[0], 0);
+    TempVector<int> Ny(r_list[1], 0);
     r_list[z] = all_levels[idxzi];
     TempVector<double> Pxyuiz(r_list[z], 0);
     TempVector<int> Nyuiz(r_list[z], 0);
@@ -507,9 +488,8 @@ double* getAllInfoNEW(const vector<vector<int>>& data,
         Nyui += Nxyuiz;
         Nxui[X] += Nxyuiz;
 
-        Nx[X] += Nxyuiz;  // 4
-        Ny[Y] += Nxyuiz;  // 4
-        Ntot += Nxyuiz;
+        Nx[X] += Nxyuiz;
+        Ny[Y] += Nxyuiz;
 
         Nxyuis += Nxyuiz;
       }
@@ -679,12 +659,6 @@ double* getAllInfoNEW(const vector<vector<int>>& data,
     //  logC2xy_ui=0;
     //}
 
-    // logC2xy_ui;
-    if (n_ui == 0)
-      testinfo_xy_ui = info3xy_ui - info2xy_ui - logC3xy_ui + logC2xy_ui;
-    else
-      testinfo_xy_ui = info3xy_ui - logC3xy_ui + info2xy_ui - logC2xy_ui;
-
     // NI(yz|ui)
     double info3yz_ui = 0.5 * (info_uiz_y + info_yui_z);
     double info2yz_ui = 0.5 * (info_ui_y + info_ui_z);
@@ -699,11 +673,6 @@ double* getAllInfoNEW(const vector<vector<int>>& data,
     //  info2yz_ui=0;
     //  logC2yz_ui=0;
     //}
-
-    // logC2yz_ui;
-    double testinfo_yz_ui = info3yz_ui - logC3yz_ui + info2yz_ui - logC2yz_ui;
-    if (n_ui == 0)
-      testinfo_yz_ui = info3yz_ui - info2yz_ui - logC3yz_ui + logC2yz_ui;
 
     // NI(xz|ui)
     double info3xz_ui = 0.5 * (info_xui_z + info_uiz_x);
@@ -723,11 +692,6 @@ double* getAllInfoNEW(const vector<vector<int>>& data,
     //  info2xz_ui=0;
     //  logC2xz_ui=0;
     //}
-
-    // logC2xz_ui;
-    double testinfo_xz_ui = info3xz_ui - logC3xz_ui + info2xz_ui - logC2xz_ui;
-    if (n_ui == 0)
-      testinfo_xz_ui = info3xz_ui - info2xz_ui - logC3xz_ui + logC2xz_ui;
 
     // NI(xy|uiz)
     double info3xy_uiz = 0.5 * (info_xuiz_y + info_yuiz_x);
@@ -766,7 +730,7 @@ double* getAllInfoNEW(const vector<vector<int>>& data,
     double yz = info_yz_ui - info_xy_ui;
     double xyz = info_xy_ui - info_xy_uiz;
 
-    if (k23 && reduced_levels[0] > 1 && reduced_levels[1] > 1) {
+    if (k23 && rx_reduced > 1 && ry_reduced > 1) {
       xz -= logC_xz_ui - logC_xy_ui;
       yz -= logC_yz_ui - logC_xy_ui;
       xyz -= logC_xy_ui - logC_xy_uiz;
