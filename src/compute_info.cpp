@@ -366,6 +366,8 @@ double* getAllInfoNEW(const vector<vector<int>>& data,
     int n_samples_with_z = sample_non_na_with_z.size();
 
     isGoodCandidate = true;
+    int rx_reduced = all_levels[id_x];
+    int ry_reduced = all_levels[id_y];
     if (n_samples_with_z < n_samples) {
       std::unordered_set<int> sx, sy;
       for (const auto i : sample_non_na_with_z) {
