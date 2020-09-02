@@ -7,13 +7,12 @@
 namespace miic {
 namespace computation {
 
-double* computeEnsInformationNew(structure::Environment&, int X, int Y,
-    const std::vector<int>& ui_list, const structure::TempVector<int>& zi_list,
-    int cplx);
+double* computeEnsInformationNew(
+    structure::Environment&, int X, int Y, const std::vector<int>& ui_list);
 void SearchForNewContributingNodeAndItsRank(structure::Environment&, int, int);
 // Continuous data
 double* computeEnsInformationContinuous(structure::Environment&, int X, int Y,
-    const std::vector<int>& ui_list, const std::vector<int>& zi_list, int cplx);
+    const std::vector<int>& ui_list);
 double get3PointInfo(structure::Environment&, int X, int Y, int Z,
     const std::vector<int>& ui_list);
 

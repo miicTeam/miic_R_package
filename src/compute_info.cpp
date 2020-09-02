@@ -25,15 +25,13 @@ using namespace miic::utility;
 using std::vector;
 
 double* getAllInfoNEW(const vector<vector<int>>& data,
-    const vector<int>& all_levels, int id_x, int id_y,
-    const vector<int>& ui_list, const TempVector<int>& zi_list,
-    int n_samples_eff, int cplx, int k23, const vector<double>& weights,
-    const TempGrid2d<double>& freqs1, bool test_mar,
+    const vector<int>& all_levels, int id_x, int id_y, int id_z,
+    const vector<int>& ui_list, int n_samples_eff, int cplx, int k23,
+    const vector<double>& weights, bool test_mar,
     std::shared_ptr<CtermCache> cache) {
   TempAllocatorScope scope;
 
   int n_ui = ui_list.size();
-  int n_zi = zi_list.size();
   int n_samples = data.size();
 
   // Output pointer
@@ -43,14 +41,14 @@ double* getAllInfoNEW(const vector<vector<int>>& data,
   //   nSample[z_top] & nSample[z_top]*I(xy|{ui})  & k_xy_ui
   //   z_top          & nSample[z_top]*I(xy|{ui}z) & k_xy_uiz
   //   R_top          & nSample[z_top]*I(xyz|{ui}) & k_xyz_ui
-  if (n_zi > 0) nbrRetValues = 9;
+  if (id_z != -1) nbrRetValues = 9;
 
   double* ptrRetValues = new double[nbrRetValues];
 
   ptrRetValues[0] = -1;
   ptrRetValues[1] = -1;
   ptrRetValues[2] = -1;
-  if (n_zi > 0) {
+  if (id_z != -1) {
     ptrRetValues[3] = -1;
     ptrRetValues[4] = -1;
     ptrRetValues[5] = -1;
@@ -148,162 +146,162 @@ double* getAllInfoNEW(const vector<vector<int>>& data,
     }
   }
 
-  int Nyui = 0;
-  int Nui = 0;
+  if (id_z == -1) {
+    int Nyui = 0;
+    int Nui = 0;
 
-  int X = sortedSample(0, 4);
-  int Y = sortedSample(0, 5);
+    int X = sortedSample(0, 4);
+    int Y = sortedSample(0, 5);
 
-  double info_xui_y{0}, info_yui_x{0}, info_ui_y {0}, info_ui_x {0};
-  double logC_xui_y{0}, logC_yui_x{0}, logC_ui_y {0}, logC_ui_x {0};
+    double info_xui_y{0}, info_yui_x{0}, info_ui_y{0}, info_ui_x{0};
+    double logC_xui_y{0}, logC_yui_x{0}, logC_ui_y{0}, logC_ui_x{0};
 
-  // 6 test variables for counts, should all sum to nSample0
-  int Nxyuis{0}, Nyuis{0}, Nxuis{0}, Nuis{0}, Nxs{0}, Nys{0}, Ntot{0};
+    // 6 test variables for counts, should all sum to nSample0
+    int Nxyuis{0}, Nyuis{0}, Nxuis{0}, Nuis{0}, Nxs{0}, Nys{0}, Ntot{0};
 
-  TempVector<int> Nxui(r_list[0], 0);
-  TempVector<int> Nx(r_list[0], 0);
-  TempVector<int> Ny(r_list[1], 0);
-  // initialization of counts and mutual infos & logCs
-  int Lxyui = sortedSample(0, 1);  // min Lxyui
-  int Lyui = sortedSample(0, 2);   // min Lyui
-  int Lui = sortedSample(0, 3);    // min Lui
-  double Pxyui = weights[sortedSample(0, 0)];
-  // make the counts and compute mutual infos & logCs
-  for (int k = 1; k <= n_samples_non_na; k++) {
-    if (sortedSample(k, 1) <= Lxyui) {
-      Pxyui += weights[sortedSample(k, 0)];  // weights[k];
-      continue;
-    }
-    Lxyui = sortedSample(k, 1);
-    int Nxyui = 0;
-    if (n_samples_eff != n_samples) {
-      if (randomrescaling) {
-        Nxyui = (int)floor(Pxyui);
-        double r = Pxyui - Nxyui;
-        double rr = R::runif(0, 1);
-        if (r > rr) ++Nxyui;
+    TempVector<int> Nxui(r_list[0], 0);
+    TempVector<int> Nx(r_list[0], 0);
+    TempVector<int> Ny(r_list[1], 0);
+    // initialization of counts and mutual infos & logCs
+    int Lxyui = sortedSample(0, 1);  // min Lxyui
+    int Lyui = sortedSample(0, 2);   // min Lyui
+    int Lui = sortedSample(0, 3);    // min Lui
+    double Pxyui = weights[sortedSample(0, 0)];
+    // make the counts and compute mutual infos & logCs
+    for (int k = 1; k <= n_samples_non_na; k++) {
+      if (sortedSample(k, 1) <= Lxyui) {
+        Pxyui += weights[sortedSample(k, 0)];  // weights[k];
+        continue;
       }
-    } else {
-      Nxyui = (int)Pxyui;
-    }
-
-    if (Nxyui > 0) {
-      Nui += Nxyui;
-      Nyui += Nxyui;
-      Nxui[X] += Nxyui;
-      Nx[X] += Nxyui;
-      Ny[Y] += Nxyui;
-      Ntot += Nxyui;
-      Nxyuis += Nxyui;
-
-      double NlogN = Nxyui * cache->getLog(Nxyui);
-      info_xui_y += NlogN;
-      info_yui_x += NlogN;
-    }
-    if (sortedSample(k, 0) < n_samples)
-      Pxyui = weights[sortedSample(k, 0)];  // weights[k];
-
-    if (k < n_samples_non_na) X = sortedSample(k, 4);
-    if (k < n_samples_non_na) Y = sortedSample(k, 5);
-
-    if (sortedSample(k, 2) <= Lyui) continue;
-    Lyui = sortedSample(k, 2);
-
-    if (Nyui > 0) {
-      double NlogN = Nyui * cache->getLog(Nyui);
-      info_yui_x -= NlogN;
-      info_ui_y += NlogN;
-      if (cplx != MDL) {
-        logC_yui_x += cache->getLogC(Nyui, r_list[0]);
-      }
-      Nyuis += Nyui;
-      Nyui = 0;
-    }
-
-    if (sortedSample(k, 3) <= Lui) continue;
-    Lui = sortedSample(k, 3);
-
-    for (int j = 0; j < r_list[0]; j++) {
-      int Nxuij = Nxui[j];
-      if (Nxuij > 0) {
-        double NlogN = Nxuij * cache->getLog(Nxuij);
-        info_xui_y -= NlogN;
-        info_ui_x += NlogN;
-        if (cplx != MDL) {
-          logC_xui_y += cache->getLogC(Nxuij, r_list[1]);
+      Lxyui = sortedSample(k, 1);
+      int Nxyui = 0;
+      if (n_samples_eff != n_samples) {
+        if (randomrescaling) {
+          Nxyui = (int)floor(Pxyui);
+          double r = Pxyui - Nxyui;
+          double rr = R::runif(0, 1);
+          if (r > rr) ++Nxyui;
         }
+      } else {
+        Nxyui = (int)Pxyui;
+      }
 
-        Nxuis += Nxuij;
-        Nxui[j] = 0;
+      if (Nxyui > 0) {
+        Nui += Nxyui;
+        Nyui += Nxyui;
+        Nxui[X] += Nxyui;
+        Nx[X] += Nxyui;
+        Ny[Y] += Nxyui;
+        Ntot += Nxyui;
+        Nxyuis += Nxyui;
+
+        double NlogN = Nxyui * cache->getLog(Nxyui);
+        info_xui_y += NlogN;
+        info_yui_x += NlogN;
+      }
+      if (sortedSample(k, 0) < n_samples)
+        Pxyui = weights[sortedSample(k, 0)];  // weights[k];
+
+      if (k < n_samples_non_na) X = sortedSample(k, 4);
+      if (k < n_samples_non_na) Y = sortedSample(k, 5);
+
+      if (sortedSample(k, 2) <= Lyui) continue;
+      Lyui = sortedSample(k, 2);
+
+      if (Nyui > 0) {
+        double NlogN = Nyui * cache->getLog(Nyui);
+        info_yui_x -= NlogN;
+        info_ui_y += NlogN;
+        if (cplx != MDL) {
+          logC_yui_x += cache->getLogC(Nyui, r_list[0]);
+        }
+        Nyuis += Nyui;
+        Nyui = 0;
+      }
+
+      if (sortedSample(k, 3) <= Lui) continue;
+      Lui = sortedSample(k, 3);
+
+      for (int j = 0; j < r_list[0]; j++) {
+        int Nxuij = Nxui[j];
+        if (Nxuij > 0) {
+          double NlogN = Nxuij * cache->getLog(Nxuij);
+          info_xui_y -= NlogN;
+          info_ui_x += NlogN;
+          if (cplx != MDL) {
+            logC_xui_y += cache->getLogC(Nxuij, r_list[1]);
+          }
+
+          Nxuis += Nxuij;
+          Nxui[j] = 0;
+        }
+      }
+
+      if (Nui > 0) {
+        double NlogN = Nui * cache->getLog(Nui);
+        info_ui_y -= NlogN;
+        info_ui_x -= NlogN;
+        if (cplx != MDL) {
+          logC_ui_x += cache->getLogC(Nui, r_list[0]);
+          logC_ui_y += cache->getLogC(Nui, r_list[1]);
+        }
+        Nuis += Nui;
+        Nui = 0;
+      }
+    }
+    // increment for info for Nx[X] and Ny[Y] contributions
+    for (int j = 0; j < r_list[0]; j++) {
+      int Nxj = Nx[j];
+      if (Nxj > 0) {
+        double NlogN = Nxj * log(Nxj / (1.0 * Ntot));
+        info_yui_x -= NlogN;
+        info_ui_x -= NlogN;
+        Nxs += Nxj;
+      }
+    }
+    for (int j = 0; j < r_list[1]; j++) {
+      int Nyj = Ny[j];
+      if (Nyj > 0) {
+        double NlogN = Nyj * log(Nyj / (1.0 * Ntot));
+        info_xui_y -= NlogN;
+        info_ui_y -= NlogN;
+        Nys += Nyj;
       }
     }
 
-    if (Nui > 0) {
-      double NlogN = Nui * cache->getLog(Nui);
-      info_ui_y -= NlogN;
-      info_ui_x -= NlogN;
-      if (cplx != MDL) {
-        logC_ui_x += cache->getLogC(Nui, r_list[0]);
-        logC_ui_y += cache->getLogC(Nui, r_list[1]);
-      }
-      Nuis += Nui;
-      Nui = 0;
+    // check maximum mutual infos - cplx terms
+    double info3xy_ui = 0.5 * (info_xui_y + info_yui_x);
+    double info2xy_ui = 0.5 * (info_ui_y + info_ui_x);
+
+    if (cplx == MDL) {
+      int Prui = 1;
+      double logN = cache->getLog(Ntot);
+      for (int j = 2; j < n_nodes_xyui; j++)
+        Prui *= r_list[j];
+      logC_xui_y = 0.5 * (r_list[1] - 1) * (r_list[0] * Prui - 1) * logN;
+      logC_yui_x = 0.5 * (r_list[0] - 1) * (r_list[1] * Prui - 1) * logN;
+      logC_ui_y = 0.5 * (r_list[1] - 1) * (Prui - 1) * logN;
+      logC_ui_x = 0.5 * (r_list[0] - 1) * (Prui - 1) * logN;
     }
-  }
-  // increment for info for Nx[X] and Ny[Y] contributions
-  for (int j = 0; j < r_list[0]; j++) {
-    int Nxj = Nx[j];
-    if (Nxj > 0) {
-      double NlogN = Nxj * log(Nxj / (1.0 * Ntot));
-      info_yui_x -= NlogN;
-      info_ui_x -= NlogN;
-      Nxs += Nxj;
-    }
-  }
-  for (int j = 0; j < r_list[1]; j++) {
-    int Nyj = Ny[j];
-    if (Nyj > 0) {
-      double NlogN = Nyj * log(Nyj / (1.0 * Ntot));
-      info_xui_y -= NlogN;
-      info_ui_y -= NlogN;
-      Nys += Nyj;
-    }
-  }
 
-  // check maximum mutual infos - cplx terms
-  double info3xy_ui = 0.5 * (info_xui_y + info_yui_x);
-  double info2xy_ui = 0.5 * (info_ui_y + info_ui_x);
+    double logC3xy_ui = 0.5 * (logC_xui_y + logC_yui_x);
+    double logC2xy_ui = 0.5 * (logC_ui_y + logC_ui_x);
 
-  if (cplx == MDL) {
-    int Prui = 1;
-    double logN = cache->getLog(Ntot);
-    for (int j = 2; j < n_nodes_xyui; j++)
-      Prui *= r_list[j];
-    logC_xui_y = 0.5 * (r_list[1] - 1) * (r_list[0] * Prui - 1) * logN;
-    logC_yui_x = 0.5 * (r_list[0] - 1) * (r_list[1] * Prui - 1) * logN;
-    logC_ui_y = 0.5 * (r_list[1] - 1) * (Prui - 1) * logN;
-    logC_ui_x = 0.5 * (r_list[0] - 1) * (Prui - 1) * logN;
-  }
+    // forbid negative 2-point Ik // change 20200206
+    // if(info3xy_ui - logC3xy_ui - info2xy_ui + logC2xy_ui<0) {
+    //  info3xy_ui=0;
+    //  logC3xy_ui=0;
+    //  info2xy_ui=0;
+    //  logC2xy_ui=0;
+    //}
 
-  double logC3xy_ui = 0.5 * (logC_xui_y + logC_yui_x);
-  double logC2xy_ui = 0.5 * (logC_ui_y + logC_ui_x);
+    int N_xy_ui{0};
+    double NIxy_ui = -1.0;
+    double k_xy_ui = -1.0;
+    N_xy_ui = Ntot;
+    NIxy_ui = info3xy_ui - info2xy_ui;  // info to be returned if no z
+    k_xy_ui = logC3xy_ui - logC2xy_ui;  // cplx to be returned if no z
 
-  // forbid negative 2-point Ik // change 20200206
-  // if(info3xy_ui - logC3xy_ui - info2xy_ui + logC2xy_ui<0) {
-  //  info3xy_ui=0;
-  //  logC3xy_ui=0;
-  //  info2xy_ui=0;
-  //  logC2xy_ui=0;
-  //}
-
-  int N_xy_ui{0};
-  double NIxy_ui = -1.0;
-  double k_xy_ui = -1.0;
-  N_xy_ui = Ntot;
-  NIxy_ui = info3xy_ui - info2xy_ui;  // info to be returned if no z
-  k_xy_ui = logC3xy_ui - logC2xy_ui;  // cplx to be returned if no z
-
-  if (n_zi == 0) {
     ptrRetValues[0] = N_xy_ui;
     ptrRetValues[1] = NIxy_ui;
     ptrRetValues[2] = k_xy_ui;
@@ -313,39 +311,44 @@ double* getAllInfoNEW(const vector<vector<int>>& data,
       ptrRetValues[1] = 0;
     }
     return ptrRetValues;
-  }
-  // n_zi > 0
-  // pick next z and compute score
-  int N_xyuiz_top = 0;
-  double NIxy_ui_top = -1;
-  double k_xy_ui_top = -1;
+  } else {
+    // id_z != -1
+    int N_xyuiz_top = 0;
+    double NIxy_ui_top = -1;
+    double k_xy_ui_top = -1;
 
-  int z_top = -1;
-  double NIxy_uiz_top = -1;
-  double k_xy_uiz_top = -1;
+    int z_top = -1;
+    double NIxy_uiz_top = -1;
+    double k_xy_uiz_top = -1;
 
-  double R_top = std::numeric_limits<double>::lowest();
-  double NIxyz_ui_top = -1;
-  double k_xyz_ui_top = -1;
+    double R_top = std::numeric_limits<double>::lowest();
+    double NIxyz_ui_top = -1;
+    double k_xyz_ui_top = -1;
 
-  int z = n_nodes_xyui;
-  for (int zi = 0; zi < n_zi; zi++) {
+    ptrRetValues[0] = N_xyuiz_top;
+    ptrRetValues[1] = NIxy_ui_top;
+    ptrRetValues[2] = k_xy_ui_top;
+
+    ptrRetValues[3] = z_top;
+    ptrRetValues[4] = NIxy_uiz_top;
+    ptrRetValues[5] = k_xy_uiz_top;
+
+    ptrRetValues[6] = R_top;
+    ptrRetValues[7] = NIxyz_ui_top;
+    ptrRetValues[8] = k_xyz_ui_top;
+
+    int z = n_nodes_xyui;
     TempAllocatorScope scope;
 
-    int idxzi = zi_list[zi];
-
     int kz0{0};
-    bool isGoodCandidate = false;
     for (int k = 0; k < n_samples_non_na; k++) {
       int i = sortedSample(k, 0);
       // find the first sample for which zi does not contain NA
-      if (data[i][idxzi] > -1) {
+      if (data[i][id_z] > -1) {
         kz0 = k;
-        isGoodCandidate = true;
         break;
       }
     }
-    if (!isGoodCandidate) continue;
 
     TempVector<int> sample_non_na_with_z;
     sample_non_na_with_z.reserve(n_samples);
@@ -358,14 +361,13 @@ double* getAllInfoNEW(const vector<vector<int>>& data,
           break;
         }
       }
-      if (data[i][idxzi] == -1) ok = false;
+      if (data[i][id_z] == -1) ok = false;
 
       if (ok) sample_non_na_with_z.push_back(i);
     }
     sample_non_na_with_z.shrink_to_fit();
     int n_samples_with_z = sample_non_na_with_z.size();
 
-    isGoodCandidate = true;
     int rx_reduced = all_levels[id_x];
     int ry_reduced = all_levels[id_y];
     if (n_samples_with_z < n_samples) {
@@ -376,24 +378,7 @@ double* getAllInfoNEW(const vector<vector<int>>& data,
       }
       rx_reduced = sx.size();
       ry_reduced = sy.size();
-
-      if (test_mar) {
-        TempAllocatorScope scope;
-
-        TempGrid2d<int> counts2(all_levels[id_x], all_levels[id_y], 0);
-        // fill table
-        for (int k = 0; k < n_samples_with_z; k++) {
-          int i = sample_non_na_with_z[k];
-          ++counts2(data[i][id_x], data[i][id_y]);
-        }
-        double cplxMdl = cache->getLog(n_samples_with_z);
-        double kldiv = exp(-n_samples_with_z * kl(counts2, freqs1) + cplxMdl);
-
-        if (kldiv < 1) isGoodCandidate = false;
-      }
     }
-
-    if (!isGoodCandidate) continue;
 
     // Initialze variables
     int Lxyui = sortedSample(kz0, 1);  // min Lxyui
@@ -403,7 +388,7 @@ double* getAllInfoNEW(const vector<vector<int>>& data,
     int X = sortedSample(kz0, 4);
     int Y = sortedSample(kz0, 5);
     int i_sample = sortedSample(kz0, 0);
-    int Z = data[i_sample][idxzi];  // first Z
+    int Z = data[i_sample][id_z];  // first Z
     // to terminate loop properly below
     sortedSample(n_samples_non_na, 0) = i_sample;
 
@@ -428,7 +413,7 @@ double* getAllInfoNEW(const vector<vector<int>>& data,
     TempVector<int> Nxui(r_list[0], 0);
     TempVector<int> Nx(r_list[0], 0);
     TempVector<int> Ny(r_list[1], 0);
-    r_list[z] = all_levels[idxzi];
+    r_list[z] = all_levels[id_z];
     TempVector<double> Pxyuiz(r_list[z], 0);
     TempVector<int> Nyuiz(r_list[z], 0);
     TempVector<int> Nuiz(r_list[z], 0);
@@ -438,7 +423,7 @@ double* getAllInfoNEW(const vector<vector<int>>& data,
     // make the counts and compute mutual infos & logCs
     for (int k = kz0 + 1; k <= n_samples_non_na; k++) {
       // check whether zi contains NA
-      Z = data[sortedSample(k, 0)][idxzi];
+      Z = data[sortedSample(k, 0)][id_z];
       if (Z == -1) continue;
 
       if (sortedSample(k, 1) <= Lxyui) {
@@ -759,7 +744,7 @@ double* getAllInfoNEW(const vector<vector<int>>& data,
       NIxy_ui_top = info_xy_ui;
       k_xy_ui_top = logC_xy_ui;
 
-      z_top = zi;
+      z_top = 0;
       NIxy_uiz_top = info_xy_uiz;
       k_xy_uiz_top = logC_xy_uiz;
 
@@ -768,20 +753,20 @@ double* getAllInfoNEW(const vector<vector<int>>& data,
       // to fit eq(20) and eq(22) in BMC Bioinfo 2016
       k_xyz_ui_top = -logC_xy_ui + logC_xy_uiz;
     }
-  }  // end loop on all z
 
-  ptrRetValues[0] = N_xyuiz_top;
-  ptrRetValues[1] = NIxy_ui_top;
-  ptrRetValues[2] = k_xy_ui_top;
+    ptrRetValues[0] = N_xyuiz_top;
+    ptrRetValues[1] = NIxy_ui_top;
+    ptrRetValues[2] = k_xy_ui_top;
 
-  ptrRetValues[3] = z_top;
-  ptrRetValues[4] = NIxy_uiz_top;
-  ptrRetValues[5] = k_xy_uiz_top;
+    ptrRetValues[3] = z_top;
+    ptrRetValues[4] = NIxy_uiz_top;
+    ptrRetValues[5] = k_xy_uiz_top;
 
-  ptrRetValues[6] = R_top;
-  ptrRetValues[7] = NIxyz_ui_top;
-  ptrRetValues[8] = k_xyz_ui_top;
-  return ptrRetValues;
+    ptrRetValues[6] = R_top;
+    ptrRetValues[7] = NIxyz_ui_top;
+    ptrRetValues[8] = k_xyz_ui_top;
+    return ptrRetValues;
+  }  // if id_z != -1
 }
 
 }  // namespace computation
