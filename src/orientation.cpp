@@ -2,9 +2,11 @@
 
 #define _USE_MATH_DEFINES
 #include <cmath>
+#include <tuple>  // std::tie
 #include <map>
 
 #include "compute_ens_information.h"
+#include "linear_allocator.h"
 #include "proba_orientation.h"
 
 namespace miic {
@@ -15,43 +17,13 @@ using std::vector;
 using std::fabs;
 using namespace miic::computation;
 using namespace miic::structure;
+using namespace miic::utility;
 
 namespace {
 
 bool acceptProba(double proba, double ori_proba_ratio) {
   if (proba <= 0.5) return false;
   return (1 - proba) / proba < ori_proba_ratio;
-}
-
-double getI3(Environment& environment, const Triple& t) {
-  int posX{t[0]}, posZ{t[1]}, posY{t[2]};
-
-  vector<int> ui_no_z(environment.edges[posX][posY].shared_info->ui_list);
-  ui_no_z.erase(remove(begin(ui_no_z), end(ui_no_z), posZ), end(ui_no_z));
-
-  double* res = NULL;
-  double Ixyz_ui = -1;
-  double cplx = -1;
-  if (!environment.is_continuous[posX] && !environment.is_continuous[posZ] &&
-      !environment.is_continuous[posY]) {
-    utility::TempAllocatorScope scope;
-    res = computeEnsInformationNew(environment, posX, posY, ui_no_z,
-        TempVector<int>{posZ}, environment.cplx);
-    Ixyz_ui = res[7];
-    cplx = res[8];
-    if (environment.degenerate) cplx += log(3.0);
-    // To fit eq(20) and eq(22) in BMC Bioinfo 2016
-    if (environment.is_k23) Ixyz_ui += cplx;
-  } else {
-    res = computeEnsInformationContinuous_Orientation(
-        environment, posX, posY, ui_no_z, posZ, environment.cplx);
-    Ixyz_ui = res[1];
-    cplx = res[2];
-    if (environment.degenerate) cplx += log(3.0);
-    if (environment.is_k23) Ixyz_ui -= cplx;
-  }
-  delete[] res;
-  return Ixyz_ui;
 }
 
 // y2x: probability that there is an arrow from node y to x
@@ -104,7 +76,15 @@ vector<vector<string>> orientationProbability(Environment& environment) {
   // Compute the 3-point mutual info (N * I'(X;Y;Z|{ui})) for each triple
   vector<double> I3_list(triples.size());
   std::transform(begin(triples), end(triples), begin(I3_list),
-      [&environment](const auto& t) { return getI3(environment, t); });
+      [&environment](const auto& t) {
+        TempAllocatorScope scope;
+        int X{t[0]}, Z{t[1]}, Y{t[2]};
+        const auto& ui_list = environment.edges[X][Y].shared_info->ui_list;
+        vector<int> ui_no_z(ui_list);
+        ui_no_z.erase(remove(begin(ui_no_z), end(ui_no_z), Z), end(ui_no_z));
+
+        return get3PointInfo(environment, X, Y, Z, ui_no_z);
+      });
 
   // Compute the arrowhead probability of each edge endpoint
   vector<ProbaArray> probas_list = getOriProbasList(triples, I3_list,
