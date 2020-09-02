@@ -71,7 +71,7 @@ List mydiscretizeMutual(List input_data, List arg_list) {
 
   int niterations = 0;
   int i = 0;
-  double max_res_ef;
+  double max_res_ef = -1;
   vector<vector<int>> iterative_cutpoints(
       STEPMAX * maxbins, vector<int>(nbrU + 2));
   for (int l = 0; l < STEPMAX + 1; l++) {

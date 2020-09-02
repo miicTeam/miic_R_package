@@ -855,8 +855,8 @@ vector<double> compute_Ixy_cond_u_new_alg1(const TempGrid2d<int>& data,
   TempVector<int> r_old(r);  // copy
   int U_counter;
 
-  int sc_levels_x;  // Number of levels of the first variable
-  int sc_levels_y;  // Number of levels of the second variable
+  int sc_levels_x{0};  // Number of levels of the first variable
+  int sc_levels_y{0};  // Number of levels of the second variable
   flag1 = 0;
   int max_U_counter = 3;
   int np;  // number of possible cuts for combinatorial term
