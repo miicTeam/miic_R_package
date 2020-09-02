@@ -60,9 +60,7 @@ double computeContributingScores(Environment& environment, int X, int Y, int Z,
             cnt_red.begin(), cnt_red.end(), [](int x) { return x == 0; })) {
       TempAllocatorScope scope;
 
-      TempGrid2d<double> jointFreqs =
-          getJointFreqs(environment, X, Y, sample_is_not_NA);
-
+      TempGrid2d<double> jointFreqs = getJointFreqs(environment, X, Y);
       // call discrete code
       double* res = getAllInfoNEW(environment.data_numeric, environment.levels,
           X, Y, ui_list, TempVector<int>{Z}, environment.n_eff,
@@ -255,50 +253,6 @@ double* computeEnsInformationContinuous(Environment& environment, int X, int Y,
     res_new[0] = environment.n_samples;
     res_new[1] = -1;
     res_new[2] = -DBL_MAX;
-    double* res;
-
-    TempVector<int> zi_indices;
-
-    // If x, y and uis are discrete we can put togheter all zi that are discrete
-    // in a vector and evaluate them in one shot as discrete.
-    if (!environment.is_continuous[X] && !environment.is_continuous[Y] &&
-        std::all_of(begin(ui_list), end(ui_list),
-            [&environment](int i) { return !environment.is_continuous[i]; })) {
-      TempVector<int> zi_discrete;
-      zi_discrete.reserve(n_zi);
-      zi_indices.reserve(n_zi);
-      for (int i = 0; i < n_zi; ++i) {
-        if (environment.is_continuous[zi_list[i]])
-          zi_indices.push_back(i);
-        else
-          zi_discrete.push_back(zi_list[i]);
-      }
-      zi_discrete.shrink_to_fit();
-      zi_indices.shrink_to_fit();
-      if (!zi_discrete.empty()) {
-        TempAllocatorScope scope;
-
-        TempVector<int> posZi(zi_discrete.size());
-        int pos = 0;
-        for (int i = 0; i < n_zi; i++) {
-          if (!environment.is_continuous[zi_list[i]]) posZi[pos++] = i;
-        }
-        TempGrid2d<double> jointFreqs = getJointFreqs(environment, X, Y);
-        res = getAllInfoNEW(environment.data_numeric, environment.levels, X, Y,
-            ui_list, zi_discrete, environment.n_eff, cplx, environment.is_k23,
-            environment.sample_weights, jointFreqs, environment.test_mar,
-            environment.cache.cterm);
-
-        // update res new, it will be compared to the continuous variables
-        res_new[2] = res[6];
-        if (res[3] >= 0) {
-          res_new[1] = posZi[int(res[3])];
-        }
-        res_new[0] = res[0];
-        delete[] res;
-      }
-      n_zi -= zi_discrete.size();
-    }
 
     int n_samples_nonNA = getNumSamplesNonNA(environment, X, Y);
 #ifdef _OPENMP
@@ -308,16 +262,14 @@ double* computeEnsInformationContinuous(Environment& environment, int X, int Y,
 #endif
     for (int iz = 0; iz < n_zi; iz++) {
       int Z = zi_list[iz];
-      if (!zi_indices.empty()) Z = zi_list[zi_indices[iz]];
       double score = computeContributingScores(
           environment, X, Y, Z, ui_list, n_samples_nonNA);
+#ifdef _OPENMP
+#pragma omp critical
+#endif
       if (score > res_new[2]) {
         res_new[2] = score;
-        if (zi_indices.empty()) {
-          res_new[1] = iz;
-        } else {
-          res_new[1] = zi_indices[iz];
-        }
+        res_new[1] = iz;
       }
     }
   }
