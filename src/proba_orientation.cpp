@@ -1,11 +1,10 @@
 #include "proba_orientation.h"
 
-#include <Rcpp.h>
-
 #include <algorithm>
 #define _USE_MATH_DEFINES
 #include <cmath>
-#include <numeric>
+#include <numeric>  // std::iota
+#include <tuple>  // std::tie
 
 namespace miic {
 namespace reconstruction {

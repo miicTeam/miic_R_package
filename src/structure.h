@@ -1,10 +1,8 @@
 #ifndef MIIC_STRUCTURE_H_
 #define MIIC_STRUCTURE_H_
 
-#include <Rcpp.h>
-
-#include <array>
-#include <memory>  // std::shared_ptr
+#include <functional>  // std::reference_wrapper
+#include <memory>      // std::shared_ptr
 #include <set>
 #include <string>
 #include <type_traits>

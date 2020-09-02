@@ -1,5 +1,7 @@
 #include "cycle_tracker.h"
 
+#include <algorithm>  // std::sort, std::none_of
+
 namespace miic {
 namespace reconstruction {
 namespace detail {

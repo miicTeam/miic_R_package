@@ -14,7 +14,7 @@
 namespace miic {
 namespace structure {
 
-namespace structure_impl {
+namespace detail {
 
 using std::string;
 using std::vector;
@@ -105,8 +105,8 @@ struct Environment {
   void readBlackbox(const vector<vector<int>>&);
 };
 
-}  // namespace structure_impl
-using structure_impl::Environment;
+}  // namespace detail
+using detail::Environment;
 }  // namespace structure
 }  // namespace miic
 

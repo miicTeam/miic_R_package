@@ -1,9 +1,6 @@
 #include "skeleton.h"
 
-#include <Rcpp.h>
-
 #include <algorithm>  // std::sort, std::max_element
-#include <string>
 #include <vector>
 
 #ifdef _OPENMP
@@ -14,18 +11,15 @@
 #include "structure.h"
 #include "utilities.h"
 
-using Rcpp::Rcout;
 using Rcpp::Rcerr;
-using std::endl;
+using Rcpp::Rcout;
 using std::vector;
 using namespace miic::computation;
-using namespace miic::reconstruction;
 using namespace miic::structure;
 using namespace miic::utility;
 
 template <bool latent = false>
-void searchAndSetZi(
-    Environment& environment, const int posX, const int posY) {
+void searchAndSetZi(Environment& environment, const int posX, const int posY) {
   // Search candidate nodes for the separation set of X and Y
   int numZiPos = 0;
   for (int c = 0; c < environment.n_nodes; c++) {
@@ -38,11 +32,10 @@ void searchAndSetZi(
   }
 
   if (environment.verbose)
-    Rcout << "The number of neighbours is: " << numZiPos << endl;
+    Rcout << "The number of neighbours is: " << numZiPos << "\n";
 }
 
-void searchAndSetZi(
-    Environment& environment, const int posX, const int posY) {
+void searchAndSetZi(Environment& environment, const int posX, const int posY) {
   if (environment.latent)
     return searchAndSetZi<true>(environment, posX, posY);
   else
@@ -247,7 +240,7 @@ bool firstStepIteration(Environment& environment, BiconnectedComponent& bcc) {
 
 bool skeletonIteration(Environment& environment) {
   if (environment.verbose)
-    Rcout << "Number of numSearchMore: " << environment.numSearchMore << endl;
+    Rcout << "Number of numSearchMore: " << environment.numSearchMore << "\n";
 
   auto& unsettled_list = environment.unsettled_list;
 
@@ -272,14 +265,14 @@ bool skeletonIteration(Environment& environment) {
     int X = it_max->X;
     int Y = it_max->Y;
     if (environment.verbose)
-      Rcout << "Pos x : " << X << " , pos y: " << Y << endl;
+      Rcout << "Pos x : " << X << " , pos y: " << Y << "\n";
 
     auto top_info = environment.edges[X][Y].shared_info;
 
     if (environment.verbose) Rcout << "# Before adding new zi to {ui}: ";
     // Reinit ui.vect, z.name, zi.vect, z.name.idx
     if (environment.verbose) {
-      Rcout << "# DO: Add new zi to {ui}: " << top_info->z_name_idx << endl;
+      Rcout << "# DO: Add new zi to {ui}: " << top_info->z_name_idx << "\n";
     }
     // move top z_name_idx from zi_vect to ui_vect
     top_info->ui_list.push_back(top_info->zi_list[top_info->z_name_idx]);
@@ -320,7 +313,7 @@ bool skeletonIteration(Environment& environment) {
       Rcout << "environment.log_eta " << environment.log_eta << "\n";
       Rcout << "IsPhantom? "
             << (top_info->Ixy_ui - top_info_kxy_ui - environment.log_eta <= 0)
-            << endl;
+            << "\n";
     }
     if (top_info->Ixy_ui - top_info_kxy_ui - environment.log_eta <= 0) {
       // Conditional independence found, remove edge

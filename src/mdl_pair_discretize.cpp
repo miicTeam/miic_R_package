@@ -1,45 +1,27 @@
 #include <Rcpp.h>
-#include <float.h>
-#include <limits.h>
-#include <math.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <time.h>
-#include <unistd.h>
 
-#include <algorithm>
-#include <iostream>
-#include <map>
-#include <sstream>
-#include <string>
-#include <tuple>
+#include <algorithm>  // std::max_element
+#include <numeric>  // std::iota
 
-#include "compute_info.h"
 #include "info_cnt.h"
-#include "mutual_information.h"
+#include "linear_allocator.h"
 #include "utilities.h"
 
 #define STEPMAX 50
-#define STEPMAXOUTER 50
-#define EPS 1e-5
-#define FLAG_CPLX 1
 
 using Rcpp::_;
-using Rcpp::as;
-using Rcpp::DataFrame;
 using Rcpp::List;
-using std::string;
+using Rcpp::NumericMatrix;
 using std::vector;
-using namespace Rcpp;
 using namespace miic::computation;
 using namespace miic::structure;
 using namespace miic::utility;
 
 // [[Rcpp::export]]
-List mydiscretizeMutual(List input_data, List arg_list){
-  miic::structure::Environment environment(input_data, arg_list);
+List mydiscretizeMutual(List input_data, List arg_list) {
+  Environment environment(input_data, arg_list);
   int maxbins = environment.maxbins;
-  int nbrU = environment.n_nodes-2;
+  int nbrU = environment.n_nodes - 2;
 
   int max_level =
       *std::max_element(begin(environment.levels), end(environment.levels));
@@ -55,17 +37,14 @@ List mydiscretizeMutual(List input_data, List arg_list){
 
   li_alloc_ptr = std::make_unique<LinearAllocator>(li_alloc_size);
 
-  vector<int> posArray(nbrU + 2);
-  for (int i = 0; i < (nbrU + 2); i++)
-    posArray[i] = i;
-  vector<int> temp_ui_list(nbrU);
-  std::iota(begin(temp_ui_list), end(temp_ui_list), 2);
+  vector<int> ui_list(nbrU);
+  std::iota(begin(ui_list), end(ui_list), 2);
 
   // Mark rows containing NAs and count the number of complete samples
   TempVector<int> sample_nonNA(environment.n_samples);
   TempVector<int> NAs_count(environment.n_samples);
   int samplesNotNA =
-      count_non_NAs(0, 1, temp_ui_list, sample_nonNA, NAs_count, environment);
+      count_non_NAs(0, 1, ui_list, sample_nonNA, NAs_count, environment);
 
   // Allocate data reducted *_red without rows containing NAs
   // All *_red variables are passed to the optimization routine
@@ -76,9 +55,9 @@ List mydiscretizeMutual(List input_data, List arg_list){
   TempGrid2d<int> dataNumeric_red(nbrU + 2, samplesNotNA);
   TempGrid2d<int> dataNumericIdx_red(nbrU + 2, samplesNotNA);
 
-  bool flag_sample_weights = filter_NAs(0, 1, temp_ui_list, AllLevels_red,
-      cnt_red, posArray_red, dataNumeric_red, dataNumericIdx_red,
-      sample_weights_red, sample_nonNA, NAs_count, environment);
+  bool flag_sample_weights = filter_NAs(0, 1, ui_list, AllLevels_red, cnt_red,
+      posArray_red, dataNumeric_red, dataNumericIdx_red, sample_weights_red,
+      sample_nonNA, NAs_count, environment);
 
   int** iterative_cuts = (int**)calloc(STEPMAX + 1, sizeof(int*));
   for (int i = 0; i < STEPMAX + 1; i++) {
@@ -93,8 +72,8 @@ List mydiscretizeMutual(List input_data, List arg_list){
   int niterations = 0;
   int i = 0;
   double max_res_ef;
-  vector<vector<int> > iterative_cutpoints(
-    STEPMAX * maxbins, vector<int>(nbrU + 2));
+  vector<vector<int>> iterative_cutpoints(
+      STEPMAX * maxbins, vector<int>(nbrU + 2));
   for (int l = 0; l < STEPMAX + 1; l++) {
     if (iterative_cuts[l][0] == -1) {
       niterations = l;

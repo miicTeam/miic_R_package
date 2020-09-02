@@ -1,11 +1,11 @@
 #include <Rcpp.h>
 
-#include <chrono>
 #include <string>
 #include <vector>
 
 #include "biconnected_component.h"
 #include "confidence_cut.h"
+#include "cycle_tracker.h"
 #include "orientation.h"
 #include "skeleton.h"
 #include "utilities.h"

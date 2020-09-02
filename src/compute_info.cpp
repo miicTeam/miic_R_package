@@ -2,7 +2,7 @@
 
 #define _USE_MATH_DEFINES
 #include <cmath>
-#include <limits>
+#include <limits>  // std::numeric_limits
 #include <unordered_set>
 
 #include "structure.h"

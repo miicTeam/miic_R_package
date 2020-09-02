@@ -2,9 +2,7 @@
 #define MIIC_RECONSTRUCT_H_
 
 #include "biconnected_component.h"
-#include "cycle_tracker.h"
 #include "environment.h"
-#include "structure.h"
 
 namespace miic {
 namespace reconstruction {

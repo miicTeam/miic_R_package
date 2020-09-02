@@ -1,13 +1,11 @@
 #include "compute_ens_information.h"
 
-#include <float.h>
-#include <math.h>
-
-#include <set>
-#include <vector>
 #ifdef _OPENMP
 #include <omp.h>
 #endif
+
+#include <set>
+#include <vector>
 
 #include "compute_info.h"
 #include "info_cnt.h"

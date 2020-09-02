@@ -2,7 +2,7 @@
 
 #include <numeric>  // std::accumulate
 
-#include "compute_info.h"
+#include "linear_allocator.h"
 #include "mutual_information.h"
 #include "structure.h"
 

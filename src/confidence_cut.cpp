@@ -1,7 +1,5 @@
 #include "confidence_cut.h"
 
-#include <Rcpp.h>
-
 #include <set>
 
 #include "compute_ens_information.h"

@@ -1,13 +1,11 @@
 #include "utilities.h"
 
-#include <Rcpp.h>
-
+#include <algorithm>
 #define _USE_MATH_DEFINES
 #include <cmath>
-#include <sstream>
-#include <iterator>
-#include <limits>
+#include <iterator>  // std::ostream_iterator
 #include <map>
+#include <sstream>  //std::stringstream
 #include <string>
 #include <vector>
 
@@ -15,10 +13,6 @@
 #include "compute_info.h"
 #include "nanoflann.h"
 
-// for memory space on continuous data
-#define MAX_NBRUI 10
-#define N_COL_NML 1000
-#define MAGNITUDE_TIES 0.00005f
 #define KNN_K 5
 
 namespace miic {

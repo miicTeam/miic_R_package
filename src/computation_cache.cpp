@@ -2,7 +2,7 @@
 
 namespace miic {
 namespace computation {
-namespace computation_impl {
+namespace detail {
 
 double CtermCache::getLogC(int n, int level) {
   if (n == 0 || level == 0) return 0;
@@ -59,6 +59,6 @@ double CtermCache::getLogC(int n, int level) {
   }
 }
 
-}  // namespace computation_impl
+}  // namespace detail
 }  // namespace computation
 }  // namespace miic

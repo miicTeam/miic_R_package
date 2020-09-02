@@ -9,7 +9,7 @@
 namespace miic {
 namespace computation {
 
-namespace computation_impl {
+namespace detail {
 
 using std::vector;
 using structure::Grid2d;
@@ -62,9 +62,9 @@ struct CompCache {
   CompCache(int n_samples) : cterm(std::make_shared<CtermCache>(n_samples)) {}
   CompCache() = default;
 };
-}  // namespace computation_impl
-using computation_impl::CompCache;
-using computation_impl::CtermCache;
+}  // namespace detail
+using detail::CompCache;
+using detail::CtermCache;
 }  // namespace computation
 }  // namespace miic
 

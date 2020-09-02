@@ -3,10 +3,6 @@
 #ifndef MIIC_INFO_CNT_H_
 #define MIIC_INFO_CNT_H_
 
-#include <algorithm>
-#include <functional>
-#include <vector>
-
 #include "environment.h"
 #include "structure.h"
 
