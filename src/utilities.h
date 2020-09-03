@@ -48,15 +48,6 @@ bool filter_NAs(int X, int Y, const std::vector<int>& ui_list,
 
 bool checkInterrupt();
 
-double lookupScore(int X, int Y, const std::vector<int>& ui_list, int z,
-    structure::Environment& environment);
-void lookupScore(int X, int Y, const std::vector<int>& ui_list, int z,
-    double* score, structure::Environment& environment);
-void saveScore(int X, int Y, const std::vector<int>& ui_list, int z,
-    double score, structure::Environment& environment);
-void saveScore(int X, int Y, const std::vector<int>& ui_list, int z,
-    double* score, structure::Environment& environment);
-
 }  // namespace utility
 }  // namespace miic
 

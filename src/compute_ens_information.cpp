@@ -7,6 +7,7 @@
 #define _USE_MATH_DEFINES
 #include <cmath>
 #include <limits>
+#include <tuple>
 
 #include "compute_info.h"
 #include "info_cnt.h"
@@ -22,99 +23,27 @@ using std::vector;
 
 constexpr double kPrecision = 1.e-10;
 
-namespace {
-
-double computeContributingScores(
-    Environment& environment, int X, int Y, int Z, const vector<int>& ui_list) {
+// Return either (when bool get_info == true)
+//   shifted 3-point information I(X;Y;Z|ui) - k(X;Y;Z|ui),
+// or (when bool get_info == false)
+//   score of Z as a candidate separating node w.r.t. (X,Y|ui),
+// since the two quantities are both of type double and are always computed at
+// the same time, but are never required at the same time.
+double getInfo3PointOrScore(Environment& environment, int X, int Y, int Z,
+    const vector<int>& ui_list, bool get_info) {
   TempAllocatorScope scope;
+  auto& cache = environment.cache.info_score;
 
-  double output_score = lookupScore(X, Y, ui_list, Z, environment);
-  if (output_score != -1) return output_score;
-
-  // Mark rows containing NAs and count the number of complete samples
-  // 1: sample contains no NA, 0: sample contains NA
-  TempVector<int> sample_is_not_NA(environment.n_samples);
-  TempVector<int> NAs_count(environment.n_samples);
-  int n_samples_non_na_z =
-      count_non_NAs(X, Y, ui_list, sample_is_not_NA, NAs_count, environment, Z);
-  if (n_samples_non_na_z <= 2) {
-    double output_score = std::numeric_limits<double>::lowest();
-    saveScore(X, Y, ui_list, Z, output_score, environment);
-    return output_score;
-  }
-
-  int n_ui = ui_list.size();
-  // Allocate data reduced *_red without rows containing NAs
-  // All *_red variables are passed to the optimization routine
-  TempVector<double> sample_weights_red(n_samples_non_na_z);
-  TempGrid2d<int> data_numeric_idx_red(n_ui + 3, n_samples_non_na_z);
-  TempGrid2d<int> data_numeric_red(n_ui + 3, n_samples_non_na_z);
-  TempVector<int> all_levels_red(n_ui + 3);
-  TempVector<int> cnt_red(n_ui + 3);
-  TempVector<int> posArray_red(n_ui + 3);
-
-  bool flag_sample_weights = filter_NAs(X, Y, ui_list, all_levels_red, cnt_red,
-      posArray_red, data_numeric_red, data_numeric_idx_red, sample_weights_red,
-      sample_is_not_NA, NAs_count, environment, Z);
-
-  // we do not want to add a z if x or y have only one bin
-  bool ok = all_levels_red[0] > 1 && all_levels_red[1] > 1;
-
-  int n_samples_nonNA = getNumSamplesNonNA(environment, X, Y);
-  if (ok && environment.test_mar && n_samples_nonNA != n_samples_non_na_z) {
-    double kldiv = compute_kl_divergence(X, Y, environment, n_samples_non_na_z,
-        all_levels_red, sample_is_not_NA);
-    double cplxMdl = environment.cache.cterm->getLog(n_samples_non_na_z);
-
-    if ((kldiv - cplxMdl) > 0) {
-      // the sample is not representative of the population, hence we do
-      // not want this z as possible z
-      ok = false;
-    }
-  }
-  if (!ok) {
-    double output_score = std::numeric_limits<double>::lowest();
-    saveScore(X, Y, ui_list, Z, output_score, environment);
-    return output_score;
-  }
-
-  if (std::all_of(begin(cnt_red), end(cnt_red), [](int x) { return x == 0; })) {
-    double* res = getAllInfoNEW(environment.data_numeric, environment.levels, X,
-        Y, Z, ui_list, environment.n_eff, environment.cplx, environment.is_k23,
-        environment.sample_weights, environment.test_mar,
-        environment.cache.cterm);
-    output_score = res[6];
-    delete[] res;
+  if (get_info) {
+    double info{0};
+    bool found{false};
+    std::tie(info, found) = cache->getInfo3Point(X, Y, Z, ui_list);
+    if (found) return info;
   } else {
-    double* res = compute_Rscore_Ixyz_alg5(data_numeric_red,
-        data_numeric_idx_red, all_levels_red, cnt_red, posArray_red, n_ui,
-        n_ui + 2, n_samples_non_na_z, sample_weights_red, flag_sample_weights,
-        environment);
-    output_score = res[0];
-    delete[] res;
-  }
-  if (std::fabs(output_score) < kPrecision) output_score = 0;
-
-  saveScore(X, Y, ui_list, Z, output_score, environment);
-  return output_score;
-}
-
-}  // anonymous namespace
-
-// Computes the two point information X;Y|Ui and the three point information
-// X;Y;Z|Ui
-double get3PointInfo(
-    Environment& environment, int X, int Y, int Z, const vector<int>& ui_list) {
-  TempAllocatorScope scope;
-
-  double* res_new = new double[3];
-  res_new[0] = -1;
-
-  lookupScore(X, Y, ui_list, Z, res_new, environment);
-  if (res_new[0] != -1) {
-    double I3 = res_new[1] - res_new[2];
-    delete[] res_new;
-    return I3;
+    double score{std::numeric_limits<double>::lowest()};
+    bool found{false};
+    std::tie(score, found) = cache->getScore(X, Y, Z, ui_list);
+    if (found) return score;
   }
 
   // Mark rows containing NAs and count the number of complete samples
@@ -126,12 +55,14 @@ double get3PointInfo(
       count_non_NAs(X, Y, ui_list, sample_is_not_NA, NAs_count, environment, Z);
 
   if (n_samples_non_na_z <= 2) {  // not sufficient statistics
-    res_new[0] = n_samples_non_na_z;
-    res_new[1] = 0;  // Ixyz
-    res_new[2] = 0;  // cplx Ixyz
-    saveScore(X, Y, ui_list, Z, res_new, environment);
-    delete[] res_new;
-    return 0;
+    if (get_info) {
+      cache->saveInfo3Point(X, Y, Z, ui_list, 0);
+      return 0;
+    } else {
+      double score = std::numeric_limits<double>::lowest();
+      cache->saveScore(X, Y, Z, ui_list, score);
+      return score;
+    }
   }
 
   int n_ui = ui_list.size();
@@ -148,7 +79,8 @@ double get3PointInfo(
       posArray_red, data_numeric_red, data_numeric_idx_red, sample_weights_red,
       sample_is_not_NA, NAs_count, environment, Z);
 
-  // If X or Y has only 1 level, the 3-point information should be zero
+  // If X or Y has 1 or less level, the 3-point information should be zero, and
+  // the score should be low
   bool ok = all_levels_red[0] > 1 && all_levels_red[1] > 1;
 
   int n_samples_nonNA = getNumSamplesNonNA(environment, X, Y);
@@ -158,45 +90,51 @@ double get3PointInfo(
     double cplxMdl = environment.cache.cterm->getLog(n_samples_non_na_z);
 
     if ((kldiv - cplxMdl) > 0) {
-      // the sample is not representative of the population, hence we cannot
-      // draw conclusion on this unshielded triple (X, Z, Y), return 0
+      // The sample is not representative of the population, hence for 3-point
+      // information, we cannot draw conclusion the unshielded triple (X, Z, Y),
+      // return 0; For contributing score, Z is not a good candidate.
       ok = false;
     }
   }
   if (!ok) {
-    res_new[0] = n_samples_non_na_z;
-    res_new[1] = 0;  // Ixyz
-    res_new[2] = 0;  // cplx Ixyz
-    saveScore(X, Y, ui_list, Z, res_new, environment);
-    delete[] res_new;
-    return 0;
+    if (get_info) {
+      cache->saveInfo3Point(X, Y, Z, ui_list, 0);
+      return 0;
+    } else {
+      double score = std::numeric_limits<double>::lowest();
+      cache->saveScore(X, Y, Z, ui_list, score);
+      return score;
+    }
   }
+
+  double info{0}, score{std::numeric_limits<double>::lowest()};
   if (std::all_of(begin(cnt_red), end(cnt_red), [](int x) { return x == 0; })) {
     double* res = getAllInfoNEW(environment.data_numeric, environment.levels, X,
         Y, Z, ui_list, environment.n_eff, environment.cplx, environment.is_k23,
         environment.sample_weights, environment.test_mar,
         environment.cache.cterm);
-    res_new[0] = res[0];
-    res_new[1] = res[7];
-    res_new[2] = -res[8];
+    info = res[7] + res[8];  // I(X;Y;Z|ui) - k(X;Y;Z|ui), res[8] = -k
+    score = res[6];          // R(X,Y;Z|ui)
     delete[] res;
   } else {
     double* res = compute_Rscore_Ixyz_alg5(data_numeric_red,
         data_numeric_idx_red, all_levels_red, cnt_red, posArray_red, n_ui,
         n_ui + 2, n_samples_non_na_z, sample_weights_red, flag_sample_weights,
         environment);
-    res_new[0] = n_samples_non_na_z;
-    res_new[1] = res[1];  // I(x;y;z|u)
-    res_new[2] = res[2];  // cplx I(x;y;z|u)
+    info = res[1] - res[2];  // I(x;y;z|u) - cplx I(x;y;z|u)
+    score = res[0];          // R(X,Y;Z|ui)
     delete[] res;
   }
+  if (std::fabs(info) < kPrecision) info = 0;
+  if (std::fabs(score) < kPrecision) score = 0;
 
-  saveScore(X, Y, ui_list, Z, res_new, environment);
-  double I3 = res_new[1] - res_new[2];
-  if (fabs(I3) < kPrecision) I3 = 0;
-
-  delete[] res_new;
-  return I3;
+  if (get_info) {
+    cache->saveInfo3Point(X, Y, Z, ui_list, info);
+    return info;
+  } else {
+    cache->saveScore(X, Y, Z, ui_list, score);
+    return score;
+  }
 }
 
 double* computeEnsInformationContinuous(Environment& environment, int X, int Y,
@@ -275,29 +213,29 @@ double* computeEnsInformationNew(Environment& environment, int X, int Y,
 void SearchForNewContributingNodeAndItsRank(
     Environment& environment, int X, int Y) {
   auto info = environment.edges[X][Y].shared_info;
+  auto& zi_list = info->zi_list;
   if (!environment.latent) {
     // remove zi that is not connected to neither x nor y
-    info->zi_list.erase(
-        std::remove_if(info->zi_list.begin(), info->zi_list.end(),
-            [&environment, &X, &Y](int z) {
-              return !environment.edges[X][z].status &&
-                     !environment.edges[Y][z].status;
-            }),
-        info->zi_list.end());
+    zi_list.erase(std::remove_if(begin(zi_list), end(zi_list),
+                      [&environment, X, Y](int Z) {
+                        const auto& edges = environment.edges;
+                        return !edges[X][Z].status && !edges[Y][Z].status;
+                      }),
+        zi_list.end());
   }
-  if (info->zi_list.empty()) return;
+  if (zi_list.empty()) return;
 
-  int n_zi = info->zi_list.size();
+  int n_zi = zi_list.size();
 
 #ifdef _OPENMP
   bool parallelizable =
-        environment.first_iter_done && n_zi > environment.n_threads;
+      environment.first_iter_done && n_zi > environment.n_threads;
 #pragma omp parallel for if (parallelizable)
 #endif
   for (int i = 0; i < n_zi; i++) {
-    int Z = info->zi_list[i];
-    double score =
-        computeContributingScores(environment, X, Y, Z, info->ui_list);
+    int Z = zi_list[i];
+    double score = getInfo3PointOrScore(
+        environment, X, Y, Z, info->ui_list, /* get_info = */ false);
 #ifdef _OPENMP
 #pragma omp critical
 #endif

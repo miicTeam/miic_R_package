@@ -3,6 +3,8 @@
 
 #define _USE_MATH_DEFINES
 #include <cmath>
+#include <limits>
+#include <map>
 
 #include "structure.h"
 
@@ -11,25 +13,12 @@ namespace computation {
 
 namespace detail {
 
+using std::pair;
+using std::set;
 using std::vector;
 using structure::Grid2d;
 
 class CtermCache {
- private:
-  static constexpr int kLevelLimit = 50;
-  // Limit beyond which cterm is calculated by approximation instead of log
-  static constexpr int kApproxLimit = 1000;
-  int size_n_{1 + kApproxLimit};
-  // Of size size_n_, log_n_[i] = log(i), log_n_[0] = 0 (won't be called alone)
-  vector<double> log_n_;
-  // Of size size_n_, n_log_n_[i] = i * log(i)
-  vector<double> n_log_n_;
-  // Of size size_n_, log_factorial_[i] = log(i!)
-  vector<double> log_factorial_;
-  // Hold <n_samples> * <kMaxLevel> C(omplexity)_n^level terms
-  // with n in [1, n_samples] and level in [1, kMaxLevel]
-  Grid2d<double> log_c_;
-
  public:
   CtermCache(int n_samples)
       : size_n_(1 + n_samples),
@@ -51,15 +40,108 @@ class CtermCache {
   double getLogC(int n, int level);
   double getLogChoose(int n, int k) const {
     if (k == n || k == 0) return 0;
-    return log_factorial_[n] - log_factorial_[k] -
-           log_factorial_[n - k];
+    return log_factorial_[n] - log_factorial_[k] - log_factorial_[n - k];
   }
+
+ private:
+  static constexpr int kLevelLimit = 50;
+  // Limit beyond which cterm is calculated by approximation instead of log
+  static constexpr int kApproxLimit = 1000;
+  int size_n_{1 + kApproxLimit};
+  // Of size size_n_, log_n_[i] = log(i), log_n_[0] = 0 (won't be called alone)
+  vector<double> log_n_;
+  // Of size size_n_, n_log_n_[i] = i * log(i)
+  vector<double> n_log_n_;
+  // Of size size_n_, log_factorial_[i] = log(i!)
+  vector<double> log_factorial_;
+  // Hold <n_samples> * <kMaxLevel> C(omplexity)_n^level terms
+  // with n in [1, n_samples] and level in [1, kMaxLevel]
+  Grid2d<double> log_c_;
+};
+
+// value: Shifted 3-point information I(X;Y;Z|ui) - k(X;Y;Z|ui)
+struct Info3PointKey {
+  set<int> xyz;
+  set<int> ui;
+
+  Info3PointKey(int X, int Y, int Z, const vector<int>& ui)
+      : xyz({X, Y, Z}), ui(begin(ui), end(ui)) {}
+
+  bool operator<(const Info3PointKey& other) const {
+    if (xyz == other.xyz) {
+      return ui < other.ui;
+    }
+    return xyz < other.xyz;
+  }
+};
+
+// value: Contributing score R(X,Y;Z|ui)
+struct ScoreKey {
+  set<int> XY;
+  int Z;
+  set<int> ui;
+
+  ScoreKey(int X, int Y, int Z, const vector<int>& ui)
+      : XY({X, Y}), Z(Z), ui(begin(ui), end(ui)) {}
+
+  bool operator<(const ScoreKey& other) const {
+    if (XY == other.XY) {
+      if (Z == other.Z) {
+        return ui < other.ui;
+      }
+      return Z < other.Z;
+    }
+    return XY < other.XY;
+  }
+};
+
+using Info3PointMap = std::map<Info3PointKey, double>;
+using ScoreMap = std::map<ScoreKey, double>;
+
+class InfoScoreCache {
+ public:
+  InfoScoreCache() = default;
+
+  pair<double, bool> getInfo3Point(int X, int Y, int Z, const vector<int>& ui) {
+    auto it = info_map_.find(Info3PointKey(X, Y, Z, ui));
+    bool found = it != info_map_.end();
+    return std::make_pair(found ? it->second : dummy_info_, found);
+  }
+
+  void saveInfo3Point(int X, int Y, int Z, const vector<int>& ui, double I3) {
+#ifdef _OPENMP
+#pragma omp critical
+#endif
+    info_map_.insert({Info3PointKey(X, Y, Z, ui), I3});
+  }
+
+  pair<double, bool> getScore(int X, int Y, int Z, const vector<int>& ui) {
+    auto it = score_map_.find(ScoreKey(X, Y, Z, ui));
+    bool found = it != score_map_.end();
+    return std::make_pair(found ? it->second : dummy_score_, found);
+  }
+
+  void saveScore(int X, int Y, int Z, const vector<int>& ui, double score) {
+#ifdef _OPENMP
+#pragma omp critical
+#endif
+    score_map_.insert({ScoreKey(X, Y, Z, ui), score});
+  }
+
+ private:
+  Info3PointMap info_map_;
+  ScoreMap score_map_;
+  static constexpr double dummy_info_ = 0;
+  static constexpr double dummy_score_ = std::numeric_limits<double>::lowest();
 };
 
 struct CompCache {
   std::shared_ptr<CtermCache> cterm;
+  std::shared_ptr<InfoScoreCache> info_score;
 
-  CompCache(int n_samples) : cterm(std::make_shared<CtermCache>(n_samples)) {}
+  CompCache(int n_samples)
+      : cterm(std::make_shared<CtermCache>(n_samples)),
+        info_score(std::make_shared<InfoScoreCache>()) {}
   CompCache() = default;
 };
 }  // namespace detail

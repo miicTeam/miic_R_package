@@ -85,9 +85,6 @@ struct Environment {
   int maxbins;
   int initbins;
 
-  std::map<CacheInfoKey, double> look_scores;
-  std::map<CacheInfoKey, CacheScoreValue> look_scores_orientation;
-
   ExecutionTime exec_time;
   int n_threads;
   CompCache cache;

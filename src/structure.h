@@ -225,35 +225,6 @@ class EdgeID {
   }
 };
 
-struct CacheInfoKey{
-  std::set<int> xyz;
-  std::set<int> Ui;
-
-  //Two point information constructor : I(X;Y|Ui,Z)
-  CacheInfoKey(int x, int y, const std::set<int>& Ui_) {
-    xyz.insert({x,y});
-    Ui = Ui_;
-  }
-  //Three point information constructor : I(X;Y;Z|Ui)
-  CacheInfoKey(int x, int y, int z, const std::set<int>& Ui_) {
-    xyz.insert({x,y,z});
-    Ui = Ui_;
-  }
-
-  bool operator<(const CacheInfoKey& other) const {
-    if (xyz == other.xyz) {
-      return Ui < other.Ui;
-    }
-    return xyz < other.xyz;
-  }
-};
-
-struct CacheScoreValue {
-  int    n_samples;
-  double I_xyzUi;
-  double cplx;
-};
-
 struct ExecutionTime {
   double init{0};  // skeletonInitialization
   double iter{0};  // firstStepIteration + skeletonIteration
@@ -264,8 +235,6 @@ struct ExecutionTime {
 };
 
 }  // namespace detail
-using detail::CacheInfoKey;
-using detail::CacheScoreValue;
 using detail::Edge;
 using detail::EdgeID;
 using detail::EdgeSharedInfo;

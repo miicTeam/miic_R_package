@@ -588,53 +588,5 @@ bool filter_NAs(int X, int Y, const vector<int>& ui_list,
   return flag_sample_weights;
 }
 
-double lookupScore(
-    int X, int Y, const vector<int>& ui_list, int Z, Environment& environment) {
-  std::set<int> ui_set(begin(ui_list), end(ui_list));
-  ui_set.insert(Z);
-  CacheInfoKey key{X, Y, ui_set};
-  double score = -1.0;
-
-  if (environment.look_scores.count(key) != 0) {
-    score = environment.look_scores[key];
-  }
-  return score;
-}
-
-void lookupScore(int X, int Y, const vector<int>& ui_list, int Z, double* res,
-    Environment& environment) {
-  std::set<int> ui_set(begin(ui_list), end(ui_list));
-  CacheInfoKey key{X, Y, Z, ui_set};
-
-  if (environment.look_scores_orientation.count(key) != 0) {
-    res[0] = environment.look_scores_orientation[key].n_samples;
-    res[1] = environment.look_scores_orientation[key].I_xyzUi;
-    res[2] = environment.look_scores_orientation[key].cplx;
-  }
-  return;
-}
-
-void saveScore(int X, int Y, const vector<int>& ui_list, int Z, double score,
-    Environment& environment) {
-  std::set<int> ui_set(begin(ui_list), end(ui_list));
-  ui_set.insert(Z);
-  CacheInfoKey key{X, Y, ui_set};
-#ifdef _OPENMP
-#pragma omp critical
-#endif
-  environment.look_scores.insert({key, score});
-}
-
-void saveScore(int X, int Y, const vector<int>& ui_list, int Z, double* score,
-    Environment& environment) {
-  std::set<int> ui_set(begin(ui_list), end(ui_list));
-  CacheInfoKey key{X, Y, Z, ui_set};
-  CacheScoreValue score_struct{int(score[0]), score[1], score[2]};
-#ifdef _OPENMP
-#pragma omp critical
-#endif
-  environment.look_scores_orientation.insert({key, score_struct});
-}
-
 }  // namespace utility
 }  // namespace miic

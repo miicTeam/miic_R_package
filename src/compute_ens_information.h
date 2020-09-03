@@ -13,8 +13,8 @@ void SearchForNewContributingNodeAndItsRank(structure::Environment&, int, int);
 // Continuous data
 double* computeEnsInformationContinuous(structure::Environment&, int X, int Y,
     const std::vector<int>& ui_list);
-double get3PointInfo(structure::Environment&, int X, int Y, int Z,
-    const std::vector<int>& ui_list);
+double getInfo3PointOrScore(structure::Environment&, int X, int Y, int Z,
+    const std::vector<int>& ui_list, bool get_info);
 
 }  // namespace computation
 }  // namespace miic

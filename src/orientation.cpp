@@ -83,7 +83,8 @@ vector<vector<string>> orientationProbability(Environment& environment) {
         vector<int> ui_no_z(ui_list);
         ui_no_z.erase(remove(begin(ui_no_z), end(ui_no_z), Z), end(ui_no_z));
 
-        return get3PointInfo(environment, X, Y, Z, ui_no_z);
+        return getInfo3PointOrScore(
+            environment, X, Y, Z, ui_no_z, /* get_info = */ true);
       });
 
   // Compute the arrowhead probability of each edge endpoint
