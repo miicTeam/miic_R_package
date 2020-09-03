@@ -25,13 +25,13 @@ using namespace miic::structure;
 
 namespace {
 
-// Check if the row'th sample of node i and j and their ui in ui_list has no NA
-// (-1) in env.data_numeric
-bool SampleHasNoNA(const Environment& env, int row, int i, int j) {
-  const auto& ui_list = env.edges[i][j].shared_info->ui_list;
-  return (env.data_numeric[row][i] != -1 && env.data_numeric[row][j] != -1 &&
-          std::all_of(ui_list.begin(), ui_list.end(),
-              [&env, &row](int u) { return env.data_numeric[row][u] != -1; }));
+// Check if the i'th sample of node X and Y and ui in ui_list has no NA
+// (-1) in data_numeric
+bool SampleHasNoNA(int X, int Y, const vector<int>& ui_list,
+    const vector<vector<int>>& data_numeric, int i) {
+  return data_numeric[i][X] != -1 && data_numeric[i][Y] != -1 &&
+         std::all_of(begin(ui_list), end(ui_list),
+             [&data_numeric, i](int u) { return data_numeric[i][u] != -1; });
 }
 
 double kl(const TempGrid2d<double>& freqs1, const TempGrid2d<double>& freqs2) {
@@ -68,9 +68,10 @@ void getJointMixed(const Environment& environment, int i, int j,
   int continuous_pos = environment.is_continuous[i] ? i : j;
   // Fill marginal distributions
   int n_samples_non_na = 0;
+  const auto& ui_list = environment.edges[i][j].shared_info->ui_list;
   for (int k = 0; k < environment.n_samples; k++) {
     curr_sample_is_not_NA[k] = 0;
-    if (SampleHasNoNA(environment, k, i, j)) {
+    if (SampleHasNoNA(i, j, ui_list, environment.data_numeric, k)) {
       curr_sample_is_not_NA[k] = 1;
       mixedContinuous[n_samples_non_na] =
           environment.data_double[continuous_pos][k];
@@ -153,9 +154,10 @@ void getJointSpace(const Environment& environment, int i, int j,
     vector<vector<double>>& jointSpace,
     TempVector<int>& curr_sample_is_not_NA) {
   int n_samples_non_na = 0;
+  const auto& ui_list = environment.edges[i][j].shared_info->ui_list;
   for (int k = 0; k < environment.n_samples; k++) {
     curr_sample_is_not_NA[k] = 0;
-    if (SampleHasNoNA(environment, k, i, j)) {
+    if (SampleHasNoNA(i, j, ui_list, environment.data_numeric, k)) {
       curr_sample_is_not_NA[k] = 1;
       jointSpace[n_samples_non_na][0] = environment.data_double[i][k];
       jointSpace[n_samples_non_na][1] = environment.data_double[j][k];
@@ -164,19 +166,29 @@ void getJointSpace(const Environment& environment, int i, int j,
   }
 }
 
-}  // anonymous namespace
+TempGrid2d<double> getJointFreqs(const Environment& environment, int i, int j,
+    const TempVector<int>& sample_is_not_NA = TempVector<int>()) {
+  TempGrid2d<double> joint_freqs(
+      environment.levels[i], environment.levels[j], 0);
 
-double kl(const TempGrid2d<int>& counts1, const TempGrid2d<double>& freqs2) {
-  TempAllocatorScope scope;
-  TempGrid2d<double> freqs1(counts1.n_rows(), counts1.n_cols());
-  using std::begin;
-  using std::end;
-  int sum1 = std::accumulate(begin(counts1), end(counts1), 0);
-  std::transform(begin(counts1), end(counts1), begin(freqs1),
-      [sum1](int count) { return static_cast<double>(count) / sum1; });
+  int n_samples_non_na = 0;
+  const auto& ui_list = environment.edges[i][j].shared_info->ui_list;
+  for (int k = 0; k < environment.n_samples; k++) {
+    if ((!sample_is_not_NA.empty() && sample_is_not_NA[k]) ||
+        (sample_is_not_NA.empty() &&
+            SampleHasNoNA(i, j, ui_list, environment.data_numeric, k))) {
+      ++joint_freqs(
+          environment.data_numeric[k][i], environment.data_numeric[k][j]);
+      ++n_samples_non_na;
+    }
+  }
+  for (auto& freq : joint_freqs)
+    freq /= n_samples_non_na;
 
-  return kl(freqs1, freqs2);
+  return joint_freqs;
 }
+
+}  // anonymous namespace
 
 vector<vector<int>> getAdjMatrix(const Environment& env) {
   vector<vector<int>> adj_matrix(env.n_nodes, vector<int>(env.n_nodes, 0));
@@ -244,44 +256,8 @@ vector<vector<string>> getEdgesInfoTable(const Environment& env) {
   return table;
 }
 
-int getNumSamplesNonNA(const Environment& environment, int i, int j) {
-  int n_samples_non_na = 0;
-  for (int k = 0; k < environment.n_samples; k++) {
-    if (SampleHasNoNA(environment, k, i, j)) ++n_samples_non_na;
-  }
-  return n_samples_non_na;
-}
-
-TempGrid2d<double> getJointFreqs(const Environment& environment, int i, int j,
-    const TempVector<int>& sample_is_not_NA) {
-  TempGrid2d<double> joint_freqs(
-      environment.levels[i], environment.levels[j], 0);
-
-  int n_samples_non_na = 0;
-  for (int k = 0; k < environment.n_samples; k++) {
-    if ((!sample_is_not_NA.empty() && sample_is_not_NA[k]) ||
-        (sample_is_not_NA.empty() && SampleHasNoNA(environment, k, i, j))) {
-      ++joint_freqs(
-          environment.data_numeric[k][i], environment.data_numeric[k][j]);
-      ++n_samples_non_na;
-    }
-  }
-  for (auto& freq : joint_freqs)
-    freq /= n_samples_non_na;
-
-  return joint_freqs;
-}
-
 static void chkIntFn(void* dummy) { R_CheckUserInterrupt(); }
-
 bool checkInterrupt() { return (R_ToplevelExec(chkIntFn, NULL) == FALSE); }
-
-TimePoint getLapStartTime() { return std::chrono::steady_clock::now(); }
-
-double getLapInterval(TimePoint start_time) {
-  using second = std::chrono::duration<double>;
-  return second(std::chrono::steady_clock::now() - start_time).count();
-}
 
 void printProgress(double percent, TimePoint start_time, int& percentile_prev) {
   constexpr int bar_length_total{40};
@@ -328,7 +304,7 @@ double compute_kl_divergence(int X, int Y, Environment& environment,
     // Joint freqs X,Y after adding the new contributor (Z)
     auto freqs1 = getJointFreqs(environment, X, Y, sample_is_not_NA);
     // Joint freqs X,Y before adding the new contributor (with the current
-    // conditioning Us)
+    // conditioning ui)
     auto freqs2 = getJointFreqs(environment, X, Y);
 
     return samplesNotNA * kl(freqs1, freqs2);
@@ -464,63 +440,62 @@ double compute_kl_divergence(int X, int Y, Environment& environment,
   }
 }
 
-// Counts and marks the rows that contain "NA"s for the edge given by
-// \a posArray ([0] is X, [1] is Y and above are Us) and an optional \a z.
+int getNumSamplesNonNA(const Environment& environment, int i, int j) {
+  int n_samples_non_na = 0;
+  const auto& ui_list = environment.edges[i][j].shared_info->ui_list;
+  for (int k = 0; k < environment.n_samples; k++) {
+    if (SampleHasNoNA(i, j, ui_list, environment.data_numeric, k))
+      ++n_samples_non_na;
+  }
+  return n_samples_non_na;
+}
+
+// Counts and marks the rows that contain "NA"s for columns X, Y, Z, ui
 // \return The number of non NA samples and modifies the vectors
-// sample_is_not_NA and NAs_count
-int count_non_NAs(int X, int Y, const vector<int>& ui_list,
-    TempVector<int>& sample_is_not_NA, TempVector<int>& NAs_count,
-    Environment& environment, int z) {
-  int samplesNotNA = 0;
+// sample_is_not_na and NAs_count
+int countNonNA(int X, int Y, int Z, const vector<int>& ui_list,
+    const vector<vector<int>>& data_numeric, TempVector<int>& sample_is_not_na,
+    TempVector<int>& NAs_count) {
+  int n_samples = data_numeric.size();
+  int na_count = 0;
+  for (int i = 0; i < n_samples; i++) {
+    bool has_na = (Z != -1 && data_numeric[i][Z] == -1) ||
+                  !SampleHasNoNA(X, Y, ui_list, data_numeric, i);
+    if (has_na) ++na_count;
 
-  for (int i = 0; i < environment.n_samples; i++) {
-    sample_is_not_NA[i] = 1;
-    if (i != 0)
-      NAs_count[i] = NAs_count[i - 1];
-    else
-      NAs_count[i] = 0;
-
-    bool has_NA = environment.data_numeric[i][X] == -1 ||
-                  environment.data_numeric[i][Y] == -1;
-    has_NA = has_NA || std::any_of(begin(ui_list), end(ui_list),
-                           [&environment, i](int ui) {
-                             return environment.data_numeric[i][ui] == -1;
-                           });
-    if (z != -1) has_NA = has_NA || environment.data_numeric[i][z] == -1;
-
-    if (has_NA) {
-      sample_is_not_NA[i] = 0;
-      NAs_count[i]++;
-    } else
-      samplesNotNA++;
+    sample_is_not_na[i] = !has_na;
+    NAs_count[i] = na_count;
   }
 
-  return samplesNotNA;
+  return n_samples - na_count;
 }
 
 /**
  * Reduces the full data to its "reduced" form without NA rows given the edge
  * X-Y | U,(Z). In the case of discrete variables, levels are remapped so that
  * the reduced data still has levels that start at 0. For continuous variables,
- * the ranks are updated (\a dataNumericIdx).
+ * the ranks are updated (\a data_numeric_idx_red).
  *
  * \return A boolean telling whether or not sample weights are needed on the
  * reduced data. More importantly, modifies the vectors passed as argument :
- * \a AllLevels contains the number of unique levels of the reduced variables
- * \a cnt tells whether the reduced variables are continuous or not
+ * \a all_levels_red contains the number of levels of the reduced variables
+ * \a is_continuous_red tells whether the reduced variables are continuous
  * \a posArray_red contains the positions of variables in the reduced data
- * \a dataNumeric contains the discrete levels of the reduced data
- * \a dataNumericIdx contains the continuous ranks of the reduced data
- * \a sample_weights contains the individual sample weights of the reduced data
+ * \a data_numeric_red contains the discrete levels of the reduced data
+ * \a data_numeric_idx_red contains the continuous ranks of the reduced data
+ * \a sample_weights_red contains the sample weights of the reduced data
  */
-bool filter_NAs(int X, int Y, const vector<int>& ui_list,
-    TempVector<int>& AllLevels, TempVector<int>& cnt,
-    TempVector<int>& posArray_red, TempGrid2d<int>& dataNumeric,
-    TempGrid2d<int>& dataNumericIdx, TempVector<double>& sample_weights,
+bool filterNA(int X, int Y, int Z, const vector<int>& ui_list,
+    const vector<vector<int>>& data_numeric,
+    const vector<vector<int>>& data_numeric_idx,
+    const vector<int>& is_continuous, const vector<double>& sample_weights,
     const TempVector<int>& sample_is_not_NA, const TempVector<int>& NAs_count,
-    Environment& environment, int Z) {
+    TempGrid2d<int>& data_numeric_red, TempGrid2d<int>& data_numeric_idx_red,
+    TempVector<int>& all_levels_red, TempVector<int>& is_continuous_red,
+    TempVector<int>& posArray_red, TempVector<double>& sample_weights_red) {
   TempAllocatorScope scope;
 
+  int n_samples = data_numeric.size();
   int n_ui = ui_list.size();
   TempVector<int> posArray(n_ui + 3, -1);
   posArray[0] = X;
@@ -537,7 +512,7 @@ bool filter_NAs(int X, int Y, const vector<int>& ui_list,
     if (index == -1) continue;
 
     posArray_red[j] = j;
-    cnt[j] = environment.is_continuous[index];
+    is_continuous_red[j] = is_continuous[index];
     int k1 = 0;         // position in the full data
     int k2 = 0;         // position in the reduced data
     int nnr = 0;        // number of non repeated values
@@ -545,45 +520,45 @@ bool filter_NAs(int X, int Y, const vector<int>& ui_list,
     int updated_discrete_level = 0;
     new_levels.clear();
 
-    for (int i = 0; i < environment.n_samples; i++) {
+    for (int i = 0; i < n_samples; i++) {
       if (sample_is_not_NA[i] == 1) {
         // Row at index i does not contain any NA
-        int old_val = environment.data_numeric[i][index];
+        int old_val = data_numeric[i][index];
         if (new_levels.count(old_val) == 0) {
           // If level has not already been seen add it to the map
           // and increment the number of unique levels in reduced data
           new_levels.insert({old_val, updated_discrete_level});
           updated_discrete_level++;
         }
-        dataNumeric(j, k1) = new_levels[old_val];
+        data_numeric_red(j, k1) = new_levels[old_val];
         if (j == 0) {
-          sample_weights[k1] = environment.sample_weights[i];
-          if (sample_weights[k1] != 1.0) flag_sample_weights = true;
+          sample_weights_red[k1] = sample_weights[i];
+          if (sample_weights_red[k1] != 1.0) flag_sample_weights = true;
         }
         k1++;
       }
-      if (cnt[j] != 0) {  // Variable j is continuous
+      if (is_continuous_red[j] != 0) {  // Variable j is continuous
         // position of ith sample (order)
-        int si = environment.data_numeric_idx[index][i];
+        int si = data_numeric_idx[index][i];
         if (si != -1 && sample_is_not_NA[si] == 1) {
           // Row at position si does not contain any NA, rank is updated taking
           // into account the number of NAs up to si.
-          dataNumericIdx(j, k2) = si - NAs_count[si];
+          data_numeric_idx_red(j, k2) = si - NAs_count[si];
           k2++;
           // check whether is a different values or repeated
-          if (environment.data_numeric[si][index] != prev_val) {
+          if (data_numeric[si][index] != prev_val) {
             nnr++;
-            prev_val = environment.data_numeric[si][index];
+            prev_val = data_numeric[si][index];
           }
         }
       }
     }
     // Update with the effective number of levels
-    if (cnt[j] == 1) {
-      if (nnr < 3) cnt[j] = 0;
-      AllLevels[j] = nnr;
+    if (is_continuous_red[j] == 1) {
+      if (nnr < 3) is_continuous_red[j] = 0;
+      all_levels_red[j] = nnr;
     } else
-      AllLevels[j] = updated_discrete_level;
+      all_levels_red[j] = updated_discrete_level;
   }
   return flag_sample_weights;
 }

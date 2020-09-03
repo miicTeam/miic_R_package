@@ -55,8 +55,6 @@ struct Environment {
   bool test_mar;
   // Complexity mode. 0: mdl 1: nml
   int cplx{1};
-  // If firstStepIteration is done
-  bool first_iter_done{false};
   // List of ids of edge whose status is not yet determined
   vector<EdgeID> unsettled_list;
   // List of ids of edge whose status is sure to be connected

@@ -43,8 +43,8 @@ List mydiscretizeMutual(List input_data, List arg_list) {
   // Mark rows containing NAs and count the number of complete samples
   TempVector<int> sample_nonNA(environment.n_samples);
   TempVector<int> NAs_count(environment.n_samples);
-  int samplesNotNA =
-      count_non_NAs(0, 1, ui_list, sample_nonNA, NAs_count, environment);
+  int samplesNotNA = countNonNA(0, 1, /*Z*/ -1, ui_list,
+      environment.data_numeric, sample_nonNA, NAs_count);
 
   // Allocate data reducted *_red without rows containing NAs
   // All *_red variables are passed to the optimization routine
@@ -55,9 +55,11 @@ List mydiscretizeMutual(List input_data, List arg_list) {
   TempGrid2d<int> dataNumeric_red(nbrU + 2, samplesNotNA);
   TempGrid2d<int> dataNumericIdx_red(nbrU + 2, samplesNotNA);
 
-  bool flag_sample_weights = filter_NAs(0, 1, ui_list, AllLevels_red, cnt_red,
-      posArray_red, dataNumeric_red, dataNumericIdx_red, sample_weights_red,
-      sample_nonNA, NAs_count, environment);
+  bool flag_sample_weights = filterNA(/*X*/ 0, /*Y*/ 1, /*Z*/ -1, ui_list,
+      environment.data_numeric, environment.data_numeric_idx,
+      environment.is_continuous, environment.sample_weights, sample_nonNA,
+      NAs_count, dataNumeric_red, dataNumericIdx_red, AllLevels_red, cnt_red,
+      posArray_red, sample_weights_red);
 
   int** iterative_cuts = (int**)calloc(STEPMAX + 1, sizeof(int*));
   for (int i = 0; i < STEPMAX + 1; i++) {

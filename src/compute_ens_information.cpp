@@ -51,8 +51,8 @@ double getInfo3PointOrScore(Environment& environment, int X, int Y, int Z,
   TempVector<int> sample_is_not_NA(environment.n_samples);
   // vector with the number of rows containing NAs seen at rank i
   TempVector<int> NAs_count(environment.n_samples);
-  int n_samples_non_na_z =
-      count_non_NAs(X, Y, ui_list, sample_is_not_NA, NAs_count, environment, Z);
+  int n_samples_non_na_z = countNonNA(
+      X, Y, Z, ui_list, environment.data_numeric, sample_is_not_NA, NAs_count);
 
   if (n_samples_non_na_z <= 2) {  // not sufficient statistics
     if (get_info) {
@@ -75,9 +75,11 @@ double getInfo3PointOrScore(Environment& environment, int X, int Y, int Z,
   TempVector<int> cnt_red(n_ui + 3);
   TempVector<int> posArray_red(n_ui + 3);
 
-  bool flag_sample_weights = filter_NAs(X, Y, ui_list, all_levels_red, cnt_red,
-      posArray_red, data_numeric_red, data_numeric_idx_red, sample_weights_red,
-      sample_is_not_NA, NAs_count, environment, Z);
+  bool flag_sample_weights = filterNA(X, Y, Z, ui_list,
+      environment.data_numeric, environment.data_numeric_idx,
+      environment.is_continuous, environment.sample_weights, sample_is_not_NA,
+      NAs_count, data_numeric_red, data_numeric_idx_red, all_levels_red,
+      cnt_red, posArray_red, sample_weights_red);
 
   // If X or Y has 1 or less level, the 3-point information should be zero, and
   // the score should be low
@@ -137,54 +139,62 @@ double getInfo3PointOrScore(Environment& environment, int X, int Y, int Z,
   }
 }
 
-double* computeEnsInformationContinuous(Environment& environment, int X, int Y,
-    const vector<int>& ui_list) {
+double* getCondMutualInfo(
+    Environment& environment, int X, int Y, const vector<int>& ui_list) {
   TempAllocatorScope scope;
-
   // TODO : speedup by only removing NAs for marked columns
   // Mark rows containing NAs and count the number of complete samples
   TempVector<int> sample_is_not_NA(environment.n_samples);
   TempVector<int> NAs_count(environment.n_samples);
-  int samplesNotNA =
-      count_non_NAs(X, Y, ui_list, sample_is_not_NA, NAs_count, environment);
+  int n_samples_non_na = countNonNA(X, Y, /*Z*/ -1, ui_list,
+      environment.data_numeric, sample_is_not_NA, NAs_count);
 
-  if (samplesNotNA <= 2) {
+  if (n_samples_non_na <= 2) {
     double* res_new = new double[3];
-    res_new[0] = (double)samplesNotNA;  // N
-    res_new[1] = 0;                     // Ixyu
-    res_new[2] = 0;                     // cplx
+    res_new[0] = n_samples_non_na;
+    res_new[1] = 0;  // I(X;Y|ui)
+    res_new[2] = 0;  // cplx
     return res_new;
   }
 
   int n_ui = ui_list.size();
   // Allocate data reducted *_red without rows containing NAs
   // All *_red variables are passed to the optimization routine
-  TempVector<int> AllLevels_red(n_ui + 2);
+  TempVector<int> all_levels_red(n_ui + 2);
   TempVector<int> cnt_red(n_ui + 2);
   TempVector<int> posArray_red(n_ui + 2);
-  TempVector<double> sample_weights_red(samplesNotNA);
-  TempGrid2d<int> dataNumeric_red(n_ui + 2, samplesNotNA);
-  TempGrid2d<int> dataNumericIdx_red(n_ui + 2, samplesNotNA);
+  TempVector<double> sample_weights_red(n_samples_non_na);
+  TempGrid2d<int> data_numeric_red(n_ui + 2, n_samples_non_na);
+  TempGrid2d<int> data_numeric_idx_red(n_ui + 2, n_samples_non_na);
 
-  bool flag_sample_weights = filter_NAs(X, Y, ui_list, AllLevels_red, cnt_red,
-      posArray_red, dataNumeric_red, dataNumericIdx_red, sample_weights_red,
-      sample_is_not_NA, NAs_count, environment);
+  bool flag_sample_weights = filterNA(X, Y, /*Z*/ -1, ui_list,
+      environment.data_numeric, environment.data_numeric_idx,
+      environment.is_continuous, environment.sample_weights, sample_is_not_NA,
+      NAs_count, data_numeric_red, data_numeric_idx_red, all_levels_red,
+      cnt_red, posArray_red, sample_weights_red);
 
   // If X or Y has only 1 level
-  if (AllLevels_red[0] <= 1 || AllLevels_red[1] <= 1) {
+  if (all_levels_red[0] <= 1 || all_levels_red[1] <= 1) {
     double* res_new = new double[3];
-    res_new[0] = (double)samplesNotNA;
-    res_new[1] = 0;  // Ixyz
-    res_new[2] = 0;  // cplx Ixyz
+    res_new[0] = n_samples_non_na;
+    res_new[1] = 0;  // I(X;Y|ui)
+    res_new[2] = 0;  // cplx
     return res_new;
   }
 
-  double* res_new = compute_mi_cond_alg1(dataNumeric_red, dataNumericIdx_red,
-        AllLevels_red, cnt_red, posArray_red, n_ui, samplesNotNA,
+  double* res_new = NULL;
+  if (std::all_of(begin(cnt_red), end(cnt_red), [](int x) { return x == 0; })) {
+    res_new = getAllInfoNEW(environment.data_numeric,
+        environment.levels, X, Y, -1, ui_list, environment.n_eff,
+        environment.cplx, environment.is_k23, environment.sample_weights,
+        environment.test_mar, environment.cache.cterm);
+  } else {
+    res_new = compute_mi_cond_alg1(data_numeric_red, data_numeric_idx_red,
+        all_levels_red, cnt_red, posArray_red, n_ui, n_samples_non_na,
         sample_weights_red, flag_sample_weights, environment);
-  res_new[1] = res_new[1] * res_new[0];  // Ixy|u
-  res_new[2] = res_new[2] * res_new[0];  // cplx
-
+    res_new[1] = res_new[1] * res_new[0];  // Ixy|u
+    res_new[2] = res_new[2] * res_new[0];  // cplx
+  }
   for (int i = 0; i < 3; i++) {
     if (std::fabs(res_new[i]) < kPrecision) res_new[i] = 0.0;
   }
@@ -192,26 +202,9 @@ double* computeEnsInformationContinuous(Environment& environment, int X, int Y,
   return res_new;
 }
 
-double* computeEnsInformationNew(Environment& environment, int X, int Y,
-    const vector<int>& ui_list) {
-  TempAllocatorScope scope;
-
-  double* res_new = getAllInfoNEW(environment.data_numeric, environment.levels,
-      X, Y, -1, ui_list, environment.n_eff, environment.cplx,
-      environment.is_k23, environment.sample_weights, environment.test_mar,
-      environment.cache.cterm);
-
-  for (int i = 0; i < 3; i++) {
-    if (res_new[i] > -0.0000000001 && res_new[i] < 0.0000000001) {
-      res_new[i] = 0.0;
-    }
-  }
-
-  return res_new;
-}
-
-void SearchForNewContributingNodeAndItsRank(
-    Environment& environment, int X, int Y) {
+// parallel: whether the search can be done in parallel
+void searchForBestContributingNode(
+    Environment& environment, int X, int Y, bool parallel) {
   auto info = environment.edges[X][Y].shared_info;
   auto& zi_list = info->zi_list;
   if (!environment.latent) {
@@ -223,14 +216,10 @@ void SearchForNewContributingNodeAndItsRank(
                       }),
         zi_list.end());
   }
-  if (zi_list.empty()) return;
-
   int n_zi = zi_list.size();
 
 #ifdef _OPENMP
-  bool parallelizable =
-      environment.first_iter_done && n_zi > environment.n_threads;
-#pragma omp parallel for if (parallelizable)
+#pragma omp parallel for if (parallel && n_zi > environment.n_threads)
 #endif
   for (int i = 0; i < n_zi; i++) {
     int Z = zi_list[i];

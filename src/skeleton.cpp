@@ -46,47 +46,39 @@ namespace miic {
 namespace reconstruction {
 
 // Initialize the edges of the network
-int initializeEdge(Environment& environment, int i, int j) {
+int initializeEdge(Environment& environment, int X, int Y) {
   // Compute the mutual information and the corresponding CPLX
-  auto info = environment.edges[i][j].shared_info;
-  double* res = NULL;
-  if (!environment.is_continuous[i] && !environment.is_continuous[j]) {
-    res = computeEnsInformationNew(environment, i, j, vector<int>());
-    info->Ixy_ui = res[1];
-    info->cplx = res[2];
-    info->Nxy_ui = res[0];
-  } else {
-    res = computeEnsInformationContinuous(environment, i, j, vector<int>());
-    info->Ixy_ui = res[1];
-    info->cplx = res[2];
-    info->Nxy_ui = res[0];
-  }
+  auto info = environment.edges[X][Y].shared_info;
+  double* res = getCondMutualInfo(environment, X, Y, vector<int>());
+  info->Nxy = res[0];
+  info->Ixy = res[1];
+  info->cplx_no_u = res[2];
   delete[] res;
 
-  info->Ixy = info->Ixy_ui;
-  info->cplx_no_u = info->cplx;
-  info->Nxy = info->Nxy_ui;
+  info->Nxy_ui = info->Nxy;
+  info->Ixy_ui = info->Ixy;
+  info->cplx = info->cplx_no_u;
 
-  double myTest = info->Ixy_ui - info->cplx;
+  double myTest = info->Ixy - info->cplx_no_u;
   if (!environment.no_init_eta)
     myTest -= environment.log_eta;
 
   if (myTest <= 0) {
     // Unconditional independence
     info->connected = 0;
-    environment.edges[i][j].status = 0;
-    environment.edges[j][i].status = 0;
-    environment.edges[i][j].status_init = 0;
-    environment.edges[j][i].status_init = 0;
+    environment.edges[X][Y].status = 0;
+    environment.edges[Y][X].status = 0;
+    environment.edges[X][Y].status_init = 0;
+    environment.edges[Y][X].status_init = 0;
   } else {
     info->connected = 1;
-    environment.edges[i][j].status = 1;
-    environment.edges[j][i].status = 1;
-    environment.edges[i][j].status_init = 1;
-    environment.edges[j][i].status_init = 1;
+    environment.edges[X][Y].status = 1;
+    environment.edges[Y][X].status = 1;
+    environment.edges[X][Y].status_init = 1;
+    environment.edges[Y][X].status_init = 1;
   }
 
-  return environment.edges[i][j].status;
+  return environment.edges[X][Y].status;
 }
 
 bool skeletonInitialization(Environment& environment) {
@@ -121,11 +113,6 @@ bool skeletonInitialization(Environment& environment) {
 }
 
 bool firstStepIteration(Environment& environment, BiconnectedComponent& bcc) {
-  // During first step iteration, search for U contributors is not
-  // parallelizable see flag "parallelizable" in
-  // computeEnsInformationContinuous() in computeEnsInformation.cpp
-  environment.first_iter_done = false;
-
   environment.connected_list.clear();
   environment.unsettled_list.clear();
 
@@ -179,7 +166,7 @@ bool firstStepIteration(Environment& environment, BiconnectedComponent& bcc) {
       else
         searchAndSetZi(environment, X, Y);
       if (edgeid.getEdge().shared_info->zi_list.size() > 0)
-        SearchForNewContributingNodeAndItsRank(environment, X, Y);
+        searchForBestContributingNode(environment, X, Y, /* parallel */ false);
 
 #ifdef _OPENMP
 #pragma omp atomic
@@ -231,7 +218,6 @@ bool firstStepIteration(Environment& environment, BiconnectedComponent& bcc) {
       return false;
     }
   }
-  environment.first_iter_done = true;
   return true;
 }
 
@@ -276,21 +262,10 @@ bool skeletonIteration(Environment& environment) {
     top_info->zi_list.erase(top_info->zi_list.begin() + top_info->z_name_idx);
     top_info->z_name_idx = -1;
 
-    double* v = NULL;
-    if (!environment.is_continuous[X] && !environment.is_continuous[Y] &&
-        std::all_of(top_info->ui_list.cbegin(), top_info->ui_list.cend(),
-            [&environment](int i) { return !environment.is_continuous[i]; })) {
-      v = computeEnsInformationNew(environment, X, Y, top_info->ui_list);
-
-      top_info->Ixy_ui = v[1];
-      top_info->Nxy_ui = v[0];
-      top_info->cplx = v[2];
-    } else {
-      v = computeEnsInformationContinuous(environment, X, Y, top_info->ui_list);
-      top_info->Nxy_ui = v[0];
-      top_info->Ixy_ui = v[1];
-      top_info->cplx = v[2];
-    }
+    double* v = getCondMutualInfo(environment, X, Y, top_info->ui_list);
+    top_info->Nxy_ui = v[0];
+    top_info->Ixy_ui = v[1];
+    top_info->cplx = v[2];
     delete[] v;
     double top_info_kxy_ui = top_info->cplx;
 
@@ -330,9 +305,8 @@ bool skeletonIteration(Environment& environment) {
         Rcout << "# Do SearchForNewContributingNodeAndItsRank\n";
       }
 
-      if (top_info->zi_list.size() > 0) {
-        SearchForNewContributingNodeAndItsRank(environment, X, Y);
-      }
+      if (top_info->zi_list.size() > 0)
+        searchForBestContributingNode(environment, X, Y, /* parallel */ true);
 
       if (environment.verbose) {
         if (environment.edges[X][Y].shared_info->z_name_idx == -1)

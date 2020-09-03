@@ -65,21 +65,10 @@ void setConfidence(Environment& environment) {
     // evaluate the mutual information for every edge
     for (const auto& edge : edge_list) {
       int X = edge.X, Y = edge.Y;
-      if (!environment.is_continuous[X] && !environment.is_continuous[Y]) {
-        // discrete case
-        double* res =
-            computeEnsInformationNew(environment, X, Y, vector<int>());
-        NIxy_ui = res[1];
-        k_xy_ui = res[2];
-        delete[] res;
-      } else {
-        // mixed case
-        double* res =
-            computeEnsInformationContinuous(environment, X, Y, vector<int>());
-        NIxy_ui = res[1];
-        k_xy_ui = res[2];
-        delete[] res;
-      }
+      double* res = getCondMutualInfo(environment, X, Y, vector<int>());
+      NIxy_ui = res[1];
+      k_xy_ui = res[2];
+      delete[] res;
 
       double I_prime_shuffle = NIxy_ui - k_xy_ui;
       if (I_prime_shuffle < 0) {
