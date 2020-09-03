@@ -148,43 +148,21 @@ double get3PointInfo(
       posArray_red, data_numeric_red, data_numeric_idx_red, sample_weights_red,
       sample_is_not_NA, NAs_count, environment, Z);
 
-  bool ok = true;
+  // If X or Y has only 1 level, the 3-point information should be zero
+  bool ok = all_levels_red[0] > 1 && all_levels_red[1] > 1;
 
   int n_samples_nonNA = getNumSamplesNonNA(environment, X, Y);
-  if (environment.test_mar && n_samples_nonNA != n_samples_non_na_z) {
+  if (ok && environment.test_mar && n_samples_nonNA != n_samples_non_na_z) {
     double kldiv = compute_kl_divergence(X, Y, environment, n_samples_non_na_z,
         all_levels_red, sample_is_not_NA);
     double cplxMdl = environment.cache.cterm->getLog(n_samples_non_na_z);
 
     if ((kldiv - cplxMdl) > 0) {
-      // the sample is not representative of the population, hence we do
-      // not want this z as possible z
+      // the sample is not representative of the population, hence we cannot
+      // draw conclusion on this unshielded triple (X, Z, Y), return 0
       ok = false;
     }
   }
-
-  const auto& is_continuous = environment.is_continuous;
-  if (!is_continuous[X] && !is_continuous[Z] && -!is_continuous[Y]) {
-    if (!ok) {
-      delete[] res_new;
-      return -2;
-    }
-    double* res = getAllInfoNEW(environment.data_numeric, environment.levels, X,
-        Y, Z, ui_list, environment.n_eff, environment.cplx, environment.is_k23,
-        environment.sample_weights, environment.test_mar,
-        environment.cache.cterm);
-    res_new[0] = res[0];
-    res_new[1] = res[7];
-    res_new[2] = -res[8];
-    double I3 = res_new[1] - res_new[2];
-    delete[] res_new;
-    delete[] res;
-    return I3;
-  }
-
-  // If X or Y has only 1 level
-  ok = all_levels_red[0] > 1 && all_levels_red[1] > 1;
-
   if (!ok) {
     res_new[0] = n_samples_non_na_z;
     res_new[1] = 0;  // Ixyz
@@ -193,24 +171,30 @@ double get3PointInfo(
     delete[] res_new;
     return 0;
   }
-  //else {
-  double* res = compute_Rscore_Ixyz_alg5(data_numeric_red, data_numeric_idx_red,
-      all_levels_red, cnt_red, posArray_red, n_ui, n_ui + 2, n_samples_non_na_z,
-      sample_weights_red, flag_sample_weights, environment);
-  res_new[0] = n_samples_non_na_z;
-  res_new[1] = res[1];  // I(x;y;z|u)
-  res_new[2] = res[2];  // cplx I(x;y;z|u)
-  //}
-  delete[] res;
-
-  for (int i = 0; i < 3; i++) {
-    if (res_new[i] > -0.0000000001 && res_new[i] < 0.0000000001) {
-      res_new[i] = 0.0;
-    }
+  if (std::all_of(begin(cnt_red), end(cnt_red), [](int x) { return x == 0; })) {
+    double* res = getAllInfoNEW(environment.data_numeric, environment.levels, X,
+        Y, Z, ui_list, environment.n_eff, environment.cplx, environment.is_k23,
+        environment.sample_weights, environment.test_mar,
+        environment.cache.cterm);
+    res_new[0] = res[0];
+    res_new[1] = res[7];
+    res_new[2] = -res[8];
+    delete[] res;
+  } else {
+    double* res = compute_Rscore_Ixyz_alg5(data_numeric_red,
+        data_numeric_idx_red, all_levels_red, cnt_red, posArray_red, n_ui,
+        n_ui + 2, n_samples_non_na_z, sample_weights_red, flag_sample_weights,
+        environment);
+    res_new[0] = n_samples_non_na_z;
+    res_new[1] = res[1];  // I(x;y;z|u)
+    res_new[2] = res[2];  // cplx I(x;y;z|u)
+    delete[] res;
   }
 
   saveScore(X, Y, ui_list, Z, res_new, environment);
   double I3 = res_new[1] - res_new[2];
+  if (fabs(I3) < kPrecision) I3 = 0;
+
   delete[] res_new;
   return I3;
 }
@@ -264,7 +248,7 @@ double* computeEnsInformationContinuous(Environment& environment, int X, int Y,
   res_new[2] = res_new[2] * res_new[0];  // cplx
 
   for (int i = 0; i < 3; i++) {
-    if (fabs(res_new[i]) < kPrecision) res_new[i] = 0.0;
+    if (std::fabs(res_new[i]) < kPrecision) res_new[i] = 0.0;
   }
 
   return res_new;
