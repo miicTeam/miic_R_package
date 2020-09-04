@@ -2,11 +2,19 @@
 
 #include <algorithm>  // std::sort, std::none_of
 
+#include "linear_allocator.h"
+#include "structure.h"
+
 namespace miic {
 namespace reconstruction {
 namespace detail {
 
+using structure::TempVector;
+using utility::TempAllocatorScope;
+
 bool CycleTracker::hasCycle() {
+  TempAllocatorScope scope;
+
   int n_edge = env_.numNoMore;
   // Before saving the current iteration, search among previous iterations
   // those with the same number of edges
@@ -30,7 +38,7 @@ bool CycleTracker::hasCycle() {
   // and simpler syntax, at the cost of extra memory trace and (possible) extra
   // time complexity (in practice there are very few changes between each pair
   // of iterations).
-  vector<int> changed(env_.n_nodes * (env_.n_nodes - 1) / 2, 0);
+  TempVector<int> changed(env_.n_nodes * (env_.n_nodes - 1) / 2, 0);
   // backtracking over iteration to get changed_edges
   cycle_size = 0;
   for (const auto& iter : iterations_) {

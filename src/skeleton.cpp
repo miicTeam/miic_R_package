@@ -18,30 +18,6 @@ using namespace miic::computation;
 using namespace miic::structure;
 using namespace miic::utility;
 
-template <bool latent = false>
-void searchAndSetZi(Environment& environment, const int posX, const int posY) {
-  // Search candidate nodes for the separation set of X and Y
-  int numZiPos = 0;
-  for (int c = 0; c < environment.n_nodes; c++) {
-    if (c == posX || c == posY) continue;
-    if (!latent && !environment.edges[posX][c].status_prev &&
-        !environment.edges[posY][c].status_prev)
-      continue;
-    environment.edges[posX][posY].shared_info->zi_list.push_back(c);
-    numZiPos++;
-  }
-
-  if (environment.verbose)
-    Rcout << "The number of neighbours is: " << numZiPos << "\n";
-}
-
-void searchAndSetZi(Environment& environment, const int posX, const int posY) {
-  if (environment.latent)
-    return searchAndSetZi<true>(environment, posX, posY);
-  else
-    return searchAndSetZi<false>(environment, posX, posY);
-}
-
 namespace miic {
 namespace reconstruction {
 
@@ -161,10 +137,7 @@ bool firstStepIteration(Environment& environment, BiconnectedComponent& bcc) {
              << environment.nodes[X].name << "--"
              << environment.nodes[Y].name << "\n# --------------------";
       }
-      if (environment.consistent > 0)
-        bcc.setCandidateZ(X, Y);
-      else
-        searchAndSetZi(environment, X, Y);
+      bcc.setCandidateZ(X, Y, edgeid.getEdge().shared_info->zi_list);
       if (edgeid.getEdge().shared_info->zi_list.size() > 0)
         searchForBestContributingNode(environment, X, Y, /* parallel */ false);
 
