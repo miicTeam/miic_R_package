@@ -16,16 +16,24 @@
 #' @return A graph object adapted to the method.
 #'
 #' @seealso
-#' \code{\link{getIgraph}}
+#' \code{\link{getIgraph}} for details on the igraph exported object.
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' library(miic)
 #'
 #' # Using igraph
 #' library(igraph)
 #' g = miic.export(miic.res, "igraph")
 #' plot(g) # Default visualisation, calls igraph::plot.igraph()
+#'
+#' # Specifying layout (see ?igraph::layout_)
+#' l <-layout_with_kk(g)
+#' plot(g, layout=l)
+#'
+#' # Override some graphical parameters
+#' plot(g, edge.curved = .2)
+#' plot(g, vertex.shape="none", edge.color="gray85", vertex.label.color="gray10")
 #'
 #' }
 #'
@@ -68,22 +76,6 @@ miic.export <- function(miic.res, method = NULL) {
 #' \code{\link[igraph]{igraph.plotting}} for the detailed description of the
 #' plotting parameters and \code{\link[igraph]{layout}} for different layouts.
 #'
-#' @examples
-#' \dontrun{
-#' library(miic)
-#' library(igraph)
-#'
-#' g = getIgraph(miic.res)
-#' plot(g) # Default visualisation, calls igraph::plot.igraph()
-#'
-#' # Specifying layout (see ?igraph::layout_)
-#' l <-layout_with_kk(g)
-#' plot(g, layout=l)
-#'
-#' # Override some graphical parameters
-#' plot(g, edge.curved = .2)
-#' plot(g, vertex.shape="none", edge.color="gray85", vertex.label.color="gray10")
-#' }
 #'
 
 getIgraph <- function(miic.res) {

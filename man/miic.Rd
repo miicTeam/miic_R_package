@@ -273,7 +273,7 @@ if(require(igraph)) {
  plot(miic.res, method="igraph")
 }
 
-\dontrun{
+\donttest{
 # write graph to graphml format. Note that to correctly visualize
 # the network we created the miic style for Cytoscape (http://www.cytoscape.org/).
 

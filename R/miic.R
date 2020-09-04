@@ -256,7 +256,7 @@
 #'  plot(miic.res, method="igraph")
 #' }
 #'
-#' \dontrun{
+#' \donttest{
 #' # write graph to graphml format. Note that to correctly visualize
 #' # the network we created the miic style for Cytoscape (http://www.cytoscape.org/).
 #'
@@ -410,7 +410,7 @@ miic <- function(input_data,
       col <- as.character(state_order[row, "var_names"])
       if (state_order[row, "var_type"] == 0) {
         input_data[, col] <- factor(input_data[, col])
-        is_continuous[[col]] <- F
+        is_continuous[[col]] <- FALSE
       }
     }
   }

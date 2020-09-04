@@ -56,7 +56,7 @@
 #' \item{\emph{niterations} is the number of iterations performed before convergence of the (C)MI estimation.}
 #' \item{\emph{iterationN}, lists contatining the cutpoint vectors for each iteration.}
 #' \item{\emph{info} and \emph{infok}, the estimated (C)MI value and (C)MI minus the complexity cost.}
-#' \item{if $emph{plot} == T, a plot object (requires ggplot2 and gridExtra).}
+#' \item{if $emph{plot} == TRUE, a plot object (requires ggplot2 and gridExtra).}
 #' }
 #' @export
 #' @useDynLib miic
@@ -64,24 +64,24 @@
 #'
 #' @examples
 #' library(miic)
-#' \dontrun{
 #' N <- 1000
 #' # Dependence, conditional independence : X <- Z -> Y
 #' Z <- runif(N)
 #' X <- Z * 2 + rnorm(N, sd = 0.2)
 #' Y <- Z * 2 + rnorm(N, sd = 0.2)
-#' res <- discretizeMutual(X, Y, plot = T)
+#' res <- discretizeMutual(X, Y, plot = FALSE)
 #' message("I(X;Y) = ", res$info)
-#' res <- discretizeMutual(X, Y, matrix_u = matrix(Z, ncol = 1), plot = T)
+#' res <- discretizeMutual(X, Y, matrix_u = matrix(Z, ncol = 1), plot = FALSE)
 #' message("I(X;Y|Z) = ", res$info)
 #'
+#' \donttest{
 #' # Conditional independence with categorical conditioning variable : X <- Z -> Y
-#' Z <- sample(1:3, N, replace = T)
+#' Z <- sample(1:3, N, replace = TRUE)
 #' X <- -as.numeric(Z == 1) + as.numeric(Z == 2) + 0.2 * rnorm(N)
 #' Y <- as.numeric(Z == 1) + as.numeric(Z == 2) + 0.2 * rnorm(N)
 #' res <- miic::discretizeMutual(X, Y, cplx = "nml")
 #' message("I(X;Y) = ", res$info)
-#' res <- miic::discretizeMutual(X, Y, matrix(Z, ncol = 1), is_discrete = c(F, F, T))
+#' res <- miic::discretizeMutual(X, Y, matrix(Z, ncol = 1), is_discrete = c(FALSE, FALSE, TRUE))
 #' message("I(X;Y|Z) = ", res$info)
 #'
 #'
@@ -89,9 +89,9 @@
 #' X <- runif(N)
 #' Y <- runif(N)
 #' Z <- X + Y + runif(N, sd = 0.1)
-#' res <- discretizeMutual(X, Y, plot = T)
+#' res <- discretizeMutual(X, Y, plot = TRUE)
 #' message("I(X;Y) = ", res$info)
-#' res <- discretizeMutual(X, Y, matrix_u = matrix(Z, ncol = 1), plot = T)
+#' res <- discretizeMutual(X, Y, matrix_u = matrix(Z, ncol = 1), plot = TRUE)
 #' message("I(X;Y|Z) = ", res$info)
 #' }
 #'
@@ -103,7 +103,7 @@ discretizeMutual <- function(X,
                              n_eff = NULL,
                              sample_weights = NULL,
                              is_discrete = NULL,
-                             plot = T) {
+                             plot = TRUE) {
   nameDist1 <- deparse(substitute(X))
   nameDist2 <- deparse(substitute(Y))
   # Check the input arguments
@@ -322,14 +322,14 @@ discretizeMutual <- function(X,
     "n_shuffles" = 0,
     "n_threads" = 1,
     "no_init_eta" = FALSE,
-    "orientation" = T,
+    "orientation" = TRUE,
     "ori_proba_ratio" = 1,
-    "propagation" = T,
+    "propagation" = TRUE,
     "sample_weights" = sample_weights,
-    "test_mar" = F,
+    "test_mar" = FALSE,
     "max_bins" = maxbins,
     "var_names" = var_names,
-    "verbose" = F
+    "verbose" = FALSE
   )
   cpp_input <- list("factor" = input_factor, "double" = input_double,
                     "order" = input_order)
@@ -450,8 +450,8 @@ jointplot_hist <- function(X, Y, result, nameDist1, nameDist2,
   # Custom density matrix for colour filling relative to 2D bin area in
   # the 2d histogram
   bin_count <- table(
-    cut(X, cut_points1, include.lowest = T),
-    cut(Y, cut_points2, include.lowest = T)
+    cut(X, cut_points1, include.lowest = TRUE),
+    cut(Y, cut_points2, include.lowest = TRUE)
   )
   bin_areas <-
     (cut_points1[-1] - cut_points1[1:(length(cut_points1) - 1)]) %*%
@@ -490,8 +490,8 @@ jointplot_hist <- function(X, Y, result, nameDist1, nameDist2,
         ymax = "yend",
         fill = "logdensity"
       ),
-      na.rm = T,
-      show.legend = F
+      na.rm = TRUE,
+      show.legend = FALSE
     ) +
     ggplot2::scale_fill_gradient(
       low = "#f4f5fc",
@@ -500,7 +500,7 @@ jointplot_hist <- function(X, Y, result, nameDist1, nameDist2,
       na.value = "white",
       limits = log(c(
         min_density,
-        max(fill_density_flat$density,na.rm = T))
+        max(fill_density_flat$density,na.rm = TRUE))
       )
     ) +
     ggplot2::geom_vline(

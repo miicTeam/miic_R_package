@@ -13,7 +13,7 @@ discretizeMutual(
   n_eff = NULL,
   sample_weights = NULL,
   is_discrete = NULL,
-  plot = T
+  plot = TRUE
 )
 }
 \arguments{
@@ -59,7 +59,7 @@ A list that contains :
 \item{\emph{niterations} is the number of iterations performed before convergence of the (C)MI estimation.}
 \item{\emph{iterationN}, lists contatining the cutpoint vectors for each iteration.}
 \item{\emph{info} and \emph{infok}, the estimated (C)MI value and (C)MI minus the complexity cost.}
-\item{if $emph{plot} == T, a plot object (requires ggplot2 and gridExtra).}
+\item{if $emph{plot} == TRUE, a plot object (requires ggplot2 and gridExtra).}
 }
 }
 \description{
@@ -82,24 +82,24 @@ Discrete variables can be passed as factors and will be used "as is" to maximize
 }
 \examples{
 library(miic)
-\dontrun{
 N <- 1000
 # Dependence, conditional independence : X <- Z -> Y
 Z <- runif(N)
 X <- Z * 2 + rnorm(N, sd = 0.2)
 Y <- Z * 2 + rnorm(N, sd = 0.2)
-res <- discretizeMutual(X, Y, plot = T)
+res <- discretizeMutual(X, Y, plot = FALSE)
 message("I(X;Y) = ", res$info)
-res <- discretizeMutual(X, Y, matrix_u = matrix(Z, ncol = 1), plot = T)
+res <- discretizeMutual(X, Y, matrix_u = matrix(Z, ncol = 1), plot = FALSE)
 message("I(X;Y|Z) = ", res$info)
 
+\donttest{
 # Conditional independence with categorical conditioning variable : X <- Z -> Y
-Z <- sample(1:3, N, replace = T)
+Z <- sample(1:3, N, replace = TRUE)
 X <- -as.numeric(Z == 1) + as.numeric(Z == 2) + 0.2 * rnorm(N)
 Y <- as.numeric(Z == 1) + as.numeric(Z == 2) + 0.2 * rnorm(N)
 res <- miic::discretizeMutual(X, Y, cplx = "nml")
 message("I(X;Y) = ", res$info)
-res <- miic::discretizeMutual(X, Y, matrix(Z, ncol = 1), is_discrete = c(F, F, T))
+res <- miic::discretizeMutual(X, Y, matrix(Z, ncol = 1), is_discrete = c(FALSE, FALSE, TRUE))
 message("I(X;Y|Z) = ", res$info)
 
 
@@ -107,9 +107,9 @@ message("I(X;Y|Z) = ", res$info)
 X <- runif(N)
 Y <- runif(N)
 Z <- X + Y + runif(N, sd = 0.1)
-res <- discretizeMutual(X, Y, plot = T)
+res <- discretizeMutual(X, Y, plot = TRUE)
 message("I(X;Y) = ", res$info)
-res <- discretizeMutual(X, Y, matrix_u = matrix(Z, ncol = 1), plot = T)
+res <- discretizeMutual(X, Y, matrix_u = matrix(Z, ncol = 1), plot = TRUE)
 message("I(X;Y|Z) = ", res$info)
 }
 

@@ -25,24 +25,6 @@ partial correlation between two nodes conditioned on the conditioning set
 (negative is blue, null is gray and positive is red) and their width is
 based on the conditional mutual information minus the complexity cost.
 }
-\examples{
-\dontrun{
-library(miic)
-library(igraph)
-
-g = getIgraph(miic.res)
-plot(g) # Default visualisation, calls igraph::plot.igraph()
-
-# Specifying layout (see ?igraph::layout_)
-l <-layout_with_kk(g)
-plot(g, layout=l)
-
-# Override some graphical parameters
-plot(g, edge.curved = .2)
-plot(g, vertex.shape="none", edge.color="gray85", vertex.label.color="gray10")
-}
-
-}
 \seealso{
 \code{\link{miic}} for details on edge parameters in the returned object,
 \code{\link[igraph]{igraph.plotting}} for the detailed description of the

@@ -25,7 +25,7 @@ See the details of specific function for each method.
 For igraph, see \code{\link{getIgraph}}.
 }
 \examples{
-\dontrun{
+\donttest{
 library(miic)
 
 # Using igraph
@@ -33,9 +33,17 @@ library(igraph)
 g = miic.export(miic.res, "igraph")
 plot(g) # Default visualisation, calls igraph::plot.igraph()
 
+# Specifying layout (see ?igraph::layout_)
+l <-layout_with_kk(g)
+plot(g, layout=l)
+
+# Override some graphical parameters
+plot(g, edge.curved = .2)
+plot(g, vertex.shape="none", edge.color="gray85", vertex.label.color="gray10")
+
 }
 
 }
 \seealso{
-\code{\link{getIgraph}}
+\code{\link{getIgraph}} for details on the igraph exported object.
 }

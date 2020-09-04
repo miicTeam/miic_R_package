@@ -118,7 +118,7 @@ fromStringToNumberArrowType <- function(val) {
   ret <- 0
   if (val == "arrow") {
     ret <- 6
-  } else if (val == "T") {
+  } else if (val == "TRUE") {
     ret <- 15
   }
 

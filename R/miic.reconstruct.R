@@ -147,7 +147,7 @@ miic.reconstruct <- function(input_data = NULL,
     orientations_prob <- data.frame(matrix(
       res1,
       nrow = length(orientations_prob) - 1,
-      byrow = T
+      byrow = TRUE
     ),
     stringsAsFactors = FALSE
     )

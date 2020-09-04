@@ -12,7 +12,7 @@ summarizeResults <- function(observations = NULL, results = NULL,
   # List of edges found by miic
   half_adj_matrix = adj_matrix
   half_adj_matrix[ lower.tri(adj_matrix, diag = TRUE) ] <- 0
-  predicted_edges <- which(half_adj_matrix != 0, arr.ind = T, useNames = F)
+  predicted_edges <- which(half_adj_matrix != 0, arr.ind = TRUE, useNames = FALSE)
   predicted_edges <- apply(predicted_edges, 2, function(x) { var_names[x] })
   # Add to summarized edges list
   summarized_edges <- predicted_edges
@@ -32,7 +32,7 @@ summarizeResults <- function(observations = NULL, results = NULL,
     # List of False Negative edges
     false_negative_edges <- data.frame(
       x = character(), y = character(),
-      stringsAsFactors = F
+      stringsAsFactors = FALSE
     )
     for (i in 1:nrow(true_edges)) {
       true_edge <- as.character(unlist(true_edges[i, ]))
@@ -45,7 +45,7 @@ summarizeResults <- function(observations = NULL, results = NULL,
     }
     # Add to summarized edges list
     summarized_edges <- rbind(summarized_edges, false_negative_edges,
-      stringsAsFactors = F
+      stringsAsFactors = FALSE
     )
   }
 
@@ -192,7 +192,7 @@ summarizeResults <- function(observations = NULL, results = NULL,
   }
 
   # Sort summary by log confidence and return it
-  summary <- summary[order(summary$log_confidence, decreasing = T), ]
+  summary <- summary[order(summary$log_confidence, decreasing = TRUE), ]
   rownames(summary) <- c()
   return(summary)
 }
