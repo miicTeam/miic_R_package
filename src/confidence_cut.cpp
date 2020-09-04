@@ -75,11 +75,10 @@ void setConfidence(Environment& environment) {
       // evaluate the mutual information for every edge
       for (const auto& edge : edge_list) {
         int X = edge.X, Y = edge.Y;
-        double* res = getCondMutualInfo(
+        auto res = getCondMutualInfo(
             X, Y, vector<int>(), shuffled_data, shuffled_data_idx, environment);
-        NIxy_ui = res[1];
-        k_xy_ui = res[2];
-        delete[] res;
+        NIxy_ui = res.Ixy_ui;
+        k_xy_ui = res.kxy_ui;
 
         double I_prime_shuffle = NIxy_ui - k_xy_ui;
         if (I_prime_shuffle < 0) {

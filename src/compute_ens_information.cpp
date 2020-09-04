@@ -139,11 +139,20 @@ double getInfo3PointOrScore(Environment& environment, int X, int Y, int Z,
   }
 }
 
-double* getCondMutualInfo(int X, int Y, const vector<int>& ui_list,
+InfoBlock getCondMutualInfo(int X, int Y, const vector<int>& ui_list,
     const vector<vector<int>>& data_numeric,
-    const vector<vector<int>>& data_numeric_idx, Environment& environment,
-    bool use_cache) {
+    const vector<vector<int>>& data_numeric_idx, Environment& environment) {
   TempAllocatorScope scope;
+  auto& cache = environment.cache.info_score;
+
+  int n_ui = ui_list.size();
+  if (n_ui != 0) {
+    InfoBlock res{0, 0, 0};
+    bool found{false};
+    std::tie(res, found) = cache->getMutualInfo(X, Y, ui_list);
+    if (found) return res;
+  }
+
   // TODO : speedup by only removing NAs for marked columns
   // Mark rows containing NAs and count the number of complete samples
   TempVector<int> sample_is_not_NA(environment.n_samples);
@@ -152,14 +161,11 @@ double* getCondMutualInfo(int X, int Y, const vector<int>& ui_list,
       X, Y, /*Z*/ -1, ui_list, data_numeric, sample_is_not_NA, NAs_count);
 
   if (n_samples_non_na <= 2) {
-    double* res_new = new double[3];
-    res_new[0] = n_samples_non_na;
-    res_new[1] = 0;  // I(X;Y|ui)
-    res_new[2] = 0;  // cplx
-    return res_new;
+    InfoBlock res{n_samples_non_na, 0, 0};
+    if (n_ui != 0) cache->saveMutualInfo(X, Y, ui_list, res);
+    return res;
   }
 
-  int n_ui = ui_list.size();
   // Allocate data reducted *_red without rows containing NAs
   // All *_red variables are passed to the optimization routine
   TempVector<int> all_levels_red(n_ui + 2);
@@ -176,11 +182,9 @@ double* getCondMutualInfo(int X, int Y, const vector<int>& ui_list,
 
   // If X or Y has only 1 level
   if (all_levels_red[0] <= 1 || all_levels_red[1] <= 1) {
-    double* res_new = new double[3];
-    res_new[0] = n_samples_non_na;
-    res_new[1] = 0;  // I(X;Y|ui)
-    res_new[2] = 0;  // cplx
-    return res_new;
+    InfoBlock res{n_samples_non_na, 0, 0};
+    if (n_ui != 0) cache->saveMutualInfo(X, Y, ui_list, res);
+    return res;
   }
 
   double* res_new = NULL;
@@ -199,8 +203,11 @@ double* getCondMutualInfo(int X, int Y, const vector<int>& ui_list,
   for (int i = 0; i < 3; i++) {
     if (std::fabs(res_new[i]) < kPrecision) res_new[i] = 0.0;
   }
+  InfoBlock res{static_cast<int>(res_new[0]), res_new[1], res_new[2]};
+  delete[] res_new;
 
-  return res_new;
+  if (n_ui != 0) cache->saveMutualInfo(X, Y, ui_list, res);
+  return res;
 }
 
 // parallel: whether the search can be done in parallel

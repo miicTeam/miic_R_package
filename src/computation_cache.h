@@ -17,6 +17,7 @@ using std::pair;
 using std::set;
 using std::vector;
 using structure::Grid2d;
+using structure::InfoBlock;
 
 class CtermCache {
  public:
@@ -59,6 +60,21 @@ class CtermCache {
   Grid2d<double> log_c_;
 };
 
+struct MutualInfoKey {
+  set<int> xy;
+  set<int> ui;
+
+  MutualInfoKey(int X, int Y, const vector<int>& ui)
+      : xy({X, Y}), ui(begin(ui), end(ui)) {}
+
+  bool operator<(const MutualInfoKey& other) const {
+    if (xy == other.xy) {
+      return ui < other.ui;
+    }
+    return xy < other.xy;
+  }
+};
+
 // value: Shifted 3-point information I(X;Y;Z|ui) - k(X;Y;Z|ui)
 struct Info3PointKey {
   set<int> xyz;
@@ -95,6 +111,7 @@ struct ScoreKey {
   }
 };
 
+using MutualInfoMap = std::map<MutualInfoKey, InfoBlock>;
 using Info3PointMap = std::map<Info3PointKey, double>;
 using ScoreMap = std::map<ScoreKey, double>;
 
@@ -102,9 +119,22 @@ class InfoScoreCache {
  public:
   InfoScoreCache() = default;
 
+  pair<InfoBlock, bool> getMutualInfo(int X, int Y, const vector<int>& ui) {
+    auto it = mi_map_.find(MutualInfoKey(X, Y, ui));
+    bool found = it != mi_map_.end();
+    return std::make_pair(found ? it->second : dummy_info_block_, found);
+  }
+
+  void saveMutualInfo(int X, int Y, const vector<int>& ui, InfoBlock block) {
+#ifdef _OPENMP
+#pragma omp critical
+#endif
+    mi_map_.insert({MutualInfoKey(X, Y, ui), std::move(block)});
+  }
+
   pair<double, bool> getInfo3Point(int X, int Y, int Z, const vector<int>& ui) {
-    auto it = info_map_.find(Info3PointKey(X, Y, Z, ui));
-    bool found = it != info_map_.end();
+    auto it = i3_map_.find(Info3PointKey(X, Y, Z, ui));
+    bool found = it != i3_map_.end();
     return std::make_pair(found ? it->second : dummy_info_, found);
   }
 
@@ -112,7 +142,7 @@ class InfoScoreCache {
 #ifdef _OPENMP
 #pragma omp critical
 #endif
-    info_map_.insert({Info3PointKey(X, Y, Z, ui), I3});
+    i3_map_.insert({Info3PointKey(X, Y, Z, ui), I3});
   }
 
   pair<double, bool> getScore(int X, int Y, int Z, const vector<int>& ui) {
@@ -129,8 +159,10 @@ class InfoScoreCache {
   }
 
  private:
-  Info3PointMap info_map_;
+  MutualInfoMap mi_map_;
+  Info3PointMap i3_map_;
   ScoreMap score_map_;
+  static constexpr InfoBlock dummy_info_block_{0, 0, 0};
   static constexpr double dummy_info_ = 0;
   static constexpr double dummy_score_ = std::numeric_limits<double>::lowest();
 };

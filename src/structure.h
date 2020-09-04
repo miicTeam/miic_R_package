@@ -129,6 +129,16 @@ struct Grid2d {
   vector<T, Allocator> data_;
 };
 
+// Shifted conditional mutual information Nxy_ui * I(X;Y|ui) - k(X;Y|ui)
+struct InfoBlock {
+  int Nxy_ui;
+  double Ixy_ui;
+  double kxy_ui;
+
+  constexpr InfoBlock(int N, double I, double k)
+      : Nxy_ui(N), Ixy_ui(I), kxy_ui(k) {}
+};
+
 struct EdgeSharedInfo {
   // {ui}: indices of separating nodes
   vector<int> ui_list;
@@ -240,6 +250,7 @@ using detail::EdgeID;
 using detail::EdgeSharedInfo;
 using detail::ExecutionTime;
 using detail::Grid2d;
+using detail::InfoBlock;
 using detail::Node;
 using detail::void_t;
 
