@@ -224,8 +224,9 @@ void searchForBestContributingNode(
                       }),
         zi_list.end());
   }
-  int n_zi = zi_list.size();
 
+  int n_zi = zi_list.size();
+  info->Rxyz_ui = 0;
 #ifdef _OPENMP
 #pragma omp parallel for if (parallel && n_zi > environment.n_threads)
 #endif
@@ -237,7 +238,7 @@ void searchForBestContributingNode(
 #pragma omp critical
 #endif
     if (score > info->Rxyz_ui) {
-      info->z_name_idx = i;
+      info->top_z = Z;
       info->Rxyz_ui = score;
     }
   }

@@ -1,3 +1,6 @@
+#ifdef _OPENMP
+#include <omp.h>
+#endif
 #include <Rcpp.h>
 
 #include <string>
@@ -44,7 +47,7 @@ List reconstruct(List input_data, List arg_list) {
   auto lap_start = getLapStartTime();
   Rcout << "Search all pairs for unconditional independence relations...\n";
   // Initialize skeleton, find unconditional independence
-  if (!skeletonInitialization(environment)) return empty_results();
+  if (!initializeSkeleton(environment)) return empty_results();
   environment.exec_time.init += getLapInterval(lap_start);
 
   BiconnectedComponent bcc(environment);
@@ -63,22 +66,15 @@ List reconstruct(List input_data, List arg_list) {
       }
     }
     lap_start = getLapStartTime();
-    Rcout << "Collect candidate separating nodes...\n";
+    Rcout << "Search for candidate separating nodes...\n";
     // If interrupted
-    if (!firstStepIteration(environment, bcc)) return empty_results();
+    if (!setBestContributingNode(environment, bcc)) return empty_results();
 
-    if (environment.numNoMore == 0 && environment.numSearchMore == 0) {
-      if (environment.verbose)
-        Rcout << "# ------| Only phantom edges found.\n";
-    } else if (environment.numSearchMore > 0) {
-      // Search for other Contributing node(s) (possible only for the edges
-      /// still in 'searchMore', ie. 2)
-      if (environment.verbose) {
-        Rcout << "\n# ---- Other Contributing node(s) ----\n\n";
-      }
+    if (!environment.unsettled_list.empty()) {
       Rcout << "Search for conditional independence relations...\n";
       // If interrupted
-      if (!skeletonIteration(environment)) return (empty_results());
+      if (!searchForConditionalIndependence(environment))
+        return (empty_results());
     }
     environment.exec_time.iter += getLapInterval(lap_start);
 
@@ -93,7 +89,7 @@ List reconstruct(List input_data, List arg_list) {
       environment.exec_time.cut += getLapInterval(lap_start);
     }
     // Oriente edges for non-consistent/orientation consistent algorithm
-    if (environment.orientation_phase && environment.numNoMore > 0 &&
+    if (environment.orientation_phase && !environment.connected_list.empty() &&
         environment.consistent <= 1) {
       lap_start = getLapStartTime();
       Rcout << "Search for edge directions...\n";
@@ -109,7 +105,7 @@ List reconstruct(List input_data, List arg_list) {
       break;
     }
     if (++iter_count > environment.max_iteration) {
-      Rcout << "Iteration limit " << environment.max_iteration << " reached\n";
+      Rcout << "Iteration limit " << environment.max_iteration << " reached.\n";
       break;
     }
   } while (environment.consistent != 0);

@@ -7,9 +7,9 @@
 namespace miic {
 namespace reconstruction {
 
-bool skeletonInitialization(structure::Environment&);
-bool firstStepIteration(structure::Environment&, BiconnectedComponent&);
-bool skeletonIteration(structure::Environment&);
+bool initializeSkeleton(structure::Environment&);
+bool setBestContributingNode(structure::Environment&, BiconnectedComponent&);
+bool searchForConditionalIndependence(structure::Environment&);
 
 }  // namespace reconstruction
 }  // namespace miic

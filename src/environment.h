@@ -76,10 +76,6 @@ struct Environment {
   bool no_init_eta{false};
   int half_v_structure;
 
-  // Set the probability threshold for the rank if the contribution probability
-  // is the min value
-  int thresPc{0};
-
   int maxbins;
   int initbins;
 

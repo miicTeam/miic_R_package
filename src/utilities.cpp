@@ -238,9 +238,7 @@ vector<vector<string>> getEdgesInfoTable(const Environment& env) {
     table.emplace_back(std::initializer_list<string>{
         env.nodes[i].name,
         env.nodes[j].name,
-        info->z_name_idx == -1
-          ? "NA"
-          : env.nodes[info->zi_list[info->z_name_idx]].name,
+        info->top_z == -1 ? "NA" : env.nodes[info->top_z].name,
         toNameString(env, info->ui_list),
         toNameString(env, info->zi_list),
         to_string(info->Ixy),

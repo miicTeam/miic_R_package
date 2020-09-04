@@ -144,8 +144,8 @@ struct EdgeSharedInfo {
   vector<int> ui_list;
   // {zi}: indices of candidate conditioning nodes
   vector<int> zi_list;
-  // Index of the last best contributor in zi_list
-  int z_name_idx = -1;
+  // Best candidate separating node
+  int top_z = -1;
   // Score of the best contributor
   double Rxyz_ui = 0;
   // Conditional mutual information
@@ -170,7 +170,7 @@ struct EdgeSharedInfo {
   void reset() {
     zi_list.clear();
     ui_list.clear();
-    z_name_idx = -1;
+    top_z = -1;
     Rxyz_ui = 0;
     Ixy_ui = Ixy;
     cplx = cplx_no_u;
@@ -180,7 +180,7 @@ struct EdgeSharedInfo {
 
   void setUndirected() {
     ui_list.clear();
-    z_name_idx = -1;
+    top_z = -1;
     Rxyz_ui = 0;
     Ixy_ui = Ixy;
     cplx = cplx_no_u;
