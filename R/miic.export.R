@@ -30,7 +30,7 @@
 #' )
 #'
 #' # Using igraph
-#' library(igraph)
+#' if(require(igraph)) {
 #' g = miic.export(miic.res, "igraph")
 #' plot(g) # Default visualisation, calls igraph::plot.igraph()
 #'
@@ -41,6 +41,7 @@
 #' # Override some graphical parameters
 #' plot(g, edge.curved = .2)
 #' plot(g, vertex.shape="none", edge.color="gray85", vertex.label.color="gray10")
+#' }
 #'
 #' }
 #'
