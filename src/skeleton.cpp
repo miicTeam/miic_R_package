@@ -49,7 +49,8 @@ namespace reconstruction {
 int initializeEdge(Environment& environment, int X, int Y) {
   // Compute the mutual information and the corresponding CPLX
   auto info = environment.edges[X][Y].shared_info;
-  double* res = getCondMutualInfo(environment, X, Y, vector<int>());
+  double* res = getCondMutualInfo(X, Y, vector<int>(), environment.data_numeric,
+      environment.data_numeric_idx, environment);
   info->Nxy = res[0];
   info->Ixy = res[1];
   info->cplx_no_u = res[2];
@@ -262,7 +263,8 @@ bool skeletonIteration(Environment& environment) {
     top_info->zi_list.erase(top_info->zi_list.begin() + top_info->z_name_idx);
     top_info->z_name_idx = -1;
 
-    double* v = getCondMutualInfo(environment, X, Y, top_info->ui_list);
+    double* v = getCondMutualInfo(X, Y, top_info->ui_list,
+        environment.data_numeric, environment.data_numeric_idx, environment);
     top_info->Nxy_ui = v[0];
     top_info->Ixy_ui = v[1];
     top_info->cplx = v[2];

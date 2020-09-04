@@ -1,5 +1,9 @@
 #include "orientation.h"
 
+#ifdef _OPENMP
+#include <omp.h>
+#endif
+
 #define _USE_MATH_DEFINES
 #include <cmath>
 #include <tuple>  // std::tie
@@ -75,17 +79,18 @@ vector<vector<string>> orientationProbability(Environment& environment) {
 
   // Compute the 3-point mutual info (N * I'(X;Y;Z|{ui})) for each triple
   vector<double> I3_list(triples.size());
-  std::transform(begin(triples), end(triples), begin(I3_list),
-      [&environment](const auto& t) {
-        TempAllocatorScope scope;
-        int X{t[0]}, Z{t[1]}, Y{t[2]};
-        const auto& ui_list = environment.edges[X][Y].shared_info->ui_list;
-        vector<int> ui_no_z(ui_list);
-        ui_no_z.erase(remove(begin(ui_no_z), end(ui_no_z), Z), end(ui_no_z));
+#ifdef _OPENMP
+#pragma omp parallel for schedule(dynamic)
+#endif
+  for (size_t i = 0; i < triples.size(); ++i) {
+    int X{triples[i][0]}, Z{triples[i][1]}, Y{triples[i][2]};
+    const auto& ui_list = environment.edges[X][Y].shared_info->ui_list;
+    vector<int> ui_no_z(ui_list);
+    ui_no_z.erase(remove(begin(ui_no_z), end(ui_no_z), Z), end(ui_no_z));
 
-        return getInfo3PointOrScore(
-            environment, X, Y, Z, ui_no_z, /* get_info = */ true);
-      });
+    I3_list[i] = getInfo3PointOrScore(
+        environment, X, Y, Z, ui_no_z, /* get_info = */ true);
+  }
 
   // Compute the arrowhead probability of each edge endpoint
   vector<ProbaArray> probas_list = getOriProbasList(triples, I3_list,

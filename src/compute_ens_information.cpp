@@ -139,15 +139,17 @@ double getInfo3PointOrScore(Environment& environment, int X, int Y, int Z,
   }
 }
 
-double* getCondMutualInfo(
-    Environment& environment, int X, int Y, const vector<int>& ui_list) {
+double* getCondMutualInfo(int X, int Y, const vector<int>& ui_list,
+    const vector<vector<int>>& data_numeric,
+    const vector<vector<int>>& data_numeric_idx, Environment& environment,
+    bool use_cache) {
   TempAllocatorScope scope;
   // TODO : speedup by only removing NAs for marked columns
   // Mark rows containing NAs and count the number of complete samples
   TempVector<int> sample_is_not_NA(environment.n_samples);
   TempVector<int> NAs_count(environment.n_samples);
-  int n_samples_non_na = countNonNA(X, Y, /*Z*/ -1, ui_list,
-      environment.data_numeric, sample_is_not_NA, NAs_count);
+  int n_samples_non_na = countNonNA(
+      X, Y, /*Z*/ -1, ui_list, data_numeric, sample_is_not_NA, NAs_count);
 
   if (n_samples_non_na <= 2) {
     double* res_new = new double[3];
@@ -167,11 +169,10 @@ double* getCondMutualInfo(
   TempGrid2d<int> data_numeric_red(n_ui + 2, n_samples_non_na);
   TempGrid2d<int> data_numeric_idx_red(n_ui + 2, n_samples_non_na);
 
-  bool flag_sample_weights = filterNA(X, Y, /*Z*/ -1, ui_list,
-      environment.data_numeric, environment.data_numeric_idx,
-      environment.is_continuous, environment.sample_weights, sample_is_not_NA,
-      NAs_count, data_numeric_red, data_numeric_idx_red, all_levels_red,
-      cnt_red, posArray_red, sample_weights_red);
+  bool flag_sample_weights = filterNA(X, Y, /*Z*/ -1, ui_list, data_numeric,
+      data_numeric_idx, environment.is_continuous, environment.sample_weights,
+      sample_is_not_NA, NAs_count, data_numeric_red, data_numeric_idx_red,
+      all_levels_red, cnt_red, posArray_red, sample_weights_red);
 
   // If X or Y has only 1 level
   if (all_levels_red[0] <= 1 || all_levels_red[1] <= 1) {
@@ -184,10 +185,10 @@ double* getCondMutualInfo(
 
   double* res_new = NULL;
   if (std::all_of(begin(cnt_red), end(cnt_red), [](int x) { return x == 0; })) {
-    res_new = getAllInfoNEW(environment.data_numeric,
-        environment.levels, X, Y, -1, ui_list, environment.n_eff,
-        environment.cplx, environment.is_k23, environment.sample_weights,
-        environment.test_mar, environment.cache.cterm);
+    res_new = getAllInfoNEW(data_numeric, environment.levels, X, Y, -1, ui_list,
+        environment.n_eff, environment.cplx, environment.is_k23,
+        environment.sample_weights, environment.test_mar,
+        environment.cache.cterm);
   } else {
     res_new = compute_mi_cond_alg1(data_numeric_red, data_numeric_idx_red,
         all_levels_red, cnt_red, posArray_red, n_ui, n_samples_non_na,

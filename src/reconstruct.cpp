@@ -86,7 +86,10 @@ List reconstruct(List input_data, List arg_list) {
       lap_start = getLapStartTime();
       Rcout << "Compute confidence cut with permutations..." << std::flush;
       setConfidence(environment);
+      size_t n_connected = environment.connected_list.size();
       confidenceCut(environment);
+      Rcout << n_connected - environment.connected_list.size()
+            << " edges cut.\n";
       environment.exec_time.cut += getLapInterval(lap_start);
     }
     // Oriente edges for non-consistent/orientation consistent algorithm
