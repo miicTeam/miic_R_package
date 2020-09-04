@@ -27,6 +27,13 @@ For igraph, see \code{\link{getIgraph}}.
 \examples{
 \donttest{
 library(miic)
+data(hematoData)
+
+# execute MIIC (reconstruct graph)
+miic.res <- miic(
+  input_data = hematoData, latent = "yes",
+  n_shuffles = 10, conf_threshold = 0.001
+)
 
 # Using igraph
 library(igraph)

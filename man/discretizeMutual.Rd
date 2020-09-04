@@ -106,7 +106,7 @@ message("I(X;Y|Z) = ", res$info)
 # Independence, conditional dependence : X -> Z <- Y
 X <- runif(N)
 Y <- runif(N)
-Z <- X + Y + runif(N, sd = 0.1)
+Z <- X + Y + rnorm(N, sd = 0.1)
 res <- discretizeMutual(X, Y, plot = TRUE)
 message("I(X;Y) = ", res$info)
 res <- discretizeMutual(X, Y, matrix_u = matrix(Z, ncol = 1), plot = TRUE)

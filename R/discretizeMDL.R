@@ -37,8 +37,8 @@
 discretizeMDL <- function(x = NULL, max_bins = 20) {
   result <- list()
   #### Check the input arguments
-  if (is.null(x)) {
-    stop("The input data file is required")
+  if (is.null(x) || !is.vector(x)) {
+    stop("The input data is required and must be a vector")
   }
   if (base::requireNamespace("Rcpp", quietly = TRUE)) {
     result <- mydiscretizeMDL(x, max_bins)
