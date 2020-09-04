@@ -4,7 +4,7 @@
 #define _USE_MATH_DEFINES
 #include <cmath>
 #include <iterator>  // std::ostream_iterator
-#include <map>
+#include <unordered_map>
 #include <sstream>  //std::stringstream
 #include <string>
 #include <vector>
@@ -502,7 +502,7 @@ bool filterNA(int X, int Y, int Z, const vector<int>& ui_list,
   posArray[posArray.size() - 1] = Z;
 
   // Map to make sure that the levels of the reduced data start at zero
-  std::map<int, int> new_levels;
+  std::unordered_map<int, int> new_levels;
 
   bool flag_sample_weights{false};
   for (int j = 0; j < n_ui + 3; j++) {
@@ -522,33 +522,33 @@ bool filterNA(int X, int Y, int Z, const vector<int>& ui_list,
       if (sample_is_not_NA[i] == 1) {
         // Row at index i does not contain any NA
         int old_val = data_numeric[i][index];
-        if (new_levels.count(old_val) == 0) {
+        auto it = new_levels.find(old_val);
+        if (it == end(new_levels)) {
           // If level has not already been seen add it to the map
           // and increment the number of unique levels in reduced data
           new_levels.insert({old_val, updated_discrete_level});
-          updated_discrete_level++;
+          data_numeric_red(j, k1) = updated_discrete_level++;
+        } else {
+          data_numeric_red(j, k1) = it->second;
         }
-        data_numeric_red(j, k1) = new_levels[old_val];
         if (j == 0) {
           sample_weights_red[k1] = sample_weights[i];
           if (sample_weights_red[k1] != 1.0) flag_sample_weights = true;
         }
-        k1++;
+        ++k1;
       }
-      if (is_continuous_red[j] != 0) {  // Variable j is continuous
-        // position of ith sample (order)
-        int si = data_numeric_idx[index][i];
-        if (si != -1 && sample_is_not_NA[si] == 1) {
-          // Row at position si does not contain any NA, rank is updated taking
-          // into account the number of NAs up to si.
-          data_numeric_idx_red(j, k2) = si - NAs_count[si];
-          k2++;
-          // check whether is a different values or repeated
-          if (data_numeric[si][index] != prev_val) {
-            nnr++;
-            prev_val = data_numeric[si][index];
-          }
-        }
+      if (is_continuous_red[j] == 0) continue;
+      // Variable j is continuous
+      int si = data_numeric_idx[index][i];  // position of ith sample (order)
+      if (si == -1 || sample_is_not_NA[si] == 0) continue;
+      // Row at position si does not contain any NA, rank is updated
+      // taking into account the number of NAs up to si.
+      data_numeric_idx_red(j, k2) = si - NAs_count[si];
+      ++k2;
+      // check whether is a different values or repeated
+      if (data_numeric[si][index] != prev_val) {
+        ++nnr;
+        prev_val = data_numeric[si][index];
       }
     }
     // Update with the effective number of levels
