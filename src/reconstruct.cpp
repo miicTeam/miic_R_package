@@ -61,8 +61,8 @@ List reconstruct(List input_data, List arg_list) {
     // moment of initialization
     for (int i = 0; i < environment.n_nodes; i++) {
       for (int j = 0; j < environment.n_nodes; j++) {
-        environment.edges[i][j].status_prev = environment.edges[i][j].status;
-        environment.edges[i][j].status = environment.edges[i][j].status_init;
+        environment.edges(i, j).status_prev = environment.edges(i, j).status;
+        environment.edges(i, j).status = environment.edges(i, j).status_init;
       }
     }
     lap_start = getLapStartTime();
@@ -113,7 +113,7 @@ List reconstruct(List input_data, List arg_list) {
   int union_n_edges = 0;
   for (int i = 1; i < environment.n_nodes; i++) {
     for (int j = 0; j < i; j++) {
-      if (environment.edges[i][j].status) {
+      if (environment.edges(i, j).status) {
         union_n_edges++;
       }
     }
@@ -132,7 +132,7 @@ List reconstruct(List input_data, List arg_list) {
     vector<std::pair<int, int>> inconsistent_edges;
     for (int i = 1; i < environment.n_nodes; i++) {
       for (int j = 0; j < i; j++) {
-        const Edge& edge = environment.edges[i][j];
+        const Edge& edge = environment.edges(i, j);
         if (edge.status || bcc.isConsistent(i, j, edge.shared_info->ui_list))
           continue;
         if (environment.verbose) {
@@ -146,9 +146,9 @@ List reconstruct(List input_data, List arg_list) {
       }
     }
     for (const auto& k : inconsistent_edges) {
-      environment.edges[k.first][k.second].status = 1;
-      environment.edges[k.second][k.first].status = 1;
-      environment.edges[k.first][k.second].shared_info->setUndirected();
+      environment.edges(k.first, k.second).status = 1;
+      environment.edges(k.second, k.first).status = 1;
+      environment.edges(k.first, k.second).shared_info->setUndirected();
     }
     Rcout << n_inconsistency << " inconsistent conditional independences"
           << " found after orientation.\n";

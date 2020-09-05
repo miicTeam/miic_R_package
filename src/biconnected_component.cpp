@@ -48,14 +48,14 @@ void BiconnectedComponent::setCandidateZ(int x, int y, vector<int>& zi_list) {
     auto set_z = getCandidateZ(x, y);
     copy_if(
         begin(set_z), end(set_z), back_inserter(zi_list), [this, x, y](int i) {
-          return (latent || environment.edges[i][x].status_prev > 0 ||
-                  environment.edges[i][y].status_prev > 0);
+          return (latent || environment.edges(i, x).status_prev > 0 ||
+                  environment.edges(i, y).status_prev > 0);
         });
   } else {
     for (int z = 0; z < environment.n_nodes; ++z) {
       if (z == x || z == y) continue;
-      if (latent || environment.edges[x][z].status_prev ||
-          environment.edges[y][z].status_prev) {
+      if (latent || environment.edges(x, z).status_prev ||
+          environment.edges(y, z).status_prev) {
         zi_list.push_back(z);
       }
     }
@@ -68,8 +68,8 @@ bool BiconnectedComponent::isConsistent(
   set<int> set_z = getCandidateZ(x, y);
   for (auto& z : vect_z) {
     if (set_z.find(z) == set_z.end() ||
-        (environment.edges[z][x].status <= 0 &&
-            environment.edges[z][y].status <= 0))
+        (environment.edges(z, x).status <= 0 &&
+            environment.edges(z, y).status <= 0))
       return false;
   }
   return true;
@@ -134,7 +134,7 @@ void BiconnectedComponent::bcc() {
   for (int i = 0; i < n_nodes; i++) {
     for (int j = 0; j < n_nodes; j++) {
       if (i == j) continue;
-      degree_of[i] += environment.edges[i][j].shared_info->connected;
+      degree_of[i] += environment.edges(i, j).shared_info->connected;
     }
   }
 }
@@ -158,7 +158,7 @@ void BiconnectedComponent::bccAux(int u, int& time, TempVector<int>& parent,
   for (int v = 0; v < n_nodes; v++) {
     // graph maybe (partially) directed, whereas biconnected component
     // concerns only the skeleton
-    if (!environment.edges[u][v].status && !environment.edges[v][u].status)
+    if (!environment.edges(u, v).status && !environment.edges(v, u).status)
       continue;
 
     if (depth[v] == -1) {

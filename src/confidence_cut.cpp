@@ -34,7 +34,7 @@ void setConfidence(Environment& environment) {
   std::set<int> columns_to_shuffle;
   for (int i = 1; i < environment.n_nodes; ++i) {
     for (int j = 0; j < i; ++j) {
-      auto& edge = environment.edges[i][j];
+      auto& edge = environment.edges(i, j);
       if (!edge.status || edge.shared_info->exp_shuffle != -1) continue;
 
       edge.shared_info->exp_shuffle = 0;
@@ -51,7 +51,7 @@ void setConfidence(Environment& environment) {
     vector<vector<int>> shuffled_data_idx(environment.data_numeric_idx);
     vector<int> indices(environment.n_samples);
 #ifdef _OPENMP
-#pragma omp for schedule(dynamic)
+#pragma omp for schedule(static)
 #endif
     for (int nb = 0; nb < environment.n_shuffles; nb++) {
       // Shuffle the dataset for selected columns
@@ -88,16 +88,13 @@ void setConfidence(Environment& environment) {
 #ifdef _OPENMP
 #pragma omp atomic
 #endif
-        environment.edges[X][Y].shared_info->exp_shuffle +=
-            exp(-I_prime_shuffle);
+        edge.getEdge().shared_info->exp_shuffle += exp(-I_prime_shuffle);
       }
     }
-  }
+  }  // omp parallel
   // evaluate average
-  for (const auto& edge : edge_list) {
-    environment.edges[edge.X][edge.Y].shared_info->exp_shuffle /=
-        environment.n_shuffles;
-  }
+  for (const auto& edge : edge_list)
+    edge.getEdge().shared_info->exp_shuffle /= environment.n_shuffles;
 }
 
 void confidenceCut(Environment& environment) {
@@ -105,14 +102,14 @@ void confidenceCut(Environment& environment) {
   // remove edges based on confidence
   auto to_delete = [&environment](EdgeID& id) {
     int X = id.X, Y = id.Y;
-    auto info = environment.edges[X][Y].shared_info;
+    auto info = id.getEdge().shared_info;
     double I_prime_original = info->Ixy_ui - info->cplx;
     // exp(I_shuffle - I_original)
     auto confidence = exp(-I_prime_original) / info->exp_shuffle;
     if (confidence > environment.conf_threshold) {
       info->connected = 0;
-      environment.edges[X][Y].status = 0;
-      environment.edges[Y][X].status = 0;
+      environment.edges(X, Y).status = 0;
+      environment.edges(Y, X).status = 0;
       return true;
     } else {
       return false;

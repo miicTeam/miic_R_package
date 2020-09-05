@@ -24,7 +24,7 @@ namespace reconstruction {
 // Initialize the edges of the network
 int initializeEdge(Environment& environment, int X, int Y) {
   // Compute the mutual information and the corresponding CPLX
-  auto info = environment.edges[X][Y].shared_info;
+  auto info = environment.edges(X, Y).shared_info;
   auto res = getCondMutualInfo(X, Y, vector<int>(), environment.data_numeric,
       environment.data_numeric_idx, environment);
   info->Nxy = res.Nxy_ui;
@@ -41,19 +41,19 @@ int initializeEdge(Environment& environment, int X, int Y) {
   if (shifted_mi <= 0) {
     // Unconditional independence
     info->connected = 0;
-    environment.edges[X][Y].status = 0;
-    environment.edges[Y][X].status = 0;
-    environment.edges[X][Y].status_init = 0;
-    environment.edges[Y][X].status_init = 0;
+    environment.edges(X, Y).status = 0;
+    environment.edges(Y, X).status = 0;
+    environment.edges(X, Y).status_init = 0;
+    environment.edges(Y, X).status_init = 0;
   } else {
     info->connected = 1;
-    environment.edges[X][Y].status = 1;
-    environment.edges[Y][X].status = 1;
-    environment.edges[X][Y].status_init = 1;
-    environment.edges[Y][X].status_init = 1;
+    environment.edges(X, Y).status = 1;
+    environment.edges(Y, X).status = 1;
+    environment.edges(X, Y).status_init = 1;
+    environment.edges(Y, X).status_init = 1;
   }
 
-  return environment.edges[X][Y].status;
+  return environment.edges(X, Y).status;
 }
 
 bool initializeSkeleton(Environment& environment) {
@@ -75,9 +75,9 @@ bool initializeSkeleton(Environment& environment) {
       }
     }
     for (int j = i + 1; j < environment.n_nodes && !interrupt; j++) {
-      environment.edges[i][j].shared_info = std::make_shared<EdgeSharedInfo>();
-      environment.edges[j][i].shared_info = environment.edges[i][j].shared_info;
-      if (environment.edges[i][j].status) {
+      environment.edges(i, j).shared_info = std::make_shared<EdgeSharedInfo>();
+      environment.edges(j, i).shared_info = environment.edges(i, j).shared_info;
+      if (environment.edges(i, j).status) {
         initializeEdge(environment, i, j);
       }
     }
@@ -95,9 +95,9 @@ bool setBestContributingNode(
   for (int i = 0; i < environment.n_nodes - 1; i++) {
     for (int j = i + 1; j < environment.n_nodes; j++) {
       // Do dot consider edges removed with unconditional independence
-      if (!edges[i][j].status) continue;
-      edges[i][j].shared_info->reset();
-      unsettled_list.emplace_back(i, j, edges[i][j]);
+      if (!edges(i, j).status) continue;
+      edges(i, j).shared_info->reset();
+      unsettled_list.emplace_back(i, j, edges(i, j));
     }
   }
   int n_jobs_total = unsettled_list.size();
@@ -173,13 +173,12 @@ bool searchForConditionalIndependence(Environment& environment) {
     ++iter_count;
 
     auto it_max = std::max_element(begin(unsettled_list), end(unsettled_list),
-        [&environment](const EdgeID& a, const EdgeID& b) {
-          return environment.edges[a.X][a.Y].shared_info->Rxyz_ui <
-                 environment.edges[b.X][b.Y].shared_info->Rxyz_ui;
+        [](const EdgeID& a, const EdgeID& b) {
+          return a.getEdge().shared_info->Rxyz_ui <
+                 b.getEdge().shared_info->Rxyz_ui;
         });
-    int X = it_max->X;
-    int Y = it_max->Y;
-    auto top_info = environment.edges[X][Y].shared_info;
+    int X = it_max->X, Y = it_max->Y;
+    auto top_info = it_max->getEdge().shared_info;
 
     // move top z from zi_vect to ui_vect
     top_info->ui_list.push_back(top_info->top_z);
@@ -207,8 +206,8 @@ bool searchForConditionalIndependence(Environment& environment) {
     if (top_info->Ixy_ui - top_info->cplx - environment.log_eta <= 0) {
       // Conditional independence found, remove edge
       unsettled_list.erase(it_max);
-      environment.edges[X][Y].status = 0;
-      environment.edges[Y][X].status = 0;
+      environment.edges(X, Y).status = 0;
+      environment.edges(Y, X).status = 0;
       top_info->connected = 0;
     } else {
       // Search for next candidate separating node

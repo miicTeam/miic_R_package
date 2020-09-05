@@ -68,7 +68,7 @@ void getJointMixed(const Environment& environment, int i, int j,
   int continuous_pos = environment.is_continuous[i] ? i : j;
   // Fill marginal distributions
   int n_samples_non_na = 0;
-  const auto& ui_list = environment.edges[i][j].shared_info->ui_list;
+  const auto& ui_list = environment.edges(i, j).shared_info->ui_list;
   for (int k = 0; k < environment.n_samples; k++) {
     curr_sample_is_not_NA[k] = 0;
     if (SampleHasNoNA(i, j, ui_list, environment.data_numeric, k)) {
@@ -113,7 +113,7 @@ double compute_k_nearest_distance(
 double compute_kl_divergence_continuous(vector<vector<double>>& space1,
     vector<vector<double>>& space2, int n1, int n2, int ndims, int k,
     const TempVector<bool>& flag_break_ties, const TempVector<int>& map_samples,
-    double* noise_vec) {
+    const vector<double>& noise_vec) {
   double sumlog = 0;
   double noise;
   int i_map;
@@ -154,7 +154,7 @@ void getJointSpace(const Environment& environment, int i, int j,
     vector<vector<double>>& jointSpace,
     TempVector<int>& curr_sample_is_not_NA) {
   int n_samples_non_na = 0;
-  const auto& ui_list = environment.edges[i][j].shared_info->ui_list;
+  const auto& ui_list = environment.edges(i, j).shared_info->ui_list;
   for (int k = 0; k < environment.n_samples; k++) {
     curr_sample_is_not_NA[k] = 0;
     if (SampleHasNoNA(i, j, ui_list, environment.data_numeric, k)) {
@@ -172,7 +172,7 @@ TempGrid2d<double> getJointFreqs(const Environment& environment, int i, int j,
       environment.levels[i], environment.levels[j], 0);
 
   int n_samples_non_na = 0;
-  const auto& ui_list = environment.edges[i][j].shared_info->ui_list;
+  const auto& ui_list = environment.edges(i, j).shared_info->ui_list;
   for (int k = 0; k < environment.n_samples; k++) {
     if ((!sample_is_not_NA.empty() && sample_is_not_NA[k]) ||
         (sample_is_not_NA.empty() &&
@@ -194,8 +194,8 @@ vector<vector<int>> getAdjMatrix(const Environment& env) {
   vector<vector<int>> adj_matrix(env.n_nodes, vector<int>(env.n_nodes, 0));
   for (int i = 1; i < env.n_nodes; i++) {
     for (int j = 0; j < i; j++) {
-      adj_matrix[i][j] = env.edges[i][j].status;
-      adj_matrix[j][i] = env.edges[j][i].status;
+      adj_matrix[i][j] = env.edges(i, j).status;
+      adj_matrix[j][i] = env.edges(j, i).status;
     }
   }
   return adj_matrix;
@@ -218,7 +218,7 @@ vector<vector<string>> getEdgesInfoTable(const Environment& env) {
   vector<EdgeID> edge_list;
   for (int i = 0; i < env.n_nodes - 1; i++) {
     for (int j = i + 1; j < env.n_nodes; j++) {
-      edge_list.emplace_back(i, j, env.edges[i][j]);
+      edge_list.emplace_back(i, j, env.edges(i, j));
     }
   }
   std::sort(edge_list.begin(), edge_list.end());
@@ -228,16 +228,15 @@ vector<vector<string>> getEdgesInfoTable(const Environment& env) {
       "ai.vect", "zi.vect", "Ixy", "Ixy_ai", "cplx", "Rxyz_ai", "category",
       "Nxy_ai", "confidence"});
   for (const auto& edge : edge_list) {
-    auto i = edge.X, j = edge.Y;
-    auto info = env.edges[i][j].shared_info;
+    auto info = edge.getEdge().shared_info;
     double confidence = -1;
     if (info->exp_shuffle != -1)
       confidence = exp(info->cplx - info->Ixy_ui) / info->exp_shuffle;
 
     using std::to_string;
     table.emplace_back(std::initializer_list<string>{
-        env.nodes[i].name,
-        env.nodes[j].name,
+        env.nodes[edge.X].name,
+        env.nodes[edge.Y].name,
         info->top_z == -1 ? "NA" : env.nodes[info->top_z].name,
         toNameString(env, info->ui_list),
         toNameString(env, info->zi_list),
@@ -440,7 +439,7 @@ double compute_kl_divergence(int X, int Y, Environment& environment,
 
 int getNumSamplesNonNA(const Environment& environment, int i, int j) {
   int n_samples_non_na = 0;
-  const auto& ui_list = environment.edges[i][j].shared_info->ui_list;
+  const auto& ui_list = environment.edges(i, j).shared_info->ui_list;
   for (int k = 0; k < environment.n_samples; k++) {
     if (SampleHasNoNA(i, j, ui_list, environment.data_numeric, k))
       ++n_samples_non_na;
@@ -499,7 +498,7 @@ bool filterNA(int X, int Y, int Z, const vector<int>& ui_list,
   posArray[0] = X;
   posArray[1] = Y;
   std::copy(begin(ui_list), end(ui_list), begin(posArray) + 2);
-  posArray[posArray.size() - 1] = Z;
+  posArray.back() = Z;
 
   // Map to make sure that the levels of the reduced data start at zero
   std::unordered_map<int, int> new_levels;

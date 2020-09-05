@@ -61,10 +61,7 @@ List mydiscretizeMutual(List input_data, List arg_list) {
       NAs_count, dataNumeric_red, dataNumericIdx_red, AllLevels_red, cnt_red,
       posArray_red, sample_weights_red);
 
-  int** iterative_cuts = (int**)calloc(STEPMAX + 1, sizeof(int*));
-  for (int i = 0; i < STEPMAX + 1; i++) {
-    iterative_cuts[i] = (int*)calloc(maxbins * (2 + nbrU), sizeof(int));
-  }
+  Grid2d<int> iterative_cuts(STEPMAX + 1, maxbins * (2 + nbrU));
   environment.iterative_cuts = iterative_cuts;
 
   double* res = compute_mi_cond_alg1(dataNumeric_red, dataNumericIdx_red,
@@ -74,26 +71,25 @@ List mydiscretizeMutual(List input_data, List arg_list) {
   int niterations = 0;
   int i = 0;
   double max_res_ef = -1;
-  vector<vector<int>> iterative_cutpoints(
-      STEPMAX * maxbins, vector<int>(nbrU + 2));
+  TempGrid2d<int> iterative_cutpoints(STEPMAX * maxbins, nbrU + 2);
   for (int l = 0; l < STEPMAX + 1; l++) {
-    if (iterative_cuts[l][0] == -1) {
+    if (iterative_cuts(l, 0) == -1) {
       niterations = l;
-      res[1] = iterative_cuts[l][1] / 100000.0;
-      res[0] = iterative_cuts[l][2] / 100000.0;
-      max_res_ef = iterative_cuts[l][3] / 100000.0;
+      res[1] = iterative_cuts(l, 1) / 100000.0;
+      res[0] = iterative_cuts(l, 2) / 100000.0;
+      max_res_ef = iterative_cuts(l, 3) / 100000.0;
       break;
     }
     for (int k = 0; k < (nbrU + 2); k++) {
       i = 0;
-      while (iterative_cuts[l][i + maxbins * k] <
-             iterative_cuts[l][i + maxbins * k + 1]) {
-        iterative_cutpoints[maxbins * l + i][k] =
-            iterative_cuts[l][i + maxbins * k];
+      while (iterative_cuts(l, i + maxbins * k) <
+             iterative_cuts(l, i + maxbins * k + 1)) {
+        iterative_cutpoints(maxbins * l + i, k) =
+            iterative_cuts(l, i + maxbins * k);
         i++;
       }
       for (int j = i; j < maxbins; j++) {
-        iterative_cutpoints[maxbins * l + j][k] = -1;
+        iterative_cutpoints(maxbins * l + j, k) = -1;
       }
     }
   }
@@ -101,7 +97,7 @@ List mydiscretizeMutual(List input_data, List arg_list) {
   NumericMatrix cutpoints(niterations * maxbins, nbrU + 2);
   for (int i = 0; i < cutpoints.nrow(); i++) {
     for (int j = 0; j < (nbrU + 2); j++) {
-      cutpoints[i + j * cutpoints.nrow()] = iterative_cutpoints[i][j];
+      cutpoints[i + j * cutpoints.nrow()] = iterative_cutpoints(i, j);
     }
   }
 
@@ -110,11 +106,6 @@ List mydiscretizeMutual(List input_data, List arg_list) {
       _["info"]            = res[0],
       _["infok"]           = res[1],
       _["efinfo"]          = max_res_ef);
-
-  for (int i = 0; i < (STEPMAX + 1); i++) {
-    free(iterative_cuts[i]);
-  }
-  free(iterative_cuts);
 
   return result;
 }

@@ -213,14 +213,14 @@ InfoBlock getCondMutualInfo(int X, int Y, const vector<int>& ui_list,
 // parallel: whether the search can be done in parallel
 void searchForBestContributingNode(
     Environment& environment, int X, int Y, bool parallel) {
-  auto info = environment.edges[X][Y].shared_info;
+  auto info = environment.edges(X, Y).shared_info;
   auto& zi_list = info->zi_list;
   if (!environment.latent) {
     // remove zi that is not connected to neither x nor y
     zi_list.erase(std::remove_if(begin(zi_list), end(zi_list),
                       [&environment, X, Y](int Z) {
                         const auto& edges = environment.edges;
-                        return !edges[X][Z].status && !edges[Y][Z].status;
+                        return !edges(X, Z).status && !edges(Y, Z).status;
                       }),
         zi_list.end());
   }

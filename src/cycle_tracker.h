@@ -33,13 +33,13 @@ class CycleTracker {
       int n_node(env.n_nodes);
       for (int i = 0; i < n_node; ++i) {
         for (int j = 0; j < n_node; ++j) {
-          adj_matrix_1d[j + i * n_node] = env.edges[i][j].status;
+          adj_matrix_1d[j + i * n_node] = env.edges(i, j).status;
         }
       }
       // Keep track of the lower triangular part
       for (int i = 1; i < n_node; ++i) {
         for (int j = 0; j < i; ++j) {
-          const auto& edge = env.edges[i][j];
+          const auto& edge = env.edges(i, j);
           if (edge.status_prev == edge.status) continue;
 
           auto index_1d = getEdgeIndex1D(i, j);

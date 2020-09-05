@@ -593,8 +593,8 @@ vector<double> compute_Ixy_alg1(const TempGrid2d<int>& data,
     if (saveIterations) {
       // Save cut points
       for (j = 0; j < maxbins; j++) {
-        environment.iterative_cuts[stop - 1][j] = cut(0, j);
-        environment.iterative_cuts[stop - 1][j + maxbins] = cut(1, j);
+        environment.iterative_cuts(stop - 1, j) = cut(0, j);
+        environment.iterative_cuts(stop - 1, j + maxbins) = cut(1, j);
       }
     }
     jointfactors_u(datafactors, r, xy_factors, rxy);
@@ -661,15 +661,15 @@ vector<double> compute_Ixy_alg1(const TempGrid2d<int>& data,
   }
 
   if (saveIterations) {
-    environment.iterative_cuts[stop][0] =
-        -1;  // mark where we stopped iterating
-    environment.iterative_cuts[stop][1] =
-        100000 * return_res[1];  // Pass Ik[X;Y]
-    environment.iterative_cuts[stop][2] =
-        100000 * return_res[0];  // Pass I[X;Y]
-    environment.iterative_cuts[stop][3] =
-        100000 * max_res;  // Pass max res before optimization with equal freq
-    environment.iterative_cuts[stop][maxbins] = -1;
+    // mark where we stopped iterating
+    environment.iterative_cuts(stop, 0) = -1;
+    // Pass Ik[X;Y]
+    environment.iterative_cuts(stop, 1) = 100000 * return_res[1];
+    // Pass I[X;Y]
+    environment.iterative_cuts(stop, 2) = 100000 * return_res[0];
+    // Pass max res before optimization with equal freq
+    environment.iterative_cuts(stop, 3) = 100000 * max_res;
+    environment.iterative_cuts(stop, maxbins) = -1;
   }
 
 #if _MY_DEBUG_MInoU
@@ -1170,7 +1170,7 @@ vector<double> compute_Ixy_cond_u_new_alg1(const TempGrid2d<int>& data,
     if (saveIterations) {
       for (j = 0; j < maxbins; j++) {
         for (l = 0; l < (nbrUi + 2); l++) {
-          environment.iterative_cuts[stop1 - 1][j + l * maxbins] = cut(l, j);
+          environment.iterative_cuts(stop1 - 1, j + l * maxbins) = cut(l, j);
         }
       }
     }
@@ -1212,11 +1212,11 @@ vector<double> compute_Ixy_cond_u_new_alg1(const TempGrid2d<int>& data,
   }
   if (saveIterations) {
     for (l = 0; l < (nbrUi + 2); l++) {
-      environment.iterative_cuts[stop1][l * maxbins] =
+      environment.iterative_cuts(stop1, l * maxbins) =
           -1;  // mark where we stopped iterating
-      environment.iterative_cuts[stop1][l * maxbins + 1] =
+      environment.iterative_cuts(stop1, l * maxbins + 1) =
           100000 * return_res[1];  // pass Ik[X;Y|U]
-      environment.iterative_cuts[stop1][l * maxbins + 2] =
+      environment.iterative_cuts(stop1, l * maxbins + 2) =
           100000 * return_res[0];  // pass I[X;Y|U]
     }
   }

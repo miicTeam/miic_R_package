@@ -196,7 +196,7 @@ struct Node {
 
 struct Edge {
   // Edge is stored in Edge** edges
-  // Status code (suppose edges[X][Y]):
+  // Status code (suppose edges(X, Y)):
   // 0: not connected;
   // 1: connected and undirected;
   // 2: connected directed X -> Y;

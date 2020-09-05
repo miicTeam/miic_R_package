@@ -30,6 +30,7 @@ Environment::Environment(
       is_continuous(as<vector<int>>(arg_list["is_continuous"])),
       levels(as<vector<int>>(arg_list["levels"])),
       n_eff(as<int>(arg_list["n_eff"])),
+      edges(n_nodes, n_nodes),
       orientation_phase(as<bool>(arg_list["orientation"])),
       ori_proba_ratio(as<double>(arg_list["ori_proba_ratio"])),
       propagation(as<bool>(arg_list["propagation"])),
@@ -38,6 +39,7 @@ Environment::Environment(
       n_shuffles(as<int>(arg_list["n_shuffles"])),
       conf_threshold(as<double>(arg_list["conf_threshold"])),
       sample_weights(as<vector<double>>(arg_list["sample_weights"])),
+      noise_vec(2 * n_samples),
       is_k23(as<bool>(arg_list["is_k23"])),
       degenerate(as<bool>(arg_list["degenerate"])),
       no_init_eta(as<bool>(arg_list["no_init_eta"])),
@@ -81,45 +83,39 @@ Environment::Environment(
   omp_set_num_threads(n_threads);
 #endif
 
-  edges = new Edge*[n_nodes];
-  for (int i = 0; i < n_nodes; i++)
-    edges[i] = new Edge[n_nodes];
-
   for (int i = 0; i < n_nodes; i++) {
     for (int j = 0; j < n_nodes; j++) {
       if ((!is_continuous[i] && levels[i] == n_samples) ||
           (!is_continuous[j] && levels[j] == n_samples)) {
         // If a node is discrete with as many levels as there are samples, its
         // information with other nodes is null.
-        edges[i][j].status = 0;
-        edges[i][j].status_prev = 0;
+        edges(i, j).status = 0;
+        edges(i, j).status_prev = 0;
       } else {
         // Initialise all other edges.
-        edges[i][j].status = 1;
-        edges[i][j].status_prev = 1;
+        edges(i, j).status = 1;
+        edges(i, j).status_prev = 1;
       }
     }
   }
 
   for (int i = 0; i < n_nodes; i++) {
-    edges[i][i].status = 0;
-    edges[i][i].status_prev = 0;
+    edges(i, i).status = 0;
+    edges(i, i).status_prev = 0;
   }
 
-  noise_vec = new double[2 * n_samples];
-  for (int i = 0; i < 2 * n_samples; i++) {
-    noise_vec[i] = R::runif(-MAGNITUDE_TIES, MAGNITUDE_TIES);
-  }
+  std::generate(begin(noise_vec), end(noise_vec),
+      []() { return R::runif(-MAGNITUDE_TIES, MAGNITUDE_TIES); });
 
   readBlackbox(as<vector<vector<int>>>(arg_list["black_box"]));
 }
 
 void Environment::readBlackbox(const vector<vector<int>>& node_list) {
   for (const auto& pair : node_list) {
-    edges[pair[0]][pair[1]].status = 0;
-    edges[pair[0]][pair[1]].status_prev = 0;
-    edges[pair[1]][pair[0]].status = 0;
-    edges[pair[1]][pair[0]].status_prev = 0;
+    edges(pair[0], pair[1]).status = 0;
+    edges(pair[0], pair[1]).status_prev = 0;
+    edges(pair[1], pair[0]).status = 0;
+    edges(pair[1], pair[0]).status_prev = 0;
   }
 }
 

@@ -47,7 +47,7 @@ bool CycleTracker::hasCycle() {
       edges_union.insert(k.first);
       // compare the status in the previous iteration against the latest status
       std::pair<int, int> p = getEdgeIndex2D(k.first);
-      changed[k.first] = (k.second != env_.edges[p.first][p.second].status);
+      changed[k.first] = (k.second != env_.edges(p.first, p.second).status);
     }
     if (iter.index != iter_indices.front()) continue;
     iter_indices.pop_front();
@@ -55,9 +55,9 @@ bool CycleTracker::hasCycle() {
     if (none_of(begin(changed), end(changed), [](int j) { return j != 0; })) {
       for (auto& k : edges_union) {
         std::pair<int, int> p = getEdgeIndex2D(k);
-        env_.edges[p.first][p.second].status = 1;
-        env_.edges[p.second][p.first].status = 1;
-        env_.edges[p.first][p.second].shared_info->setUndirected();
+        env_.edges(p.first, p.second).status = 1;
+        env_.edges(p.second, p.first).status = 1;
+        env_.edges(p.first, p.second).shared_info->setUndirected();
       }
       return true;
     }

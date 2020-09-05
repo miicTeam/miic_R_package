@@ -32,7 +32,7 @@ struct Environment {
   vector<int> levels;
   int n_eff;
   vector<Node> nodes{};
-  Edge** edges;
+  Grid2d<Edge> edges;
   bool orientation_phase;
   double ori_proba_ratio = 1;
   bool propagation;
@@ -65,10 +65,10 @@ struct Environment {
   int n_shuffles;
   double conf_threshold;
 
-  int** iterative_cuts;
+  Grid2d<int> iterative_cuts;
   vector<double> sample_weights;
   bool flag_sample_weights;
-  double* noise_vec;
+  vector<double> noise_vec;
 
   double log_eta = 0;
   bool is_k23;
@@ -86,12 +86,6 @@ struct Environment {
 
   Environment(const Rcpp::List&, const Rcpp::List&);
   Environment() = default;
-
-  ~Environment() {
-    for (int i = 0; i < n_nodes; i++) delete[] edges[i];
-    delete[] edges;
-    delete[] noise_vec;
-  }
 
   void readBlackbox(const vector<vector<int>>&);
 };

@@ -40,16 +40,16 @@ void updateAdj(Environment& env, int x, int y, double y2x, double x2y) {
   // Only one arrowhead
   if (lower <= 0.5) {
     if (y2x == higher && acceptProba(y2x, env.ori_proba_ratio)) {
-      env.edges[x][y].status = -2;
-      env.edges[y][x].status = 2;
+      env.edges(x, y).status = -2;
+      env.edges(y, x).status = 2;
     } else if (acceptProba(x2y, env.ori_proba_ratio)) {
-      env.edges[x][y].status = 2;
-      env.edges[y][x].status = -2;
+      env.edges(x, y).status = 2;
+      env.edges(y, x).status = -2;
     }
   } else if (acceptProba(x2y, env.ori_proba_ratio) &&
              acceptProba(y2x, env.ori_proba_ratio)) {
-    env.edges[x][y].status = 6;
-    env.edges[y][x].status = 6;
+    env.edges(x, y).status = 6;
+    env.edges(y, x).status = 6;
   }
 }
 
@@ -64,13 +64,13 @@ vector<vector<string>> orientationProbability(Environment& environment) {
 
     for (auto iter1 = iter0 + 1; iter1 != end(edge_list); ++iter1) {
       int posX1 = iter1->X, posY1 = iter1->Y;
-      if (posY1 == posX && !environment.edges[posY][posX1].status)
+      if (posY1 == posX && !environment.edges(posY, posX1).status)
         triples.emplace_back(Triple{posY, posX, posX1});
-      else if (posY1 == posY && !environment.edges[posX][posX1].status)
+      else if (posY1 == posY && !environment.edges(posX, posX1).status)
         triples.emplace_back(Triple{posX, posY, posX1});
-      if (posX1 == posX && !environment.edges[posY][posY1].status)
+      if (posX1 == posX && !environment.edges(posY, posY1).status)
         triples.emplace_back(Triple{posY, posX, posY1});
-      else if (posX1 == posY && !environment.edges[posX][posY1].status)
+      else if (posX1 == posY && !environment.edges(posX, posY1).status)
         triples.emplace_back(Triple{posX, posY, posY1});
     }
   }
@@ -84,7 +84,7 @@ vector<vector<string>> orientationProbability(Environment& environment) {
 #endif
   for (size_t i = 0; i < triples.size(); ++i) {
     int X{triples[i][0]}, Z{triples[i][1]}, Y{triples[i][2]};
-    const auto& ui_list = environment.edges[X][Y].shared_info->ui_list;
+    const auto& ui_list = environment.edges(X, Y).shared_info->ui_list;
     vector<int> ui_no_z(ui_list);
     ui_no_z.erase(remove(begin(ui_no_z), end(ui_no_z), Z), end(ui_no_z));
 
