@@ -31,9 +31,9 @@ struct Environment {
   vector<int> is_continuous;
   vector<int> levels;
   int n_eff;
-  vector<Node> nodes{};
+  vector<Node> nodes;
   Grid2d<Edge> edges;
-  bool orientation_phase;
+  bool orientation;
   double ori_proba_ratio = 1;
   bool propagation;
   // Level of consistency required for the graph
@@ -59,8 +59,6 @@ struct Environment {
   vector<EdgeID> unsettled_list;
   // List of ids of edge whose status is sure to be connected
   vector<EdgeID> connected_list;
-  int numSearchMore{0};
-  int numNoMore{0};
 
   int n_shuffles;
   double conf_threshold;

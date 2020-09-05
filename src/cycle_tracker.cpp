@@ -15,7 +15,7 @@ using utility::TempAllocatorScope;
 bool CycleTracker::hasCycle() {
   TempAllocatorScope scope;
 
-  int n_edge = env_.numNoMore;
+  int n_edge = env_.connected_list.size();
   // Before saving the current iteration, search among previous iterations
   // those with the same number of edges
   auto range = edge_index_map_.equal_range(n_edge);

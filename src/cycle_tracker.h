@@ -77,7 +77,7 @@ class CycleTracker {
   std::multimap<int, int> edge_index_map_;
 
   void saveIteration() {
-    int n_edge = env_.numNoMore;
+    int n_edge = env_.connected_list.size();
     // Index of the iteration starting from 0
     int index = n_saved++;
     edge_index_map_.insert(std::make_pair(n_edge, index));

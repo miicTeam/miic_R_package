@@ -89,7 +89,7 @@ List reconstruct(List input_data, List arg_list) {
       environment.exec_time.cut += getLapInterval(lap_start);
     }
     // Oriente edges for non-consistent/orientation consistent algorithm
-    if (environment.orientation_phase && !environment.connected_list.empty() &&
+    if (environment.orientation && !environment.connected_list.empty() &&
         environment.consistent <= 1) {
       lap_start = getLapStartTime();
       Rcout << "Search for edge directions...\n";
@@ -98,7 +98,7 @@ List reconstruct(List input_data, List arg_list) {
     }
     if (environment.consistent != 0)
       Rcout << "Iteration " << iter_count << ' ';
-    Rcout << "Number of edges: " << environment.numNoMore << '\n';
+    Rcout << "Number of edges: " << environment.connected_list.size() << '\n';
     is_consistent = cycle_tracker.hasCycle();
     if (is_consistent) {
       Rcout << "cycle found of size " << cycle_tracker.getCycleSize() << '\n';
@@ -118,10 +118,8 @@ List reconstruct(List input_data, List arg_list) {
       }
     }
   }
-  environment.numNoMore = union_n_edges;
-
   // skeleton consistent algorithm
-  if (environment.numNoMore > 0 && environment.consistent == 2) {
+  if (environment.consistent == 2 && union_n_edges > 0) {
     lap_start = getLapStartTime();
     orientations = orientationProbability(environment);
     environment.exec_time.ori += getLapInterval(lap_start);

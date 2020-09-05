@@ -153,8 +153,6 @@ bool setBestContributingNode(
                            }),
       end(unsettled_list));
 
-  environment.numSearchMore = environment.unsettled_list.size();
-  environment.numNoMore = environment.connected_list.size();
   return true;
 }
 
@@ -234,8 +232,6 @@ bool searchForConditionalIndependence(Environment& environment) {
   if (!environment.verbose) Rcerr << "\n";
 
   std::sort(begin(environment.connected_list), end(environment.connected_list));
-  environment.numSearchMore = environment.unsettled_list.size();
-  environment.numNoMore = environment.connected_list.size();
   return true;
 }
 

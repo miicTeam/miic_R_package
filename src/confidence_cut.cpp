@@ -118,7 +118,6 @@ void confidenceCut(Environment& environment) {
   edge_list.erase(
       remove_if(begin(edge_list), end(edge_list), to_delete), end(edge_list));
   std::sort(edge_list.begin(), edge_list.end());
-  environment.numNoMore = edge_list.size();
 }
 
 }  // namespace reconstruction
