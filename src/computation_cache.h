@@ -1,6 +1,10 @@
 #ifndef MIIC_COMPUTATION_CACHE
 #define MIIC_COMPUTATION_CACHE
 
+#ifdef _OPENMP
+#include <omp.h>
+#endif
+
 #define _USE_MATH_DEFINES
 #include <cmath>
 #include <limits>
