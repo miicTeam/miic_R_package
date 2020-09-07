@@ -113,8 +113,7 @@ double getInfo3PointOrScore(Environment& environment, int X, int Y, int Z,
   if (std::all_of(begin(cnt_red), end(cnt_red), [](int x) { return x == 0; })) {
     double* res = getAllInfoNEW(environment.data_numeric, environment.levels, X,
         Y, Z, ui_list, environment.n_eff, environment.cplx, environment.is_k23,
-        environment.sample_weights, environment.test_mar,
-        environment.cache.cterm);
+        environment.sample_weights, environment.cache.cterm);
     info = res[7] + res[8];  // I(X;Y;Z|ui) - k(X;Y;Z|ui), res[8] = -k
     score = res[6];          // R(X,Y;Z|ui)
     delete[] res;
@@ -191,8 +190,7 @@ InfoBlock getCondMutualInfo(int X, int Y, const vector<int>& ui_list,
   if (std::all_of(begin(cnt_red), end(cnt_red), [](int x) { return x == 0; })) {
     res_new = getAllInfoNEW(data_numeric, environment.levels, X, Y, -1, ui_list,
         environment.n_eff, environment.cplx, environment.is_k23,
-        environment.sample_weights, environment.test_mar,
-        environment.cache.cterm);
+        environment.sample_weights, environment.cache.cterm);
   } else {
     res_new = compute_mi_cond_alg1(data_numeric_red, data_numeric_idx_red,
         all_levels_red, cnt_red, posArray_red, n_ui, n_samples_non_na,

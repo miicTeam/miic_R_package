@@ -27,8 +27,7 @@ using std::vector;
 double* getAllInfoNEW(const vector<vector<int>>& data,
     const vector<int>& all_levels, int id_x, int id_y, int id_z,
     const vector<int>& ui_list, int n_samples_eff, int cplx, int k23,
-    const vector<double>& weights, bool test_mar,
-    std::shared_ptr<CtermCache> cache) {
+    const vector<double>& weights, std::shared_ptr<CtermCache> cache) {
   TempAllocatorScope scope;
 
   int n_ui = ui_list.size();
@@ -80,28 +79,13 @@ double* getAllInfoNEW(const vector<vector<int>>& data,
       sample(n_samples_non_na++, 0) = i;  // sample number
     }
   }
-  int rx_reduced = all_levels[id_x];
-  int ry_reduced = all_levels[id_y];
-  // update dbin
-  if (n_samples_non_na < n_samples) {
-    std::unordered_set<int> sx, sy;
-    for (int k = 0; k < n_samples_non_na; k++) {
-      int i = sample(k, 0);
-      sx.insert(data[i][id_x]);
-      sy.insert(data[i][id_y]);
-    }
-    rx_reduced = sx.size();
-    ry_reduced = sy.size();
-  }
-
-  if (n_samples_non_na == 0) return ptrRetValues;
 
   TempVector<int> r_list(n_nodes_xyui + 1);  // plus z
   // initialisation of n_levels for continuous variables in x,y, ui
   for (int i = 0; i < n_nodes_xyui; i++) {
     r_list[i] = all_levels[var_idx[i]];
   }
-  int PBin;
+  int PBin{1};
   // compute Lxyui, Lyui, Lui indices for later counting purpose
   for (int k = 0; k < n_samples_non_na; k++) {
     int i_sample = sample(k, 0);  // sample number
@@ -306,10 +290,6 @@ double* getAllInfoNEW(const vector<vector<int>>& data,
     ptrRetValues[1] = NIxy_ui;
     ptrRetValues[2] = k_xy_ui;
 
-    if (rx_reduced == 1 || ry_reduced == 1 || rx_reduced == N_xy_ui ||
-        ry_reduced == N_xy_ui) {
-      ptrRetValues[1] = 0;
-    }
     return ptrRetValues;
   } else {
     // id_z != -1
