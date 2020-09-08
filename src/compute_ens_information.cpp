@@ -188,9 +188,9 @@ InfoBlock getCondMutualInfo(int X, int Y, const vector<int>& ui_list,
 
   double* res_new = NULL;
   if (std::all_of(begin(cnt_red), end(cnt_red), [](int x) { return x == 0; })) {
-    res_new = getAllInfoNEW(data_numeric, environment.levels, X, Y, -1, ui_list,
-        environment.n_eff, environment.cplx, environment.is_k23,
-        environment.sample_weights, environment.cache.cterm);
+    res_new = computeCondMutualInfoDiscrete(data_numeric_red, all_levels_red,
+        posArray_red, sample_weights_red, environment.cplx,
+        environment.cache.cterm);
   } else {
     res_new = compute_mi_cond_alg1(data_numeric_red, data_numeric_idx_red,
         all_levels_red, cnt_red, posArray_red, n_ui, n_samples_non_na,

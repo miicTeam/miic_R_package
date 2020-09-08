@@ -24,6 +24,178 @@ using namespace miic::structure;
 using namespace miic::utility;
 using std::vector;
 
+double* computeCondMutualInfoDiscrete(const TempGrid2d<int>& data,
+    const TempVector<int>& levels, const TempVector<int>& var_idx,
+    const TempVector<double>& weights, int cplx,
+    std::shared_ptr<CtermCache> cache) {
+  TempAllocatorScope scope;
+
+  int n_samples = data.n_cols();
+  int n_nodes = data.n_rows();
+  int id_x = var_idx[0], id_y = var_idx[1];
+
+  TempVector<int> r_list(n_nodes);
+  for (int i = 0; i < n_nodes; i++) {
+    r_list[i] = levels[var_idx[i]];
+  }
+  TempVector<int> hash_ui(n_samples + 1);
+  TempVector<int> hash_uiy(n_samples + 1);
+  TempVector<int> hash_uiyx(n_samples + 1);
+  // Compute unique hash values for each sample in each of the joint spaces
+  for (int k = 0; k < n_samples; k++) {
+    hash_uiyx[k] = data(id_y, k) * r_list[0] + data(id_x, k);
+    hash_uiy[k] = data(id_y, k) * r_list[0];
+    hash_ui[k] = 0;
+
+    int PBin = r_list[0];        // rx
+    for (int j = 2; j < n_nodes; j++) {
+      PBin *= r_list[j - 1];
+      int increment = data(var_idx[j], k) * PBin;
+      hash_uiyx[k] += increment;     // Lxyui
+      hash_uiy[k] += increment;      // Lyui
+      hash_ui[k] += increment;       // Lui
+    }
+  }
+  int n_joint_levels = 1;
+  for (int i = 0; i < n_nodes; ++i) {
+    n_joint_levels *= r_list[i];
+  }
+  // For termination of counts
+  hash_uiyx[n_samples] = n_joint_levels;
+  hash_uiy[n_samples] = n_joint_levels;
+  hash_ui[n_samples] = n_joint_levels;
+
+  TempVector<int> order(n_samples + 1);
+  // [0 to n_samples]
+  std::iota(begin(order), end(order), 0);
+  std::sort(begin(order), end(order),
+      [&hash_uiyx](int a, int b) { return hash_uiyx[a] < hash_uiyx[b]; });
+
+  int Nyui{0}, Nui{0}, Ntot{0};
+  double info_xui_y{0}, info_yui_x{0}, info_ui_y{0}, info_ui_x{0};
+  double logC_xui_y{0}, logC_yui_x{0}, logC_ui_y{0}, logC_ui_x{0};
+
+  TempVector<int> Nxui(r_list[0], 0);
+  TempVector<int> Nx(r_list[0], 0);
+  TempVector<int> Ny(r_list[1], 0);
+  // initialization of counts and mutual infos & logCs
+  int Lxyui = hash_uiyx[order[0]];  // previous hash_xyui
+  int Lyui = hash_uiy[order[0]];    // previous hash_yui
+  int Lui = hash_ui[order[0]];      // previous hash_ui
+  int X = data(id_x, order[0]);
+  int Y = data(id_y, order[0]);
+  double Pxyui = 0;
+  // make the counts and compute mutual infos & logCs
+  for (int k = 0; k <= n_samples; k++) {
+    int i = order[k];
+    if (hash_uiyx[i] <= Lxyui) {
+      Pxyui += weights[i];
+      continue;
+    }
+    Lxyui = hash_uiyx[i];
+    // X has changed, conclude on previous X
+    int Nxyui = (int)Pxyui;
+    if (Nxyui > 0) {
+      Nui += Nxyui;
+      Nyui += Nxyui;
+      Nxui[X] += Nxyui;
+      Nx[X] += Nxyui;
+      Ny[Y] += Nxyui;
+      Ntot += Nxyui;
+
+      double NlogN = Nxyui * cache->getLog(Nxyui);
+      info_xui_y += NlogN;
+      info_yui_x += NlogN;
+    }
+    if (k < n_samples) {
+      Pxyui = weights[i];  // reset cumulative weight to current sample
+      X = data(id_x, i);
+      Y = data(id_y, i);
+    }
+
+    if (hash_uiy[i] <= Lyui) continue;
+    Lyui = hash_uiy[i];
+    // Y has changed, conclude on previous Y
+    if (Nyui > 0) {
+      double NlogN = Nyui * cache->getLog(Nyui);
+      info_yui_x -= NlogN;
+      info_ui_y += NlogN;
+      if (cplx != MDL) {
+        logC_yui_x += cache->getLogC(Nyui, r_list[0]);
+      }
+      Nyui = 0;
+    }
+
+    if (hash_ui[i] <= Lui) continue;
+    Lui = hash_ui[i];
+    // ui has changed, conclude on previous ui
+    for (int j = 0; j < r_list[0]; j++) {
+      int Nxuij = Nxui[j];
+      if (Nxuij > 0) {
+        double NlogN = Nxuij * cache->getLog(Nxuij);
+        info_xui_y -= NlogN;
+        info_ui_x += NlogN;
+        if (cplx != MDL) {
+          logC_xui_y += cache->getLogC(Nxuij, r_list[1]);
+        }
+        Nxui[j] = 0;
+      }
+    }
+
+    if (Nui > 0) {
+      double NlogN = Nui * cache->getLog(Nui);
+      info_ui_y -= NlogN;
+      info_ui_x -= NlogN;
+      if (cplx != MDL) {
+        logC_ui_x += cache->getLogC(Nui, r_list[0]);
+        logC_ui_y += cache->getLogC(Nui, r_list[1]);
+      }
+      Nui = 0;
+    }
+  }
+  // increment for info for Nx[X] and Ny[Y] contributions
+  for (int j = 0; j < r_list[0]; j++) {
+    int Nxj = Nx[j];
+    if (Nxj > 0) {
+      double NlogN = Nxj * log(Nxj / (1.0 * Ntot));
+      info_yui_x -= NlogN;
+      info_ui_x -= NlogN;
+    }
+  }
+  for (int j = 0; j < r_list[1]; j++) {
+    int Nyj = Ny[j];
+    if (Nyj > 0) {
+      double NlogN = Nyj * log(Nyj / (1.0 * Ntot));
+      info_xui_y -= NlogN;
+      info_ui_y -= NlogN;
+    }
+  }
+
+  double info3xy_ui = 0.5 * (info_xui_y + info_yui_x);
+  double info2xy_ui = 0.5 * (info_ui_y + info_ui_x);
+
+  if (cplx == MDL) {
+    int Prui = 1;
+    double logN = cache->getLog(Ntot);
+    for (int j = 2; j < n_nodes; j++)
+      Prui *= r_list[j];
+    logC_xui_y = 0.5 * (r_list[1] - 1) * (r_list[0] * Prui - 1) * logN;
+    logC_yui_x = 0.5 * (r_list[0] - 1) * (r_list[1] * Prui - 1) * logN;
+    logC_ui_y = 0.5 * (r_list[1] - 1) * (Prui - 1) * logN;
+    logC_ui_x = 0.5 * (r_list[0] - 1) * (Prui - 1) * logN;
+  }
+
+  double logC3xy_ui = 0.5 * (logC_xui_y + logC_yui_x);
+  double logC2xy_ui = 0.5 * (logC_ui_y + logC_ui_x);
+
+  double* res = new double[3];
+  res[0] = Ntot;
+  res[1] = info3xy_ui - info2xy_ui;
+  res[2] = logC3xy_ui - logC2xy_ui;
+
+  return res;
+}
+
 double* getAllInfoNEW(const vector<vector<int>>& data,
     const vector<int>& all_levels, int id_x, int id_y, int id_z,
     const vector<int>& ui_list, int n_samples_eff, int cplx, int k23,
@@ -32,29 +204,22 @@ double* getAllInfoNEW(const vector<vector<int>>& data,
 
   int n_ui = ui_list.size();
   int n_samples = data.size();
-
-  // Output pointer
-  int nbrRetValues = 3;
   // If no zi, return nSample0 & nSample0*I(xy|{ui}) & k_xy_ui
   // If nbrZi > 0, return
   //   nSample[z_top] & nSample[z_top]*I(xy|{ui})  & k_xy_ui
   //   z_top          & nSample[z_top]*I(xy|{ui}z) & k_xy_uiz
   //   R_top          & nSample[z_top]*I(xyz|{ui}) & k_xyz_ui
-  if (id_z != -1) nbrRetValues = 9;
 
-  double* ptrRetValues = new double[nbrRetValues];
-
+  double* ptrRetValues = new double[9];
   ptrRetValues[0] = -1;
   ptrRetValues[1] = -1;
   ptrRetValues[2] = -1;
-  if (id_z != -1) {
-    ptrRetValues[3] = -1;
-    ptrRetValues[4] = -1;
-    ptrRetValues[5] = -1;
-    ptrRetValues[6] = -1;
-    ptrRetValues[7] = -1;
-    ptrRetValues[8] = -1;
-  }
+  ptrRetValues[3] = -1;
+  ptrRetValues[4] = -1;
+  ptrRetValues[5] = -1;
+  ptrRetValues[6] = -1;
+  ptrRetValues[7] = -1;
+  ptrRetValues[8] = -1;
 
   // Define the total number of variables (xi, xj, {ui}, {zi})
   int n_nodes_xyui = n_ui + 2;
@@ -130,168 +295,7 @@ double* getAllInfoNEW(const vector<vector<int>>& data,
     }
   }
 
-  if (id_z == -1) {
-    int Nyui = 0;
-    int Nui = 0;
-
-    int X = sortedSample(0, 4);
-    int Y = sortedSample(0, 5);
-
-    double info_xui_y{0}, info_yui_x{0}, info_ui_y{0}, info_ui_x{0};
-    double logC_xui_y{0}, logC_yui_x{0}, logC_ui_y{0}, logC_ui_x{0};
-
-    // 6 test variables for counts, should all sum to nSample0
-    int Nxyuis{0}, Nyuis{0}, Nxuis{0}, Nuis{0}, Nxs{0}, Nys{0}, Ntot{0};
-
-    TempVector<int> Nxui(r_list[0], 0);
-    TempVector<int> Nx(r_list[0], 0);
-    TempVector<int> Ny(r_list[1], 0);
-    // initialization of counts and mutual infos & logCs
-    int Lxyui = sortedSample(0, 1);  // min Lxyui
-    int Lyui = sortedSample(0, 2);   // min Lyui
-    int Lui = sortedSample(0, 3);    // min Lui
-    double Pxyui = weights[sortedSample(0, 0)];
-    // make the counts and compute mutual infos & logCs
-    for (int k = 1; k <= n_samples_non_na; k++) {
-      if (sortedSample(k, 1) <= Lxyui) {
-        Pxyui += weights[sortedSample(k, 0)];  // weights[k];
-        continue;
-      }
-      Lxyui = sortedSample(k, 1);
-      int Nxyui = 0;
-      if (n_samples_eff != n_samples) {
-        if (randomrescaling) {
-          Nxyui = (int)floor(Pxyui);
-          double r = Pxyui - Nxyui;
-          double rr = R::runif(0, 1);
-          if (r > rr) ++Nxyui;
-        }
-      } else {
-        Nxyui = (int)Pxyui;
-      }
-
-      if (Nxyui > 0) {
-        Nui += Nxyui;
-        Nyui += Nxyui;
-        Nxui[X] += Nxyui;
-        Nx[X] += Nxyui;
-        Ny[Y] += Nxyui;
-        Ntot += Nxyui;
-        Nxyuis += Nxyui;
-
-        double NlogN = Nxyui * cache->getLog(Nxyui);
-        info_xui_y += NlogN;
-        info_yui_x += NlogN;
-      }
-      if (sortedSample(k, 0) < n_samples)
-        Pxyui = weights[sortedSample(k, 0)];  // weights[k];
-
-      if (k < n_samples_non_na) X = sortedSample(k, 4);
-      if (k < n_samples_non_na) Y = sortedSample(k, 5);
-
-      if (sortedSample(k, 2) <= Lyui) continue;
-      Lyui = sortedSample(k, 2);
-
-      if (Nyui > 0) {
-        double NlogN = Nyui * cache->getLog(Nyui);
-        info_yui_x -= NlogN;
-        info_ui_y += NlogN;
-        if (cplx != MDL) {
-          logC_yui_x += cache->getLogC(Nyui, r_list[0]);
-        }
-        Nyuis += Nyui;
-        Nyui = 0;
-      }
-
-      if (sortedSample(k, 3) <= Lui) continue;
-      Lui = sortedSample(k, 3);
-
-      for (int j = 0; j < r_list[0]; j++) {
-        int Nxuij = Nxui[j];
-        if (Nxuij > 0) {
-          double NlogN = Nxuij * cache->getLog(Nxuij);
-          info_xui_y -= NlogN;
-          info_ui_x += NlogN;
-          if (cplx != MDL) {
-            logC_xui_y += cache->getLogC(Nxuij, r_list[1]);
-          }
-
-          Nxuis += Nxuij;
-          Nxui[j] = 0;
-        }
-      }
-
-      if (Nui > 0) {
-        double NlogN = Nui * cache->getLog(Nui);
-        info_ui_y -= NlogN;
-        info_ui_x -= NlogN;
-        if (cplx != MDL) {
-          logC_ui_x += cache->getLogC(Nui, r_list[0]);
-          logC_ui_y += cache->getLogC(Nui, r_list[1]);
-        }
-        Nuis += Nui;
-        Nui = 0;
-      }
-    }
-    // increment for info for Nx[X] and Ny[Y] contributions
-    for (int j = 0; j < r_list[0]; j++) {
-      int Nxj = Nx[j];
-      if (Nxj > 0) {
-        double NlogN = Nxj * log(Nxj / (1.0 * Ntot));
-        info_yui_x -= NlogN;
-        info_ui_x -= NlogN;
-        Nxs += Nxj;
-      }
-    }
-    for (int j = 0; j < r_list[1]; j++) {
-      int Nyj = Ny[j];
-      if (Nyj > 0) {
-        double NlogN = Nyj * log(Nyj / (1.0 * Ntot));
-        info_xui_y -= NlogN;
-        info_ui_y -= NlogN;
-        Nys += Nyj;
-      }
-    }
-
-    // check maximum mutual infos - cplx terms
-    double info3xy_ui = 0.5 * (info_xui_y + info_yui_x);
-    double info2xy_ui = 0.5 * (info_ui_y + info_ui_x);
-
-    if (cplx == MDL) {
-      int Prui = 1;
-      double logN = cache->getLog(Ntot);
-      for (int j = 2; j < n_nodes_xyui; j++)
-        Prui *= r_list[j];
-      logC_xui_y = 0.5 * (r_list[1] - 1) * (r_list[0] * Prui - 1) * logN;
-      logC_yui_x = 0.5 * (r_list[0] - 1) * (r_list[1] * Prui - 1) * logN;
-      logC_ui_y = 0.5 * (r_list[1] - 1) * (Prui - 1) * logN;
-      logC_ui_x = 0.5 * (r_list[0] - 1) * (Prui - 1) * logN;
-    }
-
-    double logC3xy_ui = 0.5 * (logC_xui_y + logC_yui_x);
-    double logC2xy_ui = 0.5 * (logC_ui_y + logC_ui_x);
-
-    // forbid negative 2-point Ik // change 20200206
-    // if(info3xy_ui - logC3xy_ui - info2xy_ui + logC2xy_ui<0) {
-    //  info3xy_ui=0;
-    //  logC3xy_ui=0;
-    //  info2xy_ui=0;
-    //  logC2xy_ui=0;
-    //}
-
-    int N_xy_ui{0};
-    double NIxy_ui = -1.0;
-    double k_xy_ui = -1.0;
-    N_xy_ui = Ntot;
-    NIxy_ui = info3xy_ui - info2xy_ui;  // info to be returned if no z
-    k_xy_ui = logC3xy_ui - logC2xy_ui;  // cplx to be returned if no z
-
-    ptrRetValues[0] = N_xy_ui;
-    ptrRetValues[1] = NIxy_ui;
-    ptrRetValues[2] = k_xy_ui;
-
-    return ptrRetValues;
-  } else {
+  {
     // id_z != -1
     int N_xyuiz_top = 0;
     double NIxy_ui_top = -1;
