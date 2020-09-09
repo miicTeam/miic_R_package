@@ -12,7 +12,7 @@
 #' @keywords datasets
 #'
 #' @references Moignard et al. (2015) Nat Biotechnol 33(3):269-76
-#' (\href{https://www.ncbi.nlm.nih.gov/pubmed/25664528}{PubMed link})
+#' (\href{https://pubmed.ncbi.nlm.nih.gov/25355519/}{PubMed link})
 #'
 #' @keywords data
 NULL
@@ -34,7 +34,7 @@ NULL
 #' @keywords datasets
 #'
 #' @references Forbes SA, Beare D, Gunasekaran P, Leung K, Bindal N, et al. (2015)
-#' Nucleic Acids Res 43:D805–D811. (\href{https://www.ncbi.nlm.nih.gov/pubmed/25355519}{PubMed link})
+#' Nucleic Acids Res 43:D805–D811. (\href{https://pubmed.ncbi.nlm.nih.gov/25355519/}{PubMed link})
 #'
 #' @keywords data
 NULL
@@ -55,7 +55,7 @@ NULL
 #' @keywords datasets
 #'
 #' @references Forbes SA, Beare D, Gunasekaran P, Leung K, Bindal N, et al. (2015)
-#' Nucleic Acids Res 43:D805–D811. (\href{https://www.ncbi.nlm.nih.gov/pubmed/25355519}{PubMed link})
+#' Nucleic Acids Res 43:D805–D811. (\href{https://pubmed.ncbi.nlm.nih.gov/25355519/}{PubMed link})
 #'
 #' @keywords data
 NULL
@@ -101,3 +101,20 @@ NULL
 #'
 #' @keywords data
 NULL
+
+#' Covid cases
+#'
+#' Demo dataset of chronological series to be used in temporal mode of miic.
+#' Evolution of Covid cases on a subset of EU countries from 12/31/2019 to 06/18/2020.
+#' Source of the data : European Centre for Disease Prevention and Control. 
+#'
+#' @docType data
+#' @usage data(covidCases)
+#' @format A data.frame object.
+#' @keywords datasets
+#' @name covidCases
+#' @references ECDC (\href{https://www.ecdc.europa.eu/en/publications-data/download-todays-data-geographic-distribution-covid-19-cases-worldwide})
+#'
+#' @keywords data
+NULL
+
