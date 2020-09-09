@@ -31,6 +31,28 @@ Or from GitHub (development):
 # install.packages("remotes")
 remotes::install_github("miicTeam/miic_R_package")
 ```
+
+## Quick start
+
+MIIC allows you to create a graph object from a dataset of observations of both discrete and continuous variables, potentially with missing values and taking into account unobserved latent variables.
+You can find this example along others by calling the documentation of the main function `?miic` from R. 
+```R
+library(miic)
+
+# EXAMPLE HEMATOPOIESIS
+data(hematoData)     
+# execute MIIC (reconstruct graph)
+miic.res <- miic(
+  input_data = hematoData, latent = "yes",
+  n_shuffles = 10, conf_threshold = 0.001
+)
+     
+# plot graph with igraph
+if(require(igraph)) {
+  plot(miic.res, method="igraph")
+}
+```
+
 ## Documentation
 You can find the documentation pages in the "man" folder, in the auto generated [PDF](https://cran.r-project.org/web/packages/miic/miic.pdf), or use R functions `help()` and `?`.
 
