@@ -19,7 +19,7 @@ structure::InfoBlock computeCondMutualInfo(
     bool flag_sample_weights, structure::Environment& environment,
     bool saveIterations = false);
 
-structure::Info3PointBlock compute_Rscore_Ixyz_alg5(
+structure::Info3PointBlock computeInfo3PointAndScore(
     const structure::TempGrid2d<int>& data,
     const structure::TempGrid2d<int>& sortidx,
     const structure::TempVector<int>& AllLevels,

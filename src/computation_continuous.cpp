@@ -8,6 +8,7 @@
 #include "structure.h"
 
 #define STEPMAX 50
+#define STEPMAX1 50
 #define EPS 1e-5
 #define FLAG_CPLX 1
 //#define _MY_DEBUG_MInoU 1
@@ -544,6 +545,7 @@ vector<double> compute_Ixy_alg1(const TempGrid2d<int>& data,
   int np;  // number of possible cuts
   for (stop = 1; stop < STEPMAX; stop++) {
     if (ptr_cnt[ptrVarIdx[0]] == 1) {
+      TempAllocatorScope scope;
       // optimize I(x;y) on x
       int r0 = ry;  // y
       int r1 = 1;   // One single bin at start
@@ -561,6 +563,7 @@ vector<double> compute_Ixy_alg1(const TempGrid2d<int>& data,
           flag_sample_weights, environment);
     }
     if (ptr_cnt[ptrVarIdx[1]] == 1) {
+      TempAllocatorScope scope;
       // optimize I(x;y) on y
       int r0 = rx;  // x before its optimization
       int r1 = 1;   // One single bin at start
@@ -706,7 +709,6 @@ vector<double> compute_Ixy_cond_u_new_alg1(const TempGrid2d<int>& data,
       std::accumulate(sample_weights.begin(), sample_weights.end(), 0.0);
 
   int j, l;
-  int STEPMAX1 = 50;
   // res_tempults res_temp[0]->I,res_temp[1]->I-k
   vector<double> res_temp;
   // allocation factors  x y
@@ -1237,7 +1239,7 @@ InfoBlock computeCondMutualInfo(const TempGrid2d<int>& data,
   int maxbins = environment.maxbins;
   int initbins = environment.initbins;
 
-  vector<double> res_temp;      // res_temp[0]->I,res_temp[1]->I-k
+  vector<double> res_temp;  // res_temp[0]->I,res_temp[1]->I-k
 
   int j, l;
 
@@ -1304,7 +1306,7 @@ InfoBlock computeCondMutualInfo(const TempGrid2d<int>& data,
 
 // compute Rscore and three point mutual information I(x;y;z | u)
 // return Info3PointBlock{score, N * Ixyz_ui, N * kxyz_ui}
-Info3PointBlock compute_Rscore_Ixyz_alg5(const TempGrid2d<int>& data,
+Info3PointBlock computeInfo3PointAndScore(const TempGrid2d<int>& data,
     const TempGrid2d<int>& sortidx, const TempVector<int>& AllLevels,
     const TempVector<int>& ptr_cnt, const TempVector<int>& ptrVarIdx, int nbrUi,
     int ptrZiIdx, int n, const TempVector<double>& sample_weights,
@@ -1319,7 +1321,7 @@ Info3PointBlock compute_Rscore_Ixyz_alg5(const TempGrid2d<int>& data,
   double I_xy_u, I_xy_zu;
   double Ik_xy_u, Ik_xz_u, Ik_yz_u, Ik_xy_zu;
 
-  vector<double> res_temp;      // res_temp[0]->I,res_temp[1]->I-k
+  vector<double> res_temp;  // res_temp[0]->I,res_temp[1]->I-k
 
   TempVector<int> ptrVarIdx_t(nbrUi + 2);
 

@@ -115,7 +115,7 @@ double getInfo3PointOrScore(Environment& environment, int X, int Y, int Z,
         posArray_red, sample_weights_red, environment.cplx,
         environment.cache.cterm);
   } else {
-    res = compute_Rscore_Ixyz_alg5(data_numeric_red, data_numeric_idx_red,
+    res = computeInfo3PointAndScore(data_numeric_red, data_numeric_idx_red,
         all_levels_red, cnt_red, posArray_red, n_ui, n_ui + 2,
         n_samples_non_na_z, sample_weights_red, flag_sample_weights,
         environment);

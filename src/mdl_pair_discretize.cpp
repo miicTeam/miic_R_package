@@ -62,8 +62,7 @@ List mydiscretizeMutual(List input_data, List arg_list) {
       NAs_count, dataNumeric_red, dataNumericIdx_red, AllLevels_red, cnt_red,
       posArray_red, sample_weights_red);
 
-  Grid2d<int> iterative_cuts(STEPMAX + 1, maxbins * (2 + nbrU));
-  environment.iterative_cuts = iterative_cuts;
+  environment.iterative_cuts = Grid2d<int>(STEPMAX + 1, maxbins * (2 + nbrU));
 
   computeCondMutualInfo(dataNumeric_red, dataNumericIdx_red, AllLevels_red,
       cnt_red, posArray_red, nbrU, environment.n_samples, sample_weights_red,
@@ -75,19 +74,19 @@ List mydiscretizeMutual(List input_data, List arg_list) {
   TempGrid2d<int> iterative_cutpoints(STEPMAX * maxbins, nbrU + 2);
   std::array<double, 2> res{0, 0};
   for (int l = 0; l < STEPMAX + 1; l++) {
-    if (iterative_cuts(l, 0) == -1) {
+    if (environment.iterative_cuts(l, 0) == -1) {
       niterations = l;
-      res[1] = iterative_cuts(l, 1) / 100000.0;
-      res[0] = iterative_cuts(l, 2) / 100000.0;
-      max_res_ef = iterative_cuts(l, 3) / 100000.0;
+      res[1] = environment.iterative_cuts(l, 1) / 100000.0;
+      res[0] = environment.iterative_cuts(l, 2) / 100000.0;
+      max_res_ef = environment.iterative_cuts(l, 3) / 100000.0;
       break;
     }
     for (int k = 0; k < (nbrU + 2); k++) {
       i = 0;
-      while (iterative_cuts(l, i + maxbins * k) <
-             iterative_cuts(l, i + maxbins * k + 1)) {
+      while (environment.iterative_cuts(l, i + maxbins * k) <
+             environment.iterative_cuts(l, i + maxbins * k + 1)) {
         iterative_cutpoints(maxbins * l + i, k) =
-            iterative_cuts(l, i + maxbins * k);
+            environment.iterative_cuts(l, i + maxbins * k);
         i++;
       }
       for (int j = i; j < maxbins; j++) {
