@@ -4,10 +4,7 @@
 #include <omp.h>
 #endif
 
-#include <algorithm>
-
-#include "compute_info.h"
-#include "utilities.h"
+#include <algorithm>  // std::generate
 
 using Rcpp::as;
 using std::string;

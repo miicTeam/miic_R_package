@@ -7,7 +7,7 @@
 #include <omp.h>
 #endif
 
-#include "compute_ens_information.h"
+#include "get_information.h"
 #include "structure.h"
 #include "utilities.h"
 

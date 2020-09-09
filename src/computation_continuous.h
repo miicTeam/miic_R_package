@@ -9,7 +9,8 @@
 namespace miic {
 namespace computation {
 
-double* compute_mi_cond_alg1(const structure::TempGrid2d<int>& data,
+structure::InfoBlock computeCondMutualInfo(
+    const structure::TempGrid2d<int>& data,
     const structure::TempGrid2d<int>& sortidx,
     const structure::TempVector<int>& AllLevels,
     const structure::TempVector<int>& ptr_cnt,
@@ -18,7 +19,8 @@ double* compute_mi_cond_alg1(const structure::TempGrid2d<int>& data,
     bool flag_sample_weights, structure::Environment& environment,
     bool saveIterations = false);
 
-double* compute_Rscore_Ixyz_alg5(const structure::TempGrid2d<int>& data,
+structure::Info3PointBlock compute_Rscore_Ixyz_alg5(
+    const structure::TempGrid2d<int>& data,
     const structure::TempGrid2d<int>& sortidx,
     const structure::TempVector<int>& AllLevels,
     const structure::TempVector<int>& ptr_cnt,

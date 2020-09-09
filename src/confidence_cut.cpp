@@ -7,7 +7,7 @@
 #include <algorithm>  // std::sort
 #include <set>
 
-#include "compute_ens_information.h"
+#include "get_information.h"
 #include "environment.h"
 
 namespace miic {

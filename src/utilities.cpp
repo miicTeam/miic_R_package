@@ -10,7 +10,6 @@
 #include <vector>
 
 #include "KDTreeVectorOfVectorsAdaptor.h"
-#include "compute_info.h"
 #include "nanoflann.h"
 
 #define KNN_K 5

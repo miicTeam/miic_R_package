@@ -1,4 +1,4 @@
-#include "compute_ens_information.h"
+#include "get_information.h"
 
 #ifdef _OPENMP
 #include <omp.h>
@@ -9,8 +9,8 @@
 #include <limits>
 #include <tuple>
 
-#include "compute_info.h"
-#include "info_cnt.h"
+#include "computation_discrete.h"
+#include "computation_continuous.h"
 #include "structure.h"
 #include "utilities.h"
 
@@ -109,7 +109,7 @@ double getInfo3PointOrScore(Environment& environment, int X, int Y, int Z,
     }
   }
 
-  double* res = NULL;
+  Info3PointBlock res{0, 0, 0};
   if (std::all_of(begin(cnt_red), end(cnt_red), [](int x) { return x == 0; })) {
     res = computeInfo3PointAndScoreDiscrete(data_numeric_red, all_levels_red,
         posArray_red, sample_weights_red, environment.cplx,
@@ -120,9 +120,8 @@ double getInfo3PointOrScore(Environment& environment, int X, int Y, int Z,
         n_samples_non_na_z, sample_weights_red, flag_sample_weights,
         environment);
   }
-  double info = res[1] - res[2];  // I(x;y;z|u) - cplx I(x;y;z|u)
-  double score = res[0];          // R(X,Y;Z|ui)
-  delete [] res;
+  double info = res.Ixyz_ui - res.kxyz_ui;  // I(x;y;z|u) - cplx I(x;y;z|u)
+  double score = res.score;                 // R(X,Y;Z|ui)
   if (std::fabs(info) < kPrecision) info = 0;
   if (std::fabs(score) < kPrecision) score = 0;
 
@@ -183,23 +182,18 @@ InfoBlock getCondMutualInfo(int X, int Y, const vector<int>& ui_list,
     return res;
   }
 
-  double* res_new = NULL;
+  InfoBlock res{0, 0, 0};
   if (std::all_of(begin(cnt_red), end(cnt_red), [](int x) { return x == 0; })) {
-    res_new = computeCondMutualInfoDiscrete(data_numeric_red, all_levels_red,
+    res = computeCondMutualInfoDiscrete(data_numeric_red, all_levels_red,
         posArray_red, sample_weights_red, environment.cplx,
         environment.cache.cterm);
   } else {
-    res_new = compute_mi_cond_alg1(data_numeric_red, data_numeric_idx_red,
+    res = computeCondMutualInfo(data_numeric_red, data_numeric_idx_red,
         all_levels_red, cnt_red, posArray_red, n_ui, n_samples_non_na,
         sample_weights_red, flag_sample_weights, environment);
-    res_new[1] = res_new[1] * res_new[0];  // Ixy|u
-    res_new[2] = res_new[2] * res_new[0];  // cplx
   }
-  for (int i = 0; i < 3; i++) {
-    if (std::fabs(res_new[i]) < kPrecision) res_new[i] = 0.0;
-  }
-  InfoBlock res{static_cast<int>(res_new[0]), res_new[1], res_new[2]};
-  delete[] res_new;
+  if (std::fabs(res.Ixy_ui) < kPrecision) res.Ixy_ui = 0;
+  if (std::fabs(res.kxy_ui) < kPrecision) res.kxy_ui = 0;
 
   if (n_ui != 0) cache->saveMutualInfo(X, Y, ui_list, res);
   return res;

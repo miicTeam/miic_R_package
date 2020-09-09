@@ -1,6 +1,7 @@
-#include "info_cnt.h"
+#include "computation_continuous.h"
 
 #include <numeric>  // std::accumulate
+#include <tuple>    // std::tie
 
 #include "linear_allocator.h"
 #include "mutual_information.h"
@@ -1226,7 +1227,7 @@ vector<double> compute_Ixy_cond_u_new_alg1(const TempGrid2d<int>& data,
 
 }  // anonymous namespace
 
-double* compute_mi_cond_alg1(const TempGrid2d<int>& data,
+InfoBlock computeCondMutualInfo(const TempGrid2d<int>& data,
     const TempGrid2d<int>& sortidx, const TempVector<int>& AllLevels,
     const TempVector<int>& ptr_cnt, const TempVector<int>& ptrVarIdx, int nbrUi,
     int n, const TempVector<double>& sample_weights, bool flag_sample_weights,
@@ -1237,7 +1238,6 @@ double* compute_mi_cond_alg1(const TempGrid2d<int>& data,
   int initbins = environment.initbins;
 
   vector<double> res_temp;      // res_temp[0]->I,res_temp[1]->I-k
-  double* res = new double[3];  // res[0]->Rscore,res[1]->I3,res[2]->Ik3
 
   int j, l;
 
@@ -1275,11 +1275,9 @@ double* compute_mi_cond_alg1(const TempGrid2d<int>& data,
         cut, r, sample_weights, flag_sample_weights, environment,
         saveIterations);
 
-    res[0] = n;
-    res[1] = res_temp[0];
-    res[2] = res_temp[0] - res_temp[1];
-
-    return res;
+    double Ixy_ui = n * res_temp[0];
+    double kxy_ui = n * (res_temp[0] - res_temp[1]);
+    return InfoBlock(n, Ixy_ui, kxy_ui);
   } else {  // with U
     // initialization cut and r
     for (l = 0; l < (nbrUi + 2); l++) {
@@ -1298,21 +1296,15 @@ double* compute_mi_cond_alg1(const TempGrid2d<int>& data,
         AllLevels, nbrUi, n, cut, r, lbin, sample_weights, flag_sample_weights,
         environment, saveIterations);
 
-    res[0] = n;
-    res[1] = res_temp[0];
-    res[2] = res_temp[0] - res_temp[1];
-
-    return res;
+    double Ixy_ui = n * res_temp[0];
+    double kxy_ui = n * (res_temp[0] - res_temp[1]);
+    return InfoBlock(n, Ixy_ui, kxy_ui);
   }
 }
 
 // compute Rscore and three point mutual information I(x;y;z | u)
-// input x y z u-> compute Rscore and Ixyz
-// Returns:
-// res[0]=Rscore
-// res[1]=N*Ixyz
-// res[2]=N*kxyz
-double* compute_Rscore_Ixyz_alg5(const TempGrid2d<int>& data,
+// return Info3PointBlock{score, N * Ixyz_ui, N * kxyz_ui}
+Info3PointBlock compute_Rscore_Ixyz_alg5(const TempGrid2d<int>& data,
     const TempGrid2d<int>& sortidx, const TempVector<int>& AllLevels,
     const TempVector<int>& ptr_cnt, const TempVector<int>& ptrVarIdx, int nbrUi,
     int ptrZiIdx, int n, const TempVector<double>& sample_weights,
@@ -1322,17 +1314,12 @@ double* compute_Rscore_Ixyz_alg5(const TempGrid2d<int>& data,
   int maxbins = environment.maxbins;
   int initbins = environment.initbins;
 
-  double Rscore;
-  double nv, dpi, first, second, xz, yz;
-
   int j, l, ll;
 
   double I_xy_u, I_xy_zu;
   double Ik_xy_u, Ik_xz_u, Ik_yz_u, Ik_xy_zu;
-  double I_xyz_u, Ik_xyz_u;
 
   vector<double> res_temp;      // res_temp[0]->I,res_temp[1]->I-k
-  double* res = new double[3];  // res[0]->Rscore,res[1]->I3,res[2]->Ik3
 
   TempVector<int> ptrVarIdx_t(nbrUi + 2);
 
@@ -1475,43 +1462,21 @@ double* compute_Rscore_Ixyz_alg5(const TempGrid2d<int>& data,
   Ik_yz_u = res_temp[1];
 
   // compute conditional three point mutual information
-  I_xyz_u = I_xy_u - I_xy_zu;
-  Ik_xyz_u = Ik_xy_u - Ik_xy_zu;
+  double I_xyz_u = I_xy_u - I_xy_zu;
+  double Ik_xyz_u = Ik_xy_u - Ik_xy_zu;
 
-  // compute Rscore
-  // compute probability of
-  // not v-structure: nv
-  // not dpi inequality : dpi
+  double xz = n * (Ik_xz_u - Ik_xy_u);
+  double yz = n * (Ik_yz_u - Ik_xy_u);
+  double lower{0}, higher{0};
+  std::tie(lower, higher) = std::minmax(xz, yz);
 
-  // nv
-  nv = n * Ik_xyz_u;
-  xz = n * (Ik_xz_u - Ik_xy_u);
-  yz = n * (Ik_yz_u - Ik_xy_u);
+  // Data processing inequality
+  double dpi = lower - log1p(exp(lower - higher));
+  // probability of not v-structure
+  double nv = n * Ik_xyz_u;
 
-  if (xz < yz) {
-    first = xz;
-    second = yz;
-  } else {
-    first = yz;
-    second = xz;
-  }
-
-  // dpi
-  dpi = first - log1p(exp(first - second));
-
-  if (dpi < nv) {
-    // Pdpi>Pnv => Rscore=Pdpi
-    Rscore = dpi;
-  } else {
-    // Pdpi<Pnv => Rscore=Pnv
-    Rscore = nv;
-  }
-
-  res[0] = Rscore;
-  res[1] = n * I_xyz_u;
-  res[2] = n * I_xyz_u - nv;
-
-  return res;
+  double Rscore = dpi < nv ? dpi : nv;
+  return Info3PointBlock{Rscore, n * I_xyz_u, n * I_xyz_u - nv};
 }
 
 }  // namespace computation

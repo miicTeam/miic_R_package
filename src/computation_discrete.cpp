@@ -1,4 +1,4 @@
-#include "compute_info.h"
+#include "computation_discrete.h"
 
 #include <algorithm>  // std::sort, std::minmax
 #define _USE_MATH_DEFINES
@@ -20,7 +20,7 @@ using namespace miic::structure;
 using namespace miic::utility;
 using std::vector;
 
-double* computeCondMutualInfoDiscrete(const TempGrid2d<int>& data,
+InfoBlock computeCondMutualInfoDiscrete(const TempGrid2d<int>& data,
     const TempVector<int>& levels, const TempVector<int>& var_idx,
     const TempVector<double>& weights, int cplx,
     std::shared_ptr<CtermCache> cache) {
@@ -181,15 +181,10 @@ double* computeCondMutualInfoDiscrete(const TempGrid2d<int>& data,
   double logC3xy_ui = 0.5 * (logC_xui_y + logC_yui_x);
   double logC2xy_ui = 0.5 * (logC_ui_y + logC_ui_x);
 
-  double* res = new double[3];
-  res[0] = Ntot;
-  res[1] = info3xy_ui - info2xy_ui;
-  res[2] = logC3xy_ui - logC2xy_ui;
-
-  return res;
+  return InfoBlock{Ntot, info3xy_ui - info2xy_ui, logC3xy_ui - logC2xy_ui};
 }
 
-double* computeInfo3PointAndScoreDiscrete(const TempGrid2d<int>& data,
+Info3PointBlock computeInfo3PointAndScoreDiscrete(const TempGrid2d<int>& data,
     const TempVector<int>& levels, const TempVector<int>& var_idx,
     const TempVector<double>& weights, int cplx,
     std::shared_ptr<CtermCache> cache) {
@@ -537,13 +532,11 @@ double* computeInfo3PointAndScoreDiscrete(const TempGrid2d<int>& data,
   std::tie(lower, higher) = std::minmax(xz, yz);
   double dpi = lower - log1p(exp(lower - higher));
 
-  double Rzi = xyz < dpi ? xyz : dpi;
+  double Rscore = xyz < dpi ? xyz : dpi;
+  double Ixyz_ui = info_xy_ui - info_xy_uiz;
+  double kxyz_ui = logC_xy_ui - logC_xy_uiz;
 
-  double* ptrRetValues = new double[3];
-  ptrRetValues[0] = Rzi;
-  ptrRetValues[1] = info_xy_ui - info_xy_uiz;
-  ptrRetValues[2] = logC_xy_ui - logC_xy_uiz;
-  return ptrRetValues;
+  return Info3PointBlock{Rscore, Ixyz_ui, kxyz_ui};
 }
 
 }  // namespace computation

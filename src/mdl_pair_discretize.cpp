@@ -1,9 +1,10 @@
 #include <Rcpp.h>
 
 #include <algorithm>  // std::max_element
+#include <array>
 #include <numeric>  // std::iota
 
-#include "info_cnt.h"
+#include "computation_continuous.h"
 #include "linear_allocator.h"
 #include "utilities.h"
 
@@ -64,14 +65,15 @@ List mydiscretizeMutual(List input_data, List arg_list) {
   Grid2d<int> iterative_cuts(STEPMAX + 1, maxbins * (2 + nbrU));
   environment.iterative_cuts = iterative_cuts;
 
-  double* res = compute_mi_cond_alg1(dataNumeric_red, dataNumericIdx_red,
-      AllLevels_red, cnt_red, posArray_red, nbrU, environment.n_samples,
-      sample_weights_red, flag_sample_weights, environment, true);
+  computeCondMutualInfo(dataNumeric_red, dataNumericIdx_red, AllLevels_red,
+      cnt_red, posArray_red, nbrU, environment.n_samples, sample_weights_red,
+      flag_sample_weights, environment, true);
 
   int niterations = 0;
   int i = 0;
   double max_res_ef = -1;
   TempGrid2d<int> iterative_cutpoints(STEPMAX * maxbins, nbrU + 2);
+  std::array<double, 2> res{0, 0};
   for (int l = 0; l < STEPMAX + 1; l++) {
     if (iterative_cuts(l, 0) == -1) {
       niterations = l;

@@ -7,12 +7,13 @@
 namespace miic {
 namespace computation {
 
-double* computeCondMutualInfoDiscrete(const structure::TempGrid2d<int>& data,
+structure::InfoBlock computeCondMutualInfoDiscrete(
+    const structure::TempGrid2d<int>& data,
     const structure::TempVector<int>& levels,
     const structure::TempVector<int>& var_idx,
     const structure::TempVector<double>& weights, int cplx,
     std::shared_ptr<CtermCache> cache);
-double* computeInfo3PointAndScoreDiscrete(
+structure::Info3PointBlock computeInfo3PointAndScoreDiscrete(
     const structure::TempGrid2d<int>& data,
     const structure::TempVector<int>& levels,
     const structure::TempVector<int>& var_idx,

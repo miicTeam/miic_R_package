@@ -139,6 +139,15 @@ struct InfoBlock {
       : Nxy_ui(N), Ixy_ui(I), kxy_ui(k) {}
 };
 
+struct Info3PointBlock {
+  double score;
+  double Ixyz_ui;
+  double kxyz_ui;
+
+  constexpr Info3PointBlock(double R, double I, double k)
+      : score(R), Ixyz_ui(I), kxyz_ui(k) {}
+};
+
 struct EdgeSharedInfo {
   // {ui}: indices of separating nodes
   vector<int> ui_list;
@@ -250,6 +259,7 @@ using detail::EdgeID;
 using detail::EdgeSharedInfo;
 using detail::ExecutionTime;
 using detail::Grid2d;
+using detail::Info3PointBlock;
 using detail::InfoBlock;
 using detail::Node;
 using detail::void_t;

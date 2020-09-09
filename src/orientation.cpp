@@ -9,7 +9,7 @@
 #include <tuple>  // std::tie
 #include <map>
 
-#include "compute_ens_information.h"
+#include "get_information.h"
 #include "linear_allocator.h"
 #include "proba_orientation.h"
 
