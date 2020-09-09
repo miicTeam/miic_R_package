@@ -295,7 +295,6 @@ double compute_kl_divergence(int X, int Y, Environment& environment,
     const TempVector<int>& sample_is_not_NA) {
   TempAllocatorScope scope;
 
-  int current_samplesNotNA = getNumSamplesNonNA(environment, X, Y);
   if (!environment.is_continuous[X] && !environment.is_continuous[Y]) {
     // 1 - XY discrete
     // Joint freqs X,Y after adding the new contributor (Z)
@@ -306,6 +305,7 @@ double compute_kl_divergence(int X, int Y, Environment& environment,
 
     return samplesNotNA * kl(freqs1, freqs2);
   } else if (environment.is_continuous[X] && environment.is_continuous[Y]) {
+    int current_samplesNotNA = getNumSamplesNonNA(environment, X, Y);
     // 2 - XY continuous
     // Retrieve marginal distibutions with the current conditioning Us
     vector<vector<double>> joint_base(current_samplesNotNA, vector<double>(2));

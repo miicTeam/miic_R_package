@@ -109,23 +109,20 @@ double getInfo3PointOrScore(Environment& environment, int X, int Y, int Z,
     }
   }
 
-  double info{0}, score{std::numeric_limits<double>::lowest()};
+  double* res = NULL;
   if (std::all_of(begin(cnt_red), end(cnt_red), [](int x) { return x == 0; })) {
-    double* res = getAllInfoNEW(environment.data_numeric, environment.levels, X,
-        Y, Z, ui_list, environment.n_eff, environment.cplx, environment.is_k23,
-        environment.sample_weights, environment.cache.cterm);
-    info = res[7] + res[8];  // I(X;Y;Z|ui) - k(X;Y;Z|ui), res[8] = -k
-    score = res[6];          // R(X,Y;Z|ui)
-    delete[] res;
+    res = computeInfo3PointAndScoreDiscrete(data_numeric_red, all_levels_red,
+        posArray_red, sample_weights_red, environment.cplx,
+        environment.cache.cterm);
   } else {
-    double* res = compute_Rscore_Ixyz_alg5(data_numeric_red,
-        data_numeric_idx_red, all_levels_red, cnt_red, posArray_red, n_ui,
-        n_ui + 2, n_samples_non_na_z, sample_weights_red, flag_sample_weights,
+    res = compute_Rscore_Ixyz_alg5(data_numeric_red, data_numeric_idx_red,
+        all_levels_red, cnt_red, posArray_red, n_ui, n_ui + 2,
+        n_samples_non_na_z, sample_weights_red, flag_sample_weights,
         environment);
-    info = res[1] - res[2];  // I(x;y;z|u) - cplx I(x;y;z|u)
-    score = res[0];          // R(X,Y;Z|ui)
-    delete[] res;
   }
+  double info = res[1] - res[2];  // I(x;y;z|u) - cplx I(x;y;z|u)
+  double score = res[0];          // R(X,Y;Z|ui)
+  delete [] res;
   if (std::fabs(info) < kPrecision) info = 0;
   if (std::fabs(score) < kPrecision) score = 0;
 
