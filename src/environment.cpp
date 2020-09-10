@@ -26,6 +26,7 @@ Environment::Environment(
       data_numeric_idx(as<vector<vector<int>>>(input_data["order"])),
       is_continuous(as<vector<int>>(arg_list["is_continuous"])),
       levels(as<vector<int>>(arg_list["levels"])),
+      has_na(n_nodes, 0),
       n_eff(as<int>(arg_list["n_eff"])),
       edges(n_nodes, n_nodes),
       orientation(as<bool>(arg_list["orientation"])),
@@ -49,6 +50,15 @@ Environment::Environment(
   auto var_names = as<vector<string>>(arg_list["var_names"]);
   std::transform(var_names.begin(), var_names.end(), std::back_inserter(nodes),
       [](string name) { return Node(name); });
+
+  for (int i = 0; i < n_nodes; ++i) {
+    for (int j = 0; j < n_samples; ++j) {
+      if (data_numeric[j][i] == -1) {
+        has_na[i] = 1;
+        break;
+      }
+    }
+  }
 
   auto consistent_flag = as<std::string>(arg_list["consistent"]);
   if (consistent_flag.compare("orientation") == 0)

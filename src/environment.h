@@ -30,6 +30,7 @@ struct Environment {
 
   vector<int> is_continuous;
   vector<int> levels;
+  vector<int> has_na;
   int n_eff;
   vector<Node> nodes;
   Grid2d<Edge> edges;

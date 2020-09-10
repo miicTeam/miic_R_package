@@ -483,12 +483,13 @@ int countNonNA(int X, int Y, int Z, const vector<int>& ui_list,
  */
 bool filterNA(int X, int Y, int Z, const vector<int>& ui_list,
     const vector<vector<int>>& data_numeric,
-    const vector<vector<int>>& data_numeric_idx,
+    const vector<vector<int>>& data_numeric_idx, const vector<int>& levels,
     const vector<int>& is_continuous, const vector<double>& sample_weights,
     const TempVector<int>& sample_is_not_NA, const TempVector<int>& NAs_count,
     TempGrid2d<int>& data_numeric_red, TempGrid2d<int>& data_numeric_idx_red,
-    TempVector<int>& all_levels_red, TempVector<int>& is_continuous_red,
-    TempVector<int>& posArray_red, TempVector<double>& sample_weights_red) {
+    TempVector<int>& levels_red, TempVector<int>& is_continuous_red,
+    TempVector<int>& posArray_red, TempVector<double>& sample_weights_red,
+    bool any_na) {
   TempAllocatorScope scope;
 
   int n_samples = data_numeric.size();
@@ -517,44 +518,56 @@ bool filterNA(int X, int Y, int Z, const vector<int>& ui_list,
     new_levels.clear();
 
     for (int i = 0; i < n_samples; i++) {
-      if (sample_is_not_NA[i] == 1) {
-        // Row at index i does not contain any NA
-        int old_val = data_numeric[i][index];
-        auto it = new_levels.find(old_val);
-        if (it == end(new_levels)) {
-          // If level has not already been seen add it to the map
-          // and increment the number of unique levels in reduced data
-          new_levels.insert({old_val, updated_discrete_level});
-          data_numeric_red(j, k1) = updated_discrete_level++;
-        } else {
-          data_numeric_red(j, k1) = it->second;
+      if (!any_na) {
+        data_numeric_red(j, i) = data_numeric[i][index];
+        if (is_continuous_red[j])
+          data_numeric_idx_red(j, i) = data_numeric_idx[index][i];
+        if (j == 0)
+          sample_weights_red[i] = sample_weights[i];
+      } else {
+        if (sample_is_not_NA[i] == 1) {
+          // Row at index i does not contain any NA
+          int old_val = data_numeric[i][index];
+          auto it = new_levels.find(old_val);
+          if (it == end(new_levels)) {
+            // If level has not already been seen add it to the map
+            // and increment the number of unique levels in reduced data
+            new_levels.insert({old_val, updated_discrete_level});
+            data_numeric_red(j, k1) = updated_discrete_level++;
+          } else {
+            data_numeric_red(j, k1) = it->second;
+          }
+          if (j == 0) {
+            sample_weights_red[k1] = sample_weights[i];
+            if (sample_weights_red[k1] != 1.0) flag_sample_weights = true;
+          }
+          ++k1;
         }
-        if (j == 0) {
-          sample_weights_red[k1] = sample_weights[i];
-          if (sample_weights_red[k1] != 1.0) flag_sample_weights = true;
+        if (is_continuous_red[j] == 0) continue;
+        // Variable j is continuous
+        int si = data_numeric_idx[index][i];  // position of ith sample (order)
+        if (si == -1 || sample_is_not_NA[si] == 0) continue;
+        // Row at position si does not contain any NA, rank is updated
+        // taking into account the number of NAs up to si.
+        data_numeric_idx_red(j, k2) = si - NAs_count[si];
+        ++k2;
+        // check whether is a different values or repeated
+        if (data_numeric[si][index] != prev_val) {
+          ++nnr;
+          prev_val = data_numeric[si][index];
         }
-        ++k1;
-      }
-      if (is_continuous_red[j] == 0) continue;
-      // Variable j is continuous
-      int si = data_numeric_idx[index][i];  // position of ith sample (order)
-      if (si == -1 || sample_is_not_NA[si] == 0) continue;
-      // Row at position si does not contain any NA, rank is updated
-      // taking into account the number of NAs up to si.
-      data_numeric_idx_red(j, k2) = si - NAs_count[si];
-      ++k2;
-      // check whether is a different values or repeated
-      if (data_numeric[si][index] != prev_val) {
-        ++nnr;
-        prev_val = data_numeric[si][index];
       }
     }
-    // Update with the effective number of levels
-    if (is_continuous_red[j] == 1) {
-      if (nnr < 3) is_continuous_red[j] = 0;
-      all_levels_red[j] = nnr;
-    } else
-      all_levels_red[j] = updated_discrete_level;
+    if (!any_na) {
+      levels_red[j] = levels[index];
+    } else {
+      // Update with the effective number of levels
+      if (is_continuous_red[j] == 1) {
+        if (nnr < 3) is_continuous_red[j] = 0;
+        levels_red[j] = nnr;
+      } else
+        levels_red[j] = updated_discrete_level;
+    }
   }
   return flag_sample_weights;
 }

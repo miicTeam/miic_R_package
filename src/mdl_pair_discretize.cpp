@@ -47,11 +47,12 @@ List mydiscretizeMutual(List input_data, List arg_list) {
   TempGrid2d<int> dataNumeric_red(nbrU + 2, samplesNotNA);
   TempGrid2d<int> dataNumericIdx_red(nbrU + 2, samplesNotNA);
 
+  bool any_na = environment.has_na[0] || environment.has_na[1];
   bool flag_sample_weights = filterNA(/*X*/ 0, /*Y*/ 1, /*Z*/ -1, ui_list,
       environment.data_numeric, environment.data_numeric_idx,
-      environment.is_continuous, environment.sample_weights, sample_nonNA,
-      NAs_count, dataNumeric_red, dataNumericIdx_red, AllLevels_red, cnt_red,
-      posArray_red, sample_weights_red);
+      environment.levels, environment.is_continuous, environment.sample_weights,
+      sample_nonNA, NAs_count, dataNumeric_red, dataNumericIdx_red,
+      AllLevels_red, cnt_red, posArray_red, sample_weights_red, any_na);
 
   environment.iterative_cuts = Grid2d<int>(STEPMAX + 1, maxbins * (2 + nbrU));
 

@@ -46,13 +46,19 @@ double getInfo3PointOrScore(Environment& environment, int X, int Y, int Z,
     if (found) return score;
   }
 
+  bool any_na = environment.has_na[X] || environment.has_na[Y] ||
+                environment.has_na[Z] ||
+                std::any_of(begin(ui_list), end(ui_list),
+                    [&environment](int u) { return environment.has_na[u]; });
   // Mark rows containing NAs and count the number of complete samples
   // 1: sample contains no NA, 0: sample contains NA
-  TempVector<int> sample_is_not_NA(environment.n_samples);
+  TempVector<int> sample_is_not_NA(environment.n_samples, 1);
   // vector with the number of rows containing NAs seen at rank i
-  TempVector<int> NAs_count(environment.n_samples);
-  int n_samples_non_na_z = countNonNA(
-      X, Y, Z, ui_list, environment.data_numeric, sample_is_not_NA, NAs_count);
+  TempVector<int> NAs_count(environment.n_samples, 0);
+  int n_samples_non_na_z = environment.n_samples;
+  if (any_na)
+    n_samples_non_na_z = countNonNA(X, Y, Z, ui_list, environment.data_numeric,
+        sample_is_not_NA, NAs_count);
 
   if (n_samples_non_na_z <= 2) {  // not sufficient statistics
     if (get_info) {
@@ -74,28 +80,29 @@ double getInfo3PointOrScore(Environment& environment, int X, int Y, int Z,
   TempVector<int> all_levels_red(n_ui + 3);
   TempVector<int> cnt_red(n_ui + 3);
   TempVector<int> posArray_red(n_ui + 3);
-
   bool flag_sample_weights = filterNA(X, Y, Z, ui_list,
       environment.data_numeric, environment.data_numeric_idx,
-      environment.is_continuous, environment.sample_weights, sample_is_not_NA,
-      NAs_count, data_numeric_red, data_numeric_idx_red, all_levels_red,
-      cnt_red, posArray_red, sample_weights_red);
+      environment.levels, environment.is_continuous, environment.sample_weights,
+      sample_is_not_NA, NAs_count, data_numeric_red, data_numeric_idx_red,
+      all_levels_red, cnt_red, posArray_red, sample_weights_red, any_na);
 
   // If X or Y has 1 or less level, the 3-point information should be zero, and
   // the score should be low
   bool ok = all_levels_red[0] > 1 && all_levels_red[1] > 1;
 
-  int n_samples_nonNA = getNumSamplesNonNA(environment, X, Y);
-  if (ok && environment.test_mar && n_samples_nonNA != n_samples_non_na_z) {
-    double kldiv = compute_kl_divergence(X, Y, environment, n_samples_non_na_z,
-        all_levels_red, sample_is_not_NA);
-    double cplxMdl = environment.cache.cterm->getLog(n_samples_non_na_z);
+  if (any_na) {
+    int n_samples_nonNA = getNumSamplesNonNA(environment, X, Y);
+    if (ok && environment.test_mar && n_samples_nonNA != n_samples_non_na_z) {
+      double kldiv = compute_kl_divergence(X, Y, environment,
+          n_samples_non_na_z, all_levels_red, sample_is_not_NA);
+      double cplxMdl = environment.cache.cterm->getLog(n_samples_non_na_z);
 
-    if ((kldiv - cplxMdl) > 0) {
-      // The sample is not representative of the population, hence for 3-point
-      // information, we cannot draw conclusion the unshielded triple (X, Z, Y),
-      // return 0; For contributing score, Z is not a good candidate.
-      ok = false;
+      if ((kldiv - cplxMdl) > 0) {
+        // The sample is not representative of the population, hence for 3-point
+        // information, we cannot draw conclusion the unshielded triple (X, Z,
+        // Y), return 0; For contributing score, Z is not a good candidate.
+        ok = false;
+      }
     }
   }
   if (!ok) {
@@ -148,12 +155,18 @@ InfoBlock getCondMutualInfo(int X, int Y, const vector<int>& ui_list,
     if (found) return res;
   }
 
-  // TODO : speedup by only removing NAs for marked columns
+  bool any_na = environment.has_na[X] || environment.has_na[Y] ||
+                std::any_of(begin(ui_list), end(ui_list),
+                    [&environment](int u) { return environment.has_na[u]; });
   // Mark rows containing NAs and count the number of complete samples
-  TempVector<int> sample_is_not_NA(environment.n_samples);
-  TempVector<int> NAs_count(environment.n_samples);
-  int n_samples_non_na = countNonNA(
-      X, Y, /*Z*/ -1, ui_list, data_numeric, sample_is_not_NA, NAs_count);
+  // 1: sample contains no NA, 0: sample contains NA
+  TempVector<int> sample_is_not_NA(environment.n_samples, 1);
+  // vector with the number of rows containing NAs seen at rank i
+  TempVector<int> NAs_count(environment.n_samples, 0);
+  int n_samples_non_na = environment.n_samples;
+  if (any_na)
+    n_samples_non_na = countNonNA(
+        X, Y, /*Z*/ -1, ui_list, data_numeric, sample_is_not_NA, NAs_count);
 
   if (n_samples_non_na <= 2) {
     InfoBlock res{n_samples_non_na, 0, 0};
@@ -171,9 +184,10 @@ InfoBlock getCondMutualInfo(int X, int Y, const vector<int>& ui_list,
   TempGrid2d<int> data_numeric_idx_red(n_ui + 2, n_samples_non_na);
 
   bool flag_sample_weights = filterNA(X, Y, /*Z*/ -1, ui_list, data_numeric,
-      data_numeric_idx, environment.is_continuous, environment.sample_weights,
-      sample_is_not_NA, NAs_count, data_numeric_red, data_numeric_idx_red,
-      all_levels_red, cnt_red, posArray_red, sample_weights_red);
+      data_numeric_idx, environment.levels, environment.is_continuous,
+      environment.sample_weights, sample_is_not_NA, NAs_count, data_numeric_red,
+      data_numeric_idx_red, all_levels_red, cnt_red, posArray_red,
+      sample_weights_red, any_na);
 
   // If X or Y has only 1 level
   if (all_levels_red[0] <= 1 || all_levels_red[1] <= 1) {
