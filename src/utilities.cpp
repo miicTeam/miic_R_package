@@ -559,5 +559,41 @@ bool filterNA(int X, int Y, int Z, const vector<int>& ui_list,
   return flag_sample_weights;
 }
 
+// Calculate maximal required memory in bytes for linear allocator
+// DO NOT MODIFY unless you know what you are doing
+size_t getLinearAllocatorSize(int n_samples, int n_nodes, int maxbins,
+    int initbins, const vector<int>& is_continuous, const vector<int>& levels) {
+  using std::max;
+  constexpr size_t s_int = sizeof(int), s_double = sizeof(double);
+  bool all_discrete = std::all_of(
+      begin(is_continuous), end(is_continuous), [](int i) { return i == 0; });
+  int max_level{0};  // max discrete number of levels
+  for (int i = 0; i < n_nodes; ++i) {
+    if (!is_continuous[i] && levels[i] > max_level) max_level = levels[i];
+  }
+  size_t m_discrete =
+      s_int * (4 * n_samples + 6 * max_level + max_level * max_level) +
+      s_double * max_level;
+  size_t m_discretize =
+      s_int * (3 * maxbins + (maxbins + 2) * max(initbins + 1, 2 * n_samples) +
+                  n_samples) +
+      s_double * (3 * maxbins + 2 * n_nodes);
+  size_t m_mutual_info = s_int * (36 * n_samples);
+  size_t m_continuous = s_int * (3 * n_nodes + 2 * maxbins * n_nodes);
+  m_continuous += s_int * (n_samples * n_nodes + 7 + 4 * n_samples + n_nodes) +
+                  s_double * 2 * /*STEPMAX1*/ 50;
+  m_continuous += max(m_discretize, m_mutual_info);
+  size_t m_computation = m_discrete;
+  if (!all_discrete) m_computation = max(m_discrete, m_continuous);
+  size_t m_get_info =
+      s_int * (2 * n_samples + 3 * n_nodes + 2 * n_samples * n_nodes) +
+      s_double * n_samples;
+  size_t m_utility = s_int * max(max_level * max_level, n_nodes);
+  m_utility = max(m_utility,
+      s_int * (4 * n_samples + 2 * max_level + 2) + s_double * n_samples);
+  size_t m_max = m_get_info + max(m_utility, m_computation);
+  return 4096 + m_max;  // Some extra space for fragmentation
+}
+
 }  // namespace utility
 }  // namespace miic

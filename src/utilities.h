@@ -52,6 +52,10 @@ bool filterNA(int X, int Y, int Z, const std::vector<int>& ui_list,
     structure::TempVector<int>& posArray_red,
     structure::TempVector<double>& sample_weights_red);
 
+size_t getLinearAllocatorSize(int n_samples, int n_nodes, int maxbins,
+    int initbins, const std::vector<int>& is_continuous,
+    const std::vector<int>& levels);
+
 }  // namespace utility
 }  // namespace miic
 

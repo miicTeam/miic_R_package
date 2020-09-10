@@ -21,21 +21,12 @@ using namespace miic::utility;
 // [[Rcpp::export]]
 List mydiscretizeMutual(List input_data, List arg_list) {
   Environment environment(input_data, arg_list);
-  int maxbins = environment.maxbins;
   int nbrU = environment.n_nodes - 2;
+  int maxbins = environment.maxbins;
 
-  int max_level =
-      *std::max_element(begin(environment.levels), end(environment.levels));
-  size_t li_alloc_size = 8192;  // in bytes, extra space for fragmentation
-  size_t n_integers = 4 * (environment.n_samples + 2) + 6 * (max_level + 1) +
-                      3 * ((environment.n_samples + 1) * 7) +
-                      4 * environment.n_nodes +
-                      2 * (max_level + 1) * (max_level + 1) +
-                      2 * max_level * max_level * max_level;  // coarse_counts
-  size_t n_doubles = 3 * (max_level + 1) + 2 * environment.n_nodes;
-  li_alloc_size += sizeof(int) * n_integers;
-  li_alloc_size += sizeof(double) * n_doubles;
-
+  size_t li_alloc_size = getLinearAllocatorSize(environment.n_samples,
+      environment.n_nodes, maxbins, environment.initbins,
+      environment.is_continuous, environment.levels);
   li_alloc_ptr = std::make_unique<LinearAllocator>(li_alloc_size);
 
   vector<int> ui_list(nbrU);
