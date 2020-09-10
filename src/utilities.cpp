@@ -1,13 +1,13 @@
 #include "utilities.h"
 
+#include <Rcpp.h>
+
 #include <algorithm>
 #define _USE_MATH_DEFINES
 #include <cmath>
 #include <iterator>  // std::ostream_iterator
+#include <sstream>   //std::stringstream
 #include <unordered_map>
-#include <sstream>  //std::stringstream
-#include <string>
-#include <vector>
 
 #include "KDTreeVectorOfVectorsAdaptor.h"
 #include "nanoflann.h"
@@ -19,7 +19,6 @@ namespace utility {
 
 using std::string;
 using std::vector;
-using namespace miic::computation;
 using namespace miic::structure;
 
 namespace {
@@ -60,23 +59,22 @@ double kl(const TempVector<int>& count1, const TempVector<int>& count2,
   return kl_div;
 }
 
-void getJointMixed(const Environment& environment, int i, int j,
+void getJointMixed(const vector<vector<int>>& data_numeric,
+    const vector<vector<double>>& data_double, int X, int Y,
+    const vector<int>& ui_list, const vector<int>& is_continuous,
     TempVector<int>& mixedDiscrete, TempVector<double>& mixedContinuous,
     TempVector<int>& curr_sample_is_not_NA) {
-  int discrete_pos = environment.is_continuous[i] ? j : i;
-  int continuous_pos = environment.is_continuous[i] ? i : j;
+  int discrete_pos = is_continuous[X] ? Y : X;
+  int continuous_pos = is_continuous[X] ? X : Y;
   // Fill marginal distributions
   int n_samples_non_na = 0;
-  const auto& ui_list = environment.edges(i, j).shared_info->ui_list;
-  for (int k = 0; k < environment.n_samples; k++) {
+  for (size_t k = 0; k < data_numeric.size(); ++k) {
     curr_sample_is_not_NA[k] = 0;
-    if (SampleHasNoNA(i, j, ui_list, environment.data_numeric, k)) {
+    if (SampleHasNoNA(X, Y, ui_list, data_numeric, k)) {
       curr_sample_is_not_NA[k] = 1;
-      mixedContinuous[n_samples_non_na] =
-          environment.data_double[continuous_pos][k];
-      mixedDiscrete[n_samples_non_na] =
-          environment.data_numeric[k][discrete_pos];
-      n_samples_non_na++;
+      mixedContinuous[n_samples_non_na] = data_double[continuous_pos][k];
+      mixedDiscrete[n_samples_non_na] = data_numeric[k][discrete_pos];
+      ++n_samples_non_na;
     }
   }
 }
@@ -149,35 +147,33 @@ double compute_kl_divergence_continuous(vector<vector<double>>& space1,
   return ndims * (sumlog / n1) + log(1.0 * (n2 - 1) / (n1 - 1));
 }
 
-void getJointSpace(const Environment& environment, int i, int j,
-    vector<vector<double>>& jointSpace,
+void getJointSpace(const vector<vector<int>>& data_numeric,
+    const vector<vector<double>>& data_double, int X, int Y,
+    const vector<int>& ui_list, vector<vector<double>>& jointSpace,
     TempVector<int>& curr_sample_is_not_NA) {
   int n_samples_non_na = 0;
-  const auto& ui_list = environment.edges(i, j).shared_info->ui_list;
-  for (int k = 0; k < environment.n_samples; k++) {
+  for (size_t k = 0; k < data_numeric.size(); ++k) {
     curr_sample_is_not_NA[k] = 0;
-    if (SampleHasNoNA(i, j, ui_list, environment.data_numeric, k)) {
+    if (SampleHasNoNA(X, Y, ui_list, data_numeric, k)) {
       curr_sample_is_not_NA[k] = 1;
-      jointSpace[n_samples_non_na][0] = environment.data_double[i][k];
-      jointSpace[n_samples_non_na][1] = environment.data_double[j][k];
+      jointSpace[n_samples_non_na][0] = data_double[X][k];
+      jointSpace[n_samples_non_na][1] = data_double[Y][k];
       n_samples_non_na++;
     }
   }
 }
 
-TempGrid2d<double> getJointFreqs(const Environment& environment, int i, int j,
+TempGrid2d<double> getJointFreqs(const vector<vector<int>>& data_numeric, int X,
+    int Y, const vector<int>& ui_list, int rx, int ry,
     const TempVector<int>& sample_is_not_NA = TempVector<int>()) {
-  TempGrid2d<double> joint_freqs(
-      environment.levels[i], environment.levels[j], 0);
+  TempGrid2d<double> joint_freqs(rx, ry, 0);
 
   int n_samples_non_na = 0;
-  const auto& ui_list = environment.edges(i, j).shared_info->ui_list;
-  for (int k = 0; k < environment.n_samples; k++) {
+  for (size_t k = 0; k < data_numeric.size(); ++k) {
     if ((!sample_is_not_NA.empty() && sample_is_not_NA[k]) ||
         (sample_is_not_NA.empty() &&
-            SampleHasNoNA(i, j, ui_list, environment.data_numeric, k))) {
-      ++joint_freqs(
-          environment.data_numeric[k][i], environment.data_numeric[k][j]);
+            SampleHasNoNA(X, Y, ui_list, data_numeric, k))) {
+      ++joint_freqs(data_numeric[k][X], data_numeric[k][Y]);
       ++n_samples_non_na;
     }
   }
@@ -189,35 +185,36 @@ TempGrid2d<double> getJointFreqs(const Environment& environment, int i, int j,
 
 }  // anonymous namespace
 
-vector<vector<int>> getAdjMatrix(const Environment& env) {
-  vector<vector<int>> adj_matrix(env.n_nodes, vector<int>(env.n_nodes, 0));
-  for (int i = 1; i < env.n_nodes; i++) {
-    for (int j = 0; j < i; j++) {
-      adj_matrix[i][j] = env.edges(i, j).status;
-      adj_matrix[j][i] = env.edges(j, i).status;
+vector<vector<int>> getAdjMatrix(const Grid2d<Edge>& edges) {
+  vector<vector<int>> adj(edges.n_rows(), vector<int>(edges.n_cols(), 0));
+  for (size_t i = 1; i < edges.n_rows(); ++i) {
+    for (size_t j = 0; j < i; ++j) {
+      adj[i][j] = edges(i, j).status;
+      adj[j][i] = edges(j, i).status;
     }
   }
-  return adj_matrix;
+  return adj;
 }
 
-string toNameString(const Environment& env, const vector<int>& vec) {
+string toNameString(const vector<Node>& nodes, const vector<int>& vec) {
   if (vec.empty()) {
     return "NA";
   } else {
     std::stringstream ss;
     std::transform(vec.begin(), vec.end() - 1,
         std::ostream_iterator<string>(ss, ","),
-        [&env](int i) { return env.nodes[i].name; });
-    ss << env.nodes[vec.back()].name;
+        [&nodes](int i) { return nodes[i].name; });
+    ss << nodes[vec.back()].name;
     return ss.str();
   }
 }
 
-vector<vector<string>> getEdgesInfoTable(const Environment& env) {
+vector<vector<string>> getEdgesInfoTable(
+    const Grid2d<Edge>& edges, const vector<Node>& nodes) {
   vector<EdgeID> edge_list;
-  for (int i = 0; i < env.n_nodes - 1; i++) {
-    for (int j = i + 1; j < env.n_nodes; j++) {
-      edge_list.emplace_back(i, j, env.edges(i, j));
+  for (size_t i = 1; i < edges.n_rows(); ++i) {
+    for (size_t j = 0; j < i; ++j) {
+      edge_list.emplace_back(i, j, edges(i, j));
     }
   }
   std::sort(edge_list.begin(), edge_list.end());
@@ -234,11 +231,11 @@ vector<vector<string>> getEdgesInfoTable(const Environment& env) {
 
     using std::to_string;
     table.emplace_back(std::initializer_list<string>{
-        env.nodes[edge.X].name,
-        env.nodes[edge.Y].name,
-        info->top_z == -1 ? "NA" : env.nodes[info->top_z].name,
-        toNameString(env, info->ui_list),
-        toNameString(env, info->zi_list),
+        nodes[edge.X].name,
+        nodes[edge.Y].name,
+        info->top_z == -1 ? "NA" : nodes[info->top_z].name,
+        toNameString(nodes, info->ui_list),
+        toNameString(nodes, info->zi_list),
         to_string(info->Ixy),
         to_string(info->Ixy_ui),
         to_string(info->cplx),
@@ -289,31 +286,38 @@ void printProgress(double percent, TimePoint start_time, int& percentile_prev) {
   R_FlushConsole();
 }
 
-double compute_kl_divergence(int X, int Y, Environment& environment,
-    int samplesNotNA, const TempVector<int>& AllLevels_red,
-    const TempVector<int>& sample_is_not_NA) {
+double compute_kl_divergence(const vector<vector<int>>& data_numeric,
+    const vector<vector<double>>& data_double, int X, int Y,
+    const vector<int>& ui_list, const vector<int>& levels,
+    const vector<int>& is_continuous, int samplesNotNA,
+    const TempVector<int>& AllLevels_red,
+    const TempVector<int>& sample_is_not_NA, const vector<double>& noise_vec) {
   TempAllocatorScope scope;
 
-  if (!environment.is_continuous[X] && !environment.is_continuous[Y]) {
+  int n_samples = data_numeric.size();
+  if (!is_continuous[X] && !is_continuous[Y]) {
     // 1 - XY discrete
     // Joint freqs X,Y after adding the new contributor (Z)
-    auto freqs1 = getJointFreqs(environment, X, Y, sample_is_not_NA);
+    auto freqs1 = getJointFreqs(
+        data_numeric, X, Y, ui_list, levels[X], levels[Y], sample_is_not_NA);
     // Joint freqs X,Y before adding the new contributor (with the current
     // conditioning ui)
-    auto freqs2 = getJointFreqs(environment, X, Y);
+    auto freqs2 =
+        getJointFreqs(data_numeric, X, Y, ui_list, levels[X], levels[Y]);
 
     return samplesNotNA * kl(freqs1, freqs2);
-  } else if (environment.is_continuous[X] && environment.is_continuous[Y]) {
-    int current_samplesNotNA = getNumSamplesNonNA(environment, X, Y);
+  } else if (is_continuous[X] && is_continuous[Y]) {
+    int current_samplesNotNA = getNumSamplesNonNA(data_numeric, X, Y, ui_list);
     // 2 - XY continuous
     // Retrieve marginal distibutions with the current conditioning Us
     vector<vector<double>> joint_base(current_samplesNotNA, vector<double>(2));
-    TempVector<int> curr_sample_is_not_NA(environment.n_samples);
-    getJointSpace(environment, X, Y, joint_base, curr_sample_is_not_NA);
+    TempVector<int> curr_sample_is_not_NA(n_samples);
+    getJointSpace(data_numeric, data_double, X, Y, ui_list, joint_base,
+        curr_sample_is_not_NA);
 
     TempVector<int> map_samples(current_samplesNotNA);
     int i_map = 0;
-    for (int i = 0; i < environment.n_samples; i++) {
+    for (int i = 0; i < n_samples; i++) {
       if (curr_sample_is_not_NA[i] == 1) {  // sample i is present in X;Y|U
         map_samples[i_map] = 0;
         if (sample_is_not_NA[i] == 1) {  // sample i is also present in X;Y|U,Z
@@ -324,10 +328,10 @@ double compute_kl_divergence(int X, int Y, Environment& environment,
     }
     vector<vector<double>> joint_non_na(samplesNotNA, vector<double>(2));
     int i_non_na = 0;
-    for (int i = 0; i < environment.n_samples; i++) {
+    for (int i = 0; i < n_samples; i++) {
       if (sample_is_not_NA[i] == 1) {
-        joint_non_na[i_non_na][0] = environment.data_double[X][i];
-        joint_non_na[i_non_na][1] = environment.data_double[Y][i];
+        joint_non_na[i_non_na][0] = data_double[X][i];
+        joint_non_na[i_non_na][1] = data_double[Y][i];
         i_non_na++;
       }
     }
@@ -338,13 +342,12 @@ double compute_kl_divergence(int X, int Y, Environment& environment,
     }
 
     return samplesNotNA * compute_kl_divergence_continuous(joint_non_na,
-                               joint_base, samplesNotNA, current_samplesNotNA,
-                               2, KNN_K, flag_break_ties, map_samples,
-                               environment.noise_vec);
+                              joint_base, samplesNotNA, current_samplesNotNA, 2,
+                              KNN_K, flag_break_ties, map_samples, noise_vec);
   } else {
     // 3 - One discrete and one continuous
     int discrete_pos, continuous_pos, continuous_pos_binary;
-    if (!environment.is_continuous[X]) {
+    if (!is_continuous[X]) {
       discrete_pos = X;
       continuous_pos = Y;
       continuous_pos_binary = 1;
@@ -353,16 +356,16 @@ double compute_kl_divergence(int X, int Y, Environment& environment,
       continuous_pos = X;
       continuous_pos_binary = 0;
     }
-    int n_discrete_levels = environment.levels[discrete_pos];
+    int n_discrete_levels = levels[discrete_pos];
     // Full and reduced data may not have the same number of unique levels
 
     // Retrieve marginal distibutions with the current conditioning Us
-    int current_samplesNotNA = getNumSamplesNonNA(environment, X, Y);
+    int current_samplesNotNA = getNumSamplesNonNA(data_numeric, X, Y, ui_list);
     TempVector<int> mixedDiscrete(current_samplesNotNA);
     TempVector<double> mixedContinuous(current_samplesNotNA);
-    TempVector<int> curr_sample_is_not_NA(environment.n_samples);
-    getJointMixed(environment, X, Y, mixedDiscrete, mixedContinuous,
-        curr_sample_is_not_NA);
+    TempVector<int> curr_sample_is_not_NA(n_samples);
+    getJointMixed(data_numeric, data_double, X, Y, ui_list, is_continuous,
+        mixedDiscrete, mixedContinuous, curr_sample_is_not_NA);
 
     // Create count vectors for the discrete variable
     TempVector<int> count_non_na(n_discrete_levels, 0);
@@ -370,11 +373,10 @@ double compute_kl_divergence(int X, int Y, Environment& environment,
     for (int i = 0; i < current_samplesNotNA; i++) {
       count_base[mixedDiscrete[i]]++;
     }
-    for (int i = 0; i < environment.n_samples; i++) {
-      // Make sure to use environment data so that the levels match (may be
+    for (int i = 0; i < n_samples; i++) {
+      // Make sure to use original data so that the levels match (may be
       // recoded in reduced data)
-      if(sample_is_not_NA[i])
-        count_non_na[environment.data_numeric[i][discrete_pos]]++;
+      if (sample_is_not_NA[i]) ++count_non_na[data_numeric[i][discrete_pos]];
     }
     double kldiv = 0;
     // Compute the sum count(y) * KL(X_nonNA|y || X|y) over all values of Y y
@@ -383,8 +385,8 @@ double compute_kl_divergence(int X, int Y, Environment& environment,
 
       TempVector<int> map_level(count_base[level]);
       int i_level = 0;
-      for (int i = 0; i < environment.n_samples; i++) {
-        if (environment.data_numeric[i][discrete_pos] == level) {
+      for (int i = 0; i < n_samples; i++) {
+        if (data_numeric[i][discrete_pos] == level) {
           if (curr_sample_is_not_NA[i]) {
             map_level[i_level] = 0;
             if (sample_is_not_NA[i] == 1) {
@@ -408,11 +410,10 @@ double compute_kl_divergence(int X, int Y, Environment& environment,
       vector<vector<double>> continuous_non_na(
           count_non_na[level], vector<double>(1));
       int i_level_non_na = 0;
-      for (int i = 0; i < environment.n_samples; i++) {
+      for (int i = 0; i < n_samples; i++) {
         if (sample_is_not_NA[i] == 1 &&
-            environment.data_numeric[i][discrete_pos] == level) {
-          continuous_non_na[i_level_non_na][0] =
-              environment.data_double[continuous_pos][i];
+            data_numeric[i][discrete_pos] == level) {
+          continuous_non_na[i_level_non_na][0] = data_double[continuous_pos][i];
           i_level_non_na++;
         }
       }
@@ -425,7 +426,7 @@ double compute_kl_divergence(int X, int Y, Environment& environment,
             count_non_na[level] *
             compute_kl_divergence_continuous(continuous_non_na, continuous_base,
                 count_non_na[level], count_base[level], 1, KNN_K,
-                flag_break_ties, map_level, environment.noise_vec);
+                flag_break_ties, map_level, noise_vec);
         if (temp > 0) kldiv += temp;
       }
     }  // level loop
@@ -436,12 +437,11 @@ double compute_kl_divergence(int X, int Y, Environment& environment,
   }
 }
 
-int getNumSamplesNonNA(const Environment& environment, int i, int j) {
+int getNumSamplesNonNA(const vector<vector<int>>& data_numeric, int X, int Y,
+    const vector<int>& ui_list) {
   int n_samples_non_na = 0;
-  const auto& ui_list = environment.edges(i, j).shared_info->ui_list;
-  for (int k = 0; k < environment.n_samples; k++) {
-    if (SampleHasNoNA(i, j, ui_list, environment.data_numeric, k))
-      ++n_samples_non_na;
+  for (size_t k = 0; k < data_numeric.size(); ++k) {
+    if (SampleHasNoNA(X, Y, ui_list, data_numeric, k)) ++n_samples_non_na;
   }
   return n_samples_non_na;
 }

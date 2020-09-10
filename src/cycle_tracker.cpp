@@ -15,7 +15,8 @@ using utility::TempAllocatorScope;
 bool CycleTracker::hasCycle() {
   TempAllocatorScope scope;
 
-  int n_edge = env_.connected_list.size();
+  int n_edge = edge_list_.size();
+  int n_nodes = edges_.n_rows();
   // Before saving the current iteration, search among previous iterations
   // those with the same number of edges
   auto range = edge_index_map_.equal_range(n_edge);
@@ -38,7 +39,7 @@ bool CycleTracker::hasCycle() {
   // and simpler syntax, at the cost of extra memory trace and (possible) extra
   // time complexity (in practice there are very few changes between each pair
   // of iterations).
-  TempVector<int> changed(env_.n_nodes * (env_.n_nodes - 1) / 2, 0);
+  TempVector<int> changed(n_nodes * (n_nodes - 1) / 2, 0);
   // backtracking over iteration to get changed_edges
   cycle_size = 0;
   for (const auto& iter : iterations_) {
@@ -47,7 +48,7 @@ bool CycleTracker::hasCycle() {
       edges_union.insert(k.first);
       // compare the status in the previous iteration against the latest status
       std::pair<int, int> p = getEdgeIndex2D(k.first);
-      changed[k.first] = (k.second != env_.edges(p.first, p.second).status);
+      changed[k.first] = (k.second != edges_(p.first, p.second).status);
     }
     if (iter.index != iter_indices.front()) continue;
     iter_indices.pop_front();
@@ -55,9 +56,9 @@ bool CycleTracker::hasCycle() {
     if (none_of(begin(changed), end(changed), [](int j) { return j != 0; })) {
       for (auto& k : edges_union) {
         std::pair<int, int> p = getEdgeIndex2D(k);
-        env_.edges(p.first, p.second).status = 1;
-        env_.edges(p.second, p.first).status = 1;
-        env_.edges(p.first, p.second).shared_info->setUndirected();
+        edges_(p.first, p.second).status = 1;
+        edges_(p.second, p.first).status = 1;
+        edges_(p.first, p.second).shared_info->setUndirected();
       }
       return true;
     }

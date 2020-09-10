@@ -5,6 +5,7 @@
 #include <numeric>  // std::iota
 
 #include "computation_continuous.h"
+#include "environment.h"
 #include "linear_allocator.h"
 #include "utilities.h"
 

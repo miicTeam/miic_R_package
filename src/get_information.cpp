@@ -9,8 +9,8 @@
 #include <limits>
 #include <tuple>
 
-#include "computation_discrete.h"
 #include "computation_continuous.h"
+#include "computation_discrete.h"
 #include "structure.h"
 #include "utilities.h"
 
@@ -91,10 +91,13 @@ double getInfo3PointOrScore(Environment& environment, int X, int Y, int Z,
   bool ok = levels_red[0] > 1 && levels_red[1] > 1;
 
   if (any_na) {
-    int n_samples_nonNA = getNumSamplesNonNA(environment, X, Y);
+    int n_samples_nonNA =
+        getNumSamplesNonNA(environment.data_numeric, X, Y, ui_list);
     if (ok && environment.test_mar && n_samples_nonNA != n_samples_non_na_z) {
-      double kldiv = compute_kl_divergence(
-          X, Y, environment, n_samples_non_na_z, levels_red, sample_is_not_NA);
+      double kldiv = compute_kl_divergence(environment.data_numeric,
+          environment.data_double, X, Y, ui_list, environment.levels,
+          environment.is_continuous, n_samples_non_na_z, levels_red,
+          sample_is_not_NA, environment.noise_vec);
       double cplxMdl = environment.cache.cterm->getLog(n_samples_non_na_z);
 
       if ((kldiv - cplxMdl) > 0) {

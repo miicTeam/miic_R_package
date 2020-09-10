@@ -43,8 +43,9 @@ List reconstruct(List input_data, List arg_list) {
   if (!initializeSkeleton(environment)) return empty_results();
   environment.exec_time.init += getLapInterval(lap_start);
 
-  BiconnectedComponent bcc(environment);
-  CycleTracker cycle_tracker(environment);
+  BiconnectedComponent bcc(
+      environment.edges, environment.consistent, environment.latent);
+  CycleTracker cycle_tracker(environment.edges, environment.connected_list);
   vector<vector<string>> orientations;
   int iter_count{0};
   bool is_consistent{false};
@@ -128,9 +129,9 @@ List reconstruct(List input_data, List arg_list) {
           continue;
         if (environment.verbose) {
           Rcout << environment.nodes[i].name << ",\t"
-                    << environment.nodes[j].name << "\t| "
-                    << toNameString(environment, edge.shared_info->ui_list)
-                    << std::endl;
+                << environment.nodes[j].name << "\t| "
+                << toNameString(environment.nodes, edge.shared_info->ui_list)
+                << std::endl;
         }
         inconsistent_edges.emplace_back(i, j);
         ++n_inconsistency;
@@ -147,11 +148,12 @@ List reconstruct(List input_data, List arg_list) {
 
   const auto& time = environment.exec_time;
   List result = List::create(
-      _["adj_matrix"]        = getAdjMatrix(environment),
-      _["edges"]             = getEdgesInfoTable(environment),
+      _["adj_matrix"]        = getAdjMatrix(environment.edges),
+      _["edges"]             = getEdgesInfoTable(environment.edges,
+                                   environment.nodes),
       _["orientations.prob"] = orientations,
-      _["time"]              = vector<double>{
-        time.init, time.iter, time.cut, time.ori, time.getTotal()},
+      _["time"]              = vector<double>{time.init, time.iter, time.cut,
+                                   time.ori, time.getTotal()},
       _["interrupted"]       = false);
   if (environment.consistent != 0) {
     int size = is_consistent ? cycle_tracker.getCycleSize()
