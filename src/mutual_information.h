@@ -37,15 +37,16 @@ template <typename Cx, typename Cu, typename Cux, typename Crux,
     typename = void_t<IsIntContainer<Cx>, IsIntContainer<Cu>,
         IsIntContainer<Cux>, IsIntContainer<Crux>>>
 vector<double> computeMI_knml(const Cx& xfactors, const Cu& ufactors,
-    const Cux& uxfactors, const Crux& rux, int n, int n_eff,
-    const TempVector<double>& sample_weights,
-    std::shared_ptr<CtermCache> cache, int flag = 0) {
+    const Cux& uxfactors, const Crux& rux, int n_eff,
+    const TempVector<double>& sample_weights, std::shared_ptr<CtermCache> cache,
+    int flag) {
   TempAllocatorScope scope;
 
+  int n_samples = ufactors.size();
   TempVector<double> nx(rux[0]);
   TempVector<double> nu(rux[1]);
   TempVector<double> nux(rux[2]);
-  for (int i = 0; i < n; i++) {
+  for (int i = 0; i < n_samples; i++) {
     nx[xfactors[i]] += sample_weights[i];
     nu[ufactors[i]] += sample_weights[i];
     nux[uxfactors[i]] += sample_weights[i];
@@ -56,7 +57,7 @@ vector<double> computeMI_knml(const Cx& xfactors, const Cu& ufactors,
     if (x <= 0) continue;
 
     Hx -= x * log(x);
-    if (flag == 0 || flag == 2)
+    if (flag == 0)
       SC += cache->getLogC(std::max(1, static_cast<int>(x + 0.5)), rux[1]);
   }
   for (const auto u : nu) {
@@ -92,14 +93,15 @@ template <typename Cx, typename Cu, typename Cux, typename Crux,
     typename = void_t<IsIntContainer<Cx>, IsIntContainer<Cu>,
         IsIntContainer<Cux>, IsIntContainer<Crux>>>
 vector<double> computeMI_kmdl(const Cx& xfactors, const Cu& ufactors,
-    const Cux& uxfactors, const Crux& rux, int n,
+    const Cux& uxfactors, const Crux& rux,
     std::shared_ptr<CtermCache> cache, int flag = 0) {
   TempAllocatorScope scope;
 
+  int n_samples = xfactors.size();
   TempVector<int> nx(rux[0]);
   TempVector<int> nu(rux[1]);
   TempVector<int> nux(rux[2]);
-  for (int i = 0; i < n; i++) {
+  for (int i = 0; i < n_samples; i++) {
     ++nx[xfactors[i]];
     ++nu[ufactors[i]];
     ++nux[uxfactors[i]];
@@ -113,13 +115,13 @@ vector<double> computeMI_kmdl(const Cx& xfactors, const Cu& ufactors,
   for (const auto ux : nux)
     if (ux > 0) Hux -= ux * cache->getLog(ux);
 
-  SC = 0.5 * cache->getLog(n);
+  SC = 0.5 * cache->getLog(n_samples);
   if (flag == 0 || flag == 1) SC *= (rux[0] - 1);
   if (flag == 0 || flag == 2) SC *= (rux[1] - 1);
 
   vector<double> I(2);
-  I[0] = cache->getLog(n) + (Hu + Hx - Hux) / n;
-  I[1] = I[0] - SC / n;
+  I[0] = cache->getLog(n_samples) + (Hu + Hx - Hux) / n_samples;
+  I[1] = I[0] - SC / n_samples;
 
   return I;
 }

@@ -54,11 +54,11 @@ double getInfo3PointOrScore(Environment& environment, int X, int Y, int Z,
   // 1: sample contains no NA, 0: sample contains NA
   TempVector<int> sample_is_not_NA(environment.n_samples, 1);
   // vector with the number of rows containing NAs seen at rank i
-  TempVector<int> NAs_count(environment.n_samples, 0);
+  TempVector<int> na_count(environment.n_samples, 0);
   int n_samples_non_na_z = environment.n_samples;
   if (any_na)
-    n_samples_non_na_z = countNonNA(X, Y, Z, ui_list, environment.data_numeric,
-        sample_is_not_NA, NAs_count);
+    n_samples_non_na_z = countNonNA(
+        X, Y, Z, ui_list, environment.data_numeric, sample_is_not_NA, na_count);
 
   if (n_samples_non_na_z <= 2) {  // not sufficient statistics
     if (get_info) {
@@ -74,27 +74,27 @@ double getInfo3PointOrScore(Environment& environment, int X, int Y, int Z,
   int n_ui = ui_list.size();
   // Allocate data reducted *_red without rows containing NAs
   // All *_red variables are passed to the optimization routine
-  TempVector<double> sample_weights_red(n_samples_non_na_z);
-  TempGrid2d<int> data_numeric_idx_red(n_ui + 3, n_samples_non_na_z);
-  TempGrid2d<int> data_numeric_red(n_ui + 3, n_samples_non_na_z);
-  TempVector<int> all_levels_red(n_ui + 3);
-  TempVector<int> cnt_red(n_ui + 3);
-  TempVector<int> posArray_red(n_ui + 3);
+  TempGrid2d<int> data_red(n_ui + 3, n_samples_non_na_z);
+  TempGrid2d<int> data_idx_red(n_ui + 3, n_samples_non_na_z);
+  TempVector<int> levels_red(n_ui + 3);
+  TempVector<int> is_continuous_red(n_ui + 3);
+  TempVector<int> var_idx_red(n_ui + 3);
+  TempVector<double> weights_red(n_samples_non_na_z);
   bool flag_sample_weights = filterNA(X, Y, Z, ui_list,
       environment.data_numeric, environment.data_numeric_idx,
       environment.levels, environment.is_continuous, environment.sample_weights,
-      sample_is_not_NA, NAs_count, data_numeric_red, data_numeric_idx_red,
-      all_levels_red, cnt_red, posArray_red, sample_weights_red, any_na);
+      sample_is_not_NA, na_count, data_red, data_idx_red, levels_red,
+      is_continuous_red, var_idx_red, weights_red, any_na);
 
   // If X or Y has 1 or less level, the 3-point information should be zero, and
   // the score should be low
-  bool ok = all_levels_red[0] > 1 && all_levels_red[1] > 1;
+  bool ok = levels_red[0] > 1 && levels_red[1] > 1;
 
   if (any_na) {
     int n_samples_nonNA = getNumSamplesNonNA(environment, X, Y);
     if (ok && environment.test_mar && n_samples_nonNA != n_samples_non_na_z) {
-      double kldiv = compute_kl_divergence(X, Y, environment,
-          n_samples_non_na_z, all_levels_red, sample_is_not_NA);
+      double kldiv = compute_kl_divergence(
+          X, Y, environment, n_samples_non_na_z, levels_red, sample_is_not_NA);
       double cplxMdl = environment.cache.cterm->getLog(n_samples_non_na_z);
 
       if ((kldiv - cplxMdl) > 0) {
@@ -117,15 +117,15 @@ double getInfo3PointOrScore(Environment& environment, int X, int Y, int Z,
   }
 
   Info3PointBlock res{0, 0, 0};
-  if (std::all_of(begin(cnt_red), end(cnt_red), [](int x) { return x == 0; })) {
-    res = computeInfo3PointAndScoreDiscrete(data_numeric_red, all_levels_red,
-        posArray_red, sample_weights_red, environment.cplx,
-        environment.cache.cterm);
+  if (std::all_of(begin(is_continuous_red), end(is_continuous_red),
+          [](int x) { return x == 0; })) {
+    res = computeInfo3PointAndScoreDiscrete(data_red, levels_red, var_idx_red,
+        weights_red, environment.cplx, environment.cache.cterm);
   } else {
-    res = computeInfo3PointAndScore(data_numeric_red, data_numeric_idx_red,
-        all_levels_red, cnt_red, posArray_red, n_ui, n_ui + 2,
-        n_samples_non_na_z, sample_weights_red, flag_sample_weights,
-        environment);
+    res = computeInfo3PointAndScore(data_red, data_idx_red, levels_red,
+        is_continuous_red, var_idx_red, weights_red, flag_sample_weights,
+        environment.initbins, environment.maxbins, environment.cplx,
+        environment.cache.cterm, environment.iterative_cuts);
   }
   double info = res.Ixyz_ui - res.kxyz_ui;  // I(x;y;z|u) - cplx I(x;y;z|u)
   double score = res.score;                 // R(X,Y;Z|ui)
@@ -162,11 +162,11 @@ InfoBlock getCondMutualInfo(int X, int Y, const vector<int>& ui_list,
   // 1: sample contains no NA, 0: sample contains NA
   TempVector<int> sample_is_not_NA(environment.n_samples, 1);
   // vector with the number of rows containing NAs seen at rank i
-  TempVector<int> NAs_count(environment.n_samples, 0);
+  TempVector<int> na_count(environment.n_samples, 0);
   int n_samples_non_na = environment.n_samples;
   if (any_na)
     n_samples_non_na = countNonNA(
-        X, Y, /*Z*/ -1, ui_list, data_numeric, sample_is_not_NA, NAs_count);
+        X, Y, /*Z*/ -1, ui_list, data_numeric, sample_is_not_NA, na_count);
 
   if (n_samples_non_na <= 2) {
     InfoBlock res{n_samples_non_na, 0, 0};
@@ -176,35 +176,36 @@ InfoBlock getCondMutualInfo(int X, int Y, const vector<int>& ui_list,
 
   // Allocate data reducted *_red without rows containing NAs
   // All *_red variables are passed to the optimization routine
-  TempVector<int> all_levels_red(n_ui + 2);
-  TempVector<int> cnt_red(n_ui + 2);
-  TempVector<int> posArray_red(n_ui + 2);
-  TempVector<double> sample_weights_red(n_samples_non_na);
-  TempGrid2d<int> data_numeric_red(n_ui + 2, n_samples_non_na);
-  TempGrid2d<int> data_numeric_idx_red(n_ui + 2, n_samples_non_na);
+  TempGrid2d<int> data_red(n_ui + 2, n_samples_non_na);
+  TempGrid2d<int> data_idx_red(n_ui + 2, n_samples_non_na);
+  TempVector<int> levels_red(n_ui + 2);
+  TempVector<int> is_continuous_red(n_ui + 2);
+  TempVector<int> var_idx_red(n_ui + 2);
+  TempVector<double> weights_red(n_samples_non_na);
 
   bool flag_sample_weights = filterNA(X, Y, /*Z*/ -1, ui_list, data_numeric,
       data_numeric_idx, environment.levels, environment.is_continuous,
-      environment.sample_weights, sample_is_not_NA, NAs_count, data_numeric_red,
-      data_numeric_idx_red, all_levels_red, cnt_red, posArray_red,
-      sample_weights_red, any_na);
+      environment.sample_weights, sample_is_not_NA, na_count, data_red,
+      data_idx_red, levels_red, is_continuous_red, var_idx_red, weights_red,
+      any_na);
 
   // If X or Y has only 1 level
-  if (all_levels_red[0] <= 1 || all_levels_red[1] <= 1) {
+  if (levels_red[0] <= 1 || levels_red[1] <= 1) {
     InfoBlock res{n_samples_non_na, 0, 0};
     if (n_ui != 0) cache->saveMutualInfo(X, Y, ui_list, res);
     return res;
   }
 
   InfoBlock res{0, 0, 0};
-  if (std::all_of(begin(cnt_red), end(cnt_red), [](int x) { return x == 0; })) {
-    res = computeCondMutualInfoDiscrete(data_numeric_red, all_levels_red,
-        posArray_red, sample_weights_red, environment.cplx,
-        environment.cache.cterm);
+  if (std::all_of(begin(is_continuous_red), end(is_continuous_red),
+          [](int x) { return x == 0; })) {
+    res = computeCondMutualInfoDiscrete(data_red, levels_red, var_idx_red,
+        weights_red, environment.cplx, environment.cache.cterm);
   } else {
-    res = computeCondMutualInfo(data_numeric_red, data_numeric_idx_red,
-        all_levels_red, cnt_red, posArray_red, n_ui, n_samples_non_na,
-        sample_weights_red, flag_sample_weights, environment);
+    res = computeCondMutualInfo(data_red, data_idx_red, levels_red,
+        is_continuous_red, var_idx_red, weights_red, flag_sample_weights,
+        environment.initbins, environment.maxbins, environment.cplx,
+        environment.cache.cterm, environment.iterative_cuts);
   }
   if (std::fabs(res.Ixy_ui) < kPrecision) res.Ixy_ui = 0;
   if (std::fabs(res.kxy_ui) < kPrecision) res.kxy_ui = 0;

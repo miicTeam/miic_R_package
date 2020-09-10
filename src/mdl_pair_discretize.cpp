@@ -57,8 +57,10 @@ List mydiscretizeMutual(List input_data, List arg_list) {
   environment.iterative_cuts = Grid2d<int>(STEPMAX + 1, maxbins * (2 + nbrU));
 
   computeCondMutualInfo(dataNumeric_red, dataNumericIdx_red, AllLevels_red,
-      cnt_red, posArray_red, nbrU, environment.n_samples, sample_weights_red,
-      flag_sample_weights, environment, true);
+      cnt_red, posArray_red, sample_weights_red, flag_sample_weights,
+      environment.initbins, environment.maxbins, environment.cplx,
+      environment.cache.cterm, environment.iterative_cuts,
+      /*saveIterations*/ true);
 
   int niterations = 0;
   int i = 0;

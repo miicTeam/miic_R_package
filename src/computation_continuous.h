@@ -3,7 +3,7 @@
 #ifndef MIIC_INFO_CNT_H_
 #define MIIC_INFO_CNT_H_
 
-#include "environment.h"
+#include "computation_cache.h"
 #include "structure.h"
 
 namespace miic {
@@ -11,22 +11,24 @@ namespace computation {
 
 structure::InfoBlock computeCondMutualInfo(
     const structure::TempGrid2d<int>& data,
-    const structure::TempGrid2d<int>& sortidx,
-    const structure::TempVector<int>& AllLevels,
-    const structure::TempVector<int>& ptr_cnt,
-    const structure::TempVector<int>& ptrVarIdx, int nbrUi, int n,
+    const structure::TempGrid2d<int>& data_idx,
+    const structure::TempVector<int>& levels,
+    const structure::TempVector<int>& is_continuous,
+    const structure::TempVector<int>& var_idx,
     const structure::TempVector<double>& sample_weights,
-    bool flag_sample_weights, structure::Environment& environment,
+    bool flag_sample_weights, int initbins, int maxbins, int cplx,
+    std::shared_ptr<CtermCache> cache, structure::Grid2d<int>& iterative_cuts,
     bool saveIterations = false);
 
 structure::Info3PointBlock computeInfo3PointAndScore(
     const structure::TempGrid2d<int>& data,
-    const structure::TempGrid2d<int>& sortidx,
-    const structure::TempVector<int>& AllLevels,
-    const structure::TempVector<int>& ptr_cnt,
-    const structure::TempVector<int>& ptrVarIdx, int nbrUi, int ptrZiIdx, int n,
+    const structure::TempGrid2d<int>& data_idx,
+    const structure::TempVector<int>& levels,
+    const structure::TempVector<int>& is_continuous,
+    const structure::TempVector<int>& var_idx,
     const structure::TempVector<double>& sample_weights,
-    bool flag_sample_weights, structure::Environment& environment,
+    bool flag_sample_weights, int initbins, int maxbins, int cplx,
+    std::shared_ptr<CtermCache> cache, structure::Grid2d<int>& iterative_cuts,
     bool saveIterations = false);
 
 }  // namespace computation
