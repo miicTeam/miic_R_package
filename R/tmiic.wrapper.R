@@ -34,9 +34,8 @@
 #' i.e. with \emph{tau}=6 and \emph{delta_tau}=3 : node1, node2 => 
 #' node1_lag0, node2_lag0, node1_lag3, node2_lag3, node1_lag6, node2_lag6.
 #' 
-#' Every timestep (until number of timesteps - \emph{tau} * \emph{delta_tau}) 
-#' is converted into a sample in the lagged data. Exemple with tau=6 and
-#' delta_tau=3:
+#' Every timestep (until number of timesteps - \emph{tau}) is converted
+#' into a sample in the lagged data. Exemple with tau=6 and delta_tau=3:
 #' 
 #' \tabular{ccccccc}{
 #' Timestep \tab  Node & value  \tab  Node & value  \tab => \tab Sample \tab  Node & value  \tab  Node & value \cr
@@ -57,7 +56,7 @@
 #' until number of timesteps - \emph{tau} * \emph{delta_tau} is reached. 
 #' The same process is applied to all input timeseries.
 #'
-#' @param data [a dataframe] 
+#' @param input_data [a dataframe] 
 #' A dataframe with the time series with variables as columns and
 #' timeseries/timesteps as rows. The timestep information must be suplied 
 #' in the first column and, for each timeseries, in an ascending order.
@@ -66,18 +65,18 @@
 #' Note that if \emph{delta_tau} is also supplied, \emph{tau} must be a
 #' multiple of \emph{delta_tau}.
 #' 
-#' @param categoryOrder [a data frame] Optional, NULL by default. 
+#' @param state_order [a data frame] Optional, NULL by default. 
 #' A data frame giving information about how to order the various states of 
-#' categorical variables. In temporal mode, this data frame will be lagged 
-#' as the input data on \emph{tau} / \emph{delta_tau} layers.
+#' categorical variables. This data frame will be lagged as the input data 
+#' on \emph{tau} / \emph{delta_tau} layers.
 #' 
 #' @param movavg [an integer] Optional, -1 by default.\cr
 #' When \emph{movavg} is supplied (integer > 1), a moving average 
-#' operation is applied to the time series.\cr
+#' operation is applied to each timeseries.\cr
 #' 
 #' @param delta_tau [an integer] Optional, 1 by default.\cr
 #' When \emph{delta_tau} is supplied (integer > 1), the samples will be 
-#' construted using 1 timestep every \emph{delta_tau} timesteps starting 
+#' constructed using 1 timestep every \emph{delta_tau} timesteps starting 
 #' from the last.\cr 
 #' i.e.: on 1000 timesteps with  \emph{tau} = 14 and \emph{delta_tau} = 7, 
 #' the timesteps kept for the samples conversion will be 1000, 993, 986 
@@ -85,21 +84,19 @@
 #' 
 #' @return a list with two elements:
 #' \itemize{
-#'  \item \emph{inputData:} the samples generated from the timeseries
-#'  \item \emph{categoryOrer:} the lagged catagoryOrder 
+#'  \item \emph{input_data:} the samples generated from the timeseries
+#'  \item \emph{state_order:} the lagged state_order 
 #'  }
 #'                                    
-#' @export
-#' @useDynLib miic
 #-----------------------------------------------------------------------------
-tmiic.transform_data_for_miic <- function (data, tau, categoryOrder=NULL, 
+tmiic.transform_data_for_miic <- function (input_data, tau, state_order=NULL, 
                                            movavg=-1, delta_tau=1)
   {
   DEBUG <- FALSE
   
-  n_rows <- nrow(data)
-  n_nodes <- ncol(data) - 1
-  list_nodes <- colnames(data)[-1]
+  n_rows <- nrow(input_data)
+  n_nodes <- ncol(input_data) - 1
+  list_nodes <- colnames(input_data)[-1]
 
   if (DEBUG)
     {
@@ -113,10 +110,10 @@ tmiic.transform_data_for_miic <- function (data, tau, categoryOrder=NULL,
     print (list_nodes)
     print ("")
     print ("Input df on tau timesteps:")
-    print (data[1:tau,])
+    print (input_data[1:tau,])
     print ("")
     print ("Input df: last rows:")
-    print (data[(n_rows - tau):n_rows,])
+    print (input_data[(n_rows - tau):n_rows,])
     }
   #
   # Lag the nodes
@@ -133,29 +130,29 @@ tmiic.transform_data_for_miic <- function (data, tau, categoryOrder=NULL,
     print (paste ("n_nodes_lagged=", n_nodes_lagged, sep="") )
     }
   #
-  # Lag the categoryOrder if supplied
+  # Lag the state_order if supplied
   #
-  if (!is.null(categoryOrder))
+  if (!is.null(state_order))
     {
-    categories_lagged <- categoryOrder [FALSE,]
-    categ_col1 <- colnames(categoryOrder)[[1]]
+    state_lagged <- state_order [FALSE,]
+    state_col1 <- colnames(state_order)[[1]]
     for (tau_idx in seq(0,tau,by=delta_tau) )
       {
-      for (old_categ_idx in 1:nrow(categoryOrder))
+      for (old_state_idx in 1:nrow(state_order))
         {
-        lagged_categ_idx <- nrow(categories_lagged) + 1
-        categories_lagged [lagged_categ_idx,] <- categoryOrder [old_categ_idx,]
+        lagged_state_idx <- nrow(state_lagged) + 1
+        state_lagged [lagged_state_idx,] <- state_order [old_state_idx,]
         
-        node_name <- categoryOrder [old_categ_idx, categ_col1]
+        node_name <- state_order [old_state_idx, state_col1]
         node_name_lagged <- paste (node_name, "_lag", tau_idx, sep="" )
-        categories_lagged [lagged_categ_idx, categ_col1] <- node_name_lagged
+        state_lagged [lagged_state_idx, state_col1] <- node_name_lagged
         }
       }
-    categoryOrder <- categories_lagged
+    state_order <- state_lagged
     if (DEBUG)
       {
-      print ("Lagged categoryOrder")
-      print (categoryOrder)
+      print ("Lagged state_order")
+      print (state_order)
       }
     }
   #
@@ -172,15 +169,15 @@ tmiic.transform_data_for_miic <- function (data, tau, categoryOrder=NULL,
   previous_timestep <- -Inf
   for (row_idx in 1:n_rows)
     {
-    timestep = data[row_idx,1]
+    timestep = input_data[row_idx,1]
     if (timestep < previous_timestep)
       {
       if (DEBUG)
         print (paste ("Timeseries found between ", previous_row_idx, " and ", row_idx-1),
                sep="")
-      one_timeseries <- data[previous_row_idx:(row_idx-1), list_nodes]
-      df_ret <- miic:::tmiic.lag_one_timeseries (one_timeseries, list_nodes_lagged,
-                                                 tau, movavg, delta_tau)
+      one_timeseries <- input_data[previous_row_idx:(row_idx-1), list_nodes]
+      df_ret <- miic:::tmiic.lag_one_timeseries (one_timeseries, tau, list_nodes_lagged,
+                                                 movavg, delta_tau)
       df_lagged <- rbind (df_lagged, df_ret)
       previous_row_idx <- row_idx
       }
@@ -189,9 +186,9 @@ tmiic.transform_data_for_miic <- function (data, tau, categoryOrder=NULL,
   if (DEBUG)
     print (paste ("Timeseries found between ", previous_row_idx, " and ", row_idx),
            sep="")
-  one_timeseries <- data[previous_row_idx:row_idx, list_nodes]
-  df_ret <- miic:::tmiic.lag_one_timeseries (one_timeseries, list_nodes_lagged,
-                                             tau, movavg, delta_tau)
+  one_timeseries <- input_data[previous_row_idx:row_idx, list_nodes]
+  df_ret <- miic:::tmiic.lag_one_timeseries (one_timeseries, tau, list_nodes_lagged,
+                                             movavg, delta_tau)
   df_lagged <- rbind (df_lagged, df_ret)
 
   if (DEBUG)
@@ -205,9 +202,9 @@ tmiic.transform_data_for_miic <- function (data, tau, categoryOrder=NULL,
     print (df_lagged[(n_rows_lagged - tau):n_rows_lagged,])
     }
   #
-  # returns the dataframe as miic expects and categoryOrder (if supplied) lagged
+  # returns the dataframe as miic expects and state_order (if supplied) lagged
   #
-  return (list (inputData=df_lagged, categoryOrder=categoryOrder) )
+  return (list (input_data=df_lagged, state_order=state_order) )
   }
   
 #-----------------------------------------------------------------------------
@@ -224,9 +221,8 @@ tmiic.transform_data_for_miic <- function (data, tau, categoryOrder=NULL,
 #' \emph{delta_tau} parameters. Data are expected to be received in a dataframe 
 #' with variables as columns and timesteps as rows. 
 #' 
-#' Every timestep (until number of timesteps - \emph{tau} * \emph{delta_tau}) 
-#' is converted into a sample in the lagged graph. Exemple with tau=6 and
-#' delta_tau=3:
+#' Every timestep (until number of timesteps - \emph{tau}) is converted 
+#' into a sample in the lagged graph. Exemple with tau=6 and delta_tau=3:
 #' 
 #' \tabular{ccccccc}{
 #' Timestep \tab  Node & value  \tab  Node & value  \tab => \tab Sample \tab  Node & value  \tab  Node & value \cr
@@ -246,8 +242,8 @@ tmiic.transform_data_for_miic <- function (data, tau, categoryOrder=NULL,
 #' }
 #' until number of timesteps - \emph{tau} * \emph{delta_tau} is reached. 
 #'
-#' @param data [a dataframe] 
-#' A dataframe containing the time series with variables as columns and
+#' @param df_timeseries [a dataframe] 
+#' A dataframe containing the timeseries with variables as columns and
 #' timesteps as rows. 
 #'
 #' @param tau [an int > 0] A strictly positive int defining the max lag.
@@ -274,8 +270,8 @@ tmiic.transform_data_for_miic <- function (data, tau, categoryOrder=NULL,
 #'                                    
 #' @useDynLib miic
 #-----------------------------------------------------------------------------
-tmiic.lag_one_timeseries <- function (df_timeseries, list_nodes_lagged, 
-                                      tau, movavg, delta_tau)
+tmiic.lag_one_timeseries <- function (df_timeseries, tau, list_nodes_lagged, 
+                                      movavg, delta_tau)
   {
   n_timesteps <- nrow(df_timeseries)
   n_nodes <- ncol(df_timeseries) 
@@ -387,9 +383,9 @@ tmiic.lag_one_timeseries <- function (df_timeseries, list_nodes_lagged,
 #' In temporal mode, the network returned by miic contains lagged nodes 
 #' (X_lag0, X_lag1, ...). This function flatten the  network depending 
 #' of the \emph{flatten_mode} parameter.\cr
-#' Note that only the adjMatrix and summary data frames are flatened.
+#' Note that only the adj_matrix and summary data frames are flatened.
 #' 
-#' @param miic_return [a miic object] The object returned by miic's 
+#' @param miic_result [a miic object] The object returned by miic's 
 #' execution.
 #' 
 #' @param flatten_mode [a string]. Optional, default value "normal".
@@ -436,9 +432,8 @@ tmiic.lag_one_timeseries <- function (df_timeseries, list_nodes_lagged,
 #'     
 #' @importFrom magrittr "%>%"                             
 #' @export
-#' @useDynLib miic
 #-----------------------------------------------------------------------------
-tmiic.flatten_network <- function (miic_return, flatten_mode="normal", 
+tmiic.flatten_network <- function (miic_result, flatten_mode="normal", 
                                    keep_edges_on_same_node=TRUE)
   {
   DEBUG <- FALSE
@@ -446,15 +441,15 @@ tmiic.flatten_network <- function (miic_return, flatten_mode="normal",
     {
     print ("tmiic.flatten_network:")
     print ("adjacency matrix:")
-    print (miic_return$adjMatrix)
+    print (miic_result$adj_matrix)
     print ("summary:")
-    print (miic_return$all.edges.summary %>% dplyr::select(x,y,type,infOrt,sign,log_confidence,proba) )
+    print (miic_result$all.edges.summary %>% dplyr::select(x,y,type,infOrt,sign,log_confidence,proba) )
     print (paste ("flatten_mode=", flatten_mode) )
     }
   #
   # Construct the list of nodes not lagged 
   #
-  list_nodes_lagged = colnames (miic_return$adjMatrix)
+  list_nodes_lagged = colnames (miic_result$adj_matrix)
   list_nodes_not_lagged = list ()
   for (node_idx in 1:length (list_nodes_lagged) )
     {
@@ -488,7 +483,7 @@ tmiic.flatten_network <- function (miic_return, flatten_mode="normal",
   #
   df_adj <- array ( data="", dim=c(n_nodes ,n_nodes),
                     dimnames=list(list_nodes_not_lagged, list_nodes_not_lagged) )
-  df_edges <- miic_return$all.edges.summary
+  df_edges <- miic_result$all.edges.summary
   df_edges$lag <- -1
   for (edge_idx in 1:nrow(df_edges) )
     {
@@ -859,16 +854,16 @@ tmiic.flatten_network <- function (miic_return, flatten_mode="normal",
   #
   # returns the list of dataframes where network has been flattened
   #
-  miic_return$adjMatrix <- df_adj
-  miic_return$all.edges.summary <- df_edges
+  miic_result$adj_matrix <- df_adj
+  miic_result$all.edges.summary <- df_edges
   if (DEBUG)
     {
     print ("Returned values:")
-    print ("adjMatrix:")
-    print (miic_return$adjMatrix)
+    print ("adj_matrix:")
+    print (miic_result$adj_matrix)
     print ("Summary:")
-    print (miic_return$all.edges.summary %>% dplyr::select(x,y,lag,type,infOrt,sign,log_confidence,proba))
+    print (miic_result$all.edges.summary %>% dplyr::select(x,y,lag,type,infOrt,sign,log_confidence,proba))
     }
-  return (miic_return)
+  return (miic_result)
   }
 

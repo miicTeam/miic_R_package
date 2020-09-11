@@ -19,28 +19,26 @@
 #'
 #' @examples
 #' library(miic)
-#' \dontrun{
 #' # Bimodal normal distribution
 #' N <- 300
-#' modes <- sample(1:2, size = N, replace = T)
+#' modes <- sample(1:2, size = N, replace = TRUE)
 #' x <- as.numeric(modes == 1) * rnorm(N, mean = 0, sd = 1) +
 #'      as.numeric(modes == 2) * rnorm(N, mean = 5, sd = 2)
 #' MDL_disc <- discretizeMDL(x)
 #' hist(x, breaks = MDL_disc$cutpoints)
 #'
 #' N <- 2000
-#' modes <- sample(1:2, size = N, replace = T)
+#' modes <- sample(1:2, size = N, replace = TRUE)
 #' x <- as.numeric(modes == 1) * rnorm(N, mean = 0, sd = 1) +
 #'      as.numeric(modes == 2) * rnorm(N, mean = 5, sd = 2)
 #' MDL_disc <- discretizeMDL(x)
 #' hist(x, breaks = MDL_disc$cutpoints)
-#' }
 #'
 discretizeMDL <- function(x = NULL, max_bins = 20) {
   result <- list()
   #### Check the input arguments
-  if (is.null(x)) {
-    stop("The input data file is required")
+  if (is.null(x) || !is.vector(x)) {
+    stop("The input data is required and must be a vector")
   }
   if (base::requireNamespace("Rcpp", quietly = TRUE)) {
     result <- mydiscretizeMDL(x, max_bins)

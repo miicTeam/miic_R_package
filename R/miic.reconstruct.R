@@ -135,6 +135,8 @@ miic.reconstruct <- function(input_data = NULL,
 
   res$time <- stats::setNames(
     as.numeric(time),
+    # FRS TODO active commented line after C++ upgrade
+    # c("init", "iter", "cut", "ori", "total")
     c("init", "iter", "cut", "skeleton")
   )
 
@@ -149,7 +151,7 @@ miic.reconstruct <- function(input_data = NULL,
     orientations_prob <- data.frame(matrix(
       res1,
       nrow = length(orientations_prob) - 1,
-      byrow = T
+      byrow = TRUE
     ),
     stringsAsFactors = FALSE
     )

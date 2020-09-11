@@ -11,8 +11,8 @@
 #' available data. The remaining edges are then oriented based on the signature
 #' of causality in observational data.
 #'
-#' For temporal series, miic reorganizes the dataset using the \emph{tau}
-#' and \emph{delta_tau} parameters to transform the timesteps 
+#' In temporal mode (when \emph{tau} >= 1), miic reorganizes the dataset 
+#' using the \emph{tau} and \emph{delta_tau} parameters to transform the timesteps 
 #' into lagged samples. As starting point, a lagged graph is created with 
 #' only edges having at least one node laying on the last timestep. 
 #' Then, miic standard algorithm is applied to remove dispensable edges. 
@@ -42,11 +42,21 @@
 #' }
 #'
 #' @param input_data [a data frame]
-#' A data frame that contains the observational data. Each
-#' column corresponds to one variable and each row is a sample that gives the
+#' A data frame that contains the observational data. 
+#' 
+#' In regular mode, each column corresponds to one variable and each row is a sample that gives the
 #' values for all the observed variables. The column names correspond to the
 #' names of the observed variables. Numeric columns will be treated as continuous
 #' values, factors and character as categorical.
+#' 
+#' In temporal mode (when \emph{tau} >= 1), the expected dataframe layout
+#' is variables as columns and timeseries/timesteps as rows. 
+#' The timestep information must be suplied in the first column and, 
+#' for each timeseries, be in ascending order.
+#' 
+#' the first column of the dataframe
+#' must contain the timesteps information and for each timeseries, be in 
+#' ascending order.
 #'
 #' @param black_box [a data frame]
 #' An optional data frame containing the
@@ -108,11 +118,6 @@
 #' @param true_edges [a data frame]  An optional data frame containing all the
 #' true edges of the graph. Each line corresponds to one edge.
 #'
-#' @param edges [a data frame] The miic$edges object returned by an execution
-#' of the miic function. It represents the result of the skeleton step. If this
-#' object is provided, the skeleton step will not be done, and the required
-#' orientation will be performed using this edges data frame.
-#'
 #' @param n_shuffles [a positive integer] The number of shufflings of
 #' the original dataset in order to evaluate the edge specific confidence
 #' ratio of all inferred edges.
@@ -120,13 +125,6 @@
 #' @param conf_threshold [a positive floating point] The threshold used
 #' to filter the less probable edges following the skeleton step. See Verny
 #' \emph{et al.}, PLoS Comp. Bio. 2017.
-#'
-#' @param confList [a data frame] An optional data frame containing the
-#' confFile data frame returned by a miic execution. It is useful when a
-#' second run of the same input data set has to be performed with a different
-#' confidence threshold and the same n_shuffles value. In
-#' this way the computations based on the randomized dataset do not need to
-#' be performed again, and the values in this data frame are used instead.
 #'
 #' @param sample_weights [a numeric vector]
 #' An optional vector containing the weight of each observation.
@@ -151,6 +149,19 @@
 #' is set to "skeleton" or "orientation", the maximum number of iterations
 #' allowed when trying to find a consistent graph. Set to 100 by default.
 #'
+#' @param consensus_threshold [a floating point between 0.5 and 1.0]
+#' When the \emph{consistent} parameter is set to "skeleton" or "orientation",
+#' and when the result graph is inconsistent, or is a union of more than one
+#' inconsistent graphs, a consensus graph will be produced based on a pool of
+#' graphs. If the result graph is inconsistent, then the pool is made of
+#' [max_iteration] graphs from the iterations, otherwise it is made of those
+#' graphs in the union. In the consensus graph, the status of each edge is
+#' determined as follows: Choose from the pool the most probable status. For
+#' example, if the pool contains [A, B, B, B, C], then choose status B, if the
+#' frequency of presence of B (0.6 in the example) is equal to or higher than
+#' [consensus_threshold], then set B as the status of the edge in the consensus
+#' graph, otherwise set undirected edge as the status. Set to 0.8 by default.
+#'
 #' @param tau [an integer] Optional, -1 by default.\cr
 #' Max lag used for temporal series. If \emph{tau} is supplied (integer >= 1), 
 #' miic switches to temporal mode: it contructs a lagged graph over 
@@ -160,15 +171,15 @@
 #' multiple of \emph{delta_tau}.
 #' 
 #' @param movavg [an integer] Optional, -1 by default.\cr
-#' Used only in temporal mode, If \emph{movavg} is supplied (integer > 1), 
+#' Used only in temporal mode. If \emph{movavg} is supplied (integer > 1), 
 #' a moving average operation is applied to each time series.\cr
 #' 
 #' @param delta_tau [an integer] Optional, 1 by default.\cr
-#' When \emph{delta_tau} is supplied (integer > 1), the samples will be 
-#' construted using 1 timestep every \emph{delta_tau} timesteps starting 
-#' from the last.\cr 
+#' Used only in temporal mode. When \emph{delta_tau} is supplied (integer > 1), 
+#' the samples will be constructed using 1 timestep every \emph{delta_tau} 
+#' timesteps starting from the last.\cr 
 #' i.e.: on 1000 timesteps with  \emph{tau} = 14 and \emph{delta_tau} = 7, 
-#' the timesteps kept for the samples conversion will be 1000, 993, 986 
+#' the timesteps used during the samples conversion will be 1000, 993, 986 
 #' for the first sample, the next sample will use 999, 992, 985 and so on.
 #' 
 #' @param verbose [a boolean value] If TRUE, debugging output is printed.
@@ -193,13 +204,13 @@
 #'  \item \emph{info:} provides the pairwise mutual information times \emph{Nxyi} for
 #'  the pair (\emph{x}, \emph{y}).
 #'  \item \emph{info_cond:} provides the conditional mutual information times \emph{Nxy_ai} for
-#'  the pair (\emph{x}, \emph{y}) when conditioned on the collected nodes \emph{ai}. It is 
+#'  the pair (\emph{x}, \emph{y}) when conditioned on the collected nodes \emph{ai}. It is
 #'  equal to the \emph{info} column when \emph{ai} is an empty set.
 #'  \item \emph{cplx:} gives the computed complexity between the (\emph{x}, \emph{y})
 #'  variables taking into account the contributing nodes \emph{ai}. Edges that have
 #'  have more conditional information \emph{info_cond} than \emph{cplx} are retained in the
 #'  final graph.
-#'  \item \emph{Nxy_ai:} gives the number of complete samples on which the information and 
+#'  \item \emph{Nxy_ai:} gives the number of complete samples on which the information and
 #'  the  complexity have been computed. If the input dataset has no missing value, the
 #'  number of samples is the same for all pairs and corresponds to the total
 #'  number of samples.
@@ -227,7 +238,7 @@
 #'  does imply that the cause-effect relationship is not the other way around. An arrow-tip
 #'  which is itself downstream of another directed edge suggests stronger causal sense and is
 #'  marked by a 'Y', or 'N' otherwise.
-#'  \item \emph{proba:} probabilities for the inferred orientation, derived from the three-point 
+#'  \item \emph{proba:} probabilities for the inferred orientation, derived from the three-point
 #'  mutual information (cf Affeldt & Isambert, UAI 2015 proceedings) and noted as p(x->y);p(x<-y).
 #'  }
 #'  }
@@ -279,9 +290,11 @@
 #' )
 #'
 #' # plot graph
-#' miic.plot(miic.res)
-#' \dontrun{
+#' if(require(igraph)) {
+#'  plot(miic.res, method="igraph")
+#' }
 #'
+#' \donttest{
 #' # write graph to graphml format. Note that to correctly visualize
 #' # the network we created the miic style for Cytoscape (http://www.cytoscape.org/).
 #'
@@ -297,7 +310,9 @@
 #' )
 #'
 #' # plot graph
-#' miic.plot(miic.res, igraphLayout = igraph::layout_on_grid)
+#' if(require(igraph)) {
+#'  plot(miic.res)
+#' }
 #'
 #' # write graph to graphml format. Note that to correctly visualize
 #' # the network we created the miic style for Cytoscape (http://www.cytoscape.org/).
@@ -313,11 +328,37 @@
 #' )
 #'
 #' # plot graph
-#' miic.plot(miic.res)
+#' if(require(igraph)) {
+#'  plot(miic.res)
+#' }
 #'
 #' # write graph to graphml format. Note that to correctly visualize
 #' # the network we created the miic style for Cytoscape (http://www.cytoscape.org/).
 #' miic.write.network.cytoscape(g = miic.res, file = file.path(tempdir(), "temp"))
+#'
+#' # EXAMPLE COVID CASES (timeseries demo)
+#' data(covidCases)
+#' # execute MIIC (reconstruct graph in temporal mode)
+#' miic.res <- miic(input_data = covidCases, tau = 2, movavg = 14)
+#'
+#' # plot temporal graph
+#' if(require(igraph)) {
+#'  plot(miic.res)
+#' }
+#'
+#' # to plot a condensed graph
+#' flatten.res <- tmiic.flatten_network(miic.res)
+#' if(require(igraph)) {
+#'  plot(flatten.res)
+#' }
+#'
+#' # write temporal graph to graphml format. Note that to correctly visualize
+#' # the network we created the miic style for Cytoscape (http://www.cytoscape.org/).
+#' miic.write.network.cytoscape(g = miic.res, file = file.path(tempdir(), "temp"))
+#' 
+#' # write condensed graph to graphml format. Note that to correctly visualize
+#' # the network we created the miic style for Cytoscape (http://www.cytoscape.org/).
+#' miic.write.network.cytoscape(g = flatten.res, file = file.path(tempdir(), "temp"))
 #' }
 #'
 miic <- function(input_data,
@@ -331,14 +372,13 @@ miic <- function(input_data,
                  propagation = TRUE,
                  latent = c("no", "yes", "orientation"),
                  n_eff = -1,
-                 edges = NULL,
                  n_shuffles = 0,
                  conf_threshold = 0,
-                 confList = NULL,
                  sample_weights = NULL,
                  test_mar = TRUE,
                  consistent = c("no", "orientation", "skeleton"),
                  max_iteration = 100,
+                 consensus_threshold = 0.8,
                  tau = -1,
                  movavg = -1,
                  delta_tau = 1,
@@ -352,22 +392,23 @@ miic <- function(input_data,
   if (!is.data.frame(input_data)) {
     stop("The input data is not a dataframe")
   }
-  # Remove rows with only NAs
-  input_data <- input_data[rowSums(is.na(input_data)) != ncol(input_data), ]
-  if (length(input_data) == 0) {
-    stop("The input data is empty or contains only NAs")
-  }
-
+  
   if (tau > 0)
     {
     # If we use temporal version of miic, convert history into lagged nodes and samples
     #
     cat ("Using temporal version of miic\n")
-    struct_ret <- tmiic.transform_data_for_miic (input_data, tau, 
+    struct_ret <- miic:::tmiic.transform_data_for_miic (input_data, tau, 
         state_order=state_order, movavg=movavg, delta_tau=delta_tau)
     input_data <- struct_ret$input_data
     state_order <- struct_ret$state_order
     }
+  
+  # Remove rows with only NAs
+  input_data <- input_data[rowSums(is.na(input_data)) != ncol(input_data), ]
+  if (length(input_data) == 0) {
+    stop("The input data is empty or contains only NAs")
+  }
 
   cplx <- tryCatch(
     {
@@ -420,11 +461,6 @@ miic <- function(input_data,
       )
     )
   }
-  # skip skeleton step when edges are present
-  skeleton <- TRUE
-  if (!is.null(edges)) {
-    skeleton <- FALSE
-  }
 
   if (propagation != TRUE && propagation != FALSE) {
     stop("The propagation type is not correct. Allowed types are TRUE or FALSE")
@@ -451,7 +487,7 @@ miic <- function(input_data,
       col <- as.character(state_order[row, "var_names"])
       if (state_order[row, "var_type"] == 0) {
         input_data[, col] <- factor(input_data[, col])
-        is_continuous[[col]] <- F
+        is_continuous[[col]] <- FALSE
       }
     }
   }
@@ -521,8 +557,7 @@ miic <- function(input_data,
         sample_weights = sample_weights,
         test_mar = test_mar,
         consistent = consistent,
-        max_iteration = max_iteration,
-        tau = tau
+        max_iteration = max_iteration
       )
     if (res$interrupted) {
       stop("Interupted by user")
@@ -545,9 +580,52 @@ miic <- function(input_data,
       results = res,
       true_edges = true_edges,
       state_order = state_order,
+      consensus_threshold = consensus_threshold,
       verbose = verbose
     )
   }
 
-  res
+  if (tau > 0)
+    class(res) <- "tmiic"
+  else
+    class(res) <- "miic"
+  return(res)
+}
+
+
+#' Basic plot function of a miic network inference result
+#'
+#' @description This function calls \code{\link{miic.export}} to build a
+#' plottable object from the result returned by \code{\link{miic}} and plot it.
+#'
+#' @details See the documentation of \code{\link{miic.export}} for further
+#' details.
+#'
+#' @param x [a miic graph object]
+#' The graph object returned by \code{\link{miic}}.
+#' @param method A string representing the plotting method. Default to "igraph".
+#' Currently only "igraph" is supported.
+#' @param \dots Additional plotting parameters. See the corresponding plot function
+#' for the complete list.
+#' For igraph, see \code{\link[igraph]{igraph.plotting}}.
+#'
+#' @export
+#'
+#' @seealso \code{\link{miic.export}} for generic exports,
+#' \code{\link{getIgraph}} for igraph export,
+#' \code{\link[igraph]{igraph.plotting}}
+#'
+plot.miic = function(x, method = 'igraph', ...) {
+  if (class(x) != "miic"){
+    stop("Not a miic object.")
+  }
+  if (method == 'igraph'){
+    if (base::requireNamespace("igraph", quietly = TRUE)) {
+      igraph::plot.igraph(miic.export(x, 'igraph'), ...)
+    } else {
+      stop("Package 'igraph' is required.")
+    }
+  } else {
+    stop("Method not supported. See ?miic.export for supported methods.")
+  }
 }

@@ -1,15 +1,18 @@
-#' Graphml writing function for the miic graph
-#' @description This function writes the network using the graphml format (http://graphml.graphdrawing.org/).
+#' GraphML converting function for miic graph
 #'
-#' @details The network is written in the graphml file format with all the features contained in the retained.edges.summary data frame
-#' @param g [a miic graph object] The graph object returned by the miic execution.
-#' @param layout [a data frame]. An optional data frame of 2 (or 3) columns containing the coordinate x and y for each node. The optional first
-#' column can contain node names. If node names is not given, the order of the input file will be assigned to the list of positions.
-#' @param file [a string] The file path of the output file (containing the file name without extension).
+#' @description Convert miic graph to [GraphML format](http://graphml.graphdrawing.org/).
+#' @param g The graph object returned by [miic][miic()].
+#' @param file A string. Path to the output file containing file name without
+#' extension (.graphml will be appended).
+#' @param layout An optional data frame of 2 (or 3) columns containing the
+#' coordinate `x` and `y` for each node. The optional first column can contain
+#' node names. If node names is not given, the order of the input file will be
+#' assigned to the list of positions.
 #' @export
 #' @useDynLib miic
+#' @md
 
-miic.write.network.cytoscape <- function(g, layout = NULL, file) {
+miic.write.network.cytoscape <- function(g, file, layout = NULL) {
   ##################################### NETWORK IN GRAPHML
   if (missing(file)) {
     stop("The file path is necessary")
@@ -19,7 +22,7 @@ miic.write.network.cytoscape <- function(g, layout = NULL, file) {
     stop("The result of the miic execution is required")
   }
 
-  summary <- g$retained.edges.summary
+  summary <- g$all.edges.summary
   adj_matrix <- g$adj_matrix
 
   if (is.null(layout)) {
@@ -756,6 +759,6 @@ miic.write.network.cytoscape <- function(g, layout = NULL, file) {
     }
     line <- paste(line, "\t</graph>\n", sep = "")
     # name = basename(file_path_sans_ext(outDirPath))
-    writeLines(line, paste(file, ".xgmml", sep = ""))
+    writeLines(line, paste(file, ".graphml", sep = ""))
   }
 }

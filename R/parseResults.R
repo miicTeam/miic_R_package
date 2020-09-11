@@ -1,20 +1,19 @@
 summarizeResults <- function(observations = NULL, results = NULL,
                              true_edges = NULL, state_order = NULL,
-                             verbose = FALSE) {
+                             consensus_threshold = 0.8, verbose = FALSE) {
   # Reduced list of edges that will be summarized. There are 3 categories:
   # - Edges that exist in the miic reconstruction (oriented or not)
   # - Edges that were conditioned away with a non-empty separating set
   # - If ground truth is known, any other positive edge
   summarized_edges <- matrix(ncol = 2)
   adj_matrix <- results$adj_matrix
+  var_names <- colnames(adj_matrix)
 
   # List of edges found by miic
   half_adj_matrix = adj_matrix
   half_adj_matrix[ lower.tri(adj_matrix, diag = TRUE) ] <- 0
-  predicted_edges <- which(half_adj_matrix != 0, arr.ind = T, useNames = F)
-  predicted_edges <- apply(predicted_edges, 2, function(x) {
-    colnames(adj_matrix)[x]
-  })
+  predicted_edges <- which(half_adj_matrix != 0, arr.ind = TRUE, useNames = FALSE)
+  predicted_edges <- apply(predicted_edges, 2, function(x) { var_names[x] })
   # Add to summarized edges list
   summarized_edges <- predicted_edges
 
@@ -33,7 +32,7 @@ summarizeResults <- function(observations = NULL, results = NULL,
     # List of False Negative edges
     false_negative_edges <- data.frame(
       x = character(), y = character(),
-      stringsAsFactors = F
+      stringsAsFactors = FALSE
     )
     for (i in 1:nrow(true_edges)) {
       true_edge <- as.character(unlist(true_edges[i, ]))
@@ -46,7 +45,7 @@ summarizeResults <- function(observations = NULL, results = NULL,
     }
     # Add to summarized edges list
     summarized_edges <- rbind(summarized_edges, false_negative_edges,
-      stringsAsFactors = F
+      stringsAsFactors = FALSE
     )
   }
 
@@ -125,8 +124,8 @@ summarizeResults <- function(observations = NULL, results = NULL,
       ncol = dim(adj_matrix)[1],
       nrow = dim(adj_matrix)[1]
     )
-    colnames(true_adj_matrix) <- colnames(adj_matrix)
-    rownames(true_adj_matrix) <- colnames(adj_matrix)
+    colnames(true_adj_matrix) <- var_names
+    rownames(true_adj_matrix) <- var_names
     for (i in 1:nrow(true_edges)) {
       true_edge <- as.character(unlist(true_edges[i, ]))
       true_adj_matrix[true_edge[1], true_edge[2]] <- 2
@@ -146,6 +145,7 @@ summarizeResults <- function(observations = NULL, results = NULL,
   summary[, c("sign", "partial_correlation")] <- compute_partial_correlation(
     summary, observations, state_order
   )
+  summary$partial_correlation <- as.numeric(summary$partial_correlation)
 
   orientation_probabilities <- results$orientations.prob
   # isCausal considers whether the source node of an oriented edge is also
@@ -164,30 +164,50 @@ summarizeResults <- function(observations = NULL, results = NULL,
     paste(findProba(summary, orientation_probabilities, i), collapse = ";")
   })
 
-  # If consistent parameter is turned on and the result graph is a union of more
-  # than one inconsistent graphs, get the possible orientations of each
-  # edge with the correponding frequencies.
-  if (length(results$adj_matrices) > 1) {
+  # If consistent parameter is turned on and the result graph is a union of
+  # more than one inconsistent graphs, get the possible orientations of each
+  # edge with the correponding frequencies and the consensus status.
+  if (!is.null(results$adj_matrices) && ncol(results$adj_matrices) > 1) {
+    # use split to turn summary data frame to list only to be able to use sapply
+    # with simplify = FALSE, otherwise apply() will force simplification, which
+    # is annoying and surprising when the return value of the function is the
+    # same for all rows. Theoretically it can never happen here, but this is R!
+    # Always be careful.
+    edge_stats_table <- sapply(split(summary, seq(nrow(summary))),
+      get_edge_stats_table,
+      var_names,
+      results$adj_matrices,
+      simplify = FALSE
+    )
     target <- which(names(summary) == "infOrt")[1]
     summary <- cbind(
       summary[, 1:target, drop = FALSE],
-      edge_stats = apply(summary, 1, get_edge_stats, colnames(adj_matrix),
-                         results$adj_matrices),
+      consensus = sapply(edge_stats_table,
+        get_consensus_status,
+        consensus_threshold
+      ),
+      edge_stats = sapply(edge_stats_table, get_edge_stats_str),
       summary[, (target + 1):length(summary), drop = FALSE]
     )
   }
 
   # Sort summary by log confidence and return it
-  summary <- summary[order(summary$log_confidence, decreasing = T), ]
+  summary <- summary[order(summary$log_confidence, decreasing = TRUE), ]
   rownames(summary) <- c()
   return(summary)
 }
 
-matrix_from_3_columns <- function(matrix, rows, columns, values) {
-  g <- igraph::graph.data.frame(matrix[, c(rows, columns, values)],
-    directed = FALSE
-  )
-  igraph::get.adjacency(g, attr = values, sparse = FALSE)
+matrix_from_3_columns <- function(df, rows, columns, values) {
+  x = df[[rows]]
+  y = df[[columns]]
+  nodes = unique(c(x,y))
+  with(df, {
+  out <- matrix(0, nrow=length(nodes), ncol=length(nodes),
+                dimnames=list(nodes, nodes))
+  out[cbind(x, y)] <- df[[values]]
+  out[cbind(y, x)] <- df[[values]]
+  out
+  })
 }
 
 fill_summary_column <- function(summary, matrix, rows, columns, values) {
@@ -205,8 +225,6 @@ fill_summary_column <- function(summary, matrix, rows, columns, values) {
 }
 
 compute_partial_correlation <- function(summary, observations, state_order) {
-  ai_matrix <- matrix_from_3_columns(summary, "x", "y", "ai")
-
   ppcor_results <- data.frame(
     sign = character(nrow(summary)),
     partial_correlation = numeric(nrow(summary)),
@@ -230,7 +248,7 @@ compute_partial_correlation <- function(summary, observations, state_order) {
       # levels(observations[,col]) = ordered_levels
       observations[, col] <- ordered(observations[, col], ordered_levels)
       observations[, col] <- as.numeric(observations[, col])
-    } else if (is.factor(observations[,col]) && 
+    } else if (is.factor(observations[,col]) &&
       suppressWarnings(all(!is.na(as.numeric(levels(observations[,col])))))) {
       # If the variable is not described but numerical, assume its order from
       # the numerical categories.
@@ -241,36 +259,37 @@ compute_partial_correlation <- function(summary, observations, state_order) {
   for (i in which(summary$type=="P")) {
     x <- summary[i, "x"]
     y <- summary[i, "y"]
+    ai <- summary[i, "ai"]  # String with Ais separated by comma, or NA
     ppcor_results[i, ] <- c("NA", NA)
 
-    ai <- ai_matrix[x, y] # String with Ais separated by comma, or NA
     if (is.na(ai)) {
       ai <- NULL
     } else {
-      ai <- unlist(strsplit(ai, ","))
+      ai <- unlist(strsplit(ai, ","))  # Character vector
     }
 
     if (!all(sapply(observations[, c(x, y, ai)], is.numeric))) next
 
-    non_na_rows <- apply(observations, 1, function(row, columns) {
-      !any(is.na(row[columns]))
-    }, c(x, y, ai))
+    if (is.null(ai)) {
+      OK <- stats::complete.cases(observations[, c(x, y)])
+      if (sum(OK) < 2) next
 
-    OK <- stats::complete.cases(observations[non_na_rows, x], observations[non_na_rows, y])
-    if (sum(OK) >= 2) {
-      if (!is.null(ai)) {
-        ai <- unlist(strsplit(ai, ",")) # Character vector
-        edge_res <- ppcor::pcor.test(observations[non_na_rows, x],
-          observations[non_na_rows, y],
-          observations[non_na_rows, ai],
-          method = "spearman"
-        )
-      } else {
-        edge_res <- stats::cor.test(observations[non_na_rows, x],
-          observations[non_na_rows, y],
-          method = "spearman"
-        )
-      }
+      edge_res <- stats::cor.test(
+        observations[OK, x],
+        observations[OK, y],
+        method = "spearman",
+        exact = FALSE
+      )
+    } else {
+      OK <- stats::complete.cases(observations[, c(x, y, ai)])
+      if (sum(OK) < 2) next
+
+      edge_res <- ppcor::pcor.test(
+        observations[OK, x],
+        observations[OK, y],
+        observations[OK, ai],
+        method = "spearman"
+      )
     }
 
     # Save sign and coef
@@ -430,7 +449,7 @@ findProba <- function(outputSummary.df, proba, index) {
   return(NA)
 }
 
-get_edge_stats <- function(row, var_names, adj_matrices) {
+get_edge_stats_table <- function(row, var_names, adj_matrices) {
   # row[1]: variable name of x
   # row[2]: variable name of y
   n_var <- length(var_names)
@@ -441,7 +460,20 @@ get_edge_stats <- function(row, var_names, adj_matrices) {
   # edge stats table, count replaced by frequency (percentage)
   t <- table(adj_matrices[index_1d,]) / n_cycle
   t <- t[order(t, decreasing = TRUE), drop = FALSE]
-  t <- apply(t, 1, scales::percent_format())
+  return(t)
+}
+
+get_edge_stats_str <- function(stats_table) {
+  t <- sapply(stats_table, scales::percent_format())
   # return a ";" separated string of format "percentage(orientation)"
   return(paste(t, "(", names(t), ")", sep = "", collapse = ";"))
+}
+
+get_consensus_status <- function(stats_table, consensus_threshold) {
+  if (length(stats_table) < 1)
+    return(NA)
+  # stats_table is sorted, stats_table[[1]] is the highest frequency
+  if (stats_table[[1]] < consensus_threshold)
+    return(1)  # undirected
+  return(as.numeric(names(stats_table)[[1]]))
 }

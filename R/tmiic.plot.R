@@ -127,7 +127,7 @@ tmiic.plot <- function (g, method="log_confidence", igraph_layout=NULL,
                         verbose=FALSE) 
   {
   DEBUG <- FALSE
-  if (is.null(g$adjMatrix)) 
+  if (is.null(g$adj_matrix)) 
     {
     message ("The learnt graphical model adjacency matrix does not exist")
     return()
@@ -139,7 +139,7 @@ tmiic.plot <- function (g, method="log_confidence", igraph_layout=NULL,
     print (paste ("input filename=", filename, sep="") )
     print (paste ("edges_curved=", edges_curved, sep="") )
     print ("input adjacency matrix:")
-    print (g$adjMatrix)
+    print (g$adj_matrix)
     print ("input summary:")
     print (g$all.edges.summary [ g$all.edges.summary[["type"]] == "P" ])
     }
@@ -148,7 +148,7 @@ tmiic.plot <- function (g, method="log_confidence", igraph_layout=NULL,
   # If any node does not end with "_lag*", the network is not lagged
   #
   is_graph_lagged = TRUE
-  list_nodes <- colnames (g$adjMatrix)
+  list_nodes <- colnames (g$adj_matrix)
   for (one_node in list_nodes)
     {
     regex_found = grepl ("_lag.*$", one_node)
