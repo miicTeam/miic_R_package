@@ -3,7 +3,7 @@
 namespace miic {
 namespace utility {
 namespace detail {
-thread_local std::unique_ptr<LinearAllocator> li_alloc_ptr;
+LinearAllocator* li_alloc_ptr = nullptr;
 }
 }  // namespace utility
 }  // namespace miic

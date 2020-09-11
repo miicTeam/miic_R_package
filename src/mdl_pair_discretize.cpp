@@ -28,7 +28,7 @@ List mydiscretizeMutual(List input_data, List arg_list) {
   size_t li_alloc_size = getLinearAllocatorSize(environment.n_samples,
       environment.n_nodes, maxbins, environment.initbins,
       environment.is_continuous, environment.levels);
-  li_alloc_ptr = std::make_unique<LinearAllocator>(li_alloc_size);
+  li_alloc_ptr = new LinearAllocator(li_alloc_size);
 
   vector<int> ui_list(nbrU);
   std::iota(begin(ui_list), end(ui_list), 2);
@@ -103,5 +103,6 @@ List mydiscretizeMutual(List input_data, List arg_list) {
       _["infok"]           = res[1],
       _["efinfo"]          = max_res_ef);
 
+  delete li_alloc_ptr;
   return result;
 }
