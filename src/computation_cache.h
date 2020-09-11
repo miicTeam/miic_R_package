@@ -126,7 +126,7 @@ class InfoScoreCache {
   pair<InfoBlock, bool> getMutualInfo(int X, int Y, const vector<int>& ui) {
     auto it = mi_map_.find(MutualInfoKey(X, Y, ui));
     bool found = it != mi_map_.end();
-    return std::make_pair(found ? it->second : dummy_info_block_, found);
+    return std::make_pair(found ? it->second : InfoBlock{0, 0, 0}, found);
   }
 
   void saveMutualInfo(int X, int Y, const vector<int>& ui, InfoBlock block) {
@@ -139,7 +139,7 @@ class InfoScoreCache {
   pair<double, bool> getInfo3Point(int X, int Y, int Z, const vector<int>& ui) {
     auto it = i3_map_.find(Info3PointKey(X, Y, Z, ui));
     bool found = it != i3_map_.end();
-    return std::make_pair(found ? it->second : dummy_info_, found);
+    return std::make_pair(found ? it->second : 0, found);
   }
 
   void saveInfo3Point(int X, int Y, int Z, const vector<int>& ui, double I3) {
@@ -152,7 +152,8 @@ class InfoScoreCache {
   pair<double, bool> getScore(int X, int Y, int Z, const vector<int>& ui) {
     auto it = score_map_.find(ScoreKey(X, Y, Z, ui));
     bool found = it != score_map_.end();
-    return std::make_pair(found ? it->second : dummy_score_, found);
+    return std::make_pair(
+        found ? it->second : std::numeric_limits<double>::lowest(), found);
   }
 
   void saveScore(int X, int Y, int Z, const vector<int>& ui, double score) {
@@ -166,9 +167,6 @@ class InfoScoreCache {
   MutualInfoMap mi_map_;
   Info3PointMap i3_map_;
   ScoreMap score_map_;
-  static constexpr InfoBlock dummy_info_block_{0, 0, 0};
-  static constexpr double dummy_info_ = 0;
-  static constexpr double dummy_score_ = std::numeric_limits<double>::lowest();
 };
 
 struct CompCache {
