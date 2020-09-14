@@ -1,5 +1,12 @@
 # Development version
 
+## Fixes and improvements
+- Fix various bugs in the computation of information in the presence of NA
+  values in the dataset.
+
+- An overhaul of the C++ code base, better memory management, computation time
+  and code readability.
+
 # v1.5.0
 
 ## Features
