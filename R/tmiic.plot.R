@@ -1,154 +1,157 @@
 #*****************************************************************************
 # Filename   : tmiic.plot.R                     Creation date: 24 march 2020
 #
-# Description: Function to plot lagged graphs of temporal miic (tmiic)
+# Description: Plotting for temporal miic (tmiic)
 #
 # Author     : Franck SIMON (fsimon.informaticien@wanadoo.fr)
 #
 # Changes history:
 # - 24 march 2020 : initial version
 # - 11 may 2020   : modification to handle condensed networks
+# - 11 june 2020 : initial version
+#   The plot function is a rewrite from miic.plot.R and gmPlot.lib.R. 
+#   + add capabiliy to plot multiple edges between the same nodes
+# - 11 sept 2020 : rewrite to be aligned with 1.5.0 miic plotting 
 #*****************************************************************************
 
 #-----------------------------------------------------------------------------
-# tmiic.plot
+# tmiic.export
 #-----------------------------------------------------------------------------
-#' Igraph plotting function for tmiic (temporal miic)
-#' 
-#' @description This function plots the temporal network with the given layout
-#' (if specified) using the igraph package.
+#' Export temporal miic (tmiic) result to different plotting methods
 #'
-#' @details The plot reports the partial correlation or the log_confidence 
-#' as strength of the edges. The function process differently condensed and
-#' lagged networks.
+#' @description This function creates an object built from the result returned
+#' by \code{\link{miic}} executed in temporal mode that is ready to be fed to 
+#' different plotting methods.
+#'
+#' @details See the details of specific function for each method.
+#' For igraph, see \code{\link{tmiic.getIgraph}}.
+#'
+#' @param tmiic.res [a tmiic graph object]
+#' The graph object returned by the miic execution in temporal mode, 
+#' eventually flattened.
 #' 
-#' For lagged networks (the ones with nodes including '_lagX' at their names 
-#' ends), the function will define an user layout if none is supplied 
-#' and use curved edges.
-#' 
-#' For condensed networks (the network obtained after removing the '_lagX' 
-#' at the end of the nodes names), the function will plot the lag 
-#' information on the edges.
-#' 
-#' @param g [a miic graph object]
-#' The graph object returned by the miic execution.
-#' @param method [a string; \emph{c("pcor", "log_confidence")}]
-#' Optional, "log_confidence" by default. The column used to plot the 
-#' strength of the edges. 
-#' @param igraph_layout [an igraph layout object]
-#' Optional, \emph{layout_with_kk} by default. When set, it is used to plot the network. 
-#' See the igraph manual for more information.
-#' @param user_layout [a data frame]
-#' Optional, NULL by default. A data frame reporting the position of nodes. 
-#' Each line corresponds to the \emph{(x,y)} coordinates of each vertex.
-#' When the data frame has two columns, the first one is assocated with
-#' \emph{x} and the second to \emph{y}. When the data frame has more than 
-#' two columns, columns two and three are extracted and mapped, 
-#' respectively, to \emph{x} and \emph{y} positions.
-#' @param miic_defaults [a boolean] Optional, TRUE by default. 
-#' When TRUE, several graphic parameters are intialised with default values
-#' suited for most of miic results:
-#' \itemize{
-#' \item For nodes, font family: "Helvetica", color: "lightblue", size: 10, 
-#' label.cex: 0.6
-#' \item For edges, arrow.size: 0.2, arrow.width: 3, width: 3, curved: FALSE
-#' }
-#' Note that if the user supplies specific values for these parameters
-#' (ie a specific node size), the user choices will overwrite the miic 
-#' defaults.
-#' @param filename [a string] Optional, NULL by default. 
-#' If supplied, plot will be saved here.
-#' @param file_figsize [a list; \emph{c(length, height)}] Optional, NULL by default. 
-#' When plots are drawn to a file, the size of the draw in pixels can be specified
-#' by a couple of values. The first is the lentgh, the second the height.
-#' @param font_family [a string] Optional, NULL by default. The font to use.\cr
-#' Note that the font may not apply in all the graphical parts, depending
-#' on how the plotted objects manage the font parameter.
-#' @param title [a string] Optional, NULL by default. The title of the plot. 
-#' @param title_cex [a number] Optional, 1.5 by default. The size of the title. 
-#' @param draw_legend [a boolean] Optional, TRUE by default. 
-#' When TRUE, a legend is drawn on the right side of the plot.
-#' @param graph_margin [a list of floats: c(bottom,left,top,right)]
-#' Optional, NULL by default. Margin applied around the graph. 
-#' When NULL, the value is determined by the presence or absence of 
-#' self loop(s) in the graph: 
-#' \itemize{
-#' \item no self loop = no margin 
-#' \item at least one self loop = margin of 0.25 on the left and right sides 
-#' }
-#' @param nodes_label_dist [a number] Optional, NULL by default. 
-#' The distance of the labels from the nodes. 
-#' @param nodes_label_degree [a number] Optional, NULL by default.
-#' The degre where to draw the labels from the nodes. 
-#' @param nodes_label_cex [a number] Optional, NULL by default.
-#' The size of the nodes labels. 
-#' @param nodes_shape [a string] Optional, NULL by default.
-#' The shape of the nodes. See the igraph manual for more information.
-#' @param nodes_colors [a string or a vector] Optional, NULL by default.
-#' The colors of the nodes. See the igraph manual for more information.
-#' @param nodes_sizes [a number or a vector] Optional, NULL by default.
-#' The sizes of the nodes. See the igraph manual for more information.
-#' @param edges_label_cex [a number] Optional, NULL by default.
-#' The size of the edges labels. 
-#' @param edges_width [a number] Optional, NULL by default.
-#' The width of the edges.  
-#' @param edges_curved [a boolean or a vector] Optional, NULL by default.
-#' The curvatures to apply to the edges:\cr
-#' \itemize{
-#' \item when TRUE, edges are curved\cr
-#' \item when FALSE, edges are straitgh\cr
-#' \item when NULL, the function will choose the best curvature depending 
-#' on the type of network: curved for a lagged graphs and straitgh for 
-#' condensed graphs.
-#' }
-#' Note that mutiple edges between the same nodes will always be curved
-#' whatever value has edges_curved. 
-#' See the igraph manual for more information. 
-#' @param edges_arrow_size [a number] Optional, NULL by default.
-#' The size of the edges arrows.  
-#' @param edges_arrow_width [a number] Optional, NULL by default.
-#' The width of the edges arrows.  
-#' @param verbose [a boolean value] Optional, FALSE by default. If TRUE, 
-#' debugging output is printed.
-#' 
+#' @param method A string representing the plotting method.
+#' Currently only "igraph" is supported.
+#'
+#' @return A graph object adapted to the method.
+#'
 #' @export
-#' @useDynLib miic
-#--------------------------------------------------------------------------------
-tmiic.plot <- function (g, method="log_confidence", igraph_layout=NULL, 
-                        user_layout=NULL, miic_defaults=TRUE, 
-                        filename=NULL, file_figsize=NULL, 
-                        font_family=NULL, title=NULL, title_cex=1.5, 
-                        draw_legend=TRUE, graph_margin=NULL, 
-                        nodes_label_dist=NULL, nodes_label_degree=NULL, 
-                        nodes_label_cex=NULL, nodes_shape=NULL, 
-                        nodes_colors=NULL, nodes_sizes=NULL, 
-                        edges_label_cex=NULL, edges_width=NULL, edges_curved=NULL, 
-                        edges_arrow_size=NULL, edges_arrow_width=NULL,
-                        verbose=FALSE) 
+#'
+#' @seealso
+#' \code{\link{tmiic.getIgraph}} for details on the igraph exported object.
+#'
+#' @examples
+#' \donttest{
+#' library(miic)
+#' data(covidCases)
+#' # execute MIIC (reconstruct graph in temporal mode)
+#' tmiic.res <- miic(input_data = covidCases, tau = 2, movavg = 14)
+#'
+#' # Plot temporal network Using igraph
+#' if(require(igraph)) {
+#' g = tmiic.export(tmiic.res, "igraph")
+#' plot(g) # Default visualisation, calls igraph::plot.igraph()
+#'
+#' # Specifying layout (see ?igraph::layout_)
+#' l <-layout_with_kk(g)
+#' plot(g, layout=l)
+#' 
+#' # Override some graphical parameters
+#' plot(g, edge.arrow.size = 0.75)
+#' plot(g, vertex.shape="none", edge.color="gray85", vertex.label.color="gray10")
+#' 
+#' # For compact graph, please be aware that the rendering of
+#' # igraph::plot.igraph() is not optimal when the graph contains
+#' # multiple edges between the same nodes.
+#' # So the recommend way to plot a compact graph is to use tmiic:  
+#' flatten.res <- tmiic.flatten_network(tmiic.res)
+#' plot(flatten.res)
+#' }
+#'
+#' }
+#-----------------------------------------------------------------------------
+tmiic.export <- function (tmiic.res, method = "igraph") 
   {
-  DEBUG <- FALSE
-  if (is.null(g$adj_matrix)) 
+  if (is.null(tmiic.res$all.edges.summary)) 
     {
-    message ("The learnt graphical model adjacency matrix does not exist")
-    return()
+    stop("The inferred network does not exist")
     }
-  if (DEBUG)
+  if (is.null(method)) 
     {
-    print ("tmiic.plot:")
-    print (paste ("input title=", title, sep="") )
-    print (paste ("input filename=", filename, sep="") )
-    print (paste ("edges_curved=", edges_curved, sep="") )
-    print ("input adjacency matrix:")
-    print (g$adj_matrix)
-    print ("input summary:")
-    print (g$all.edges.summary [ g$all.edges.summary[["type"]] == "P" ])
+    stop("Plotting method is required")
     }
-  #
-  # Check if the network is the lagged or the flatten one:
-  # If any node does not end with "_lag*", the network is not lagged
-  #
+  if (method != "igraph") 
+    {
+    stop("Method not supported")
+    }
+  return(tmiic.getIgraph(tmiic.res))
+  }
+
+#-----------------------------------------------------------------------------
+# tmiic.getIgraph
+#-----------------------------------------------------------------------------
+#' Igraph plotting function for tmiic (temporal mode of miic)
+#'
+#' @description This functions returns an igraph object built from the result
+#' returned by:
+#' \code{\link{miic}} executed in temporal temporal mode.
+#' \code{\link{tmiic.flatten_network}}
+#' 
+#' @details
+#' Edges attributes are passed to the igraph graph and can be accessed with
+#' e.g. \code{E(g)$partial_correlation}. See \code{\link{miic}} for more
+#' details on edge parameters. By default, edges are colored according to the
+#' partial correlation between two nodes conditioned on the conditioning set
+#' (negative is blue, null is gray and positive is red) and their width is
+#' based on the conditional mutual information minus the complexity cost.
+#'
+#' @param tmiic.res [a tmiic graph object]
+#' The graph object returned by the miic execution in temporal mode, 
+#' eventually flattened
+#'
+#' @return An igraph graph object.
+#'
+#' @seealso
+#' \code{\link{miic}} for details on edge parameters in the returned object,
+#' \code{\link[igraph]{igraph.plotting}} for the detailed description of the
+#' plotting parameters and \code{\link[igraph]{layout}} for different layouts.
+#-----------------------------------------------------------------------------
+tmiic.getIgraph <- function (tmiic.res) 
+  {
+  if (class(tmiic.res) != "tmiic")
+    {
+    stop("Not a tmiic object.")
+    }
+  
+  class(tmiic.res) <- "miic"
+  graph <- getIgraph(tmiic.res)
+  class(tmiic.res) <- "tmiic"
+  
+  if ( tmiic.isLaggeg (colnames(tmiic.res$adj_matrix)) )
+    {
+    igraph::V(graph)$label.dist = 1
+    igraph::V(graph)$label.degree = pi/2
+    igraph::E(graph)$curved = TRUE
+    }
+  else
+    {
+    igraph::E(graph)$label <- tmiic.res$all.edges.summary$lag
+    }
+  return(graph)
+  }
+ 
+#-----------------------------------------------------------------------------
+# tmiic.isLaggeg
+#-----------------------------------------------------------------------------
+#' Test if the list of nodes corresponds to a lagged or non lagged graph
+#'
+#' @param list_nodes [a list of string]
+#'
+#' @return A boolean value, TRUE if the network is lagged, FALSE otherwise
+#-----------------------------------------------------------------------------
+tmiic.isLaggeg <- function (list_nodes) 
+  {
   is_graph_lagged = TRUE
-  list_nodes <- colnames (g$adj_matrix)
   for (one_node in list_nodes)
     {
     regex_found = grepl ("_lag.*$", one_node)
@@ -158,82 +161,302 @@ tmiic.plot <- function (g, method="log_confidence", igraph_layout=NULL,
       break
       }
     }
-  #
-  # Set some options depending of the type of graph (condensed or lagged)
-  #
-  edges_labels = NULL
-  if (! is_graph_lagged)
+  return (is_graph_lagged)
+  }
+
+#-----------------------------------------------------------------------------
+# tmiic.getNbNodesNonLagged
+#-----------------------------------------------------------------------------
+#' Get the number of non lagged nodes in a list of nodes
+#'
+#' @description This functions iterates on the list of nodes until if
+#' find a node not ending with lag0 and returns the number of iterations done. 
+#' 
+#' @param list_nodes [a list of string] The expected list of nodes is 
+#' a lagged one: all nodes finishing by "lagX"
+#'
+#' @return A number
+#-----------------------------------------------------------------------------
+tmiic.getNbNodesNonLagged <- function (list_nodes) 
+  {
+  n_nodes <- 0
+  for (one_node in list_nodes)
     {
-    # If the graph is condensed, we display lag values on edges
-    #
-    edges_labels = g$all.edges.summary$lag
-    }
-  else 
-    { 
-    # For lagged graph, Set some params if not supplied
-    #
-    if (is.null(nodes_label_dist) )
-      nodes_label_dist = 1
-    if (is.null(nodes_label_degree) )
-      nodes_label_degree = pi/2
-    if (is.null(edges_curved) )
-      edges_curved = TRUE
-    #
-    # Set a layout if none is supplied
-    #
-    if ( is.null(user_layout) )
+    pos_lag_x <- stringr::str_locate(one_node, "_lag")
+    lag <- 0
+    if ( !is.na(pos_lag_x[1]) )
       {
-      #
-      # Get the number of non lagged nodes (the first not lag0)
-      #
-      n_nodes <- 0
-      for (one_node in list_nodes)
-        {
-        pos_lag_x <- stringr::str_locate(one_node, "_lag")
-        lag <- 0
-        if ( !is.na(pos_lag_x[1]) )
-          {
-          lag <- stringr::str_remove(one_node, ".*_lag")
-          lag <- strtoi (lag)
-          }
-        if (lag > 0)
-          break
-        n_nodes <- n_nodes + 1
-        } 
-      max_lag_plus1 <- length(list_nodes) %/% n_nodes
-      user_layout = data.frame (list_nodes, rep(1:max_lag_plus1, each=n_nodes), 
-                                           rep(1:n_nodes, times=max_lag_plus1) )    
+      lag <- stringr::str_remove(one_node, ".*_lag")
+      lag <- strtoi (lag)
+      }
+    if (lag > 0)
+      break
+    n_nodes <- n_nodes + 1
+    } 
+  return (n_nodes)
+  } 
   
-      if (DEBUG)
+#-----------------------------------------------------------------------------
+# tmiic.prepareEdgesForPlotting
+#-----------------------------------------------------------------------------
+#' Prepare the edges for plotting
+#'
+#' @description This function firstly filters the edges in the summary to keep
+#' only the ones detected by miic (type = "P") then makes sure that, for each  
+#' edge, node name X >= node name Y and adds the couple of nodes of the edge 
+#' as id 
+#' 
+#' @param  [a tmiic graph object] The graph object returned by the miic 
+#' execution in temporal mode, eventually flattened
+#' 
+#' @return tmiic.res [a tmiic object] The modified tmiic object
+#-----------------------------------------------------------------------------
+tmiic.prepareEdgesForPlotting <- function (tmiic.res) 
+  {
+  DEBUG <- FALSE
+  
+  df_edges <- 
+    tmiic.res$all.edges.summary[tmiic.res$all.edges.summary$type == 'P', ]
+  #
+  # Ensure all edges have node x < node y and add an id xy 
+  #
+  df_edges$xy = NULL
+  for (edge_idx in 1:nrow(df_edges)) 
+    {
+    one_edge <- df_edges[edge_idx,]
+    if (one_edge$x < one_edge$y)
+      {
+      df_edges[edge_idx,"x"] <- one_edge$y
+      df_edges[edge_idx,"y"] <- one_edge$x
+      if (abs(one_edge$infOrt) == 2) 
+        df_edges[edge_idx, "infOrt"] <- -one_edge$infOrt
+      if ( !is.na(one_edge$trueOrt) ) 
+        if (abs(one_edge$trueOrt) == 2) 
+          df_edges[edge_idx, "trueOrt"] <- -one_edge$trueOrt
+      }
+    df_edges[edge_idx, "xy"] <- paste (df_edges[edge_idx,"x"], "-",
+                                       df_edges[edge_idx,"y"], sep="")
+    }
+  
+  tmiic.res$all.edges.summary <- df_edges
+  if (DEBUG) 
+    {
+    print ("df_edges:")
+    if ("lag" %in% tmiic.res$all.edges.summary)
+      print (tmiic.res$all.edges.summary %>% dplyr::select(xy,x,y,lag,type,infOrt,trueOrt,sign,log_confidence) )
+    }
+  return (tmiic.res)
+  } 
+
+#-----------------------------------------------------------------------------
+# tmiic.getMultipleEdgesForPlotting
+#-----------------------------------------------------------------------------
+#' Look for mutiple edges that needs specific plotting
+#'
+#' @description This function identifies the couple of nodes having mutiples 
+#' edges
+#' 
+#' @param  [a tmiic graph object]
+#' The graph object returned by the miic execution in temporal mode and
+#' flattened (if the tmiic object is not flattened, the function does nothing) 
+#' 
+#' @return df_mult [a dataframe] The dataframe containing the multiple edges
+#'
+#' @importFrom magrittr "%>%"                             
+#-----------------------------------------------------------------------------
+tmiic.getMultipleEdgesForPlotting <- function (tmiic.res) 
+  {
+  DEBUG <- FALSE
+  #
+  # Find couples of nodes having mutiple edges
+  #
+  df_mult <- dplyr::group_by (tmiic.res$all.edges.summary, xy, x, y)
+  df_mult <- dplyr::summarise (df_mult, count=dplyr::n())
+  df_mult <- df_mult[df_mult$count > 1,]
+  df_mult <- as.data.frame (df_mult)
+  
+  if (DEBUG) 
+    {
+    print ("df_mult:")
+    print (df_mult)
+    }
+  return (df_mult)
+  } 
+  
+#-----------------------------------------------------------------------------
+# plot.tmiic
+#-----------------------------------------------------------------------------
+#' Basic plot function of a tmiic network inference result
+#'
+#' @description This function calls \code{\link{tmiic.export}} to build a
+#' plottable object from the result returned by \code{\link{miic}} in 
+#' temporal mode and plot it.
+#'
+#' @details See the documentation of \code{\link{tmiic.export}} for further
+#' details.
+#'
+#' @param tmiic.res [a tmiic graph object]
+#' The graph object returned by \code{\link{miic}} in temporal mode, 
+#' eventually flatten
+#' 
+#' @param method A string representing the plotting method. Default to "igraph".
+#' Currently only "igraph" is supported.
+#' 
+#' @param \dots Additional plotting parameters. See the corresponding plot function
+#' for the complete list.
+#' 
+#' For igraph, see \code{\link[igraph]{igraph.plotting}}.
+#'
+#' @importFrom magrittr "%>%"                             
+#' 
+#' @export
+#'
+#' @seealso \code{\link{tmiic.export}} for generic exports,
+#' \code{\link{tmiic.getIgraph}} for igraph export,
+#' \code{\link[igraph]{igraph.plotting}}
+#-----------------------------------------------------------------------------
+plot.tmiic = function(tmiic.res, method = 'igraph', ...) 
+  {
+  DEBUG <- TRUE
+  if (class(tmiic.res) != "tmiic")
+    {
+    stop("Not a tmiic object.")
+    }
+  if (method != 'igraph')
+    {
+    stop("Method not supported. See ?tmiic.export for supported methods.")
+    }
+  if ( !base::requireNamespace("igraph", quietly = TRUE) ) 
+    {
+    stop("Package 'igraph' is required.")
+    }
+  if ( is.null (tmiic.res$adj_matrix) ) 
+    {
+    stop ("The learnt graphical model adjacency matrix does not exist")
+    }
+  
+  tmiic.res <- tmiic.prepareEdgesForPlotting(tmiic.res)
+  df_mult <- tmiic.getMultipleEdgesForPlotting(tmiic.res)
+  list_nodes <- colnames (tmiic.res$adj_matrix)
+  is_graph_lagged = tmiic.isLaggeg (list_nodes)
+  #
+  # Set a layout if none supplied by user : grid for lagged, 
+  # layout_with_kk for flatten
+  #
+  layout <- NULL
+  if ( ! ("layout" %in% names(list(...))) )
+    {
+    if (is_graph_lagged)
+      {
+      n_nodes <- tmiic.getNbNodesNonLagged (list_nodes)
+      max_lag_plus1 <- length(list_nodes) %/% n_nodes
+      layout <- data.frame (rep(1:max_lag_plus1, each=n_nodes),
+                            rep(1:n_nodes, times=max_lag_plus1) )
+      layout <- as.matrix (layout)
+      }
+    else
+      {
+      layout <- igraph::layout_with_kk
+      }
+    }
+  #
+  # Export the graph to a graphical objet and plot
+  #
+  graph <- tmiic.export (tmiic.res, method)
+  df_edges <- tmiic.res$all.edges.summary
+  if (nrow (df_mult) <= 0)
+    {
+    # No multiple edges between the same nodes, we draw in one go
+    #
+    if ( is.null(layout) )
+      igraph::plot.igraph (graph, ...)
+    else
+      igraph::plot.igraph (graph, layout=layout, ...)
+    }
+  else
+    {
+    # Multiple edges between the same nodes exist, draw iteratively
+    #
+    edges_colors_iter <- igraph::E(graph)$color
+    edges_labels_iter <- igraph::E(graph)$label
+    #
+    # On a first step, we will draw all the graph except multiple edges
+    # The multiple edges will be drawn with invisible color "#FF000000"
+    # and with no labels 
+    #
+    for ( edge_idx in 1:nrow(df_edges) )
+      {
+      one_edge <- df_edges[edge_idx,]
+      if (one_edge$xy %in% df_mult$xy)
         {
-        print ("no user layout given:")
-        print ("found these nodes=")
-        print (list_nodes)
-        print (paste ("found max lag=", max_lag_plus1 - 1, sep="") )
-        print (paste ("found n_nodes=", n_nodes, sep="") )
-        print ("layout defined=")
-        print (user_layout)
+        edges_colors_iter[[edge_idx]] <- "#FF000000"
+        edges_labels_iter[[edge_idx]] <- NA
         }
       }
-    } 
-  if (DEBUG)
-    {
-    print (paste ("is_graph_lagged =", is_graph_lagged) )
-    print (paste ("edges_curved=", edges_curved, sep="") )
+    igraph::plot.igraph (graph, layout=layout,
+                         edge.color=edges_colors_iter, 
+                         edge.label=edges_labels_iter, ...)
+    #
+    # Draw each group of multiple edges
+    #
+    for ( mult_idx in 1:nrow(df_mult) )
+      {
+      one_mult <- df_mult[mult_idx,]
+      if (one_mult$x == one_mult$y)
+        {
+        # for self loop, we will go over 2*pi around the node
+        #
+        step_pos <- 0
+        step_inc <- (2 * pi) / one_mult$count
+        }
+      else
+        {
+        # otherelse, we will curve edges from -0.5 to +0.5
+        #
+        if (one_mult$count > 4) # if more than 4 edges, curve more
+          {
+          step_pos <- -1
+          step_inc <- 2.0 / (one_mult$count - 1)
+          }
+        else
+          {
+          step_pos <- -0.5
+          step_inc <- 1.0 / (one_mult$count - 1)
+          }
+        }
+      #
+      # Draw mutliple egdes one by one
+      #
+      list_to_draw = which(df_edges[, "xy"] == one_mult$xy)
+      for (idx_to_draw in 1:length(list_to_draw) )
+        {
+        edge_to_draw = list_to_draw[[idx_to_draw]]
+        #
+        # We hide all edges except one
+        #
+        edges_colors_iter <- rep ("#FF000000", nrow (df_edges) )
+        edges_labels_iter <- rep (NA, nrow (df_edges) )
+        edges_colors_iter[[edge_to_draw]] <- igraph::E(graph)[[edge_to_draw]]$color
+        edges_labels_iter[[edge_to_draw]] <- igraph::E(graph)[[edge_to_draw]]$label
+
+        if (one_mult$x == one_mult$y)
+          igraph::plot.igraph (graph, layout=layout, add=TRUE,
+                               edge.color=edges_colors_iter, 
+                               edge.label=edges_labels_iter, 
+                               edge.loop.angle=step_pos, ...)
+        else
+          igraph::plot.igraph (graph, layout=layout, add=TRUE,
+                               edge.color=edges_colors_iter, 
+                               edge.label=edges_labels_iter, 
+                               edge.curved=step_pos, ...)
+        #
+        # Update position for next edge
+        #
+        step_pos <- step_pos + step_inc
+        }
+      }
     }
-  #
-  # Plot the graph
-  #
-  miic.plot (g, method=method, igraph_layout=igraph_layout, 
-             user_layout=user_layout, miic_defaults=miic_defaults, 
-             filename=filename, file_figsize=file_figsize, 
-             font_family=font_family, title=title, title_cex=title_cex,
-             draw_legend=draw_legend, graph_margin=graph_margin,
-             nodes_label_dist=nodes_label_dist, nodes_label_degree=nodes_label_degree, 
-             nodes_label_cex=nodes_label_cex, nodes_shape=nodes_shape, 
-             nodes_colors=nodes_colors, nodes_sizes=nodes_sizes, 
-             edges_labels=edges_labels, edges_label_cex=edges_label_cex, 
-             edges_width=edges_width, edges_curved=edges_curved, 
-             edges_arrow_size=edges_arrow_size, edges_arrow_width=edges_arrow_width,
-             verbose=verbose) 
   }
+
+  
+

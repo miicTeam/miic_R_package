@@ -98,7 +98,8 @@ getIgraph <- function(miic.res) {
   # plots for all technics on partial correlation
   mySummary <-
     miic.res$all.edges.summary[miic.res$all.edges.summary$type == 'P', ]
-  ig_graph = igraph::graph_from_data_frame(mySummary)
+  ig_graph = igraph::graph_from_data_frame(mySummary, 
+                                           vertices=colnames(miic.res$adj_matrix) )
 
   # Set correct orientations
   igraph::E(ig_graph)$arrow.mode = rep(0, igraph::gsize(ig_graph))
@@ -108,10 +109,11 @@ getIgraph <- function(miic.res) {
 
   # Set visuals
   igraph::V(ig_graph)$color <- "lightblue"
-  igraph::V(ig_graph)$label.family <- "Helvetica"
+  # igraph::V(ig_graph)$label.family <- "Helvetica"
   igraph::V(ig_graph)$label.cex <- 0.8
   igraph::V(ig_graph)$size <- 12
 
+  igraph::E(ig_graph)$curved <- FALSE
   min_width = 0.2
   igraph::E(ig_graph)$width <-
     pmax(log10(igraph::E(ig_graph)$info_cond - igraph::E(ig_graph)$cplx),
