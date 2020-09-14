@@ -256,7 +256,7 @@ compute_partial_correlation <- function(summary, observations, state_order) {
     }
   }
 
-  for (i in which(summary$type=="P")) {
+  for (i in which(summary$type %in% c('P', 'TP', 'FP'))) {
     x <- summary[i, "x"]
     y <- summary[i, "y"]
     ai <- summary[i, "ai"]  # String with Ais separated by comma, or NA
