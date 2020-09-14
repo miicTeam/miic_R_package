@@ -233,25 +233,28 @@ compute_partial_correlation <- function(summary, observations, state_order) {
 
   for (j in 1:ncol(observations)) {
     col <- colnames(observations)[j]
-    # If the variable is described in the state order file, transform to a
-    # factor with the right category order.
     if (!is.null(state_order) &&
       state_order[j, "var_type"] == 0 &&
       "levels_increasing_order" %in% colnames(state_order) &&
       !is.na(state_order[state_order$var_names == col, "levels_increasing_order"])) {
+      # If the variable is described in the state order file, transform to a
+      # factor with the right category order.
       rownames(state_order) <- state_order$var_names
       # Convert ordered categorical features to integers
       observations[, col] <- factor(observations[, col])
       ordered_levels <- as.character(
         state_order[state_order$var_names == col, "levels_increasing_order"])
       ordered_levels <- unlist(strsplit(ordered_levels, ","))
+      ordered_levels <- tryCatch(
+        as.numeric(ordered_levels),
+        warning = function(w) {return(ordered_levels)})
       # levels(observations[,col]) = ordered_levels
       observations[, col] <- ordered(observations[, col], ordered_levels)
       observations[, col] <- as.numeric(observations[, col])
     } else if (is.factor(observations[,col]) &&
       suppressWarnings(all(!is.na(as.numeric(levels(observations[,col])))))) {
-      # If the variable is not described but numerical, assume its order from
-      # the numerical categories.
+      # If the variable is not described but categorical and numerical, assume its
+      # order from its values.
       observations[, col] <- as.numeric(observations[, col])
     }
   }
