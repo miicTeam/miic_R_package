@@ -94,11 +94,23 @@ getIgraph <- function(miic.res) {
     stop("Package 'igraph' is required.")
   }
 
-  #### summary
-  # plots for all technics on partial correlation
-  mySummary <-
-    miic.res$all.edges.summary[miic.res$all.edges.summary$type == 'P', ]
-  ig_graph = igraph::graph_from_data_frame(mySummary)
+  summary = miic.res$all.edges.summary[miic.res$all.edges.summary$type %in% c('P', 'TP', 'FP'), ]
+  # Re-order summary so that all edges go from "x" to "y"
+  for(row in 1:nrow(summary)){
+    if(summary[row, "infOrt"] == -2){
+      summary[row, c("x","y")] = summary[row, c("y","x")]
+      summary[row, "infOrt"] = 2
+      if(!is.na(summary[row, "proba"])){
+        summary[row, "proba"] = paste0(rev(
+          strsplit(summary[row, "proba"], ";")[[1]]), collapse=";")
+      }
+      if(!is.na(summary[row, "trueOrt"])){
+        summary[row, "trueOrt"] = 2
+      }
+    }
+  }
+  # Create igraph object from summary
+  ig_graph = igraph::graph_from_data_frame(summary)
 
   # Set correct orientations
   igraph::E(ig_graph)$arrow.mode = rep(0, igraph::gsize(ig_graph))
@@ -108,7 +120,6 @@ getIgraph <- function(miic.res) {
 
   # Set visuals
   igraph::V(ig_graph)$color <- "lightblue"
-  igraph::V(ig_graph)$label.family <- "Helvetica"
   igraph::V(ig_graph)$label.cex <- 0.8
   igraph::V(ig_graph)$size <- 12
 
