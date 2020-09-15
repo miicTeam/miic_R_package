@@ -30,6 +30,12 @@ void resetCutPointsU(TempGrid2d<int>& cut, int n_ui,
     int init_nbin, int maxbins, int lbin, TempVector<int>& r,
     const TempVector<int>& levels, int n) {
   for (int l = 2; l < n_ui + 2; l++) {
+    init_nbin = min(init_nbin, levels[var_idx[l]]);
+    int lbin = n / init_nbin;
+    if (lbin < 1) {
+      lbin = 1;
+      init_nbin = n;
+    }
     if (is_continuous[var_idx[l]] != 1) {
       r[l] = levels[var_idx[l]];
     } else {
@@ -40,7 +46,7 @@ void resetCutPointsU(TempGrid2d<int>& cut, int n_ui,
       for (int j = init_nbin; j < maxbins; j++) {
         cut(l, j) = 0;
       }
-      r[l] = min(init_nbin, levels[var_idx[l]]);
+      r[l] = init_nbin;
     }
   }
 }
