@@ -44,6 +44,7 @@ miic.reconstruct <- function(input_data = NULL,
     }
   }
 
+  var_names <- colnames(input_data)
   if (!is.null(black_box)) {
     # transform var names to var indices
     black_box[] <- sapply(black_box, function(x) {
