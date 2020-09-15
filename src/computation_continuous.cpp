@@ -739,6 +739,11 @@ vector<double> computeIxyui(const TempGrid2d<int>& data,
   for (int new_initbins = 2; (new_initbins < initbins) && (new_initbins < 20) &&
                              (new_initbins < min_unique_values);
        new_initbins++) {
+    int lbin = n_samples / new_initbins;
+    if (lbin < 1) {
+      lbin = 1;
+      new_initbins = n_samples;
+    }
     // initialization cut and r
     for (int l = 0; l < n_ui + 2; ++l) {
       if (is_continuous[var_idx[l]] == 1) {
