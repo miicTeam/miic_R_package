@@ -1,6 +1,8 @@
 #ifndef MIIC_MUTUAL_INFORMATION_H_
 #define MIIC_MUTUAL_INFORMATION_H_
 
+#define _USE_MATH_DEFINES
+#include <cmath>    // std::log
 #include <vector>
 
 #include "computation_cache.h"
@@ -12,31 +14,14 @@ namespace detail {
 
 using namespace structure;
 using namespace utility;
+using std::log;
 using std::vector;
-
-// update datafactors of a variable from the cut positions vector <cut>
-// INPUT:
-// d: index of variable in datafactors
-// varidx: index of variable in sortidx
-template <typename Cidx, typename Cdf, typename Ccut,
-    typename =
-        void_t<IsIntContainer<Cidx>, IsIntContainer<Cdf>, IsIntContainer<Ccut>>>
-void update_datafactors(
-    const Cidx& sortidx, Cdf&& datafactor, const Ccut& cut) {
-  int index = 0;
-  for (size_t j = 0; j < sortidx.size(); ++j) {
-    int level = sortidx[j];
-    if (static_cast<int>(j) > cut[index]) index++;
-    datafactor[level] = index;
-  }
-  return;
-}
 
 // rux -> 0:x,1;u,2:ux
 template <typename Cx, typename Cu, typename Cux, typename Crux,
     typename = void_t<IsIntContainer<Cx>, IsIntContainer<Cu>,
         IsIntContainer<Cux>, IsIntContainer<Crux>>>
-vector<double> computeMI_knml(const Cx& xfactors, const Cu& ufactors,
+InfoBlock computeMI_knml(const Cx& xfactors, const Cu& ufactors,
     const Cux& uxfactors, const Crux& rux, int n_eff,
     const TempVector<double>& sample_weights, std::shared_ptr<CtermCache> cache,
     int flag) {
@@ -76,23 +61,19 @@ vector<double> computeMI_knml(const Cx& xfactors, const Cu& ufactors,
   if (flag == 0) {
     SC -= cache->getLogC(n_eff, rux[0]);
     SC -= cache->getLogC(n_eff, rux[1]);
+    SC *= 0.5;
   }
 
-  vector<double> I(2);
-  I[0] = cache->getLog(n_eff) + (Hu + Hx - Hux) / n_eff;
-  if (flag == 0)
-    I[1] = I[0] - 0.5 * SC / n_eff;
-  else
-    I[1] = I[0] - SC / n_eff;
+  double Iux = n_eff * cache->getLog(n_eff) + (Hu + Hx - Hux);
 
-  return I;
+  return InfoBlock{n_eff, Iux, SC};
 }
 
 // rux -> 0:x,1;u,2:ux
 template <typename Cx, typename Cu, typename Cux, typename Crux,
     typename = void_t<IsIntContainer<Cx>, IsIntContainer<Cu>,
         IsIntContainer<Cux>, IsIntContainer<Crux>>>
-vector<double> computeMI_kmdl(const Cx& xfactors, const Cu& ufactors,
+InfoBlock computeMI_kmdl(const Cx& xfactors, const Cu& ufactors,
     const Cux& uxfactors, const Crux& rux,
     std::shared_ptr<CtermCache> cache, int flag = 0) {
   TempAllocatorScope scope;
@@ -119,17 +100,14 @@ vector<double> computeMI_kmdl(const Cx& xfactors, const Cu& ufactors,
   if (flag == 0 || flag == 1) SC *= (rux[0] - 1);
   if (flag == 0 || flag == 2) SC *= (rux[1] - 1);
 
-  vector<double> I(2);
-  I[0] = cache->getLog(n_samples) + (Hu + Hx - Hux) / n_samples;
-  I[1] = I[0] - SC / n_samples;
+  double Iux = n_samples * cache->getLog(n_samples) + (Hu + Hx - Hux);
 
-  return I;
+  return InfoBlock{n_samples, Iux, SC};
 }
 
 }  // namespace detail
 using detail::computeMI_knml;
 using detail::computeMI_kmdl;
-using detail::update_datafactors;
 
 void jointfactors_uiyx(const structure::TempGrid2d<int>& datafactors,
     const structure::TempVector<int>& r_list, int exclude,

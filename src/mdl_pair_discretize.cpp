@@ -9,7 +9,7 @@
 #include "linear_allocator.h"
 #include "utilities.h"
 
-#define STEPMAX 50
+constexpr int kStepMax = 50;
 
 using Rcpp::_;
 using Rcpp::List;
@@ -55,7 +55,7 @@ List mydiscretizeMutual(List input_data, List arg_list) {
       sample_nonNA, NAs_count, dataNumeric_red, dataNumericIdx_red,
       AllLevels_red, cnt_red, posArray_red, sample_weights_red, any_na);
 
-  environment.iterative_cuts = Grid2d<int>(STEPMAX + 1, maxbins * (2 + nbrU));
+  environment.iterative_cuts = Grid2d<int>(kStepMax + 1, maxbins * (2 + nbrU));
 
   computeCondMutualInfo(dataNumeric_red, dataNumericIdx_red, AllLevels_red,
       cnt_red, posArray_red, sample_weights_red, flag_sample_weights,
@@ -64,20 +64,19 @@ List mydiscretizeMutual(List input_data, List arg_list) {
       /*saveIterations*/ true);
 
   int niterations = 0;
-  int i = 0;
   double max_res_ef = -1;
-  TempGrid2d<int> iterative_cutpoints(STEPMAX * maxbins, nbrU + 2);
+  TempGrid2d<int> iterative_cutpoints(kStepMax * maxbins, nbrU + 2);
   std::array<double, 2> res{0, 0};
-  for (int l = 0; l < STEPMAX + 1; l++) {
+  for (int l = 0; l < kStepMax + 1; l++) {
     if (environment.iterative_cuts(l, 0) == -1) {
       niterations = l;
-      res[1] = environment.iterative_cuts(l, 1) / 100000.0;
-      res[0] = environment.iterative_cuts(l, 2) / 100000.0;
-      max_res_ef = environment.iterative_cuts(l, 3) / 100000.0;
+      res[1] = environment.iterative_cuts(l, 1);
+      res[0] = environment.iterative_cuts(l, 2);
+      max_res_ef = environment.iterative_cuts(l, 3);
       break;
     }
     for (int k = 0; k < (nbrU + 2); k++) {
-      i = 0;
+      int i = 0;
       while (environment.iterative_cuts(l, i + maxbins * k) <
              environment.iterative_cuts(l, i + maxbins * k + 1)) {
         iterative_cutpoints(maxbins * l + i, k) =

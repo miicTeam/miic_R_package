@@ -135,6 +135,7 @@ struct InfoBlock {
   double Ixy_ui;
   double kxy_ui;
 
+  constexpr InfoBlock() : Nxy_ui(0), Ixy_ui(0), kxy_ui(0) {}
   constexpr InfoBlock(int N, double I, double k)
       : Nxy_ui(N), Ixy_ui(I), kxy_ui(k) {}
 };
