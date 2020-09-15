@@ -28,25 +28,33 @@ miic(
 }
 \arguments{
 \item{input_data}{[a data frame]
-A data frame that contains the observational data. Each
-column corresponds to one variable and each row is a sample that gives the
+A n*d data frame (n samples, d variables) that contains the observational data.
+Each column corresponds to one variable and each row is a sample that gives the
 values for all the observed variables. The column names correspond to the
 names of the observed variables. Numeric columns will be treated as continuous
 values, factors and character as categorical.}
 
-\item{state_order}{[a data frame] An optional data frame giving information
-about how to order the various states of categorical variables. It will be
-used to compute the signs of the edges (using partial correlation coefficient)
-by sorting each variable’s levels accordingly to the given category order.}
+\item{state_order}{[a data frame]
+An optional d*(2-3) data frame giving the order of the ordinal categorical variables.
+It will be used during post-processing to compute the signs of the edges using partial
+linear correlation. 
+If specified, the data frame must have at least a "var_names" column, containing the
+names of each variable as specified by colnames(input_data). A "var_type" column may
+specify if each variable is to be considered as discrete (0) or continuous (1). And 
+the "levels_increasing_order" column contains a single character string with all of
+the unique levels of the ordinal variable in increasing order, delimited by a comma.
+If the variable is categorical but not ordinal, the "levels_increasing_order" column
+may instead contain NA.}
 
-\item{true_edges}{[a data frame]  An optional data frame containing all the
-true edges of the graph. Each line corresponds to one edge.}
+\item{true_edges}{[a data frame]
+An optional E*2 data frame containing the E edges of the true graph for
+computing performance after the run.}
 
 \item{black_box}{[a data frame]
-An optional data frame containing the
-pairs of variables that should be considered as independent. Each row contains
-one column for each of the two variables. The variable name must correspond to
-the one in the \emph{input_data} data frame.}
+An optional E*2 data frame containing E pairs of variables that will be considered
+as independent during the network reconstruction. In practice, these edges will not
+be included in the skeleton initialization and cannot be part of the final result. 
+Variable names must correspond to the \emph{input_data} data frame.}
 
 \item{n_threads}{[a positive integer]
 When set greater than 1, n_threads parallel threads will be used for computation. Make sure
@@ -91,7 +99,7 @@ the adjacency matrix and in the network edges.summary and by a bi-directed edge
 in the (partially) oriented graph.}
 
 \item{n_eff}{[a positive integer]
-The N samples given in the \emph{input_data} data frame are expected
+The n samples given in the \emph{input_data} data frame are expected
 to be independent. In case of correlated samples such as in time series or
 Monte Carlo sampling approaches, the effective number of independent samples
 \emph{n_eff} can be estimated using the decay of the autocorrelation function
