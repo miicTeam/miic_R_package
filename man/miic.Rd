@@ -272,7 +272,7 @@ data(hematoData)
 
 # execute MIIC (reconstruct graph)
 miic.res <- miic(
-  input_data = hematoData, latent = "yes",
+  input_data = hematoData[1:1000,], latent = "yes",
   n_shuffles = 10, conf_threshold = 0.001
 )
 
