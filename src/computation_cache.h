@@ -37,6 +37,10 @@ class CtermCache {
       n_log_n_[i] = i * logi;
       log_factorial_[i] = log_factorial_[i - 1] + logi;
     }
+    for (int n = 1; n < size_n_; ++n) {
+      getLogC(n, 1);
+      getLogC(n, 2);
+    }
   }
   CtermCache() = default;
 

@@ -39,14 +39,10 @@ double CtermCache::getLogC(int n, int level) {
     double res{-1}, res_aux{-1};
     while (res == -1 || res_aux == -1) {
       --r;  // Backtrack to find nearest cached results, avoid recursive call
-      if (r > 2) {
-        res = log_c_(n - 1, r - 1);      // log(C(n, r))
-        res_aux = log_c_(n - 1, r - 2);  // log(C(n, r - 1))
-      } else {
-        res = getLogC(n, 2);
-        res_aux = getLogC(n, 1);
-        // will break
-      }
+      res = log_c_(n - 1, r - 1);      // log(C(n, r))
+      res_aux = log_c_(n - 1, r - 2);  // log(C(n, r - 1))
+      // Will break for sure for r == 2, since log(C(n, 2)) and log(C(n, 1)) are
+      // already computed during the construction of cache.
     }
     double c_ratio = exp(res - res_aux);  // C(n, r) / C(n, r - 1)
     for (int l = r + 1; l <= level; ++l) {
