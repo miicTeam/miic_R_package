@@ -1,17 +1,11 @@
 #include "mutual_information.h"
 
 #include <algorithm>  // std::max, std::sort
-#define _USE_MATH_DEFINES
-#include <cmath>    // std::log
 #include <numeric>  // std::iota
 
 namespace miic {
 namespace computation {
 
-using std::begin;
-using std::end;
-using std::log;
-using std::vector;
 using structure::TempGrid2d;
 using structure::TempVector;
 using utility::TempAllocatorScope;
@@ -152,7 +146,7 @@ void jointfactors_u(const TempGrid2d<int>& datafactors,
   int n = datafactors.n_cols();
   if (n_ui == 1) {
     const auto row = datafactors.getConstRow(0);
-    std::copy(begin(row), end(row), begin(ufactors));
+    std::copy(std::begin(row), std::end(row), begin(ufactors));
     r_joint = r_list[0];
     return;
   }
@@ -166,7 +160,6 @@ void jointfactors_u(const TempGrid2d<int>& datafactors,
       Pbin_ui *= r_list[ui];
     }
   }
-
   bool too_many_levels = false;
   int n_joint_levels = 1;
   for (int ui = 0; ui < n_ui && !too_many_levels; ++ui) {
@@ -208,6 +201,58 @@ void jointfactors_u(const TempGrid2d<int>& datafactors,
     ++r_joint;
   }
   return;
+}
+
+// Sort data w.r.t. each of the variables in var_idx from begin to end, in bulk
+// of variables with limited number of joint levels
+TempVector<int> getDataOrder(const TempGrid2d<int>& data,
+    const TempVector<int>& r_list, const TempVector<int>& var_idx) {
+  int n_samples = data.n_cols();
+  int n_vars = var_idx.size();
+
+  TempVector<int> order(n_samples);
+  std::iota(begin(order), end(order), 0);
+  TempVector<int> new_order(order);
+
+  TempAllocatorScope scope;
+
+  TempVector<int> temp_var_idx;
+  temp_var_idx.reserve(n_vars);
+  int n_vars_done{0};
+  while (n_vars_done < n_vars) {
+    temp_var_idx.clear();
+    int r_joint = 1;
+    for (auto it = begin(var_idx) + n_vars_done; it < end(var_idx); ++it) {
+      int var = *it;
+      if (r_joint != 1 && r_joint * r_list[var] > 8 * n_samples) {
+        break;
+      } else {
+        temp_var_idx.push_back(var);
+        r_joint *= r_list[var];
+      }
+    }
+    // Counting sort
+    TempAllocatorScope scope;
+    TempVector<int> temp_hash_list(n_samples);
+    for (int i = 0; i < n_samples; ++i)
+      temp_hash_list[i] = getHashU(data, r_list, temp_var_idx, i);
+
+    TempVector<int> counts(r_joint);
+    for (const auto index : order)
+      ++counts[temp_hash_list[index]];
+    int sum{0};
+    for (auto& c : counts) {
+      int temp = c;
+      c = sum;
+      sum += temp;
+    }
+    for (const auto index : order)
+      new_order[counts[temp_hash_list[index]]++] = index;
+
+    order.swap(new_order);
+    n_vars_done += temp_var_idx.size();
+  }
+  return order;
 }
 
 }  // namespace computation

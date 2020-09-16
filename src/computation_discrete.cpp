@@ -7,6 +7,7 @@
 #include <tuple>    // std::tie
 
 #include "linear_allocator.h"
+#include "mutual_information.h"
 #include "structure.h"
 
 constexpr int MDL = 0;
@@ -19,31 +20,6 @@ using namespace miic::structure;
 using miic::utility::TempAllocatorScope;
 using std::vector;
 
-TempGrid2d<int> getHashTable(const TempGrid2d<int>& data,
-    const TempVector<int>& r_list, const TempVector<int>& var_idx, int n_vars) {
-  int n_samples = data.n_cols();
-  int id_x = var_idx[0], id_y = var_idx[1];
-  int rx = r_list[id_x];
-
-  TempGrid2d<int> hash_table(n_samples, 3);
-  // Compute unique hash values for each sample in each of the joint spaces
-  for (int k = 0; k < n_samples; k++) {
-    int r_joint = rx;
-    hash_table(k, 0) = data(id_y, k) * rx + data(id_x, k);  // Lxyui
-    hash_table(k, 1) = data(id_y, k) * rx;                  // Lyui
-    hash_table(k, 2) = 0;                                   // Lui
-
-    for (int j = 2; j < n_vars; j++) {
-      r_joint *= r_list[var_idx[j - 1]];
-      int increment = data(var_idx[j], k) * r_joint;
-      hash_table(k, 0) += increment;
-      hash_table(k, 1) += increment;
-      hash_table(k, 2) += increment;
-    }
-  }
-  return hash_table;
-}
-
 InfoBlock computeCondMutualInfoDiscrete(const TempGrid2d<int>& data,
     const TempVector<int>& r_list, const TempVector<int>& var_idx,
     const TempVector<double>& weights, int cplx,
@@ -51,18 +27,12 @@ InfoBlock computeCondMutualInfoDiscrete(const TempGrid2d<int>& data,
   TempAllocatorScope scope;
 
   int n_samples = data.n_cols();
-  int n_nodes = data.n_rows();
+  int n_nodes = var_idx.size();
   int id_x = var_idx[0], id_y = var_idx[1];
   int rx = r_list[id_x], ry = r_list[id_y];
+  TempVector<int> ui_list(begin(var_idx) + 2, end(var_idx));
 
-  // n_rows = n_samples, n_cols = 3 [0: Lxyui, 1: Lyui, 2: Lui]
-  TempGrid2d<int> hash_table = getHashTable(data, r_list, var_idx, n_nodes);
-  TempVector<int> order(n_samples);
-  // [0 to n_samples]
-  std::iota(begin(order), end(order), 0);
-  std::sort(begin(order), end(order), [&hash_table](int a, int b) {
-    return hash_table(a, 0) < hash_table(b, 0);
-  });
+  TempVector<int> order = getDataOrder(data, r_list, var_idx);
 
   int Nyui{0}, Nui{0}, Ntot{0};
   double info_xui_y{0}, info_yui_x{0}, info_ui_y{0}, info_ui_x{0};
@@ -71,13 +41,15 @@ InfoBlock computeCondMutualInfoDiscrete(const TempGrid2d<int>& data,
   TempVector<int> Nxui(rx, 0);
   TempVector<int> Nx(rx, 0);
   TempVector<int> Ny(ry, 0);
+
   // Sentinels whose change of value (compared to the next sample) indicates
   // that the related counts should be added to mutual information (as NlogN)
-  int Lxyui = hash_table(order[0], 0);
-  int Lyui = hash_table(order[0], 1);
-  int Lui = hash_table(order[0], 2);
-  int X = data(id_x, order[0]);
-  int Y = data(id_y, order[0]);
+  int X{data(id_x, order[0])};
+  int X_next{-1};
+  int Y{data(id_y, order[0])};
+  int Y_next{-1};
+  int Lui = getHashU(data, r_list, ui_list, order[0]);
+  int Lui_next{-1};
 
   double Pxyui = 0;
   // make the counts and compute mutual infos & logCs
@@ -85,9 +57,10 @@ InfoBlock computeCondMutualInfoDiscrete(const TempGrid2d<int>& data,
     Pxyui += weights[order[k]];
     int i_next = k + 1 < n_samples ? order[k + 1] : -1;
     if (i_next != -1) {
-      int next = hash_table(i_next, 0);
-      if (next == Lxyui) continue;
-      Lxyui = next;
+      X_next = data(id_x, i_next);
+      Y_next = data(id_y, i_next);
+      Lui_next = getHashU(data, r_list, ui_list, i_next);
+      if (X_next == X && Y_next == Y && Lui_next == Lui) continue;
     }
     // Conclude on current count
     int Nxyui = (int)Pxyui;
@@ -105,10 +78,8 @@ InfoBlock computeCondMutualInfoDiscrete(const TempGrid2d<int>& data,
     }
     Pxyui = 0;  // reset cumulative weight
     if (i_next != -1) {
-      X = data(id_x, i_next);
-      int next = hash_table(i_next, 1);
-      if (next == Lyui) continue;
-      Lyui = next;
+      X = X_next;
+      if (Y_next == Y && Lui_next == Lui) continue;
     }
     // Conclude on current count
     if (Nyui > 0) {
@@ -121,10 +92,9 @@ InfoBlock computeCondMutualInfoDiscrete(const TempGrid2d<int>& data,
       Nyui = 0;
     }
     if (i_next != -1) {
-      Y = data(id_y, i_next);
-      int next = hash_table(i_next, 2);
-      if (next == Lui) continue;
-      Lui = next;
+      Y = Y_next;
+      if (Lui_next == Lui) continue;
+      Lui = Lui_next;
     }
     // Conclude on current count
     for (auto& Nxuij : Nxui) {
@@ -197,15 +167,10 @@ Info3PointBlock computeInfo3PointAndScoreDiscrete(const TempGrid2d<int>& data,
   int n_nodes = data.n_rows() - 1;  // excluding Z
   int id_x = var_idx[0], id_y = var_idx[1], id_z = var_idx.back();
   int rx = r_list[id_x], ry = r_list[id_y], rz = r_list[id_z];
+  TempVector<int> ui_list(begin(var_idx) + 2, begin(var_idx) + n_nodes);
+  TempVector<int> xyui_list(begin(var_idx), begin(var_idx) + n_nodes);
 
-  // n_rows = n_samples, n_cols = 3 [0: Lxyui, 1: Lyui, 2: Lui]
-  TempGrid2d<int> hash_table = getHashTable(data, r_list, var_idx, n_nodes);
-  TempVector<int> order(n_samples);
-  // [0 to n_samples_non_na]
-  std::iota(begin(order), end(order), 0);
-  std::sort(begin(order), end(order), [&hash_table](int a, int b) {
-    return hash_table(a, 0) < hash_table(b, 0);
-  });
+  TempVector<int> order = getDataOrder(data, r_list, xyui_list);
 
   double info_xui_y{0}, info_yui_x{0}, info_ui_y{0}, info_ui_x{0};
   double logC_xui_y{0}, logC_yui_x{0}, logC_ui_y{0}, logC_ui_x{0};
@@ -226,11 +191,12 @@ Info3PointBlock computeInfo3PointAndScoreDiscrete(const TempGrid2d<int>& data,
   TempGrid2d<int> Nxuiz(rx, rz, 0);  // [X][Z]
   // Sentinels whose change of value (compared to the next sample) indicates
   // that the related counts should be added to mutual information (as NlogN)
-  int Lxyui = hash_table(order[0], 0);
-  int Lyui = hash_table(order[0], 1);
-  int Lui = hash_table(order[0], 2);
-  int X = data(id_x, order[0]);
-  int Y = data(id_y, order[0]);
+  int X{data(id_x, order[0])};
+  int X_next{-1};
+  int Y{data(id_y, order[0])};
+  int Y_next{-1};
+  int Lui = getHashU(data, r_list, ui_list, order[0]);
+  int Lui_next{-1};
 
   TempVector<double> Pxyuiz(rz, 0);
   // make the counts and compute mutual infos & logCs
@@ -239,9 +205,10 @@ Info3PointBlock computeInfo3PointAndScoreDiscrete(const TempGrid2d<int>& data,
     Pxyuiz[Z] += weights[order[k]];
     int i_next = k + 1 < n_samples ? order[k + 1] : -1;
     if (i_next != -1) {
-      int next = hash_table(i_next, 0);
-      if (next == Lxyui) continue;
-      Lxyui = next;
+      X_next = data(id_x, i_next);
+      Y_next = data(id_y, i_next);
+      Lui_next = getHashU(data, r_list, ui_list, i_next);
+      if (X_next == X && Y_next == Y && Lui_next == Lui) continue;
     }
     // Conclude on current count
     int Nxyui = 0;
@@ -277,10 +244,8 @@ Info3PointBlock computeInfo3PointAndScoreDiscrete(const TempGrid2d<int>& data,
       Ny[Y] += Nxyui;
     }
     if (i_next != -1) {
-      X = data(id_x, i_next);
-      int next = hash_table(i_next, 1);
-      if (next == Lyui) continue;
-      Lyui = next;
+      X = X_next;
+      if (Y_next == Y && Lui_next == Lui) continue;
     }
     // Conclude on current count
     if (Nyui > 0) {
@@ -307,12 +272,11 @@ Info3PointBlock computeInfo3PointAndScoreDiscrete(const TempGrid2d<int>& data,
       Nyui = 0;
     }
     if (i_next != -1) {
-      Y = data(id_y, i_next);
-      int next = hash_table(i_next, 2);
-      if (next == Lui) continue;
-      Lui = next;
+      Y = Y_next;
+      if (Lui_next == Lui) continue;
+      Lui = Lui_next;
     }
-    if (Nui <= 0) continue;
+    if (Nui == 0) continue;
 
     double NlogN = Nui * cache->getLog(Nui);
     info_ui_x -= NlogN;

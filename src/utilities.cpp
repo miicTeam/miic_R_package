@@ -584,9 +584,9 @@ size_t getLinearAllocatorSize(int n_samples, int n_nodes, int maxbins,
   for (int i = 0; i < n_nodes; ++i) {
     if (!is_continuous[i] && levels[i] > max_level) max_level = levels[i];
   }
-  size_t m_discrete =
-      s_int * (4 * n_samples + 6 * max_level + max_level * max_level) +
-      s_double * max_level;
+  size_t m_discrete = s_int * (2 * n_samples + 6 * max_level + 2 * n_nodes +
+                                  max_level * max_level) +
+                      s_double * max_level;
   size_t m_discretize =
       s_int * (3 * maxbins + (maxbins + 2) * max(initbins + 1, 2 * n_samples) +
                   n_samples) +

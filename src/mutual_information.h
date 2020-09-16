@@ -116,6 +116,22 @@ void jointfactors_uiyx(const structure::TempGrid2d<int>& datafactors,
 void jointfactors_u(const structure::TempGrid2d<int>& datafactors,
     const structure::TempVector<int>& r_list,
     structure::TempVector<int>& ufactors, int& r_joint);
+
+inline int getHashU(const structure::TempGrid2d<int>& data,
+    const structure::TempVector<int>& r_list,
+    const structure::TempVector<int>& ui_list, int i) {
+  int rui_joint{1};
+  int hash_u{0};
+  for (const auto u : ui_list) {
+    hash_u += data(u, i) * rui_joint;
+    rui_joint *= r_list[u];
+  }
+  return hash_u;
+};
+
+structure::TempVector<int> getDataOrder(const structure::TempGrid2d<int>& data,
+    const structure::TempVector<int>& r_list,
+    const structure::TempVector<int>& var_idx);
 }  // namespace computation
 }  // namespace miic
 
