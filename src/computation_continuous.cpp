@@ -465,8 +465,6 @@ InfoBlock computeIxy(const TempGrid2d<int>& data,
   // Keep the result of each iteration
   TempVector<double> I_list(iter_max);
   TempVector<double> Ik_list(iter_max);
-  int rx_prev = r[0];      // Number of levels of the first variable
-  int ry_prev = r[1];      // Number of levels of the second variable
   double Ixy{0}, Ikxy{0};  // to be returned
   for (int step = 0; step < iter_max; ++step) {
     if (is_continuous[var_idx[0]]) {
@@ -475,8 +473,7 @@ InfoBlock computeIxy(const TempGrid2d<int>& data,
       int r0 = r[1];  // y
       int r1 = 1;   // One single bin at start
       int sc_levels1 = r0;
-      int sc_levels2 = rx_prev;
-      ry_prev = r[1];
+      int sc_levels2 = r[0];
       // Optimization run on X. 2 factors
       optimizeCutPoints(data.getConstRow(var_idx[0]),
           data_idx.getConstRow(var_idx[0]), datafactors.getRow(1),
@@ -490,8 +487,7 @@ InfoBlock computeIxy(const TempGrid2d<int>& data,
       int r0 = r[0];  // x before its optimization
       int r1 = 1;   // One single bin at start
       int sc_levels1 = r0;
-      int sc_levels2 = ry_prev;
-      rx_prev = r[0];
+      int sc_levels2 = r[1];
       // Optimization run on Y. 2 factors
       optimizeCutPoints(data.getConstRow(var_idx[1]),
           data_idx.getConstRow(var_idx[1]), datafactors.getRow(0),
