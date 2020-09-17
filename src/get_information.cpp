@@ -210,8 +210,8 @@ InfoBlock getCondMutualInfo(int X, int Y, const vector<int>& ui_list,
         environment.initbins, environment.maxbins, environment.cplx,
         environment.cache.cterm);
   }
-  if (std::fabs(res.Ixy_ui) < kPrecision) res.Ixy_ui = 0;
-  if (std::fabs(res.kxy_ui) < kPrecision) res.kxy_ui = 0;
+  if (std::fabs(res.I) < kPrecision) res.I = 0;
+  if (std::fabs(res.k) < kPrecision) res.k = 0;
 
   if (n_ui != 0) cache->saveMutualInfo(X, Y, ui_list, res);
   return res;

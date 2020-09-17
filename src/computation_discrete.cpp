@@ -1,23 +1,21 @@
 #include "computation_discrete.h"
 
-#include <algorithm>  // std::sort, std::minmax
+#include <algorithm>  // std::min
 #define _USE_MATH_DEFINES
 #include <cmath>
 #include <numeric>  // std::iota
-#include <tuple>    // std::tie
 
 #include "linear_allocator.h"
 #include "mutual_information.h"
 #include "structure.h"
 
 constexpr int MDL = 0;
-
-// cplx = 0 --> MDL, cplx = 1 --> NML
 namespace miic {
 namespace computation {
 
 using namespace miic::structure;
 using miic::utility::TempAllocatorScope;
+using std::log;
 using std::vector;
 
 InfoBlock computeCondMutualInfoDiscrete(const TempGrid2d<int>& data,
@@ -27,12 +25,13 @@ InfoBlock computeCondMutualInfoDiscrete(const TempGrid2d<int>& data,
   TempAllocatorScope scope;
 
   int n_samples = data.n_cols();
-  int n_nodes = var_idx.size();
   int id_x = var_idx[0], id_y = var_idx[1];
   int rx = r_list[id_x], ry = r_list[id_y];
   TempVector<int> ui_list(begin(var_idx) + 2, end(var_idx));
 
   TempVector<int> order = getDataOrder(data, r_list, var_idx);
+  TempVector<int> hash_u(n_samples, 0);
+  int rui = fillHashList(data, r_list, ui_list, hash_u);
 
   int Nyui{0}, Nui{0}, Ntot{0};
   double info_xui_y{0}, info_yui_x{0}, info_ui_y{0}, info_ui_x{0};
@@ -48,7 +47,7 @@ InfoBlock computeCondMutualInfoDiscrete(const TempGrid2d<int>& data,
   int X_next{-1};
   int Y{data(id_y, order[0])};
   int Y_next{-1};
-  int Lui = getHashU(data, r_list, ui_list, order[0]);
+  int Lui = hash_u[order[0]];
   int Lui_next{-1};
 
   double Pxyui = 0;
@@ -59,7 +58,7 @@ InfoBlock computeCondMutualInfoDiscrete(const TempGrid2d<int>& data,
     if (i_next != -1) {
       X_next = data(id_x, i_next);
       Y_next = data(id_y, i_next);
-      Lui_next = getHashU(data, r_list, ui_list, i_next);
+      Lui_next = hash_u[i_next];
       if (X_next == X && Y_next == Y && Lui_next == Lui) continue;
     }
     // Conclude on current count
@@ -141,14 +140,11 @@ InfoBlock computeCondMutualInfoDiscrete(const TempGrid2d<int>& data,
   double info2xy_ui = 0.5 * (info_ui_y + info_ui_x);
 
   if (cplx == MDL) {
-    int joint_rui = 1;
     double logN = cache->getLog(Ntot);
-    for (int j = 2; j < n_nodes; j++)
-      joint_rui *= r_list[var_idx[j]];
-    logC_xui_y = 0.5 * (ry - 1) * (rx * joint_rui - 1) * logN;
-    logC_yui_x = 0.5 * (rx - 1) * (ry * joint_rui - 1) * logN;
-    logC_ui_y = 0.5 * (ry - 1) * (joint_rui - 1) * logN;
-    logC_ui_x = 0.5 * (rx - 1) * (joint_rui - 1) * logN;
+    logC_xui_y = 0.5 * (ry - 1) * (rx * rui - 1) * logN;
+    logC_yui_x = 0.5 * (rx - 1) * (ry * rui - 1) * logN;
+    logC_ui_y = 0.5 * (ry - 1) * (rui - 1) * logN;
+    logC_ui_x = 0.5 * (rx - 1) * (rui - 1) * logN;
   }
 
   double logC3xy_ui = 0.5 * (logC_xui_y + logC_yui_x);
@@ -171,6 +167,8 @@ Info3PointBlock computeInfo3PointAndScoreDiscrete(const TempGrid2d<int>& data,
   TempVector<int> xyui_list(begin(var_idx), begin(var_idx) + n_nodes);
 
   TempVector<int> order = getDataOrder(data, r_list, xyui_list);
+  TempVector<int> hash_u(n_samples, 0);
+  int rui = fillHashList(data, r_list, ui_list, hash_u);
 
   double info_xui_y{0}, info_yui_x{0}, info_ui_y{0}, info_ui_x{0};
   double logC_xui_y{0}, logC_yui_x{0}, logC_ui_y{0}, logC_ui_x{0};
@@ -195,7 +193,7 @@ Info3PointBlock computeInfo3PointAndScoreDiscrete(const TempGrid2d<int>& data,
   int X_next{-1};
   int Y{data(id_y, order[0])};
   int Y_next{-1};
-  int Lui = getHashU(data, r_list, ui_list, order[0]);
+  int Lui = hash_u[order[0]];
   int Lui_next{-1};
 
   TempVector<double> Pxyuiz(rz, 0);
@@ -207,7 +205,7 @@ Info3PointBlock computeInfo3PointAndScoreDiscrete(const TempGrid2d<int>& data,
     if (i_next != -1) {
       X_next = data(id_x, i_next);
       Y_next = data(id_y, i_next);
-      Lui_next = getHashU(data, r_list, ui_list, i_next);
+      Lui_next = hash_u[i_next];
       if (X_next == X && Y_next == Y && Lui_next == Lui) continue;
     }
     // Conclude on current count
@@ -369,20 +367,17 @@ Info3PointBlock computeInfo3PointAndScoreDiscrete(const TempGrid2d<int>& data,
   double info3xy_ui = 0.5 * (info_xui_y + info_yui_x);
   double info2xy_ui = 0.5 * (info_ui_y + info_ui_x);
 
-  int joint_rui{1};
   double logN{0};
   // check maximum mutual infos - cplx terms
   if (cplx == MDL) {
-    for (int j = 2; j < n_nodes; j++)
-      joint_rui *= r_list[var_idx[j]];
     logN = cache->getLog(Ntot);
-    logC_xui_y = 0.5 * (ry - 1) * (rx * joint_rui - 1) * logN;
-    logC_yui_x = 0.5 * (rx - 1) * (ry * joint_rui - 1) * logN;
-    logC_ui_y = 0.5 * (ry - 1) * (joint_rui - 1) * logN;
-    logC_ui_x = 0.5 * (rx - 1) * (joint_rui - 1) * logN;
-    logC_uiz_y = 0.5 * (ry - 1) * (rz * joint_rui - 1) * logN;
-    logC_yui_z = 0.5 * (rz - 1) * (ry * joint_rui - 1) * logN;
-    logC_ui_z = 0.5 * (rz - 1) * (joint_rui - 1) * logN;
+    logC_xui_y = 0.5 * (ry - 1) * (rx * rui - 1) * logN;
+    logC_yui_x = 0.5 * (rx - 1) * (ry * rui - 1) * logN;
+    logC_ui_y = 0.5 * (ry - 1) * (rui - 1) * logN;
+    logC_ui_x = 0.5 * (rx - 1) * (rui - 1) * logN;
+    logC_uiz_y = 0.5 * (ry - 1) * (rz * rui - 1) * logN;
+    logC_yui_z = 0.5 * (rz - 1) * (ry * rui - 1) * logN;
+    logC_ui_z = 0.5 * (rz - 1) * (rui - 1) * logN;
   }
   double logC3xy_ui = 0.5 * (logC_xui_y + logC_yui_x);
   double logC2xy_ui = 0.5 * (logC_ui_y + logC_ui_x);
@@ -397,8 +392,8 @@ Info3PointBlock computeInfo3PointAndScoreDiscrete(const TempGrid2d<int>& data,
   double info2xz_ui = 0.5 * (info_ui_z + info_ui_x);
 
   if (cplx == MDL) {
-    logC_uiz_x = 0.5 * (rx - 1) * (rz * joint_rui - 1) * logN;
-    logC_xui_z = 0.5 * (rz - 1) * (rx * joint_rui - 1) * logN;
+    logC_uiz_x = 0.5 * (rx - 1) * (rz * rui - 1) * logN;
+    logC_xui_z = 0.5 * (rz - 1) * (rx * rui - 1) * logN;
   }
   double logC3xz_ui = 0.5 * (logC_uiz_x + logC_xui_z);
   double logC2xz_ui = 0.5 * (logC_ui_x + logC_ui_z);
@@ -407,11 +402,11 @@ Info3PointBlock computeInfo3PointAndScoreDiscrete(const TempGrid2d<int>& data,
   double info2xy_uiz = 0.5 * (info_uiz_y + info_uiz_x);
 
   if (cplx == MDL) {
-    joint_rui *= rz;
-    logC_xuiz_y = 0.5 * (ry - 1) * (rx * joint_rui - 1) * logN;
-    logC_yuiz_x = 0.5 * (rx - 1) * (ry * joint_rui - 1) * logN;
-    logC_uiz_y = 0.5 * (ry - 1) * (joint_rui - 1) * logN;
-    logC_uiz_x = 0.5 * (rx - 1) * (joint_rui - 1) * logN;
+    rui *= rz;
+    logC_xuiz_y = 0.5 * (ry - 1) * (rx * rui - 1) * logN;
+    logC_yuiz_x = 0.5 * (rx - 1) * (ry * rui - 1) * logN;
+    logC_uiz_y = 0.5 * (ry - 1) * (rui - 1) * logN;
+    logC_uiz_x = 0.5 * (rx - 1) * (rui - 1) * logN;
   }
   double logC3xy_uiz = 0.5 * (logC_xuiz_y + logC_yuiz_x);
   double logC2xy_uiz = 0.5 * (logC_uiz_y + logC_uiz_x);
@@ -423,18 +418,17 @@ Info3PointBlock computeInfo3PointAndScoreDiscrete(const TempGrid2d<int>& data,
   double logC_xz_ui = logC3xz_ui - logC2xz_ui;
   double info_xy_uiz = info3xy_uiz - info2xy_uiz;
   double logC_xy_uiz = logC3xy_uiz - logC2xy_uiz;
-  // compute score
+
   double xz = (info_xz_ui - info_xy_ui) - (logC_xz_ui - logC_xy_ui);
   double yz  = (info_yz_ui - info_xy_ui) - (logC_yz_ui - logC_xy_ui);
-  double xyz = (info_xy_ui - info_xy_uiz) - (logC_xy_ui - logC_xy_uiz);
+  // Data processing inequality
+  double dpi = std::fmin(xz, yz) - log1p(exp(-std::fabs(xz - yz)));
 
-  double lower{0}, higher{0};
-  std::tie(lower, higher) = std::minmax(xz, yz);
-  double dpi = lower - log1p(exp(lower - higher));
-
-  double Rscore = xyz < dpi ? xyz : dpi;
   double Ixyz_ui = info_xy_ui - info_xy_uiz;
   double kxyz_ui = logC_xy_ui - logC_xy_uiz;
+  double Ikxyz_ui = Ixyz_ui - kxyz_ui;
+
+  double Rscore = std::fmin(Ikxyz_ui, dpi);
 
   return Info3PointBlock{Rscore, Ixyz_ui, kxyz_ui};
 }

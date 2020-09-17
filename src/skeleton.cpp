@@ -25,11 +25,11 @@ namespace reconstruction {
 int initializeEdge(Environment& environment, int X, int Y) {
   // Compute the mutual information and the corresponding CPLX
   auto info = environment.edges(X, Y).shared_info;
-  auto res = getCondMutualInfo(X, Y, vector<int>(), environment.data_numeric,
+  auto xy = getCondMutualInfo(X, Y, vector<int>(), environment.data_numeric,
       environment.data_numeric_idx, environment);
-  info->Nxy = res.Nxy_ui;
-  info->Ixy = res.Ixy_ui;
-  info->cplx_no_u = res.kxy_ui;
+  info->Nxy = xy.n_samples;
+  info->Ixy = xy.I;
+  info->cplx_no_u = xy.k;
 
   info->Nxy_ui = info->Nxy;
   info->Ixy_ui = info->Ixy;
@@ -187,9 +187,9 @@ bool searchForConditionalIndependence(Environment& environment) {
 
     auto res = getCondMutualInfo(X, Y, top_info->ui_list,
         environment.data_numeric, environment.data_numeric_idx, environment);
-    top_info->Nxy_ui = res.Nxy_ui;
-    top_info->Ixy_ui = res.Ixy_ui;
-    top_info->cplx = res.kxy_ui;
+    top_info->Nxy_ui = res.n_samples;
+    top_info->Ixy_ui = res.I;
+    top_info->cplx = res.k;
 
     if (environment.verbose) {
       Rcout << "Edge " << iter_count << ": " << environment.nodes[X].name
