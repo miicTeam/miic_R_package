@@ -470,7 +470,7 @@ InfoBlock computeIxy(const TempGrid2d<int>& data,
   int sc_levels_y = r[1];  // Number of levels of the second variable
   int rx = r[0];
   int ry = r[1];
-  double Ixy_ui{0}, Ikxy_ui{0};  // to be returned
+  double Ixy{0}, Ikxy{0};  // to be returned
   for (int step = 0; step < iter_max; ++step) {
     if (is_continuous[var_idx[0]] == 1) {
       TempAllocatorScope scope;
@@ -553,33 +553,33 @@ InfoBlock computeIxy(const TempGrid2d<int>& data,
     for (int i = step - 1; i >= 0; --i) {
       if (fabs(Ik_list[step] - Ik_list[i]) < kEps) {
         converged = true;
-        Ixy_ui = accumulate(begin(I_list) + i, begin(I_list) + step, 0.0);
-        Ikxy_ui = accumulate(begin(Ik_list) + i, begin(Ik_list) + step, 0.0);
-        Ikxy_ui /= (step - i);  // average over the periodic cycle
-        Ixy_ui /= (step - i);
+        Ixy = accumulate(begin(I_list) + i, begin(I_list) + step, 0.0);
+        Ikxy = accumulate(begin(Ik_list) + i, begin(Ik_list) + step, 0.0);
+        Ikxy /= (step - i);  // average over the periodic cycle
+        Ixy /= (step - i);
         break;
       }
     }
 
     if (converged) break;
 
-    Ixy_ui = res_temp.Ixy_ui;
-    Ikxy_ui = res_temp.Ixy_ui - res_temp.kxy_ui;
+    Ixy = res_temp.Ixy_ui;
+    Ikxy = res_temp.Ixy_ui - res_temp.kxy_ui;
     // Already optimal if any one of them is discrete
     if (!is_continuous[var_idx[0]] || !is_continuous[var_idx[1]]) break;
   }  // for step
   // I and Ik can always be 0 by choosing 1 bin on either X or Y.
-  if (Ikxy_ui < 0 && is_continuous[var_idx[0]] && is_continuous[var_idx[1]]) {
-    Ixy_ui = 0;
-    Ikxy_ui = 0;
+  if (Ikxy < 0 && is_continuous[var_idx[0]] && is_continuous[var_idx[1]]) {
+    Ixy = 0;
+    Ikxy = 0;
   }
   if (save_cuts) {
-    cuts_info->Ik = Ikxy_ui / n_samples;
-    cuts_info->I = Ixy_ui / n_samples;
+    cuts_info->Ik = Ikxy / n_samples;
+    cuts_info->I = Ixy / n_samples;
     cuts_info->I_equal_freq_max = best_res;
   }
 
-  return InfoBlock(n_samples, Ixy_ui, Ixy_ui - Ikxy_ui);
+  return InfoBlock(n_samples, Ixy, Ixy - Ikxy);
 }
 
 InfoBlock computeIxyui(const TempGrid2d<int>& data,
@@ -653,11 +653,10 @@ InfoBlock computeIxyui(const TempGrid2d<int>& data,
       best_res = (Ik_y_xu + Ik_x_yu);
     }
   }
-
-  resetCutPoints(levels, is_continuous, var_idx, 0, n_nodes, best_initbins,
-      n_samples, cut);
-  updateFactors(
-      data_idx, cut, is_continuous, var_idx, 0, n_nodes, datafactors, r);
+  // Initialize X and Y cuts with best_initbins
+  resetCutPoints(
+      levels, is_continuous, var_idx, 0, 2, best_initbins, n_samples, cut);
+  updateFactors(data_idx, cut, is_continuous, var_idx, 0, 2, datafactors, r);
 
   TempVector<int> r_old(r);  // copy
 
@@ -671,6 +670,11 @@ InfoBlock computeIxyui(const TempGrid2d<int>& data,
   // Run optimization with best initial equal freq.
   for (int step = 0; step < iter_max; ++step) {
     // optimize I(y;xu) over x and u
+    resetCutPoints(
+        levels, is_continuous, var_idx, 2, n_nodes, initbins, n_samples, cut);
+    updateFactors(
+        data_idx, cut, is_continuous, var_idx, 2, n_nodes, datafactors, r);
+    std::copy(begin(r) + 2, end(r), begin(r_old) + 2);
     for (int count = 0; count < kMaxIterOnU; ++count) {
       for (int l = 2; l < n_nodes; ++l) {
         if (is_continuous[var_idx[l]] != 1) continue;
@@ -746,12 +750,11 @@ InfoBlock computeIxyui(const TempGrid2d<int>& data,
         // init variables for the optimization run
         int r0 = ruiyx[3];  // xyu
         int r1 = ruiyx[1];  // yu
-        sc_levels_y = r_old[1];
         sc_levels_x = r_old[0];
-        int sc_levels1 = sc_levels_x;  // herve
-        int sc_levels2 = r_old[l];     // herve
+        sc_levels_y = r_old[1];
         double sc = 0.5 * (sc_levels_x - 1) * ruiyx[1];
-
+        int sc_levels1 = sc_levels_x;
+        int sc_levels2 = r_old[l];
         // Run optimization on U. 2 factors xyu and yu
         optimizeCutPoints(data.getConstRow(var_idx[l]),
             data_idx.getConstRow(var_idx[l]), uiyxfactors.getRow(3),
@@ -842,13 +845,12 @@ InfoBlock computeIxyui(const TempGrid2d<int>& data,
           uiyxfactors.getRow(2), r_temp, cache, 0);
     double I_x_u = res_temp.Ixy_ui;  // After optimization on U.
     double Ik_x_u = res_temp.Ixy_ui - res_temp.kxy_ui;
-    // Reset cutpoints on U
+    // optimize I(y;u) over u
     resetCutPoints(
         levels, is_continuous, var_idx, 2, n_nodes, initbins, n_samples, cut);
     updateFactors(
         data_idx, cut, is_continuous, var_idx, 2, n_nodes, datafactors, r);
     std::copy(begin(r) + 2, end(r), begin(r_old) + 2);
-    // optimize I(y;u) over u
     for (int count = 0; count < kMaxIterOnU; ++count) {
       for (int l = 2; l < n_nodes; ++l) {
         if (is_continuous[var_idx[l]] != 1) continue;
@@ -884,12 +886,9 @@ InfoBlock computeIxyui(const TempGrid2d<int>& data,
           uiyxfactors.getRow(1), r_temp, cache, 0);
     double I_y_u = res_temp.Ixy_ui;  // After optimization on U.
     double Ik_y_u = res_temp.Ixy_ui - res_temp.kxy_ui;
-    // Reset cutpoints on U
-    resetCutPoints(
-        levels, is_continuous, var_idx, 2, n_nodes, initbins, n_samples, cut);
-    // Update all factors
-    updateFactors(
-        data_idx, cut, is_continuous, var_idx, 0, n_nodes, datafactors, r);
+
+    // End of iteration: update X and Y cuts
+    updateFactors(data_idx, cut, is_continuous, var_idx, 0, 2, datafactors, r);
     std::copy(begin(r), end(r), begin(r_old));
 
     if (save_cuts) {
