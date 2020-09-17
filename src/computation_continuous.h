@@ -17,8 +17,8 @@ structure::InfoBlock computeCondMutualInfo(
     const structure::TempVector<int>& var_idx,
     const structure::TempVector<double>& sample_weights,
     bool flag_sample_weights, int initbins, int maxbins, int cplx,
-    std::shared_ptr<CtermCache> cache, structure::Grid2d<int>& iterative_cuts,
-    bool saveIterations = false);
+    std::shared_ptr<CtermCache>,
+    std::shared_ptr<structure::CutPointsInfo> = nullptr);
 
 structure::Info3PointBlock computeInfo3PointAndScore(
     const structure::TempGrid2d<int>& data,
@@ -28,8 +28,7 @@ structure::Info3PointBlock computeInfo3PointAndScore(
     const structure::TempVector<int>& var_idx,
     const structure::TempVector<double>& sample_weights,
     bool flag_sample_weights, int initbins, int maxbins, int cplx,
-    std::shared_ptr<CtermCache> cache, structure::Grid2d<int>& iterative_cuts,
-    bool saveIterations = false);
+    std::shared_ptr<CtermCache> cache);
 
 }  // namespace computation
 }  // namespace miic

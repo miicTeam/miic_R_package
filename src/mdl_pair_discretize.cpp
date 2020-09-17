@@ -55,52 +55,45 @@ List mydiscretizeMutual(List input_data, List arg_list) {
       sample_nonNA, NAs_count, dataNumeric_red, dataNumericIdx_red,
       AllLevels_red, cnt_red, posArray_red, sample_weights_red, any_na);
 
-  environment.iterative_cuts = Grid2d<int>(kStepMax + 1, maxbins * (2 + nbrU));
+  auto cuts_ptr = std::make_shared<CutPointsInfo>(kStepMax, maxbins * 2);
 
   computeCondMutualInfo(dataNumeric_red, dataNumericIdx_red, AllLevels_red,
       cnt_red, posArray_red, sample_weights_red, flag_sample_weights,
       environment.initbins, environment.maxbins, environment.cplx,
-      environment.cache.cterm, environment.iterative_cuts,
-      /*saveIterations*/ true);
+      environment.cache.cterm, cuts_ptr);
 
   int niterations = 0;
-  double max_res_ef = -1;
-  TempGrid2d<int> iterative_cutpoints(kStepMax * maxbins, nbrU + 2);
-  std::array<double, 2> res{0, 0};
-  for (int l = 0; l < kStepMax + 1; l++) {
-    if (environment.iterative_cuts(l, 0) == -1) {
+  TempGrid2d<int> iterative_cuts(kStepMax * maxbins, 2);
+  const auto& cuts = cuts_ptr->cutpoints;
+  for (int l = 0; l < kStepMax; ++l) {
+    if (cuts(l, 0) == -1) {
       niterations = l;
-      res[1] = environment.iterative_cuts(l, 1);
-      res[0] = environment.iterative_cuts(l, 2);
-      max_res_ef = environment.iterative_cuts(l, 3);
       break;
     }
-    for (int k = 0; k < (nbrU + 2); k++) {
+    for (int k = 0; k < 2; ++k) {
       int i = 0;
-      while (environment.iterative_cuts(l, i + maxbins * k) <
-             environment.iterative_cuts(l, i + maxbins * k + 1)) {
-        iterative_cutpoints(maxbins * l + i, k) =
-            environment.iterative_cuts(l, i + maxbins * k);
-        i++;
+      while (cuts(l, i + maxbins * k) < cuts(l, i + maxbins * k + 1)) {
+        iterative_cuts(maxbins * l + i, k) = cuts(l, i + maxbins * k);
+        ++i;
       }
       for (int j = i; j < maxbins; j++) {
-        iterative_cutpoints(maxbins * l + j, k) = -1;
+        iterative_cuts(maxbins * l + j, k) = -1;
       }
     }
   }
 
-  NumericMatrix cutpoints(niterations * maxbins, nbrU + 2);
-  for (int i = 0; i < cutpoints.nrow(); i++) {
-    for (int j = 0; j < (nbrU + 2); j++) {
-      cutpoints[i + j * cutpoints.nrow()] = iterative_cutpoints(i, j);
+  NumericMatrix cutpoints(niterations * maxbins, 2);
+  for (int i = 0; i < cutpoints.nrow(); ++i) {
+    for (int j = 0; j < 2; ++j) {
+      cutpoints[i + j * cutpoints.nrow()] = iterative_cuts(i, j);
     }
   }
 
   List result = List::create(
       _["cutpointsmatrix"] = cutpoints,
-      _["info"]            = res[0],
-      _["infok"]           = res[1],
-      _["efinfo"]          = max_res_ef);
+      _["info"]            = cuts_ptr->I,
+      _["infok"]           = cuts_ptr->Ik,
+      _["efinfo"]          = cuts_ptr->I_equal_freq_max);
 
   delete li_alloc_ptr;
   return result;

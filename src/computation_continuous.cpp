@@ -397,9 +397,10 @@ InfoBlock computeIxy(const TempGrid2d<int>& data,
     const TempVector<int>& var_idx, const TempVector<int>& levels,
     const TempVector<double>& weights, bool flag_sample_weights, int initbins,
     int maxbins, int cplx, std::shared_ptr<CtermCache> cache,
-    Grid2d<int>& iterative_cuts, bool save_cuts) {
+    std::shared_ptr<CutPointsInfo> cuts_info = nullptr) {
   TempAllocatorScope scope;
 
+  bool save_cuts = cuts_info && !cuts_info->cutpoints.empty();
   int n_samples = data.n_cols();
   double n_eff = accumulate(begin(weights), end(weights), 0.0);
 
@@ -462,8 +463,7 @@ InfoBlock computeIxy(const TempGrid2d<int>& data,
   // Run dynamic optimization with the best initial conditions.
 
   // Keep the result of each iteration
-  int iter_max =
-      iterative_cuts.size() == 0 ? kMaxIter : iterative_cuts.n_rows() - 1;
+  int iter_max = save_cuts ? cuts_info->cutpoints.n_rows() : kMaxIter;
   TempVector<double> I_list(iter_max);
   TempVector<double> Ik_list(iter_max);
   int sc_levels_x = r[0];  // Number of levels of the first variable
@@ -471,8 +471,7 @@ InfoBlock computeIxy(const TempGrid2d<int>& data,
   int rx = r[0];
   int ry = r[1];
   double Ixy_ui{0}, Ikxy_ui{0};  // to be returned
-  int step{0};
-  while (step < iter_max) {
+  for (int step = 0; step < iter_max; ++step) {
     if (is_continuous[var_idx[0]] == 1) {
       TempAllocatorScope scope;
       // optimize I(x;y) on x
@@ -518,8 +517,8 @@ InfoBlock computeIxy(const TempGrid2d<int>& data,
 
     if (save_cuts) {
       for (int j = 0; j < maxbins; ++j) {
-        iterative_cuts(step, j) = cut(0, j);
-        iterative_cuts(step, j + maxbins) = cut(1, j);
+        cuts_info->cutpoints(step, j) = cut(0, j);
+        cuts_info->cutpoints(step, j + maxbins) = cut(1, j);
       }
     }
     TempAllocatorScope scope;
@@ -561,7 +560,6 @@ InfoBlock computeIxy(const TempGrid2d<int>& data,
         break;
       }
     }
-    ++step;
 
     if (converged) break;
 
@@ -569,19 +567,16 @@ InfoBlock computeIxy(const TempGrid2d<int>& data,
     Ikxy_ui = res_temp.Ixy_ui - res_temp.kxy_ui;
     // Already optimal if any one of them is discrete
     if (!is_continuous[var_idx[0]] || !is_continuous[var_idx[1]]) break;
-  }  // while (step < iter_mi_max)
+  }  // for step
   // I and Ik can always be 0 by choosing 1 bin on either X or Y.
   if (Ikxy_ui < 0 && is_continuous[var_idx[0]] && is_continuous[var_idx[1]]) {
     Ixy_ui = 0;
     Ikxy_ui = 0;
   }
   if (save_cuts) {
-    iterative_cuts(step, 0) = -1;  // mark stop
-    iterative_cuts(step, 1) = Ikxy_ui / n_samples;
-    iterative_cuts(step, 2) = Ixy_ui / n_samples;
-    // Pass max res before optimization with equal freq
-    iterative_cuts(step, 3) = best_res;
-    iterative_cuts(step, maxbins) = -1;
+    cuts_info->Ik = Ikxy_ui / n_samples;
+    cuts_info->I = Ixy_ui / n_samples;
+    cuts_info->I_equal_freq_max = best_res;
   }
 
   return InfoBlock(n_samples, Ixy_ui, Ixy_ui - Ikxy_ui);
@@ -592,9 +587,10 @@ InfoBlock computeIxyui(const TempGrid2d<int>& data,
     const TempVector<int>& var_idx, const TempVector<int>& levels,
     const TempVector<double>& weights, bool flag_sample_weights, int initbins,
     int maxbins, int cplx, std::shared_ptr<CtermCache> cache,
-    Grid2d<int>& iterative_cuts, bool save_cuts) {
+    std::shared_ptr<CutPointsInfo> cuts_info = nullptr) {
   TempAllocatorScope scope;
 
+  bool save_cuts = cuts_info && !cuts_info->cutpoints.empty();
   int n_samples = data.n_cols();
   int n_nodes = var_idx.size();
   int n_ui = n_nodes - 2;
@@ -666,16 +662,14 @@ InfoBlock computeIxyui(const TempGrid2d<int>& data,
   TempVector<int> r_old(r);  // copy
 
   // Keep the result of each iteration
-  int iter_max =
-      iterative_cuts.size() == 0 ? kMaxIter : iterative_cuts.n_rows() - 1;
+  int iter_max = save_cuts ? cuts_info->cutpoints.n_rows() : kMaxIter;
   TempVector<double> I_list(iter_max);
   TempVector<double> Ik_list(iter_max);
   int sc_levels_x{0};  // Number of levels of the first variable
   int sc_levels_y{0};  // Number of levels of the second variable
   double Ixy_ui{0}, Ikxy_ui{0};  // to be returned
   // Run optimization with best initial equal freq.
-  int step{0};
-  while (step < iter_max) {
+  for (int step = 0; step < iter_max; ++step) {
     // optimize I(y;xu) over x and u
     for (int count = 0; count < kMaxIterOnU; ++count) {
       for (int l = 2; l < n_nodes; ++l) {
@@ -900,9 +894,8 @@ InfoBlock computeIxyui(const TempGrid2d<int>& data,
 
     if (save_cuts) {
       for (int j = 0; j < maxbins; ++j) {
-        for (int l = 0; l < n_nodes; ++l) {
-          iterative_cuts(step, j + l * maxbins) = cut(l, j);
-        }
+        cuts_info->cutpoints(step, j) = cut(0, j);
+        cuts_info->cutpoints(step, j + maxbins) = cut(1, j);
       }
     }
 
@@ -924,24 +917,19 @@ InfoBlock computeIxyui(const TempGrid2d<int>& data,
         break;
       }
     }
-    ++step;
-
     if (converged) break;
 
     Ixy_ui = cond_I;
     Ikxy_ui = cond_Ik;
-  }  // while (step < iter_cmi_max)
+  }  // for step
   // I and Ik can always be 0 by choosing 1 bin on either X or Y.
   if (Ikxy_ui < 0 && is_continuous[var_idx[0]] && is_continuous[var_idx[1]]) {
     Ixy_ui = 0;
     Ikxy_ui = 0;
   }
   if (save_cuts) {
-    for (int l = 0; l < n_nodes; ++l) {
-      iterative_cuts(step, l * maxbins) = -1;  // mark stop
-      iterative_cuts(step, l * maxbins + 1) = Ikxy_ui / n_samples;
-      iterative_cuts(step, l * maxbins + 2) = Ixy_ui / n_samples;
-    }
+    cuts_info->Ik = Ikxy_ui / n_samples;
+    cuts_info->I = Ixy_ui / n_samples;
   }
 
   return InfoBlock(n_samples, Ixy_ui, Ixy_ui - Ikxy_ui);
@@ -954,16 +942,16 @@ InfoBlock computeCondMutualInfo(const TempGrid2d<int>& data,
     const TempVector<int>& is_continuous, const TempVector<int>& var_idx,
     const TempVector<double>& sample_weights, bool flag_sample_weights,
     int initbins, int maxbins, int cplx, std::shared_ptr<CtermCache> cache,
-    Grid2d<int>& iterative_cuts, bool saveIterations) {
+    std::shared_ptr<CutPointsInfo> cuts_info) {
 
   if (data.n_rows() == 2) {
     return computeIxy(data, data_idx, is_continuous, var_idx, levels,
         sample_weights, flag_sample_weights, initbins, maxbins, cplx, cache,
-        iterative_cuts, saveIterations);
+        cuts_info);
   } else {
     return computeIxyui(data, data_idx, is_continuous, var_idx, levels,
         sample_weights, flag_sample_weights, initbins, maxbins, cplx, cache,
-        iterative_cuts, saveIterations);
+        cuts_info);
   }
 }
 
@@ -973,8 +961,7 @@ Info3PointBlock computeInfo3PointAndScore(const TempGrid2d<int>& data,
     const TempGrid2d<int>& data_idx, const TempVector<int>& levels,
     const TempVector<int>& is_continuous, const TempVector<int>& var_idx,
     const TempVector<double>& sample_weights, bool flag_sample_weights,
-    int initbins, int maxbins, int cplx, std::shared_ptr<CtermCache> cache,
-    Grid2d<int>& iterative_cuts, bool saveIterations) {
+    int initbins, int maxbins, int cplx, std::shared_ptr<CtermCache> cache) {
   TempAllocatorScope scope;
 
   int n_ui = data.n_rows() - 3;
@@ -982,7 +969,7 @@ Info3PointBlock computeInfo3PointAndScore(const TempGrid2d<int>& data,
   // I(x,y|u,z)
   InfoBlock res_temp = computeIxyui(data, data_idx, is_continuous, var_idx,
       levels, sample_weights, flag_sample_weights, initbins, maxbins, cplx,
-      cache, iterative_cuts, saveIterations);
+      cache);
   double I_xy_zu = res_temp.Ixy_ui;
   double Ik_xy_zu = res_temp.Ixy_ui - res_temp.kxy_ui;
 
@@ -992,12 +979,10 @@ Info3PointBlock computeInfo3PointAndScore(const TempGrid2d<int>& data,
   // Do opt run on I(X;Y|U)
   if (n_ui > 0) {
     res_temp = computeIxyui(data, data_idx, is_continuous, var_idx_t, levels,
-        sample_weights, flag_sample_weights, initbins, maxbins, cplx, cache,
-        iterative_cuts, saveIterations);
+        sample_weights, flag_sample_weights, initbins, maxbins, cplx, cache);
   } else {
     res_temp = computeIxy(data, data_idx, is_continuous, var_idx_t, levels,
-        sample_weights, flag_sample_weights, initbins, maxbins, cplx, cache,
-        iterative_cuts, saveIterations);
+        sample_weights, flag_sample_weights, initbins, maxbins, cplx, cache);
   }
   double I_xy_u = res_temp.Ixy_ui;
   double Ik_xy_u = res_temp.Ixy_ui - res_temp.kxy_ui;
@@ -1010,12 +995,10 @@ Info3PointBlock computeInfo3PointAndScore(const TempGrid2d<int>& data,
   // Do opt run on I(X;Z|U)
   if (n_ui > 0) {
     res_temp = computeIxyui(data, data_idx, is_continuous, var_idx_t, levels,
-        sample_weights, flag_sample_weights, initbins, maxbins, cplx, cache,
-        iterative_cuts, saveIterations);
+        sample_weights, flag_sample_weights, initbins, maxbins, cplx, cache);
   } else {
     res_temp = computeIxy(data, data_idx, is_continuous, var_idx_t, levels,
-        sample_weights, flag_sample_weights, initbins, maxbins, cplx, cache,
-        iterative_cuts, saveIterations);
+        sample_weights, flag_sample_weights, initbins, maxbins, cplx, cache);
   }
   double Ik_xz_u = res_temp.Ixy_ui - res_temp.kxy_ui;
 
@@ -1027,12 +1010,10 @@ Info3PointBlock computeInfo3PointAndScore(const TempGrid2d<int>& data,
   // Do opt run on I(Y;Z|U)
   if (n_ui > 0) {
     res_temp = computeIxyui(data, data_idx, is_continuous, var_idx_t, levels,
-        sample_weights, flag_sample_weights, initbins, maxbins, cplx, cache,
-        iterative_cuts, saveIterations);
+        sample_weights, flag_sample_weights, initbins, maxbins, cplx, cache);
   } else {
     res_temp = computeIxy(data, data_idx, is_continuous, var_idx_t, levels,
-        sample_weights, flag_sample_weights, initbins, maxbins, cplx, cache,
-        iterative_cuts, saveIterations);
+        sample_weights, flag_sample_weights, initbins, maxbins, cplx, cache);
   }
   double Ik_yz_u = res_temp.Ixy_ui - res_temp.kxy_ui;
 

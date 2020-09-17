@@ -64,7 +64,6 @@ struct Environment {
   int n_shuffles;
   double conf_threshold;
 
-  Grid2d<int> iterative_cuts;
   vector<double> sample_weights;
   bool flag_sample_weights;
   vector<double> noise_vec;

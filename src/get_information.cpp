@@ -128,7 +128,7 @@ double getInfo3PointOrScore(Environment& environment, int X, int Y, int Z,
     res = computeInfo3PointAndScore(data_red, data_idx_red, levels_red,
         is_continuous_red, var_idx_red, weights_red, flag_sample_weights,
         environment.initbins, environment.maxbins, environment.cplx,
-        environment.cache.cterm, environment.iterative_cuts);
+        environment.cache.cterm);
   }
   double info = res.Ixyz_ui - res.kxyz_ui;  // I(x;y;z|u) - cplx I(x;y;z|u)
   double score = res.score;                 // R(X,Y;Z|ui)
@@ -208,7 +208,7 @@ InfoBlock getCondMutualInfo(int X, int Y, const vector<int>& ui_list,
     res = computeCondMutualInfo(data_red, data_idx_red, levels_red,
         is_continuous_red, var_idx_red, weights_red, flag_sample_weights,
         environment.initbins, environment.maxbins, environment.cplx,
-        environment.cache.cterm, environment.iterative_cuts);
+        environment.cache.cterm);
   }
   if (std::fabs(res.Ixy_ui) < kPrecision) res.Ixy_ui = 0;
   if (std::fabs(res.kxy_ui) < kPrecision) res.kxy_ui = 0;
