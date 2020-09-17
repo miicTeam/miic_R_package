@@ -1,5 +1,7 @@
 # Development version
 
+# v1.5.1
+
 ## Fixes and improvements
 - Fix various bugs in the computation of information in the presence of NA
   values in the dataset.
