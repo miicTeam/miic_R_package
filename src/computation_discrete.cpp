@@ -15,8 +15,6 @@ namespace computation {
 
 using namespace miic::structure;
 using miic::utility::TempAllocatorScope;
-using std::log;
-using std::vector;
 
 InfoBlock computeCondMutualInfoDiscrete(const TempGrid2d<int>& data,
     const TempVector<int>& r_list, const TempVector<int>& var_idx,
@@ -27,20 +25,28 @@ InfoBlock computeCondMutualInfoDiscrete(const TempGrid2d<int>& data,
   int n_samples = data.n_cols();
   int id_x = var_idx[0], id_y = var_idx[1];
   int rx = r_list[id_x], ry = r_list[id_y];
-  TempVector<int> ui_list(begin(var_idx) + 2, end(var_idx));
+  double n_eff = accumulate(begin(weights), end(weights), 0.0);
 
+  if (var_idx.size() == 2) {
+    TempVector<int> xy_factors(n_samples);
+    int rxy = setJointFactors(data, r_list, var_idx, xy_factors);
+
+    TempVector<int> r_temp{rx, ry, rxy};
+    return computeMI(data.getConstRow(id_x), data.getConstRow(id_y), xy_factors,
+        r_temp, n_eff, weights, cache, cplx, 0);
+  }
+
+  TempVector<int> ui_list(begin(var_idx) + 2, end(var_idx));
   TempVector<int> order = getDataOrder(data, r_list, var_idx);
   TempVector<int> hash_u(n_samples, 0);
-  int rui = fillHashList(data, r_list, ui_list, hash_u);
-
-  int Nyui{0}, Nui{0}, Ntot{0};
-  double info_xui_y{0}, info_yui_x{0}, info_ui_y{0}, info_ui_x{0};
-  double logC_xui_y{0}, logC_yui_x{0}, logC_ui_y{0}, logC_ui_x{0};
-  // initialization of counts and mutual infos & logCs
-  TempVector<int> Nxui(rx, 0);
-  TempVector<int> Nx(rx, 0);
-  TempVector<int> Ny(ry, 0);
-
+  int ru = fillHashList(data, r_list, ui_list, hash_u);
+  // Entropy terms
+  double Hu{0}, Huy{0}, Hux{0}, Huyx{0};
+  // Complexity terms
+  double logC_ux_y{0}, logC_uy_x{0}, logC_u_y{0}, logC_u_x{0};
+  // Counting variables
+  int Nu{0}, Nuy{0}, N_total{0};
+  TempVector<int> Nux_list(rx, 0);
   // Sentinels whose change of value (compared to the next sample) indicates
   // that the related counts should be added to mutual information (as NlogN)
   int X{data(id_x, order[0])};
@@ -50,10 +56,10 @@ InfoBlock computeCondMutualInfoDiscrete(const TempGrid2d<int>& data,
   int Lui = hash_u[order[0]];
   int Lui_next{-1};
 
-  double Pxyui = 0;
+  double Puyx{0};
   // make the counts and compute mutual infos & logCs
   for (int k = 0; k < n_samples; ++k) {
-    Pxyui += weights[order[k]];
+    Puyx += weights[order[k]];
     int i_next = k + 1 < n_samples ? order[k + 1] : -1;
     if (i_next != -1) {
       X_next = data(id_x, i_next);
@@ -62,33 +68,27 @@ InfoBlock computeCondMutualInfoDiscrete(const TempGrid2d<int>& data,
       if (X_next == X && Y_next == Y && Lui_next == Lui) continue;
     }
     // Conclude on current count
-    int Nxyui = (int)Pxyui;
-    if (Nxyui > 0) {
-      Nui += Nxyui;
-      Nyui += Nxyui;
-      Nxui[X] += Nxyui;
-      Nx[X] += Nxyui;
-      Ny[Y] += Nxyui;
-      Ntot += Nxyui;
+    int Nuyx = (int)Puyx;
+    if (Nuyx > 0) {
+      Nu += Nuyx;
+      Nuy += Nuyx;
+      Nux_list[X] += Nuyx;
+      N_total += Nuyx;
 
-      double NlogN = Nxyui * cache->getLog(Nxyui);
-      info_xui_y += NlogN;
-      info_yui_x += NlogN;
+      Huyx -= Nuyx * cache->getLog(Nuyx);
     }
-    Pxyui = 0;  // reset cumulative weight
+    Puyx = 0;  // reset cumulative weight
     if (i_next != -1) {
       X = X_next;
       if (Y_next == Y && Lui_next == Lui) continue;
     }
     // Conclude on current count
-    if (Nyui > 0) {
-      double NlogN = Nyui * cache->getLog(Nyui);
-      info_yui_x -= NlogN;
-      info_ui_y += NlogN;
+    if (Nuy > 0) {
+      Huy -= Nuy * cache->getLog(Nuy);
       if (cplx != MDL) {
-        logC_yui_x += cache->getLogC(Nyui, rx);
+        logC_uy_x += cache->getLogC(Nuy, rx);
       }
-      Nyui = 0;
+      Nuy = 0;
     }
     if (i_next != -1) {
       Y = Y_next;
@@ -96,61 +96,37 @@ InfoBlock computeCondMutualInfoDiscrete(const TempGrid2d<int>& data,
       Lui = Lui_next;
     }
     // Conclude on current count
-    for (auto& Nxuij : Nxui) {
-      if (Nxuij > 0) {
-        double NlogN = Nxuij * cache->getLog(Nxuij);
-        info_xui_y -= NlogN;
-        info_ui_x += NlogN;
+    for (auto& Nxu : Nux_list) {
+      if (Nxu > 0) {
+        Hux -= Nxu * cache->getLog(Nxu);
         if (cplx != MDL) {
-          logC_xui_y += cache->getLogC(Nxuij, ry);
+          logC_ux_y += cache->getLogC(Nxu, ry);
         }
-        Nxuij = 0;  // reset counter
+        Nxu = 0;  // reset counter
       }
     }
-    if (Nui > 0) {
-      double NlogN = Nui * cache->getLog(Nui);
-      info_ui_y -= NlogN;
-      info_ui_x -= NlogN;
+    if (Nu > 0) {
+      Hu -= Nu * cache->getLog(Nu);
       if (cplx != MDL) {
-        logC_ui_x += cache->getLogC(Nui, rx);
-        logC_ui_y += cache->getLogC(Nui, ry);
+        logC_u_x += cache->getLogC(Nu, rx);
+        logC_u_y += cache->getLogC(Nu, ry);
       }
-      Nui = 0;
+      Nu = 0;
     }
   }
-  // increment for info for Nx[X] and Ny[Y] contributions
-  for (int j = 0; j < rx; j++) {
-    int Nxj = Nx[j];
-    if (Nxj > 0) {
-      double NlogN = Nxj * log(Nxj / (1.0 * Ntot));
-      info_yui_x -= NlogN;
-      info_ui_x -= NlogN;
-    }
-  }
-  for (int j = 0; j < ry; j++) {
-    int Nyj = Ny[j];
-    if (Nyj > 0) {
-      double NlogN = Nyj * log(Nyj / (1.0 * Ntot));
-      info_xui_y -= NlogN;
-      info_ui_y -= NlogN;
-    }
-  }
-
-  double info3xy_ui = 0.5 * (info_xui_y + info_yui_x);
-  double info2xy_ui = 0.5 * (info_ui_y + info_ui_x);
 
   if (cplx == MDL) {
-    double logN = cache->getLog(Ntot);
-    logC_xui_y = 0.5 * (ry - 1) * (rx * rui - 1) * logN;
-    logC_yui_x = 0.5 * (rx - 1) * (ry * rui - 1) * logN;
-    logC_ui_y = 0.5 * (ry - 1) * (rui - 1) * logN;
-    logC_ui_x = 0.5 * (rx - 1) * (rui - 1) * logN;
+    double logN = cache->getLog(N_total);
+    logC_ux_y = 0.5 * (ry - 1) * (rx * ru - 1) * logN;
+    logC_uy_x = 0.5 * (rx - 1) * (ry * ru - 1) * logN;
+    logC_u_y = 0.5 * (ry - 1) * (ru - 1) * logN;
+    logC_u_x = 0.5 * (rx - 1) * (ru - 1) * logN;
   }
 
-  double logC3xy_ui = 0.5 * (logC_xui_y + logC_yui_x);
-  double logC2xy_ui = 0.5 * (logC_ui_y + logC_ui_x);
+  double Ixy_ui = Hux + Huy - Hu - Huyx;
+  double kxy_ui = 0.5 * (logC_ux_y - logC_u_y + logC_uy_x - logC_u_x);
 
-  return InfoBlock{Ntot, info3xy_ui - info2xy_ui, logC3xy_ui - logC2xy_ui};
+  return InfoBlock{N_total, Ixy_ui, kxy_ui};
 }
 
 Info3PointBlock computeInfo3PointAndScoreDiscrete(const TempGrid2d<int>& data,
@@ -168,25 +144,21 @@ Info3PointBlock computeInfo3PointAndScoreDiscrete(const TempGrid2d<int>& data,
 
   TempVector<int> order = getDataOrder(data, r_list, xyui_list);
   TempVector<int> hash_u(n_samples, 0);
-  int rui = fillHashList(data, r_list, ui_list, hash_u);
-
-  double info_xui_y{0}, info_yui_x{0}, info_ui_y{0}, info_ui_x{0};
-  double logC_xui_y{0}, logC_yui_x{0}, logC_ui_y{0}, logC_ui_x{0};
-
-  double info_xuiz_y{0}, info_yuiz_x{0}, info_uiz_y{0}, info_uiz_x{0};
-  double logC_xuiz_y{0}, logC_yuiz_x{0}, logC_uiz_y{0}, logC_uiz_x{0};
-
-  double info_xui_z{0}, info_yui_z{0}, info_ui_z{0};
-  double logC_xui_z{0}, logC_yui_z{0}, logC_ui_z{0};
-
-  int Nyui{0}, Nui{0}, Ntot{0};
-  TempVector<int> Nxui(rx, 0);
-  TempVector<int> Nx(rx, 0);
-  TempVector<int> Ny(ry, 0);
-  TempVector<int> Nyuiz(rz, 0);
-  TempVector<int> Nuiz(rz, 0);
-  TempVector<int> Nz(rz, 0);
-  TempGrid2d<int> Nxuiz(rx, rz, 0);  // [X][Z]
+  int ru = fillHashList(data, r_list, ui_list, hash_u);
+  // Entropy terms
+  double Hu{0}, Huy{0}, Hux{0}, Huyx{0};
+  double Hzu{0}, Hzuy{0}, Hzux{0}, Hzuyx{0};
+  // Complexity terms
+  double logC_ux_y{0}, logC_uy_x{0}, logC_u_y{0}, logC_u_x{0};
+  double logC_zux_y{0}, logC_zuy_x{0}, logC_zu_y{0}, logC_zu_x{0};
+  double logC_ux_z{0}, logC_uy_z{0}, logC_u_z{0};
+  // Counting variables
+  int Nuy{0}, Nu{0}, N_total{0};
+  TempVector<int> Nux_list(rx, 0);
+  TempVector<int> Nzu_list(rz, 0);
+  TempVector<int> Nzuy_list(rz, 0);
+  TempGrid2d<int> Nzux_list(rx, rz, 0);  // [X][Z]
+  TempVector<double> Pzuyx_list(rz, 0);
   // Sentinels whose change of value (compared to the next sample) indicates
   // that the related counts should be added to mutual information (as NlogN)
   int X{data(id_x, order[0])};
@@ -195,12 +167,10 @@ Info3PointBlock computeInfo3PointAndScoreDiscrete(const TempGrid2d<int>& data,
   int Y_next{-1};
   int Lui = hash_u[order[0]];
   int Lui_next{-1};
-
-  TempVector<double> Pxyuiz(rz, 0);
-  // make the counts and compute mutual infos & logCs
+  // make the counts and compute entropy and logCs
   for (int k = 0; k < n_samples; ++k) {
     int Z = data(id_z, order[k]);
-    Pxyuiz[Z] += weights[order[k]];
+    Pzuyx_list[Z] += weights[order[k]];
     int i_next = k + 1 < n_samples ? order[k + 1] : -1;
     if (i_next != -1) {
       X_next = data(id_x, i_next);
@@ -209,220 +179,137 @@ Info3PointBlock computeInfo3PointAndScoreDiscrete(const TempGrid2d<int>& data,
       if (X_next == X && Y_next == Y && Lui_next == Lui) continue;
     }
     // Conclude on current count
-    int Nxyui = 0;
+    int Nuyx = 0;
     for (int l = 0; l < rz; l++) {
-      double Pxyuizl = Pxyuiz[l];
-      if (Pxyuizl == 0) continue;
+      double Pzuyx = Pzuyx_list[l];
+      if (Pzuyx == 0) continue;
 
-      int Nxyuizl = (int)Pxyuizl;
-      if (Nxyuizl > 0) {
-        double NlogN = Nxyuizl * cache->getLog(Nxyuizl);
-        info_xuiz_y += NlogN;
-        info_yuiz_x += NlogN;
+      int Nzuyx = (int)Pzuyx;
+      if (Nzuyx > 0) {
+        Hzuyx -= Nzuyx * cache->getLog(Nzuyx);
 
-        Nxyui += Nxyuizl;
-        Nz[l] += Nxyuizl;
-        Nuiz[l] += Nxyuizl;
-        Nyuiz[l] += Nxyuizl;
-        Nxuiz(X, l) += Nxyuizl;
+        Nuyx += Nzuyx;
+        Nzu_list[l] += Nzuyx;
+        Nzuy_list[l] += Nzuyx;
+        Nzux_list(X, l) += Nzuyx;
       }
-      Pxyuiz[l] = 0;
+      Pzuyx_list[l] = 0;
     }
 
-    if (Nxyui > 0) {
-      double NlogN = Nxyui * cache->getLog(Nxyui);
-      info_xui_y += NlogN;
-      info_yui_x += NlogN;
+    if (Nuyx > 0) {
+      Huyx -= Nuyx * cache->getLog(Nuyx);
 
-      Ntot += Nxyui;
-      Nui += Nxyui;
-      Nyui += Nxyui;
-      Nxui[X] += Nxyui;
-      Nx[X] += Nxyui;
-      Ny[Y] += Nxyui;
+      N_total += Nuyx;
+      Nu += Nuyx;
+      Nuy += Nuyx;
+      Nux_list[X] += Nuyx;
     }
     if (i_next != -1) {
       X = X_next;
       if (Y_next == Y && Lui_next == Lui) continue;
     }
     // Conclude on current count
-    if (Nyui > 0) {
-      double NlogN = Nyui * cache->getLog(Nyui);
-      info_yui_x -= NlogN;
-      info_yui_z -= NlogN;
-      info_ui_y += NlogN;
+    if (Nuy > 0) {
+      Huy -= Nuy * cache->getLog(Nuy);
       if (cplx != MDL) {
-        logC_yui_x += cache->getLogC(Nyui, rx);
-        logC_yui_z += cache->getLogC(Nyui, rz);
+        logC_uy_x += cache->getLogC(Nuy, rx);
+        logC_uy_z += cache->getLogC(Nuy, rz);
       }
-      for (auto& Nyuizl : Nyuiz) {
-        if (Nyuizl > 0) {
-          double NlogN = Nyuizl * cache->getLog(Nyuizl);
-          info_yui_z += NlogN;
-          info_uiz_y += NlogN;
-          info_yuiz_x -= NlogN;
+      for (auto& Nzuy : Nzuy_list) {
+        if (Nzuy > 0) {
+          Hzuy -= Nzuy * cache->getLog(Nzuy);
           if (cplx != MDL) {
-            logC_yuiz_x += cache->getLogC(Nyuizl, rx);
+            logC_zuy_x += cache->getLogC(Nzuy, rx);
           }
-          Nyuizl = 0;
+          Nzuy = 0;
         }
       }
-      Nyui = 0;
+      Nuy = 0;
     }
     if (i_next != -1) {
       Y = Y_next;
       if (Lui_next == Lui) continue;
       Lui = Lui_next;
     }
-    if (Nui == 0) continue;
+    if (Nu == 0) continue;
 
-    double NlogN = Nui * cache->getLog(Nui);
-    info_ui_x -= NlogN;
-    info_ui_y -= NlogN;
-    info_ui_z -= NlogN;
+    Hu -= Nu * cache->getLog(Nu);
     if (cplx != MDL) {
-      logC_ui_x += cache->getLogC(Nui, rx);
-      logC_ui_y += cache->getLogC(Nui, ry);
-      logC_ui_z += cache->getLogC(Nui, rz);
+      logC_u_x += cache->getLogC(Nu, rx);
+      logC_u_y += cache->getLogC(Nu, ry);
+      logC_u_z += cache->getLogC(Nu, rz);
     }
-    Nui = 0;
+    Nu = 0;
 
-    for (auto& Nuizl : Nuiz) {
-      if (Nuizl > 0) {
-        double NlogN = Nuizl * cache->getLog(Nuizl);
-        info_ui_z += NlogN;
-        info_uiz_x -= NlogN;
-        info_uiz_y -= NlogN;
+    for (auto& Nzu : Nzu_list) {
+      if (Nzu > 0) {
+        Hzu -= Nzu * cache->getLog(Nzu);
         if (cplx != MDL) {
-          logC_uiz_x += cache->getLogC(Nuizl, rx);
-          logC_uiz_y += cache->getLogC(Nuizl, ry);
+          logC_zu_x += cache->getLogC(Nzu, rx);
+          logC_zu_y += cache->getLogC(Nzu, ry);
         }
-        Nuizl = 0;
+        Nzu = 0;
       }
     }
 
     for (int j = 0; j < rx; j++) {
-      int Nxuij = Nxui[j];
-      if (Nxuij == 0) continue;
+      int Nux = Nux_list[j];
+      if (Nux == 0) continue;
 
-      double NlogN = Nxuij * cache->getLog(Nxuij);
-      info_xui_y -= NlogN;
-      info_xui_z -= NlogN;
-      info_ui_x += NlogN;
+      Hux -= Nux * cache->getLog(Nux);
       if (cplx != MDL) {
-        logC_xui_y += cache->getLogC(Nxuij, ry);
-        logC_xui_z += cache->getLogC(Nxuij, rz);
+        logC_ux_y += cache->getLogC(Nux, ry);
+        logC_ux_z += cache->getLogC(Nux, rz);
       }
-      Nxui[j] = 0;
+      Nux_list[j] = 0;
 
       for (int l = 0; l < rz; l++) {
-        int Nxuizjl = Nxuiz(j, l);
-        if (Nxuizjl == 0) continue;
+        int Nzux = Nzux_list(j, l);
+        if (Nzux == 0) continue;
 
-        double NlogN = Nxuizjl * cache->getLog(Nxuizjl);
-        info_xui_z += NlogN;
-        info_uiz_x += NlogN;
-        info_xuiz_y -= NlogN;
+        Hzux -= Nzux * cache->getLog(Nzux);
         if (cplx != MDL) {
-          logC_xuiz_y += cache->getLogC(Nxuizjl, ry);
+          logC_zux_y += cache->getLogC(Nzux, ry);
         }
-        Nxuiz(j, l) = 0;
+        Nzux_list(j, l) = 0;
       }
     }
   }
-  // increment info with Nx[X], Ny[Y] and Nz[Z] contributions
-  for (int j = 0; j < rx; j++) {
-    int Nxj = Nx[j];
-    if (Nxj > 0) {
-      double NlogN = Nxj * log(Nxj / (1.0 * Ntot));
-      info_yui_x -= NlogN;
-      info_ui_x -= NlogN;
-      info_uiz_x -= NlogN;
-      info_yuiz_x -= NlogN;
-      Nx[j] = 0;
-    }
-  }
-  for (int j = 0; j < ry; j++) {
-    int Nyj = Ny[j];
-    if (Nyj > 0) {
-      double NlogN = Nyj * log(Nyj / (1.0 * Ntot));
-      info_xui_y -= NlogN;
-      info_ui_y -= NlogN;
-      info_uiz_y -= NlogN;
-      info_xuiz_y -= NlogN;
-      Ny[j] = 0;
-    }
-  }
-  for (int l = 0; l < rz; l++) {
-    int Nzl = Nz[l];
-    if (Nzl > 0) {
-      double NlogN = Nzl * log(Nzl / (1.0 * Ntot));
-      info_xui_z -= NlogN;
-      info_yui_z -= NlogN;
-      info_ui_z -= NlogN;
-      Nz[l] = 0;
-    }
-  }
-  // NI(xy|ui)
-  double info3xy_ui = 0.5 * (info_xui_y + info_yui_x);
-  double info2xy_ui = 0.5 * (info_ui_y + info_ui_x);
 
-  double logN{0};
   // check maximum mutual infos - cplx terms
   if (cplx == MDL) {
-    logN = cache->getLog(Ntot);
-    logC_xui_y = 0.5 * (ry - 1) * (rx * rui - 1) * logN;
-    logC_yui_x = 0.5 * (rx - 1) * (ry * rui - 1) * logN;
-    logC_ui_y = 0.5 * (ry - 1) * (rui - 1) * logN;
-    logC_ui_x = 0.5 * (rx - 1) * (rui - 1) * logN;
-    logC_uiz_y = 0.5 * (ry - 1) * (rz * rui - 1) * logN;
-    logC_yui_z = 0.5 * (rz - 1) * (ry * rui - 1) * logN;
-    logC_ui_z = 0.5 * (rz - 1) * (rui - 1) * logN;
+    double logN = cache->getLog(N_total);
+    logC_ux_y = 0.5 * (ry - 1) * (rx * ru - 1) * logN;
+    logC_uy_x = 0.5 * (rx - 1) * (ry * ru - 1) * logN;
+    logC_u_y = 0.5 * (ry - 1) * (ru - 1) * logN;
+    logC_u_x = 0.5 * (rx - 1) * (ru - 1) * logN;
+    logC_zu_y = 0.5 * (ry - 1) * (rz * ru - 1) * logN;
+    logC_uy_z = 0.5 * (rz - 1) * (ry * ru - 1) * logN;
+    logC_u_z = 0.5 * (rz - 1) * (ru - 1) * logN;
+
+    logC_zu_x = 0.5 * (rx - 1) * (rz * ru - 1) * logN;
+    logC_ux_z = 0.5 * (rz - 1) * (rx * ru - 1) * logN;
+
+    int rzu = ru * rz;
+    logC_zux_y = 0.5 * (ry - 1) * (rx * rzu - 1) * logN;
+    logC_zuy_x = 0.5 * (rx - 1) * (ry * rzu - 1) * logN;
+    logC_zu_y = 0.5 * (ry - 1) * (rzu - 1) * logN;
+    logC_zu_x = 0.5 * (rx - 1) * (rzu - 1) * logN;
   }
-  double logC3xy_ui = 0.5 * (logC_xui_y + logC_yui_x);
-  double logC2xy_ui = 0.5 * (logC_ui_y + logC_ui_x);
-  // NI(yz|ui)
-  double info3yz_ui = 0.5 * (info_uiz_y + info_yui_z);
-  double info2yz_ui = 0.5 * (info_ui_y + info_ui_z);
 
-  double logC3yz_ui = 0.5 * (logC_uiz_y + logC_yui_z);
-  double logC2yz_ui = 0.5 * (logC_ui_y + logC_ui_z);
-  // NI(xz|ui)
-  double info3xz_ui = 0.5 * (info_xui_z + info_uiz_x);
-  double info2xz_ui = 0.5 * (info_ui_z + info_ui_x);
+  double info_xy_ui = Hux + Huy - Hu - Huyx;
+  double logC_xy_ui = 0.5 * (logC_ux_y - logC_u_y + logC_uy_x - logC_u_x);
+  double info_yz_ui = Huy + Hzu - Hu - Hzuy;
+  double logC_yz_ui = 0.5 * (logC_zu_y - logC_u_y + logC_uy_z - logC_u_z);
+  double info_xz_ui = Hux + Hzu - Hu - Hzux;
+  double logC_xz_ui = 0.5 * (logC_zu_x - logC_u_x + logC_ux_z - logC_u_z);
+  double info_xy_uiz = Hzux + Hzuy - Hzu - Hzuyx;
+  double logC_xy_uiz = 0.5 * (logC_zux_y - logC_zu_y + logC_zuy_x - logC_zu_x);
 
-  if (cplx == MDL) {
-    logC_uiz_x = 0.5 * (rx - 1) * (rz * rui - 1) * logN;
-    logC_xui_z = 0.5 * (rz - 1) * (rx * rui - 1) * logN;
-  }
-  double logC3xz_ui = 0.5 * (logC_uiz_x + logC_xui_z);
-  double logC2xz_ui = 0.5 * (logC_ui_x + logC_ui_z);
-  // NI(xy|uiz)
-  double info3xy_uiz = 0.5 * (info_xuiz_y + info_yuiz_x);
-  double info2xy_uiz = 0.5 * (info_uiz_y + info_uiz_x);
-
-  if (cplx == MDL) {
-    rui *= rz;
-    logC_xuiz_y = 0.5 * (ry - 1) * (rx * rui - 1) * logN;
-    logC_yuiz_x = 0.5 * (rx - 1) * (ry * rui - 1) * logN;
-    logC_uiz_y = 0.5 * (ry - 1) * (rui - 1) * logN;
-    logC_uiz_x = 0.5 * (rx - 1) * (rui - 1) * logN;
-  }
-  double logC3xy_uiz = 0.5 * (logC_xuiz_y + logC_yuiz_x);
-  double logC2xy_uiz = 0.5 * (logC_uiz_y + logC_uiz_x);
-  double info_xy_ui = info3xy_ui - info2xy_ui;
-  double logC_xy_ui = logC3xy_ui - logC2xy_ui;
-  double info_yz_ui = info3yz_ui - info2yz_ui;
-  double logC_yz_ui = logC3yz_ui - logC2yz_ui;
-  double info_xz_ui = info3xz_ui - info2xz_ui;
-  double logC_xz_ui = logC3xz_ui - logC2xz_ui;
-  double info_xy_uiz = info3xy_uiz - info2xy_uiz;
-  double logC_xy_uiz = logC3xy_uiz - logC2xy_uiz;
-
-  double xz = (info_xz_ui - info_xy_ui) - (logC_xz_ui - logC_xy_ui);
-  double yz  = (info_yz_ui - info_xy_ui) - (logC_yz_ui - logC_xy_ui);
+  double xz = (info_xz_ui - logC_xz_ui) - (info_xy_ui - logC_xy_ui);
+  double yz  = (info_yz_ui - logC_yz_ui) - (info_xy_ui - logC_xy_ui);
   // Data processing inequality
-  double dpi = std::fmin(xz, yz) - log1p(exp(-std::fabs(xz - yz)));
+  double dpi = std::fmin(xz, yz) - std::log1p(exp(-std::fabs(xz - yz)));
 
   double Ixyz_ui = info_xy_ui - info_xy_uiz;
   double kxyz_ui = logC_xy_ui - logC_xy_uiz;
