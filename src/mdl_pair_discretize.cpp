@@ -1,107 +1,91 @@
 #include <Rcpp.h>
-#include <float.h>
-#include <limits.h>
-#include <math.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <time.h>
-#include <unistd.h>
 
-#include <algorithm>
-#include <iostream>
-#include <map>
-#include <sstream>
-#include <string>
-#include <tuple>
+#include <algorithm>  // std::max_element
+#include <array>
+#include <numeric>  // std::iota
 
-#include "compute_info.h"
-#include "info_cnt.h"
-#include "mutual_information.h"
+#include "computation_continuous.h"
+#include "environment.h"
+#include "linear_allocator.h"
 #include "utilities.h"
 
 #define STEPMAX 50
-#define STEPMAXOUTER 50
-#define EPS 1e-5
-#define FLAG_CPLX 1
 
 using Rcpp::_;
-using Rcpp::as;
-using Rcpp::DataFrame;
 using Rcpp::List;
-using std::string;
+using Rcpp::NumericMatrix;
 using std::vector;
-using namespace Rcpp;
 using namespace miic::computation;
 using namespace miic::structure;
 using namespace miic::utility;
 
 // [[Rcpp::export]]
-List mydiscretizeMutual(List input_data, List arg_list){
-
-  //List mydiscretizeMutual(SEXP RmyDist1, SEXP RmyDist2, SEXP RflatU,
-  //  SEXP RnbrU, SEXP RmaxBins, SEXP Rinitbin, SEXP Rcplx, SEXP Rcnt_vec,
-  //  SEXP Rnlevels, SEXP ReffN, SEXP RsampleWeights) {
-
-  miic::structure::Environment environment(input_data, arg_list);
+List mydiscretizeMutual(List input_data, List arg_list) {
+  Environment environment(input_data, arg_list);
+  int nbrU = environment.n_nodes - 2;
   int maxbins = environment.maxbins;
-  int nbrU = environment.n_nodes-2;
 
-  vector<int> posArray(nbrU+2);
-  for(int i=0; i<(nbrU+2); i++) posArray[i] = i;
+  size_t li_alloc_size = getLinearAllocatorSize(environment.n_samples,
+      environment.n_nodes, maxbins, environment.initbins,
+      environment.is_continuous, environment.levels);
+  li_alloc_ptr = new LinearAllocator(li_alloc_size);
+
+  vector<int> ui_list(nbrU);
+  std::iota(begin(ui_list), end(ui_list), 2);
 
   // Mark rows containing NAs and count the number of complete samples
-  vector<int> sample_nonNA(environment.n_samples);
-  vector<int> NAs_count(environment.n_samples);
-  int samplesNotNA = count_non_NAs(nbrU, sample_nonNA,
-    NAs_count, posArray, environment);
+  TempVector<int> sample_nonNA(environment.n_samples);
+  TempVector<int> NAs_count(environment.n_samples);
+  int samplesNotNA = countNonNA(0, 1, /*Z*/ -1, ui_list,
+      environment.data_numeric, sample_nonNA, NAs_count);
 
   // Allocate data reducted *_red without rows containing NAs
   // All *_red variables are passed to the optimization routine
-  vector<int> AllLevels_red(nbrU+2);
-  vector<int> cnt_red(nbrU+2);
-  vector<int> posArray_red(nbrU+2);
-  vector<double> sample_weights_red(samplesNotNA);
-  vector<vector<int> > dataNumeric_red(nbrU+2, vector<int> (samplesNotNA));
-  vector<vector<int> > dataNumericIdx_red(nbrU+2, vector<int> (samplesNotNA));
+  TempVector<int> AllLevels_red(nbrU + 2);
+  TempVector<int> cnt_red(nbrU + 2);
+  TempVector<int> posArray_red(nbrU + 2);
+  TempVector<double> sample_weights_red(samplesNotNA);
+  TempGrid2d<int> dataNumeric_red(nbrU + 2, samplesNotNA);
+  TempGrid2d<int> dataNumericIdx_red(nbrU + 2, samplesNotNA);
 
-  bool flag_sample_weights = filter_NAs(nbrU, AllLevels_red, cnt_red,
-    posArray_red, posArray, dataNumeric_red, dataNumericIdx_red,
-    sample_weights_red, sample_nonNA, NAs_count,
-    environment);
+  bool any_na = environment.has_na[0] || environment.has_na[1];
+  bool flag_sample_weights = filterNA(/*X*/ 0, /*Y*/ 1, /*Z*/ -1, ui_list,
+      environment.data_numeric, environment.data_numeric_idx,
+      environment.levels, environment.is_continuous, environment.sample_weights,
+      sample_nonNA, NAs_count, dataNumeric_red, dataNumericIdx_red,
+      AllLevels_red, cnt_red, posArray_red, sample_weights_red, any_na);
 
-  int** iterative_cuts = (int**)calloc(STEPMAX + 1, sizeof(int*));
-  for (int i = 0; i < STEPMAX + 1; i++) {
-    iterative_cuts[i] = (int*)calloc(maxbins * (2 + nbrU), sizeof(int));
-  }
-  environment.iterative_cuts = iterative_cuts;
+  environment.iterative_cuts = Grid2d<int>(STEPMAX + 1, maxbins * (2 + nbrU));
 
-  double* res = compute_mi_cond_alg1(dataNumeric_red, dataNumericIdx_red,
-      AllLevels_red, cnt_red, posArray_red, nbrU, environment.n_samples,
-      sample_weights_red, flag_sample_weights, environment, true);
+  computeCondMutualInfo(dataNumeric_red, dataNumericIdx_red, AllLevels_red,
+      cnt_red, posArray_red, sample_weights_red, flag_sample_weights,
+      environment.initbins, environment.maxbins, environment.cplx,
+      environment.cache.cterm, environment.iterative_cuts,
+      /*saveIterations*/ true);
 
   int niterations = 0;
   int i = 0;
-  double max_res_ef;
-  vector<vector<int> > iterative_cutpoints(
-    STEPMAX * maxbins, vector<int>(nbrU + 2));
+  double max_res_ef = -1;
+  TempGrid2d<int> iterative_cutpoints(STEPMAX * maxbins, nbrU + 2);
+  std::array<double, 2> res{0, 0};
   for (int l = 0; l < STEPMAX + 1; l++) {
-    if (iterative_cuts[l][0] == -1) {
+    if (environment.iterative_cuts(l, 0) == -1) {
       niterations = l;
-      res[1] = iterative_cuts[l][1] / 100000.0;
-      res[0] = iterative_cuts[l][2] / 100000.0;
-      max_res_ef = iterative_cuts[l][3] / 100000.0;
+      res[1] = environment.iterative_cuts(l, 1) / 100000.0;
+      res[0] = environment.iterative_cuts(l, 2) / 100000.0;
+      max_res_ef = environment.iterative_cuts(l, 3) / 100000.0;
       break;
     }
     for (int k = 0; k < (nbrU + 2); k++) {
       i = 0;
-      while (iterative_cuts[l][i + maxbins * k] <
-             iterative_cuts[l][i + maxbins * k + 1]) {
-        iterative_cutpoints[maxbins * l + i][k] =
-            iterative_cuts[l][i + maxbins * k];
+      while (environment.iterative_cuts(l, i + maxbins * k) <
+             environment.iterative_cuts(l, i + maxbins * k + 1)) {
+        iterative_cutpoints(maxbins * l + i, k) =
+            environment.iterative_cuts(l, i + maxbins * k);
         i++;
       }
       for (int j = i; j < maxbins; j++) {
-        iterative_cutpoints[maxbins * l + j][k] = -1;
+        iterative_cutpoints(maxbins * l + j, k) = -1;
       }
     }
   }
@@ -109,7 +93,7 @@ List mydiscretizeMutual(List input_data, List arg_list){
   NumericMatrix cutpoints(niterations * maxbins, nbrU + 2);
   for (int i = 0; i < cutpoints.nrow(); i++) {
     for (int j = 0; j < (nbrU + 2); j++) {
-      cutpoints[i + j * cutpoints.nrow()] = iterative_cutpoints[i][j];
+      cutpoints[i + j * cutpoints.nrow()] = iterative_cutpoints(i, j);
     }
   }
 
@@ -119,10 +103,6 @@ List mydiscretizeMutual(List input_data, List arg_list){
       _["infok"]           = res[1],
       _["efinfo"]          = max_res_ef);
 
-  for (int i = 0; i < (STEPMAX + 1); i++) {
-    free(iterative_cuts[i]);
-  }
-  free(iterative_cuts);
-
+  delete li_alloc_ptr;
   return result;
 }

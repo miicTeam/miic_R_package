@@ -1,27 +1,94 @@
 #ifndef MIIC_STRUCTURE_H_
 #define MIIC_STRUCTURE_H_
 
-#include <Rcpp.h>
-
-#include <array>
-#include <memory>  // std::shared_ptr
+#include <functional>  // std::reference_wrapper
+#include <memory>      // std::shared_ptr
 #include <set>
 #include <string>
+#include <type_traits>
 #include <vector>
+
+#include "linear_allocator.h"
 
 namespace miic {
 namespace structure {
 
-namespace structure_impl {
+namespace detail {
 
+using std::size_t;
 using std::string;
 using std::vector;
 
-template <typename T>
+// In absence of c++17 and to accomodate older compiler (ref: CWG 1558)
+template <typename... Ts>
+struct make_void {
+  typedef void type;
+};
+template <typename... Ts>
+using void_t = typename make_void<Ts...>::type;
+
+// SFINAE classes
+template <class T, class Index = size_t, class = void>
+struct has_subscript_operator : std::false_type {};
+template <class T>
+struct has_subscript_operator<T, size_t,
+    void_t<decltype(std::declval<T>()[std::declval<size_t>()])>>
+    : std::true_type {};
+
+template <class T, class Reduced = std::remove_reference_t<T>, class = void>
+struct is_int_container : std::false_type {};
+template <class T>
+struct is_int_container<T, std::remove_reference_t<T>,
+    void_t<std::enable_if_t<
+               has_subscript_operator<std::remove_reference_t<T>>::value>,
+        std::enable_if_t<std::is_same<
+            typename std::remove_reference_t<T>::value_type, int>::value>>>
+    : std::true_type {};
+
+template <typename T, typename Allocator = std::allocator<T>>
 struct Grid2d {
- private:
-  size_t rows_, cols_;
-  vector<T> data_;
+ public:
+  typedef T value_type;
+  // Wrapper class only for non-const instance
+  struct Row {
+   public:
+    typedef T value_type;
+    Row() = delete;
+    Row(Grid2d& parent, size_t row) : parent_(parent), row_(row) {}
+
+    T& operator()(size_t col) { return parent_(row_, col); }
+    const T& operator()(size_t col) const { return parent_(row_, col); }
+    T& operator[](size_t col) { return parent_(row_, col); }
+    const T& operator[](size_t col) const { return parent_(row_, col); }
+    size_t size() const { return parent_.n_cols(); }
+
+    auto begin() { return parent_.row_begin(row_); }
+    auto end() { return parent_.row_end(row_); }
+    auto begin() const { return parent_.row_begin(row_); }
+    auto end() const { return parent_.row_end(row_); }
+
+   private:
+    Grid2d& parent_;
+    size_t row_;
+  };
+  // Wrapper class for const instance
+  struct ConstRow {
+   public:
+    typedef T value_type;
+    ConstRow() = delete;
+    ConstRow(const Grid2d& parent, size_t row) : parent_(parent), row_(row) {}
+
+    const T& operator()(size_t col) const { return parent_(row_, col); }
+    const T& operator[](size_t col) const { return parent_(row_, col); }
+    size_t size() const { return parent_.n_cols(); }
+
+    auto begin() const { return parent_.row_begin(row_); }
+    auto end() const { return parent_.row_end(row_); }
+
+   private:
+    const Grid2d& parent_;
+    size_t row_;
+  };
 
  public:
   Grid2d() = default;
@@ -40,20 +107,45 @@ struct Grid2d {
   const T& operator()(size_t row, size_t col) const {
     return data_[row * cols_ + col];
   }
+  Row getRow(size_t row) { return Row(*this, row); }
+  ConstRow getConstRow(size_t row) const { return ConstRow(*this, row); }
 
-  size_t n_rows() { return rows_; }
-  size_t n_cols() { return cols_; }
-  size_t size() { return data_.size(); }
+  size_t n_rows() const { return rows_; }
+  size_t n_cols() const { return cols_; }
+  size_t size() const { return data_.size(); }
 
   auto begin() { return data_.begin(); }
   auto end() { return data_.end(); }
-  auto cbegin() const { return data_.cbegin(); }
-  auto cend() const { return data_.cend(); }
+  auto begin() const { return data_.cbegin(); }
+  auto end() const { return data_.cend(); }
 
   auto row_begin(size_t row) { return data_.begin() + row * cols_; }
-  auto row_end(size_t row) { return data_.end() + (row + 1) * cols_; }
-  auto row_cbegin(size_t row) const { return data_.cbegin() + row * cols_; }
-  auto row_cend(size_t row) const { return data_.cend() + (row + 1) * cols_; }
+  auto row_end(size_t row) { return data_.begin() + (row + 1) * cols_; }
+  auto row_begin(size_t row) const { return data_.cbegin() + row * cols_; }
+  auto row_end(size_t row) const { return data_.cbegin() + (row + 1) * cols_; }
+
+ private:
+  size_t rows_, cols_;
+  vector<T, Allocator> data_;
+};
+
+// Shifted conditional mutual information Nxy_ui * I(X;Y|ui) - k(X;Y|ui)
+struct InfoBlock {
+  int Nxy_ui;
+  double Ixy_ui;
+  double kxy_ui;
+
+  constexpr InfoBlock(int N, double I, double k)
+      : Nxy_ui(N), Ixy_ui(I), kxy_ui(k) {}
+};
+
+struct Info3PointBlock {
+  double score;
+  double Ixyz_ui;
+  double kxyz_ui;
+
+  constexpr Info3PointBlock(double R, double I, double k)
+      : score(R), Ixyz_ui(I), kxyz_ui(k) {}
 };
 
 struct EdgeSharedInfo {
@@ -61,8 +153,8 @@ struct EdgeSharedInfo {
   vector<int> ui_list;
   // {zi}: indices of candidate conditioning nodes
   vector<int> zi_list;
-  // Index of the last best contributor in zi_list
-  int z_name_idx = -1;
+  // Best candidate separating node
+  int top_z = -1;
   // Score of the best contributor
   double Rxyz_ui = 0;
   // Conditional mutual information
@@ -87,7 +179,7 @@ struct EdgeSharedInfo {
   void reset() {
     zi_list.clear();
     ui_list.clear();
-    z_name_idx = -1;
+    top_z = -1;
     Rxyz_ui = 0;
     Ixy_ui = Ixy;
     cplx = cplx_no_u;
@@ -97,7 +189,7 @@ struct EdgeSharedInfo {
 
   void setUndirected() {
     ui_list.clear();
-    z_name_idx = -1;
+    top_z = -1;
     Rxyz_ui = 0;
     Ixy_ui = Ixy;
     cplx = cplx_no_u;
@@ -113,7 +205,7 @@ struct Node {
 
 struct Edge {
   // Edge is stored in Edge** edges
-  // Status code (suppose edges[X][Y]):
+  // Status code (suppose edges(X, Y)):
   // 0: not connected;
   // 1: connected and undirected;
   // 2: connected directed X -> Y;
@@ -131,10 +223,12 @@ class EdgeID {
   std::reference_wrapper<const Edge> edge_;
 
  public:
-  int i, j;
+  int X, Y;
   EdgeID() = delete;
-  EdgeID(int i, int j, const Edge& edge) : edge_(edge), i(i), j(j) {}
+  EdgeID(int i, int j, const Edge& edge) : edge_(edge), X(i), Y(j) {}
   EdgeID(int i, int j, const Edge&&) = delete;  // forbid rvalue
+
+  const Edge& getEdge() const { return edge_.get(); }
 
   bool operator<(const EdgeID& rhs) const {
     const auto info1 = this->edge_.get().shared_info;
@@ -150,86 +244,37 @@ class EdgeID {
   }
 };
 
-struct CacheInfoKey{
-  std::set<int> xyz;
-  std::set<int> Ui;
-
-  //Two point information constructor : I(X;Y|Ui,Z)
-  CacheInfoKey(int x, int y, const std::set<int>& Ui_) {
-    xyz.insert({x,y});
-    Ui = Ui_;
-  }
-  //Three point information constructor : I(X;Y;Z|Ui)
-  CacheInfoKey(int x, int y, int z, const std::set<int>& Ui_) {
-    xyz.insert({x,y,z});
-    Ui = Ui_;
-  }
-
-  bool operator<(const CacheInfoKey& other) const {
-    if (xyz == other.xyz) {
-      return Ui < other.Ui;
-    }
-    return xyz < other.xyz;
-  }
-};
-
-struct CacheScoreValue {
-  int    n_samples;
-  double I_xyzUi;
-  double cplx;
-};
-
-struct MemorySpace {
-  int max_level;
-  int** sample;
-  int** sortedSample;
-  int** Opt_sortedSample;
-  int* orderSample;
-  int* sampleKey;
-  int* Nxyuiz;
-  int* Nyuiz;
-  int* Nuiz;
-  int* Nz;
-  int* Ny;
-  int* Nxui;
-  int* Nx;
-  int** Nxuiz;
-  int* bridge;
-  double* Pxyuiz;
-  // continuous data
-  int* sample_is_not_NA;
-  int* NAs_count;
-
-  int** dataNumeric_red;
-  int** dataNumericIdx_red;
-
-  int* AllLevels_red;
-  int* cnt_red;
-  int* posArray_red;
-};
-
 struct ExecutionTime {
-  double start_time_init{0};
-  double start_time_iter{0};
-  long double init{0};
-  long double iter{0};
-  long double init_iter{0};
-  long double ort{0};
-  long double cut{0};
-  long double ort_after_cut{0};
-  long double total{0};
+  double init{0};  // skeletonInitialization
+  double iter{0};  // firstStepIteration + skeletonIteration
+  double cut{0};   // setConfidence + confidenceCut
+  double ori{0};   // orientationProbability
+
+  double getTotal() const { return init + iter + cut + ori; }
 };
 
-}  // namespace structure_impl
-using structure_impl::CacheInfoKey;
-using structure_impl::CacheScoreValue;
-using structure_impl::Edge;
-using structure_impl::EdgeID;
-using structure_impl::EdgeSharedInfo;
-using structure_impl::ExecutionTime;
-using structure_impl::Grid2d;
-using structure_impl::MemorySpace;
-using structure_impl::Node;
+}  // namespace detail
+using detail::Edge;
+using detail::EdgeID;
+using detail::EdgeSharedInfo;
+using detail::ExecutionTime;
+using detail::Grid2d;
+using detail::Info3PointBlock;
+using detail::InfoBlock;
+using detail::Node;
+using detail::void_t;
+
+template <class T>
+using IsIntContainer = std::enable_if_t<detail::is_int_container<T>::value>;
+// types using linear allocator
+using TempString = std::basic_string<char, std::char_traits<char>,
+    utility::TempStdAllocator<char>>;
+
+template <class T>
+using TempVector = std::vector<T, utility::TempStdAllocator<T>>;
+
+template <class T>
+using TempGrid2d = Grid2d<T, utility::TempStdAllocator<T>>;
 }  // namespace structure
 }  // namespace miic
 

@@ -4,10 +4,9 @@
 #include <omp.h>
 #endif
 
-#include <algorithm>
+#include <algorithm>  // std::generate
 
-#include "compute_info.h"
-#include "utilities.h"
+#include "tmiic.h"
 
 using Rcpp::as;
 using std::string;
@@ -16,6 +15,9 @@ using namespace miic::utility;
 using namespace miic::computation;
 
 #define MAGNITUDE_TIES 0.00005f
+
+#define _DEBUG 1
+#include "debug.h"
 
 namespace miic {
 namespace structure {
@@ -29,8 +31,10 @@ Environment::Environment(
       data_numeric_idx(as<vector<vector<int>>>(input_data["order"])),
       is_continuous(as<vector<int>>(arg_list["is_continuous"])),
       levels(as<vector<int>>(arg_list["levels"])),
+      has_na(n_nodes, 0),
       n_eff(as<int>(arg_list["n_eff"])),
-      orientation_phase(as<bool>(arg_list["orientation"])),
+      edges(n_nodes, n_nodes),
+      orientation(as<bool>(arg_list["orientation"])),
       ori_proba_ratio(as<double>(arg_list["ori_proba_ratio"])),
       propagation(as<bool>(arg_list["propagation"])),
       max_iteration(as<int>(arg_list["max_iteration"])),
@@ -38,6 +42,7 @@ Environment::Environment(
       n_shuffles(as<int>(arg_list["n_shuffles"])),
       conf_threshold(as<double>(arg_list["conf_threshold"])),
       sample_weights(as<vector<double>>(arg_list["sample_weights"])),
+      noise_vec(2 * n_samples),
       is_k23(as<bool>(arg_list["is_k23"])),
       degenerate(as<bool>(arg_list["degenerate"])),
       no_init_eta(as<bool>(arg_list["no_init_eta"])),
@@ -51,6 +56,15 @@ Environment::Environment(
   auto var_names = as<vector<string>>(arg_list["var_names"]);
   std::transform(var_names.begin(), var_names.end(), std::back_inserter(nodes),
       [](string name) { return Node(name); });
+
+  for (int i = 0; i < n_nodes; ++i) {
+    for (int j = 0; j < n_samples; ++j) {
+      if (data_numeric[j][i] == -1) {
+        has_na[i] = 1;
+        break;
+      }
+    }
+  }
 
   auto consistent_flag = as<std::string>(arg_list["consistent"]);
   if (consistent_flag.compare("orientation") == 0)
@@ -78,13 +92,9 @@ Environment::Environment(
   }
 
 #ifdef _OPENMP
-  if (n_threads < 0) n_threads = omp_get_num_procs();
+  if (n_threads <= 0) n_threads = omp_get_num_procs();
   omp_set_num_threads(n_threads);
 #endif
-
-  edges = new Edge*[n_nodes];
-  for (int i = 0; i < n_nodes; i++)
-    edges[i] = new Edge[n_nodes];
 
   for (int i = 0; i < n_nodes; i++) {
     for (int j = 0; j < n_nodes; j++) {
@@ -92,67 +102,53 @@ Environment::Environment(
           (!is_continuous[j] && levels[j] == n_samples)) {
         // If a node is discrete with as many levels as there are samples, its
         // information with other nodes is null.
-        edges[i][j].status = 0;
-        edges[i][j].status_prev = 0;
+        edges(i, j).status = 0;
+        edges(i, j).status_prev = 0;
       } else {
         // Initialise all other edges.
-        edges[i][j].status = 1;
-        edges[i][j].status_prev = 1;
+        edges(i, j).status = 1;
+        edges(i, j).status_prev = 1;
       }
     }
   }
-  //
-  // We can not have an edge between a node and itself
-  //
+
   for (int i = 0; i < n_nodes; i++) {
-    edges[i][i].status = 0;
-    edges[i][i].status_prev = 0;
+    edges(i, i).status = 0;
+    edges(i, i).status_prev = 0;
   }
   //
-  // For temporal miic, only edges with a node of the last timestep are kept
+  // In temporal mode, we do not start from a complete graph
+  // => Remove all edges not having a node on the last timestep
   //
-  if (tau > 0)
+  if (tau >= 1) 
     {
-    for (int i = 0; i < n_nodes; i++) 
-      {
-      bool first_node_not_lag0 = (nodes[i].name.substr
-        (nodes[i].name.length() - 5, 5) != "_lag0");
-      
-      for (int j = 0; j < n_nodes; j++) 
+    n_nodes_not_lagged = tmiic::countNbNodesNotLagged (*this);
+
+    for (int i = n_nodes_not_lagged; i < n_nodes; i++) 
+      for (int j = n_nodes_not_lagged; j < n_nodes; j++) 
         {
-        bool second_node_not_lag0 = (nodes[j].name.substr
-          (nodes[j].name.length() - 5, 5) != "_lag0");
-        
-        if (first_node_not_lag0 && second_node_not_lag0)
-          {
-          edges[i][j].status = 0;
-          edges[i][j].status_prev = 0;
-          }
+        edges(i, j).status = 0;
+        edges(i, j).status_prev = 0;
         }
-      }
-
-#if _DEBUG
-    Rcout << "\nEnvironment contructor: tmiic, after status init\n\n";
-    print_adjacency_matrix ();
-#endif
     }
+#if _DEBUG
+    Rcpp::Rcout << "\nEnvironment:after temporal init\n";
+    Rcpp::Rcout << "Nb nodes  not lagged " << n_nodes_not_lagged << "\n\n"; 
+    miic::debug::printAdjacencyMatrix (*this);
+#endif
   
-  noise_vec = new double[2 * n_samples];
-  for (int i = 0; i < 2 * n_samples; i++) {
-    noise_vec[i] = R::runif(-MAGNITUDE_TIES, MAGNITUDE_TIES);
-  }
-
-  oneLineMatrix = new int[n_samples * n_nodes];
+  std::generate(begin(noise_vec), end(noise_vec),
+      []() { return R::runif(-MAGNITUDE_TIES, MAGNITUDE_TIES); });
 
   readBlackbox(as<vector<vector<int>>>(arg_list["black_box"]));
 }
 
 void Environment::readBlackbox(const vector<vector<int>>& node_list) {
   for (const auto& pair : node_list) {
-    edges[pair[0]][pair[1]].status = 0;
-    edges[pair[0]][pair[1]].status_prev = 0;
-    edges[pair[1]][pair[0]].status = 0;
-    edges[pair[1]][pair[0]].status_prev = 0;
+    edges(pair[0], pair[1]).status = 0;
+    edges(pair[0], pair[1]).status_prev = 0;
+    edges(pair[1], pair[0]).status = 0;
+    edges(pair[1], pair[0]).status_prev = 0;
   }
 }
 

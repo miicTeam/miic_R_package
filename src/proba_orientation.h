@@ -4,15 +4,28 @@
 #include <array>
 #include <vector>
 
-#include "environment.h"
+#include "structure.h"
 
 namespace miic {
 namespace reconstruction {
-using ProbaArray = std::array<double, 4>;
+// An unshielded Triple (X, Z, Y):
 using Triple = std::array<int, 3>;
+// An array of orientation probabilities of arrowhead
+// ProbaArray[i] > 0.5 means likely to be an arrowhead, ProbaArray[i] < 0.5
+// means unlikely to be an arrowhead (thus likely to be a tail)
+// For an unshielded Triple (X *-* Z *-* Y):
+// ProbaArray[0]: probability of the arrowhead X <-* Z
+// ProbaArray[1]: probability of the arrowhead X *-> Z
+// ProbaArray[2]: probability of the arrowhead Z <-* Y
+// ProbaArray[3]: probability of the arrowhead Z *-> Y
+// where * is either arrowhead (< or >) or tail (-)
+// X [0]-[1] Z [2]-[3] Y
+using ProbaArray = std::array<double, 4>;
 
-std::vector<ProbaArray> getOriProbasList(structure::Environment&, const std::vector<Triple>&,
-    const std::vector<double>& I3_list, bool latent, bool degenerate,
+std::vector<ProbaArray> getOriProbasList(const std::vector<Triple>&,
+    const std::vector<double>& I3_list, int tau, 
+    const std::vector<structure::Node>& nodes, 
+    bool latent, bool latent_orientation, bool degenerate,
     bool propagation, bool half_v_structure);
 
 }  // namespace reconstruction

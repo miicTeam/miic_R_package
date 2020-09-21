@@ -11,12 +11,11 @@
 #ifndef TMIIC_
 #define TMIIC_
 
-#include "structure.h"
+#include "environment.h"
 
 namespace tmiic {
 
-using miic::structure::Environment;
-
+int countNbNodesNotLagged (miic::structure::Environment&); 
 void repeatEdgesOverHistory (miic::structure::Environment&);
 void dropPastEdges (miic::structure::Environment&);
 

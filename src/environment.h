@@ -14,7 +14,7 @@
 namespace miic {
 namespace structure {
 
-namespace structure_impl {
+namespace detail {
 
 using std::string;
 using std::vector;
@@ -24,17 +24,19 @@ struct Environment {
   vector<vector<int>> data_numeric;
   int n_samples;
   int n_nodes;
+  // In temporal node, store the number of non lagged nodes 
+  int n_nodes_not_lagged=-1;
   vector<vector<double>> data_double;
   // data_numeric_idx[i] = index of i'th smallest value in data_double
   vector<vector<int>> data_numeric_idx;
-  int* oneLineMatrix;
 
   vector<int> is_continuous;
   vector<int> levels;
+  vector<int> has_na;
   int n_eff;
-  vector<Node> nodes{};
-  Edge** edges;
-  bool orientation_phase;
+  vector<Node> nodes;
+  Grid2d<Edge> edges;
+  bool orientation;
   double ori_proba_ratio = 1;
   bool propagation;
   // Level of consistency required for the graph
@@ -56,28 +58,18 @@ struct Environment {
   bool test_mar;
   // Complexity mode. 0: mdl 1: nml
   int cplx{1};
-  // for temporal mode : contains the max lag used for the 
-  // reconstruction of the lagged network
-  signed int tau = -1; 
-  // If firstStepIteration is done
-  bool first_iter_done{false};
   // List of ids of edge whose status is not yet determined
   vector<EdgeID> unsettled_list;
   // List of ids of edge whose status is sure to be connected
   vector<EdgeID> connected_list;
-  int numSearchMore{0};
-  int numNoMore{0};
 
   int n_shuffles;
   double conf_threshold;
 
-  int** iterative_cuts;
+  Grid2d<int> iterative_cuts;
   vector<double> sample_weights;
   bool flag_sample_weights;
-  double* noise_vec;
-
-  MemorySpace m;
-  MemorySpace* memoryThreads;
+  vector<double> noise_vec;
 
   double log_eta = 0;
   bool is_k23;
@@ -85,36 +77,25 @@ struct Environment {
   bool no_init_eta{false};
   int half_v_structure;
 
-  // Set the probability threshold for the rank if the contribution probability
-  // is the min value
-  int thresPc{0};
-
   int maxbins;
   int initbins;
-
-  std::map<CacheInfoKey, double> look_scores;
-  std::map<CacheInfoKey, CacheScoreValue> look_scores_orientation;
 
   ExecutionTime exec_time;
   int n_threads;
   CompCache cache;
   bool verbose;
 
+  // Maximum lag. Switch miic to temporal mode if >=1
+  int tau=-1; 
+  
   Environment(const Rcpp::List&, const Rcpp::List&);
   Environment() = default;
-
-  ~Environment() {
-    delete[] oneLineMatrix;
-    for (int i = 0; i < n_nodes; i++) delete[] edges[i];
-    delete[] edges;
-    delete[] noise_vec;
-  }
 
   void readBlackbox(const vector<vector<int>>&);
 };
 
-}  // namespace structure_impl
-using structure_impl::Environment;
+}  // namespace detail
+using detail::Environment;
 }  // namespace structure
 }  // namespace miic
 

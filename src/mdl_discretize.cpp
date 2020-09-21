@@ -4,14 +4,21 @@
 #include <cfloat>
 #define _USE_MATH_DEFINES
 #include <cmath>
-#include <iostream>
-#include <limits>
 #include <vector>
 
-#include "utilities.h"
-
 using namespace Rcpp;
-using namespace miic::utility;
+
+namespace {
+
+double ramanujan(int n) {
+  // Returns log(fac(n)) with Ramanujan's approximation.
+  if (n == 0) {
+    return (0);
+  }
+  double N = n * log(1.0 * n) - n +
+             log(1.0 * n * (1 + 4 * n * (1 + 2 * n))) / 6 + log(M_PI) / 2L;
+  return N;
+}
 
 double compute_parametric_complexity(int n, int K, double** sc_look) {
   if (sc_look[n - 1][K - 1] != 0) {
@@ -131,6 +138,8 @@ double* compute_B(int K, int e, double* candidate_cut_points, double* myDist,
     return (res);
   }
 }
+
+}  // anonymous namespace
 
 // [[Rcpp::export]]
 List mydiscretizeMDL(SEXP RmyDist, SEXP RmaxBins) {
