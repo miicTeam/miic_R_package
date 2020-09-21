@@ -584,18 +584,21 @@ size_t getLinearAllocatorSize(int n_samples, int n_nodes, int maxbins,
   for (int i = 0; i < n_nodes; ++i) {
     if (!is_continuous[i] && levels[i] > max_level) max_level = levels[i];
   }
-  size_t m_discrete = s_int * (2 * n_samples + 6 * max_level + 2 * n_nodes +
-                                  max_level * max_level) +
-                      s_double * max_level;
-  size_t m_discretize =
-      s_int * (3 * maxbins + (maxbins + 2) * max(initbins + 1, 2 * n_samples) +
-                  n_samples) +
-      s_double * (3 * maxbins + 2 * n_nodes);
-  size_t m_mutual_info = s_int * (36 * n_samples);
-  size_t m_continuous = s_int * (3 * n_nodes + 2 * maxbins * n_nodes);
-  m_continuous += s_int * (n_samples * n_nodes + 7 + 4 * n_samples + n_nodes) +
-                  s_double * 2 * /*STEPMAX1*/ 50;
-  m_continuous += max(m_discretize, m_mutual_info);
+  int max_all = max(max_level, maxbins);
+  size_t m_order = s_int * (9 * n_samples + 2 * n_nodes);
+  size_t m_discrete =
+      s_int * (2 * n_samples + 2 * n_nodes) +
+      max(s_int * (n_samples + n_nodes + (4 + max_level) * max_level +
+                      s_double * max_level),
+          m_order);
+  size_t m_discretize = s_int * (3 * maxbins + (maxbins * 2 + 4) * max_all) +
+                        s_double * 3 * maxbins;
+  size_t m_set_factors = s_int * (3 * n_samples + 1 * n_nodes + 2) + m_order;
+  size_t m_mutual_info = s_double * 3 * max_all;
+  size_t m_continuous = s_double * 2 * /*STEPMAX*/ 50;
+  m_continuous +=
+      s_int * ((n_samples + 3 + maxbins) * n_nodes + 4 * n_samples + 7);
+  m_continuous += max(max(m_discretize, m_set_factors), m_mutual_info);
   size_t m_computation = m_discrete;
   if (!all_discrete) m_computation = max(m_discrete, m_continuous);
   size_t m_get_info =
