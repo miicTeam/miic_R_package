@@ -14,6 +14,7 @@
 #include "r_cpp_interface.h"
 #include "skeleton.h"
 #include "utilities.h"
+#include "tmiic.h"
 
 using Rcpp::_;
 using Rcpp::as;
@@ -61,7 +62,15 @@ List reconstruct(List input_data, List arg_list) {
   int iter_count{0};
   bool is_consistent{false};
   do {
-    if (environment.consistent != 0) bcc.analyse();
+    if (environment.consistent != 0) {
+      // In temporal mode, duplicate temporarily edges over history for the
+      // consistency assessment
+      if (environment.tau_max >= 1)
+        tmiic::repeatEdgesOverHistory (environment);
+      bcc.analyse();
+      if (environment.tau_max >= 1)
+        tmiic::dropPastEdges (environment);
+    }
     // Store current status in status_prev and revert to the structure at the
     // moment of initialization
     for (int i = 0; i < environment.n_nodes; i++) {
@@ -98,7 +107,16 @@ List reconstruct(List input_data, List arg_list) {
     if (environment.orientation && !environment.connected_list.empty()) {
       lap_start = getLapStartTime();
       Rcout << "Search for edge directions...\n";
+      //
+      // In temporal mode, when latent variable discovery is activated,
+      // we temporarily duplicate edges over history assuming stationarity to
+      // increase the number of possible unshielded triples for orientation
+      //
+      if ( (environment.tau_max >= 1) && (environment.latent_orientation) )
+        tmiic::repeatEdgesOverHistory (environment);
       orientations = orientationProbability(environment);
+      if ( (environment.tau_max >= 1) && (environment.latent_orientation) )
+          tmiic::dropPastEdges (environment);
       environment.exec_time.ori += getLapInterval(lap_start);
     }
     if (environment.consistent != 0)

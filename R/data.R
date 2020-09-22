@@ -101,3 +101,20 @@ NULL
 #'
 #' @keywords data
 NULL
+
+#' Covid cases
+#'
+#' Demo dataset of chronological series to be used in temporal mode of miic.
+#' Evolution of Covid cases on a subset of EU countries from 12/31/2019 to 06/18/2020.
+#' Source of the data : European Centre for Disease Prevention and Control.
+#'
+#' @docType data
+#' @usage data(covidCases)
+#' @format A data.frame object.
+#' @keywords datasets
+#' @name covidCases
+#' @references ECDC (\href{https://www.ecdc.europa.eu/en/publications-data/download-todays-data-geographic-distribution-covid-19-cases-worldwide}{ECDC link})
+#'
+#' @keywords data
+NULL
+

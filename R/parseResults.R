@@ -18,7 +18,7 @@ summarizeResults <- function(observations = NULL, results = NULL,
   predicted_edges <- apply(predicted_edges, 2, function(x) { var_names[x] })
   # Add to summarized edges list
   if(length(predicted_edges > 0)) summarized_edges <- predicted_edges
-
+  
   edges <- results$edges
   # List of negative edges with non null conditioning set
   conditioned_edges <- as.matrix(edges[(!is.na(edges$ai.vect)) &
@@ -29,7 +29,7 @@ summarizeResults <- function(observations = NULL, results = NULL,
   # Add to summarized edges list
   summarized_edges <- rbind(summarized_edges, conditioned_edges)
                             #indep_null_cond_set_edges)
-
+  
   if (!is.null(true_edges)) {
     # List of False Negative edges
     false_negative_edges <- data.frame(
@@ -50,7 +50,6 @@ summarizeResults <- function(observations = NULL, results = NULL,
       stringsAsFactors = FALSE
     )
   }
-
 
   n <- nrow(summarized_edges)
   summary <- data.frame(

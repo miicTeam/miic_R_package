@@ -58,12 +58,25 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// lagData
+List lagData(List input_data, List arg_list);
+RcppExport SEXP _miic_lagData(SEXP input_dataSEXP, SEXP arg_listSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< List >::type input_data(input_dataSEXP);
+    Rcpp::traits::input_parameter< List >::type arg_list(arg_listSEXP);
+    rcpp_result_gen = Rcpp::wrap(lagData(input_data, arg_list));
+    return rcpp_result_gen;
+END_RCPP
+}
 
 static const R_CallMethodDef CallEntries[] = {
     {"_miic_mydiscretizeMDL", (DL_FUNC) &_miic_mydiscretizeMDL, 2},
     {"_miic_mydiscretizeMutual", (DL_FUNC) &_miic_mydiscretizeMutual, 2},
     {"_miic_miicRGetInfo3Point", (DL_FUNC) &_miic_miicRGetInfo3Point, 2},
     {"_miic_reconstruct", (DL_FUNC) &_miic_reconstruct, 2},
+    {"_miic_lagData", (DL_FUNC) &_miic_lagData, 2},
     {NULL, NULL, 0}
 };
 
