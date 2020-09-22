@@ -121,6 +121,72 @@ void setEnvironmentFromR(const Rcpp::List& input_data,
   omp_set_num_threads(environment.n_threads);
 #endif
 
+  if ( arg_list.containsElementNamed ("tau") ) {
+    environment.list_taus = as<vector<int>> (arg_list["tau"]);
+    environment.tau_max = *std::max_element ( environment.list_taus.begin(), 
+                                              environment.list_taus.end() );
+  }
+  if (environment.tau_max >= 1) {
+    environment.n_nodes_not_lagged = n_nodes;
+    for (auto& one_tau : environment.list_taus)
+      if (one_tau >= 1)
+        environment.n_nodes_not_lagged -= one_tau;
+      
+    vector<int> list_delta_taus (1, environment.n_nodes_not_lagged);
+    if ( arg_list.containsElementNamed ("delta_tau") ) 
+      list_delta_taus = as<vector<int>> (arg_list["delta_tau"]);
+    //
+    // Precompute the lag of each variable: layer * delta_tau
+    //
+    environment.nodes_lags.assign (environment.n_nodes_not_lagged, 0);
+    for (int tau_idx = 1; tau_idx <= environment.tau_max; ++tau_idx)
+      for (int node_idx = 0; node_idx < environment.n_nodes_not_lagged; ++node_idx)
+        if (tau_idx <= environment.list_taus[node_idx])
+          environment.nodes_lags.push_back (tau_idx * list_delta_taus[node_idx]);
+    //
+    // For contextual variables, we consider them as very old, 
+    // so they are never the consequence of another variable
+    //
+    for (int ctx_idx = 0; ctx_idx < environment.is_contextual.size();  ++ctx_idx)
+      if (environment.is_contextual[ctx_idx])
+        environment.nodes_lags[ctx_idx] = INT_MAX;
+    //
+    // Precompute the index shifts from a var to its next lagged counterpart
+    //
+    int n_nodes_shifts = environment.n_nodes_not_lagged;
+    vector <bool> end_reached (environment.n_nodes_not_lagged, false);
+    for (int tau_idx = 1; tau_idx <= environment.tau_max+1; ++tau_idx)
+      for (int node_idx = 0; node_idx < environment.n_nodes_not_lagged; ++node_idx)
+        if (tau_idx <= environment.list_taus[node_idx])
+          environment.nodes_shifts.push_back (n_nodes_shifts);
+        else if (!end_reached[node_idx]) {
+          end_reached[node_idx] = true;
+          environment.nodes_shifts.push_back (0);
+          --n_nodes_shifts;
+        }
+    //
+    // In temporal mode, we do not start from a complete graph
+    // => Remove all edges not having a node on the layer 0
+    //
+    for (int i = environment.n_nodes_not_lagged; i < n_nodes; i++) 
+      for (int j = environment.n_nodes_not_lagged; j < n_nodes; j++) {
+        environment.edges(i, j).status = 0;
+        environment.edges(i, j).status_prev = 0;
+      }
+    //
+    // In addition, non lagged variable (i.e.:contextual) can only have edges
+    // with nodes of the layer 0 (others can be found by stationarity)
+    //
+    for (int i = 0; i < environment.n_nodes_not_lagged; i++) 
+      if (environment.is_contextual[i])
+        for (int j = environment.n_nodes_not_lagged; j < n_nodes; j++) {
+          environment.edges(i, j).status = 0;
+          environment.edges(i, j).status_prev = 0;
+          environment.edges(j, i).status = 0;
+          environment.edges(j, i).status_prev = 0;
+        }
+  }
+  
   if (arg_list.containsElementNamed("verbose"))
     environment.verbose = as<bool>(arg_list["verbose"]);
 
