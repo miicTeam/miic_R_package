@@ -13,3 +13,7 @@ reconstruct <- function(input_data, arg_list) {
     .Call('_miic_reconstruct', PACKAGE = 'miic', input_data, arg_list)
 }
 
+lagData <- function(input_data, arg_list) {
+    .Call('_miic_lagData', PACKAGE = 'miic', input_data, arg_list)
+}
+

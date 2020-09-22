@@ -5,11 +5,19 @@
 #' from indirect effects amongst correlated variables, including cause-effect
 #' relationships and the effect of unobserved latent causes.
 #'
-#' @details Starting from a complete graph, the method iteratively removes
+#' @details In regular mode, starting from a complete graph, the method iteratively removes
 #' dispensable edges, by uncovering significant information contributions from
 #' indirect paths, and assesses edge-specific confidences from randomization of
 #' available data. The remaining edges are then oriented based on the signature
 #' of causality in observational data.
+#'
+#' In temporal mode (when any \emph{tau} >= 1), miic reorganizes the dataset 
+#' using the \emph{tau} and \emph{delta_tau} parameters to transform the timesteps 
+#' into lagged samples. As starting point, a lagged graph is created with 
+#' only edges having at least one node laying on the last timestep. 
+#' Then, miic standard algorithm is applied to remove dispensable edges. 
+#' The remaining edges are then oriented by using the temporality and the 
+#' signature of causality in observational data.
 #'
 #' The method relies on an information theoretic based (conditional) independence
 #' test which is described in (Verny \emph{et al.}, PLoS Comp. Bio. 2017),
@@ -34,11 +42,17 @@
 #' }
 #'
 #' @param input_data [a data frame]
-#' A n*d data frame (n samples, d variables) that contains the observational data.
-#' Each column corresponds to one variable and each row is a sample that gives the
+#' A n*d data frame (n rows, d variables) that contains the observational data.
+#' 
+#' In regular mode, each column corresponds to one variable and each row is a sample that gives the
 #' values for all the observed variables. The column names correspond to the
 #' names of the observed variables. Numeric columns will be treated as continuous
 #' values, factors and character as categorical.
+#' 
+#' In temporal mode (when any \emph{tau} >= 1), the expected dataframe layout
+#' is variables as columns and timeseries/timesteps as rows. 
+#' The timestep information must be supplied in the first column and, 
+#' for each timeseries, be consecutive (increment of 1) and in ascending order.
 #'
 #' @param black_box [a data frame]
 #' An optional E*2 data frame containing E pairs of variables that will be considered
@@ -121,6 +135,24 @@
 #' Contextual variables cannot be the child node of any other variable (cannot
 #' have edge with arrowhead pointing to them).
 #'
+#' "tau" (optional) contains an integer value that specifies the number of
+#' layers to be considered for the variable.\cr
+#' Note that if "tau" column is present in the \emph{state_order} and valid
+#' (at least one tau is >= 1), it will induce the switch from regular to 
+#' temporal mode.\cr
+#' Note also that the tau values presents in the state_oder will overwrite the
+#' function parameter.
+#' 
+#' "delta_tau" (optional) contains an integer value that specifies the number
+#' of timesteps between each layer for the variable.
+#' Note that if "delta_tau" column is present in the  \emph{state_order},
+#' its values will overwrite the function parameter.
+#' 
+#' "movavg" (optional) contains an integer value that specifies the size of
+#' the moving average window to be applied to the variable.
+#' Note that if "movavg" column is present in the \emph{state_order},
+#' its values will overwrite the function parameter.
+#' 
 #' @param true_edges [a data frame]
 #' An optional E*2 data frame containing the E edges of the true graph for
 #' computing performance after the run.
@@ -171,6 +203,51 @@
 #' edge will be further determined by the average probability of orientation.)
 #' Set to 0.8 by default.
 #'
+#' @param tau [an int > 0 or a list of int] Optional, -1 by default.\cr
+#' Tau(s) define(s) the number of layers that will be considered for the 
+#' variables. The layers will be distant of \emph{delta_tau} timesteps.\cr
+#' \itemize{
+#' \item When an integer is supplied, it must be strictly positive and all the 
+#'       variables will be lagged using this value as the number of layers.
+#' \item When a list is supplied, the size of the list must match the number of 
+#'       variables and each variable (so excluding the timesteps column)
+#'       will be lagged by the corresponding number of layers. 
+#'       Variables associated with a \emph{tau} values < 1  will not be lagged.
+#' }
+#' If supplied and valid (at least one tau is >= 1), the \emph{tau} parameter 
+#' induces the switch from regular to temporal mode.
+#' 
+#' @param delta_tau [an integer or a list of int] Optional, 1 by default.\cr
+#' Used only in temporal mode. the delta_tau(s) define(s) the number of timesteps
+#' between each layer.\cr
+#' i.e.: on 1000 timesteps with  \emph{tau} = 2 and \emph{delta_tau} = 7, 
+#' the timesteps kept for the samples conversion will be 1, 8, 15 
+#' for the first sample, the next sample will use 2, 9, 16 and so on.\cr
+#' \itemize{
+#' \item When an integer is supplied (integer > 0). All the variables will be 
+#'       lagged using this value as the number of timesteps between layers.
+#' \item When a list is supplied, the size of the list must match the number of 
+#'       variables (so excluding the timesteps column) and each variable will
+#'       be lagged with corresponding \emph{delta_tau} timesteps between layers. 
+#'       If a variable is not lagged ( \emph{tau} < 1), the \emph{delta_tau}
+#'       is ignored.
+#' }
+#' 
+#' @param movavg [an integer or a list of int] Optional, -1 by default.\cr
+#' Used only in temporal mode.\cr
+#' \itemize{
+#' \item When an integer is supplied (integer > 1), a moving average 
+#'       operation is applied to all integer and numeric variables.
+#' \item When a list is supplied, the size of the list must match the number of 
+#'       variables. A moving average will be applied to each variable having
+#'       a movavg value greater than 1
+#' }
+#' 
+#' @param keep_max_data [a boolean value] Optional, FALSE by default.\cr
+#' Used only in temporal mode. If TRUE, rows where some NAs have been 
+#' introduced during the lagging will be kept whilst they will be dropped
+#' if FALSE.
+#' 
 #' @param verbose [a boolean value] If TRUE, debugging output is printed.
 #'
 #' @param n_threads [a positive integer]
@@ -324,6 +401,27 @@
 #' # write graph to graphml format. Note that to correctly visualize
 #' # the network we created the miic style for Cytoscape (http://www.cytoscape.org/).
 #' miic.write.network.cytoscape(g = miic.res, file = file.path(tempdir(), "temp"))
+#'
+#' # EXAMPLE COVID CASES (timeseries demo)
+#' data(covidCases)
+#' # execute MIIC (reconstruct graph in temporal mode)
+#' tmiic.res <- miic(input_data = covidCases, tau = 2, movavg = 14)
+#'
+#' # to plot the default graph (compact)
+#' if(require(igraph)) {
+#'  plot(tmiic.res)
+#' }
+#' 
+#' # to plot the raw temporal network Using igraph
+#' if(require(igraph)) {
+#'   plot(tmiic.res, display="raw")
+#' }
+#'
+#' # to plot the full temporal network Using igraph
+#' if(require(igraph)) {
+#'   plot(tmiic.res, display="lagged")
+#' }
+#' 
 #' }
 #'
 miic <- function(input_data,
@@ -345,16 +443,69 @@ miic <- function(input_data,
                  consistent = c("no", "orientation", "skeleton"),
                  max_iteration = 100,
                  consensus_threshold = 0.8,
+                 tau = -1,
+                 delta_tau = 1,
+                 movavg = -1,
+                 keep_max_data = FALSE,
                  verbose = FALSE) {
   res <- NULL
 
   if (is.null(input_data)) {
     stop("The input data file is required")
   }
-
   if (!is.data.frame(input_data)) {
     stop("The input data is not a dataframe")
   }
+  if (!is.null(state_order)) {
+    err_code <- checkStateOrder(state_order, input_data)
+    if (err_code != "0") {
+      print(errorCodeToString(err_code))
+      print("WARNING: Category order file will be ignored!")
+      state_order <- NULL
+    }
+  }
+  if (!is.null(true_edges)) {
+    err_code <- checkTrueEdges(true_edges)
+    if (err_code != "0") {
+      print(errorCodeToString(err_code))
+      print("WARNING: True edges file will be ignored!")
+      true_edges <- NULL
+    }
+  }
+  #
+  # Check if we use regular or temporal mode
+  #
+  miic_mode = "regular"
+  if (any(tau >= 1))
+      miic_mode <- "temporal"
+  if (!is.null(state_order)) {
+    if (!is.null(state_order$tau)) {
+      if (any (as.numeric (state_order$tau) >= 1) )
+        miic_mode <- "temporal"
+    } 
+  }
+  
+  if (miic_mode != "temporal")
+    tau <- c(-1)
+  else {
+    #
+    # In temporal mode, convert data into lagged samples 
+    # and lag other inputs accordingly
+    #
+    cat ("Using temporal mode of miic\n")
+    nodes_not_lagged <- colnames(input_data)[-1]
+    struct_ret <- tmiic.lag_inputs (input_data, tau, delta_tau=delta_tau,  
+                                    movavg=movavg, state_order=state_order, 
+                                    true_edges=true_edges, black_box=black_box,
+                                    keep_max_data=keep_max_data)
+    input_data <- struct_ret$input_data
+    tau <- struct_ret$tau
+    delta_tau <- struct_ret$delta_tau
+    state_order <- struct_ret$state_order
+    true_edges <- struct_ret$true_edges
+    black_box <- struct_ret$black_box
+  }
+    
   # Remove rows with only NAs
   input_data <- input_data[rowSums(is.na(input_data)) != ncol(input_data), ]
   if (length(input_data) == 0) {
@@ -403,7 +554,6 @@ miic <- function(input_data,
   )
   consistent <- match.arg(consistent)
 
-
   if (n_eff > nrow(input_data)) {
     stop(
       paste0(
@@ -433,12 +583,6 @@ miic <- function(input_data,
   is_continuous <- sapply(input_data, is.numeric)
   # Use the "state order" file to convert discrete numerical variables to factors
   if (!is.null(state_order)) {
-    err_code <- checkStateOrder(state_order, input_data)
-    if (err_code != "0") {
-      print(errorCodeToString(err_code))
-      print("WARNING: Category order file will be ignored!")
-      state_order <- NULL
-    }
     set_contextual <- !is.null(state_order$is_contextual)
     if (set_contextual) {
       is_contextual <- rep(0, ncol(input_data))
@@ -524,22 +668,15 @@ miic <- function(input_data,
         sample_weights = sample_weights,
         test_mar = test_mar,
         consistent = consistent,
-        max_iteration = max_iteration
+        max_iteration = max_iteration,
+        tau = tau,
+        delta_tau = delta_tau
       )
     if (res$interrupted) {
       stop("Interupted by user")
     }
     if (verbose) {
       cat("\t# -> END reconstruction...\n\t# --------\n")
-    }
-
-    if (!is.null(true_edges)) {
-      err_code <- checkTrueEdges(true_edges)
-      if (err_code != "0") {
-        print(errorCodeToString(err_code))
-        print("WARNING: True edges file will be ignored!")
-        true_edges <- NULL
-      }
     }
 
     res$all.edges.summary <- summarizeResults(
@@ -555,7 +692,17 @@ miic <- function(input_data,
     )
   }
 
-  class(res) <- "miic"
+  if (miic_mode != "temporal") {
+    class(res) <- "miic"
+  }
+  else {
+    class(res) <- "tmiic"
+    res$tmiic_specific <- list (graph_type="raw", 
+                                nodes_not_lagged=nodes_not_lagged,
+                                is_contextual=is_contextual,
+                                tau=tau,
+                                delta_tau=delta_tau)
+  }
   return(res)
 }
 
