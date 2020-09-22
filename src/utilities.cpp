@@ -26,10 +26,10 @@ namespace {
 // Check if the i'th sample of node X and Y and ui in ui_list has no NA
 // (-1) in data_numeric
 bool SampleHasNoNA(int X, int Y, const vector<int>& ui_list,
-    const vector<vector<int>>& data_numeric, int i) {
-  return data_numeric[i][X] != -1 && data_numeric[i][Y] != -1 &&
+    const Grid2d<int>& data_numeric, int i) {
+  return data_numeric(X, i) != -1 && data_numeric(Y, i) != -1 &&
          std::all_of(begin(ui_list), end(ui_list),
-             [&data_numeric, i](int u) { return data_numeric[i][u] != -1; });
+             [&data_numeric, i](int u) { return data_numeric(u, i) != -1; });
 }
 
 double kl(const TempGrid2d<double>& freqs1, const TempGrid2d<double>& freqs2) {
@@ -59,21 +59,21 @@ double kl(const TempVector<int>& count1, const TempVector<int>& count2,
   return kl_div;
 }
 
-void getJointMixed(const vector<vector<int>>& data_numeric,
-    const vector<vector<double>>& data_double, int X, int Y,
-    const vector<int>& ui_list, const vector<int>& is_continuous,
-    TempVector<int>& mixedDiscrete, TempVector<double>& mixedContinuous,
+void getJointMixed(const Grid2d<int>& data_numeric,
+    const Grid2d<double>& data_double, int X, int Y, const vector<int>& ui_list,
+    const vector<int>& is_continuous, TempVector<int>& mixedDiscrete,
+    TempVector<double>& mixedContinuous,
     TempVector<int>& curr_sample_is_not_NA) {
   int discrete_pos = is_continuous[X] ? Y : X;
   int continuous_pos = is_continuous[X] ? X : Y;
   // Fill marginal distributions
   int n_samples_non_na = 0;
-  for (size_t k = 0; k < data_numeric.size(); ++k) {
+  for (size_t k = 0; k < data_numeric.n_cols(); ++k) {
     curr_sample_is_not_NA[k] = 0;
     if (SampleHasNoNA(X, Y, ui_list, data_numeric, k)) {
       curr_sample_is_not_NA[k] = 1;
-      mixedContinuous[n_samples_non_na] = data_double[continuous_pos][k];
-      mixedDiscrete[n_samples_non_na] = data_numeric[k][discrete_pos];
+      mixedContinuous[n_samples_non_na] = data_double(continuous_pos, k);
+      mixedDiscrete[n_samples_non_na] = data_numeric(discrete_pos, k);
       ++n_samples_non_na;
     }
   }
@@ -147,33 +147,33 @@ double compute_kl_divergence_continuous(vector<vector<double>>& space1,
   return ndims * (sumlog / n1) + log(1.0 * (n2 - 1) / (n1 - 1));
 }
 
-void getJointSpace(const vector<vector<int>>& data_numeric,
-    const vector<vector<double>>& data_double, int X, int Y,
-    const vector<int>& ui_list, vector<vector<double>>& jointSpace,
+void getJointSpace(const Grid2d<int>& data_numeric,
+    const Grid2d<double>& data_double, int X, int Y, const vector<int>& ui_list,
+    vector<vector<double>>& jointSpace,
     TempVector<int>& curr_sample_is_not_NA) {
   int n_samples_non_na = 0;
-  for (size_t k = 0; k < data_numeric.size(); ++k) {
+  for (size_t k = 0; k < data_numeric.n_cols(); ++k) {
     curr_sample_is_not_NA[k] = 0;
     if (SampleHasNoNA(X, Y, ui_list, data_numeric, k)) {
       curr_sample_is_not_NA[k] = 1;
-      jointSpace[n_samples_non_na][0] = data_double[X][k];
-      jointSpace[n_samples_non_na][1] = data_double[Y][k];
+      jointSpace[n_samples_non_na][0] = data_double(X, k);
+      jointSpace[n_samples_non_na][1] = data_double(Y, k);
       n_samples_non_na++;
     }
   }
 }
 
-TempGrid2d<double> getJointFreqs(const vector<vector<int>>& data_numeric, int X,
-    int Y, const vector<int>& ui_list, int rx, int ry,
+TempGrid2d<double> getJointFreqs(const Grid2d<int>& data_numeric, int X, int Y,
+    const vector<int>& ui_list, int rx, int ry,
     const TempVector<int>& sample_is_not_NA = TempVector<int>()) {
   TempGrid2d<double> joint_freqs(rx, ry, 0);
 
   int n_samples_non_na = 0;
-  for (size_t k = 0; k < data_numeric.size(); ++k) {
+  for (size_t k = 0; k < data_numeric.n_cols(); ++k) {
     if ((!sample_is_not_NA.empty() && sample_is_not_NA[k]) ||
         (sample_is_not_NA.empty() &&
             SampleHasNoNA(X, Y, ui_list, data_numeric, k))) {
-      ++joint_freqs(data_numeric[k][X], data_numeric[k][Y]);
+      ++joint_freqs(data_numeric(X, k), data_numeric(Y, k));
       ++n_samples_non_na;
     }
   }
@@ -286,15 +286,14 @@ void printProgress(double percent, TimePoint start_time, int& percentile_prev) {
   R_FlushConsole();
 }
 
-double compute_kl_divergence(const vector<vector<int>>& data_numeric,
-    const vector<vector<double>>& data_double, int X, int Y,
-    const vector<int>& ui_list, const vector<int>& levels,
-    const vector<int>& is_continuous, int samplesNotNA,
-    const TempVector<int>& AllLevels_red,
+double compute_kl_divergence(const Grid2d<int>& data_numeric,
+    const Grid2d<double>& data_double, int X, int Y, const vector<int>& ui_list,
+    const vector<int>& levels, const vector<int>& is_continuous,
+    int samplesNotNA, const TempVector<int>& AllLevels_red,
     const TempVector<int>& sample_is_not_NA, const vector<double>& noise_vec) {
   TempAllocatorScope scope;
 
-  int n_samples = data_numeric.size();
+  int n_samples = data_numeric.n_cols();
   if (!is_continuous[X] && !is_continuous[Y]) {
     // 1 - XY discrete
     // Joint freqs X,Y after adding the new contributor (Z)
@@ -330,8 +329,8 @@ double compute_kl_divergence(const vector<vector<int>>& data_numeric,
     int i_non_na = 0;
     for (int i = 0; i < n_samples; i++) {
       if (sample_is_not_NA[i] == 1) {
-        joint_non_na[i_non_na][0] = data_double[X][i];
-        joint_non_na[i_non_na][1] = data_double[Y][i];
+        joint_non_na[i_non_na][0] = data_double(X, i);
+        joint_non_na[i_non_na][1] = data_double(Y, i);
         i_non_na++;
       }
     }
@@ -376,7 +375,7 @@ double compute_kl_divergence(const vector<vector<int>>& data_numeric,
     for (int i = 0; i < n_samples; i++) {
       // Make sure to use original data so that the levels match (may be
       // recoded in reduced data)
-      if (sample_is_not_NA[i]) ++count_non_na[data_numeric[i][discrete_pos]];
+      if (sample_is_not_NA[i]) ++count_non_na[data_numeric(discrete_pos, i)];
     }
     double kldiv = 0;
     // Compute the sum count(y) * KL(X_nonNA|y || X|y) over all values of Y y
@@ -386,7 +385,7 @@ double compute_kl_divergence(const vector<vector<int>>& data_numeric,
       TempVector<int> map_level(count_base[level]);
       int i_level = 0;
       for (int i = 0; i < n_samples; i++) {
-        if (data_numeric[i][discrete_pos] == level) {
+        if (data_numeric(discrete_pos, i) == level) {
           if (curr_sample_is_not_NA[i]) {
             map_level[i_level] = 0;
             if (sample_is_not_NA[i] == 1) {
@@ -412,8 +411,8 @@ double compute_kl_divergence(const vector<vector<int>>& data_numeric,
       int i_level_non_na = 0;
       for (int i = 0; i < n_samples; i++) {
         if (sample_is_not_NA[i] == 1 &&
-            data_numeric[i][discrete_pos] == level) {
-          continuous_non_na[i_level_non_na][0] = data_double[continuous_pos][i];
+            data_numeric(discrete_pos, i) == level) {
+          continuous_non_na[i_level_non_na][0] = data_double(continuous_pos, i);
           i_level_non_na++;
         }
       }
@@ -437,10 +436,10 @@ double compute_kl_divergence(const vector<vector<int>>& data_numeric,
   }
 }
 
-int getNumSamplesNonNA(const vector<vector<int>>& data_numeric, int X, int Y,
-    const vector<int>& ui_list) {
+int getNumSamplesNonNA(
+    const Grid2d<int>& data_numeric, int X, int Y, const vector<int>& ui_list) {
   int n_samples_non_na = 0;
-  for (size_t k = 0; k < data_numeric.size(); ++k) {
+  for (size_t k = 0; k < data_numeric.n_cols(); ++k) {
     if (SampleHasNoNA(X, Y, ui_list, data_numeric, k)) ++n_samples_non_na;
   }
   return n_samples_non_na;
@@ -450,12 +449,12 @@ int getNumSamplesNonNA(const vector<vector<int>>& data_numeric, int X, int Y,
 // \return The number of non NA samples and modifies the vectors
 // sample_is_not_na and NAs_count
 int countNonNA(int X, int Y, int Z, const vector<int>& ui_list,
-    const vector<vector<int>>& data_numeric, TempVector<int>& sample_is_not_na,
+    const Grid2d<int>& data_numeric, TempVector<int>& sample_is_not_na,
     TempVector<int>& NAs_count) {
-  int n_samples = data_numeric.size();
+  int n_samples = data_numeric.n_cols();
   int na_count = 0;
   for (int i = 0; i < n_samples; i++) {
-    bool has_na = (Z != -1 && data_numeric[i][Z] == -1) ||
+    bool has_na = (Z != -1 && data_numeric(Z, i) == -1) ||
                   !SampleHasNoNA(X, Y, ui_list, data_numeric, i);
     if (has_na) ++na_count;
 
@@ -482,9 +481,9 @@ int countNonNA(int X, int Y, int Z, const vector<int>& ui_list,
  * \a sample_weights_red contains the sample weights of the reduced data
  */
 bool filterNA(int X, int Y, int Z, const vector<int>& ui_list,
-    const vector<vector<int>>& data_numeric,
-    const vector<vector<int>>& data_numeric_idx, const vector<int>& levels,
-    const vector<int>& is_continuous, const vector<double>& sample_weights,
+    const Grid2d<int>& data_numeric, const Grid2d<int>& data_numeric_idx,
+    const vector<int>& levels, const vector<int>& is_continuous,
+    const vector<double>& sample_weights,
     const TempVector<int>& sample_is_not_NA, const TempVector<int>& NAs_count,
     TempGrid2d<int>& data_numeric_red, TempGrid2d<int>& data_numeric_idx_red,
     TempVector<int>& levels_red, TempVector<int>& is_continuous_red,
@@ -492,7 +491,7 @@ bool filterNA(int X, int Y, int Z, const vector<int>& ui_list,
     bool any_na) {
   TempAllocatorScope scope;
 
-  int n_samples = data_numeric.size();
+  int n_samples = data_numeric.n_cols();
   int n_ui = ui_list.size();
   TempVector<int> posArray(n_ui + 3, -1);
   posArray[0] = X;
@@ -519,15 +518,14 @@ bool filterNA(int X, int Y, int Z, const vector<int>& ui_list,
 
     for (int i = 0; i < n_samples; i++) {
       if (!any_na) {
-        data_numeric_red(j, i) = data_numeric[i][index];
+        data_numeric_red(j, i) = data_numeric(index, i);
         if (is_continuous_red[j])
-          data_numeric_idx_red(j, i) = data_numeric_idx[index][i];
-        if (j == 0)
-          sample_weights_red[i] = sample_weights[i];
+          data_numeric_idx_red(j, i) = data_numeric_idx(index, i);
+        if (j == 0) sample_weights_red[i] = sample_weights[i];
       } else {
         if (sample_is_not_NA[i] == 1) {
           // Row at index i does not contain any NA
-          int old_val = data_numeric[i][index];
+          int old_val = data_numeric(index, i);
           auto it = new_levels.find(old_val);
           if (it == end(new_levels)) {
             // If level has not already been seen add it to the map
@@ -545,16 +543,16 @@ bool filterNA(int X, int Y, int Z, const vector<int>& ui_list,
         }
         if (is_continuous_red[j] == 0) continue;
         // Variable j is continuous
-        int si = data_numeric_idx[index][i];  // position of ith sample (order)
+        int si = data_numeric_idx(index, i);  // position of ith sample (order)
         if (si == -1 || sample_is_not_NA[si] == 0) continue;
         // Row at position si does not contain any NA, rank is updated
         // taking into account the number of NAs up to si.
         data_numeric_idx_red(j, k2) = si - NAs_count[si];
         ++k2;
         // check whether is a different values or repeated
-        if (data_numeric[si][index] != prev_val) {
+        if (data_numeric(index, si) != prev_val) {
           ++nnr;
-          prev_val = data_numeric[si][index];
+          prev_val = data_numeric(index, si);
         }
       }
     }

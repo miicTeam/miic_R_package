@@ -19,11 +19,12 @@ namespace structure {
 
 Environment::Environment(
     const Rcpp::List& input_data, const Rcpp::List& arg_list)
-    : data_numeric(as<vector<vector<int>>>(input_data["factor"])),
-      n_samples(data_numeric.size()),
-      n_nodes(data_numeric[0].size()),
-      data_double(as<vector<vector<double>>>(input_data["double"])),
-      data_numeric_idx(as<vector<vector<int>>>(input_data["order"])),
+    : n_samples(arg_list["n_samples"]),
+      n_nodes(arg_list["n_nodes"]),
+      data_numeric(n_nodes, n_samples, as<vector<int>>(input_data["factor"])),
+      data_double(n_nodes, n_samples, as<vector<double>>(input_data["double"])),
+      data_numeric_idx(
+          n_nodes, n_samples, as<vector<int>>(input_data["order"])),
       is_continuous(as<vector<int>>(arg_list["is_continuous"])),
       levels(as<vector<int>>(arg_list["levels"])),
       has_na(n_nodes, 0),
@@ -53,7 +54,7 @@ Environment::Environment(
 
   for (int i = 0; i < n_nodes; ++i) {
     for (int j = 0; j < n_samples; ++j) {
-      if (data_numeric[j][i] == -1) {
+      if (data_numeric(i, j) == -1) {
         has_na[i] = 1;
         break;
       }

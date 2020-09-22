@@ -10,7 +10,6 @@
 #include "computation_cache.h"
 #include "structure.h"
 
-#define N_COL_NML 1000
 namespace miic {
 namespace structure {
 
@@ -21,12 +20,12 @@ using std::vector;
 using computation::CompCache;
 
 struct Environment {
-  vector<vector<int>> data_numeric;
   int n_samples;
   int n_nodes;
-  vector<vector<double>> data_double;
-  // data_numeric_idx[i] = index of i'th smallest value in data_double
-  vector<vector<int>> data_numeric_idx;
+  Grid2d<int> data_numeric;
+  Grid2d<double> data_double;
+  // data_numeric_idx(j, i) = index of i'th smallest value in data_double(j, )
+  Grid2d<int> data_numeric_idx;
 
   vector<int> is_continuous;
   vector<int> levels;

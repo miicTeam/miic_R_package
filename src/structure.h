@@ -98,6 +98,9 @@ struct Grid2d {
   Grid2d(size_t rows, size_t cols, T&& init)
       : rows_(rows), cols_(cols), data_(rows * cols, init) {}
 
+  Grid2d(size_t rows, size_t cols, vector<T, Allocator> data)
+      : rows_(rows), cols_(cols), data_(std::move(data)) {}
+
   Grid2d(const Grid2d&) = default;
   Grid2d(Grid2d&&) = default;
   Grid2d& operator=(const Grid2d&) = default;

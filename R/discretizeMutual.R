@@ -282,27 +282,31 @@ discretizeMutual <- function(X,
 
   input_data = data.frame(X,Y)
   if(!all(is.na(matrix_u_NA))) input_data = cbind(input_data, matrix_u_NA)
+  n_samples <- nrow(input_data)
+  n_nodes <- ncol(input_data)
   input_factor <- apply(input_data, 2, function(x)
                         (as.numeric(factor(x, levels = unique(x))) - 1))
   input_factor[is.na(input_factor)] <- -1
-  input_double <- list()
+  max_level_list <- as.numeric(apply(input_factor, 2, max)) + 1
+  input_factor <- as.vector(as.matrix(input_factor))
+  input_double <- matrix(nrow = n_samples, ncol = n_nodes)
   # Order list, order(column) for continuous columns (index starting from 0, NA
-  # mapped to -1), empty for others
-  input_order <- list()
-  for (i in c(1:length(input_data))) {
+  # mapped to -1), -1 for discrete columns
+  input_order <- matrix(nrow = n_samples, ncol = n_nodes)
+  for (i in c(1: n_nodes)) {
     if (is_continuous[i]) {
-      input_double[[i]] <- as.numeric(input_data[, i])
+      input_double[, i] <- as.numeric(input_data[, i])
       n_NAs <- sum(is.na(input_data[, i]))
-      input_order[[i]] <- c(order(input_data[, i], na.last=NA) - 1,
+      input_order[, i] <- c(order(input_data[, i], na.last=NA) - 1,
                             rep_len(-1, n_NAs))
     } else {
-      input_double[[i]] <- numeric(0)
-      input_order[[i]] <- numeric(0)
+      input_double[, i] <- rep_len(-1, n_samples)
+      input_order[, i] <- rep_len(-1, n_samples)
     }
   }
+  input_order <- as.vector(input_order)
+  input_double <- as.vector(input_double)
 
-  max_level_list <- as.numeric(apply(input_factor, 2, max)) + 1
-  input_factor <- data.frame(t(input_factor))
   var_names <- colnames(input_data)
 
   arg_list <- list(
@@ -319,6 +323,8 @@ discretizeMutual <- function(X,
     "levels" = max_level_list,
     "max_iteration" = 1,
     "n_eff" = n_eff,
+    "n_nodes" = n_nodes,
+    "n_samples" = n_samples,
     "n_shuffles" = 0,
     "n_threads" = 1,
     "no_init_eta" = FALSE,

@@ -21,28 +21,32 @@ miic.reconstruct <- function(input_data = NULL,
                              ),
                              max_iteration = max_iteration
                              ) {
+  n_samples <- nrow(input_data)
+  n_nodes <- ncol(input_data)
   # Numeric factor matrix, level starts from 0, NA mapped to -1
   input_factor <- apply(input_data, 2, function(x)
                         (as.numeric(factor(x, levels = unique(x))) - 1))
   input_factor[is.na(input_factor)] <- -1
   max_level_list <- as.numeric(apply(input_factor, 2, max)) + 1
-  input_factor <- data.frame(t(input_factor))
-  # Data list, numeric for continuous columns, empty for others
-  input_double <- list()
+  input_factor <- as.vector(as.matrix(input_factor))
+  # Data list, numeric for continuous columns, -1 for discrete columns
+  input_double <- matrix(nrow = n_samples, ncol = n_nodes)
   # Order list, order(column) for continuous columns (index starting from 0, NA
-  # mapped to -1), empty for others
-  input_order <- list()
-  for (i in c(1:length(input_data))) {
+  # mapped to -1), -1 for discrete columns
+  input_order <- matrix(nrow = n_samples, ncol = n_nodes)
+  for (i in c(1:ncol(input_data))) {
     if (is_continuous[i]) {
-      input_double[[i]] <- as.numeric(input_data[, i])
+      input_double[, i] <- as.numeric(input_data[, i])
       n_NAs <- sum(is.na(input_data[, i]))
-      input_order[[i]] <- c(order(input_data[, i], na.last=NA) - 1,
+      input_order[, i] <- c(order(input_data[, i], na.last=NA) - 1,
                             rep_len(-1, n_NAs))
     } else {
-      input_double[[i]] <- numeric(0)
-      input_order[[i]] <- numeric(0)
+      input_double[, i] <- rep_len(-1, n_samples)
+      input_order[, i] <- rep_len(-1, n_samples)
     }
   }
+  input_order <- as.vector(input_order)
+  input_double <- as.vector(input_double)
 
   var_names <- colnames(input_data)
   if (!is.null(black_box)) {
@@ -72,6 +76,8 @@ miic.reconstruct <- function(input_data = NULL,
     "levels" = max_level_list,
     "max_iteration" = max_iteration,
     "n_eff" = n_eff,
+    "n_nodes" = n_nodes,
+    "n_samples" = n_samples,
     "n_shuffles" = n_shuffles,
     "n_threads" = n_threads,
     "no_init_eta" = FALSE,

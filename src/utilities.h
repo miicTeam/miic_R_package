@@ -30,25 +30,25 @@ bool checkInterrupt();
 
 void printProgress(double percentage, TimePoint, int& n_unsettled);
 
-double compute_kl_divergence(const std::vector<std::vector<int>>& data_numeric,
-    const std::vector<std::vector<double>>& data_double, int X, int Y,
+double compute_kl_divergence(const structure::Grid2d<int>& data_numeric,
+    const structure::Grid2d<double>& data_double, int X, int Y,
     const std::vector<int>& ui_list, const std::vector<int>& levels,
     const std::vector<int>& is_continuous, int samplesNotNA,
     const structure::TempVector<int>& AllLevels_red,
     const structure::TempVector<int>& sample_is_not_NA,
     const std::vector<double>& noise_vec);
 
-int getNumSamplesNonNA(const std::vector<std::vector<int>>& data_numeric, int X,
-    int Y, const std::vector<int>& ui_list);
+int getNumSamplesNonNA(const structure::Grid2d<int>& data_numeric, int X, int Y,
+    const std::vector<int>& ui_list);
 
 int countNonNA(int X, int Y, int Z, const std::vector<int>& ui_list,
-    const std::vector<std::vector<int>>& data_numeric,
+    const structure::Grid2d<int>& data_numeric,
     structure::TempVector<int>& sample_is_not_NA,
     structure::TempVector<int>& NAs_count);
 
 bool filterNA(int X, int Y, int Z, const std::vector<int>& ui_list,
-    const std::vector<std::vector<int>>& data_numeric,
-    const std::vector<std::vector<int>>& data_numeric_idx,
+    const structure::Grid2d<int>& data_numeric,
+    const structure::Grid2d<int>& data_numeric_idx,
     const std::vector<int>& levels, const std::vector<int>& is_continuous,
     const std::vector<double>& sample_weights,
     const structure::TempVector<int>& sample_is_not_NA,

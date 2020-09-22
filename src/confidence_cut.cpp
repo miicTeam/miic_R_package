@@ -47,8 +47,8 @@ void setConfidence(Environment& environment) {
 #pragma omp parallel
 #endif
   {
-    vector<vector<int>> shuffled_data(environment.data_numeric);
-    vector<vector<int>> shuffled_data_idx(environment.data_numeric_idx);
+    Grid2d<int> shuffled_data(environment.data_numeric);
+    Grid2d<int> shuffled_data_idx(environment.data_numeric_idx);
     vector<int> indices(environment.n_samples);
 #ifdef _OPENMP
 #pragma omp for schedule(static)
@@ -61,13 +61,13 @@ void setConfidence(Environment& environment) {
         // random permutation
         rShuffle(begin(indices), end(indices));
         for (int row = 0; row < environment.n_samples; row++) {
-          shuffled_data[indices[row]][col] = environment.data_numeric[row][col];
+          shuffled_data(col, indices[row]) = environment.data_numeric(col, row);
           if (environment.is_continuous[col]) {
-            if (environment.data_numeric_idx[col][row] == -1)
-              shuffled_data_idx[col][row] = -1;
+            if (environment.data_numeric_idx(col, row) == -1)
+              shuffled_data_idx(col, row) = -1;
             else
-              shuffled_data_idx[col][row] =
-                  indices[environment.data_numeric_idx[col][row]];
+              shuffled_data_idx(col, row) =
+                  indices[environment.data_numeric_idx(col, row)];
           }
         }
       }

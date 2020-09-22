@@ -145,8 +145,8 @@ double getInfo3PointOrScore(Environment& environment, int X, int Y, int Z,
 }
 
 InfoBlock getCondMutualInfo(int X, int Y, const vector<int>& ui_list,
-    const vector<vector<int>>& data_numeric,
-    const vector<vector<int>>& data_numeric_idx, Environment& environment) {
+    const Grid2d<int>& data_numeric, const Grid2d<int>& data_numeric_idx,
+    Environment& environment) {
   TempAllocatorScope scope;
   auto& cache = environment.cache.info_score;
 
