@@ -31,6 +31,11 @@ miic(
   mov_avg = NULL,
   keep_max_data = FALSE,
   max_nodes = 50,
+  var_interest = NULL,
+  var_interest_condition = NULL,
+  window_position = "start",
+  layers = NULL,
+  nodes_layers = NULL,
   verbose = FALSE
 )
 }
@@ -610,7 +615,7 @@ from indirect effects amongst correlated variables, including cause-effect
 relationships and the effect of unobserved latent causes.
 }
 \details{
-Starting from a complete graph, the method iteratively removes
+In regular mode, starting from a complete graph, the method iteratively removes
 dispensable edges, by uncovering significant information contributions from
 indirect paths, and assesses edge-specific confidences from randomization of
 available data. The remaining edges are then oriented based on the signature

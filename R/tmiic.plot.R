@@ -48,7 +48,7 @@
 #      info_shifted, then the edge kept is the one with the minimum lag.
 #      e.g. X_lag1->Y_lag0, X_lag0<-Y_lag2 with info_shifted of
 #      X_lag1->Y_lag0 > X_lag0<-Y_lag2 become X->Y lag=1.
-#    * "drop"}, the same pre-processing as "unique" will be applied.
+#    * "drop", the same pre-processing as "unique" will be applied.
 #      In addition, the lag information will be dropped
 #
 # - show_self_loops: boolean, optional, TRUE by default.
@@ -102,7 +102,7 @@ tmiic_getIgraph <- function (tmiic_obj, display="compact",
 #-----------------------------------------------------------------------------
 tmiic_prepare_edges_for_plotting <- function (tmiic_obj)
   {
-  df_edges <- tmiic_obj$summary[tmiic_obj$summary$type %in% c('P', 'TP', 'FP'), ]
+  df_edges <- tmiic_obj$summary[tmiic_obj$summary$type %in% c('P', 'TP', 'FP'), , drop=F]
   if (nrow(df_edges) <= 0)
     df_edges$xy = character(0)
   else
@@ -825,6 +825,7 @@ tmiic_compute_grid_layout <- function (tmiic_obj, display="raw",
 #'
 #' Used only when the display is "raw" or "lagged" and no layout is supplied.
 #' Possible values are \emph{"none"}, \emph{"alphabetical"}, \emph{"layers"},
+#'
 #' \emph{"greedy"} and \emph{"sugiyama"}
 #' \itemize{
 #' \item When \emph{positioning_for_grid} = \emph{"none"}

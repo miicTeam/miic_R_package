@@ -113,7 +113,10 @@ void induceScore(
 // return vector<ProbaArray> Each ProbaArray is bound to an unshielded Triple
 vector<ProbaArray> getOriProbasList(const vector<Triple>& triples,
     const vector<double>& I3_list, const vector<int>& is_contextual,
-    const vector<int>& is_consequence, bool latent, bool degenerate,
+    const vector<int>& is_consequence, bool is_layered,
+    const std::vector<int>& node_layers,
+    std::vector<Layer> &layers,
+    bool latent, bool degenerate,
     bool propagation, bool half_v_structure,
     bool temporal, const vector<int>& nodes_lags) {
   // A score is a quantity almost proportional to abs(I3). All probabilities can
@@ -150,6 +153,43 @@ vector<ProbaArray> getOriProbasList(const vector<Triple>& triples,
         scores[i][3].value = -scores[i][2].value;
       }
     }
+    //
+    // In layered mode, use layers for orientation
+    //
+    if (is_layered)
+      {
+      int layer_X = node_layers[ triples[i][0] ];
+      int layer_Z = node_layers[ triples[i][1] ];
+      int layer_Y = node_layers[ triples[i][2] ];
+
+      int preorient = Layer::get_preorientation (layers[layer_X], layers[layer_Z]);
+      if (preorient < 0)
+        {
+        scores[i][0] = ProbaScore{kScoreMax, true};
+        if (!latent)
+          scores[i][1] = ProbaScore{kScoreLowest, true};
+        }
+      else if (preorient > 0)
+        {
+        scores[i][1] = ProbaScore{kScoreMax, true};
+        if (!latent)
+          scores[i][0] = ProbaScore{kScoreLowest, true};
+        }
+
+      preorient = Layer::get_preorientation (layers[layer_Z], layers[layer_Y]);
+      if (preorient < 0)
+        {
+        scores[i][2] = ProbaScore{kScoreMax, true};
+        if (!latent)
+          scores[i][3] = ProbaScore{kScoreLowest, true};
+        }
+      else if (preorient > 0)
+        {
+        scores[i][3] = ProbaScore{kScoreMax, true};
+        if (!latent)
+          scores[i][2] = ProbaScore{kScoreLowest, true};
+        }
+      }
     //
     // In temporal mode, use time for orientation
     //

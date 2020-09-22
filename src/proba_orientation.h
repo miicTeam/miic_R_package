@@ -3,6 +3,7 @@
 
 #include <array>
 #include <vector>
+#include "layers.h"
 
 namespace miic {
 namespace reconstruction {
@@ -30,7 +31,10 @@ using ScoreArray = std::array<ProbaScore, 4>;
 
 std::vector<ProbaArray> getOriProbasList(const std::vector<Triple>&,
     const std::vector<double>& I3_list, const std::vector<int>& is_contextual,
-    const std::vector<int>& is_consequence, bool latent, bool degenerate,
+    const std::vector<int>& is_consequence, bool is_layered,
+    const std::vector<int>& node_layers,
+    std::vector<Layer> &layers,
+    bool latent, bool degenerate,
     bool propagation, bool half_v_structure,
     bool temporal, const std::vector<int>& nodes_lags);
 }  // namespace reconstruction

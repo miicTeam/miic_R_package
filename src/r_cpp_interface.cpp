@@ -7,6 +7,9 @@
 #include <string>
 #include <vector>
 
+#include "layers.h"
+#include "debug.h"
+
 namespace miic {
 namespace utility {
 
@@ -17,9 +20,13 @@ using Rcpp::as;
 using std::vector;
 
 void setEnvironmentFromR(const Rcpp::List& input_data,
-    const Rcpp::List& arg_list, Environment& environment) {
+    const Rcpp::List& arg_list, Environment& environment)
+  {
   const int n_nodes = environment.n_nodes;
   const int n_samples = environment.n_samples;
+  //
+  // Parameters considered as optional (from C++ part point of view)
+  //
   if (input_data.containsElementNamed("double"))
     environment.data_double = Grid2d<double>(
         n_nodes, n_samples, as<vector<double>>(input_data["double"]));
@@ -32,6 +39,16 @@ void setEnvironmentFromR(const Rcpp::List& input_data,
       environment.mode = 1;
       environment.temporal = true;
       }
+    if (mode_flag.compare("TNS") == 0)
+      {
+      environment.mode = 2;
+      environment.is_layered = 1;
+      }
+    if (mode_flag.compare("L") == 0)
+      {
+      environment.mode = 3;
+      environment.is_layered = 1;
+      }
     }
 
   if (arg_list.containsElementNamed("n_eff"))
@@ -39,12 +56,13 @@ void setEnvironmentFromR(const Rcpp::List& input_data,
   if (environment.n_eff < 0 || environment.n_eff > n_samples)
     environment.n_eff = static_cast<double>(n_samples);
 
-  if (arg_list.containsElementNamed("var_names")) {
+  if (arg_list.containsElementNamed("var_names"))
+    {
     auto var_names = as<vector<std::string>>(arg_list["var_names"]);
     std::transform(var_names.begin(), var_names.end(),
         std::back_inserter(environment.nodes),
         [](std::string name) { return Node(name); });
-  }
+    }
 
   if (arg_list.containsElementNamed("orientation"))
     environment.orientation = as<bool>(arg_list["orientation"]);
@@ -55,33 +73,36 @@ void setEnvironmentFromR(const Rcpp::List& input_data,
   if (arg_list.containsElementNamed("propagation"))
     environment.propagation = as<bool>(arg_list["propagation"]);
 
-  if (arg_list.containsElementNamed("consistent")) {
+  if (arg_list.containsElementNamed("consistent"))
+    {
     auto consistent_flag = as<std::string>(arg_list["consistent"]);
     if (consistent_flag.compare("orientation") == 0)
       environment.consistent = 1;
     else if (consistent_flag.compare("skeleton") == 0)
       environment.consistent = 2;
-  }
+    }
 
   if (arg_list.containsElementNamed("max_iteration"))
     environment.max_iteration = as<int>(arg_list["max_iteration"]);
 
-  if (arg_list.containsElementNamed("latent")) {
+  if (arg_list.containsElementNamed("latent"))
+    {
     auto latent_flag = as<std::string>(arg_list["latent"]);
-    if (latent_flag.compare("yes") == 0) {
+    if (latent_flag.compare("yes") == 0)
+      {
       environment.latent = true;
       environment.latent_orientation = true;
-    } else if (latent_flag.compare("orientation") == 0)
+      }
+    else if (latent_flag.compare("orientation") == 0)
       environment.latent_orientation = true;
-  }
+    }
 
   if (arg_list.containsElementNamed("test_mar"))
     environment.test_mar = as<bool>(arg_list["test_mar"]);
 
-  if (arg_list.containsElementNamed("cplx")) {
+  if (arg_list.containsElementNamed("cplx"))
     if (as<std::string>(arg_list["cplx"]).compare("bic") == 0)
       environment.cplx = 0;
-  }
 
   if (arg_list.containsElementNamed("n_shuffles"))
     environment.n_shuffles = as<int>(arg_list["n_shuffles"]);
@@ -89,49 +110,32 @@ void setEnvironmentFromR(const Rcpp::List& input_data,
   if (arg_list.containsElementNamed("conf_threshold"))
     environment.conf_threshold = as<double>(arg_list["conf_threshold"]);
 
-  if (arg_list.containsElementNamed("is_contextual")) {
+  if (arg_list.containsElementNamed("is_contextual"))
     environment.is_contextual = as<vector<int>>(arg_list["is_contextual"]);
-  } else {
+  else
     environment.is_contextual.resize(n_nodes, 0);
-  }
   environment.any_contextual = std::any_of (environment.is_contextual.begin(),
     environment.is_contextual.end(), [](bool v) { return v; });
   //
   // Variables considered as consequence only
   //
-  if (arg_list.containsElementNamed("is_consequence")) {
+  if (arg_list.containsElementNamed("is_consequence"))
     environment.is_consequence = as<vector<int>>(arg_list["is_consequence"]);
-  } else {
+  else
     environment.is_consequence.resize(n_nodes, 0);
-  }
   environment.any_consequence = std::any_of (environment.is_consequence.begin(),
     environment.is_consequence.end(), [](bool v) { return v; });
-  //
-  // Remove edges between consequence variables
-  //
-  if (environment.any_consequence) {
-    for (int i = 0; i < n_nodes; i++)
-      for (int j = 0; j < n_nodes; j++)
-        if (environment.is_consequence[i] && environment.is_consequence[j]) {
-          environment.edges(i, j).status = 0;
-          environment.edges(i, j).status_init = 0;
-          environment.edges(i, j).status_prev = 0;
-          environment.edges(i, j).proba_head = -1;
-        }
-  }
 
   if (arg_list.containsElementNamed("sample_weights"))
     environment.sample_weights = as<vector<double>>(arg_list["sample_weights"]);
-  if (environment.sample_weights.empty()) {
+  if (environment.sample_weights.empty())
+    {
     double uniform_weight = environment.n_eff / n_samples;
     environment.sample_weights.resize(n_samples, uniform_weight);
-  }
+    }
 
   std::generate(begin(environment.noise_vec), end(environment.noise_vec),
       []() { return R::runif(-kMagnitudeTies, kMagnitudeTies); });
-
-  if (arg_list.containsElementNamed("is_k23"))
-    environment.is_k23 = as<bool>(arg_list["is_k23"]);
 
   if (arg_list.containsElementNamed("degenerate"))
     environment.degenerate = as<bool>(arg_list["degenerate"]);
@@ -150,7 +154,8 @@ void setEnvironmentFromR(const Rcpp::List& input_data,
   if (arg_list.containsElementNamed("n_threads"))
     environment.n_threads = as<int>(arg_list["n_threads"]);
 #ifdef _OPENMP
-  if (environment.n_threads <= 0) environment.n_threads = omp_get_num_procs();
+  if (environment.n_threads <= 0)
+    environment.n_threads = omp_get_num_procs();
   omp_set_num_threads(environment.n_threads);
 #endif
 
@@ -236,11 +241,162 @@ void setEnvironmentFromR(const Rcpp::List& input_data,
   if (arg_list.containsElementNamed("verbose"))
     environment.verbose = as<bool>(arg_list["verbose"]);
 
-  if (arg_list.containsElementNamed("black_box")) {
+  if (arg_list.containsElementNamed("black_box"))
+    {
     auto black_box_vec = as<vector<int>>(arg_list["black_box"]);
     int n_pairs = black_box_vec.size() / 2;
     environment.readBlackbox(Grid2d<int>(n_pairs, 2, std::move(black_box_vec)));
-  }
+    }
+
+  if (arg_list.containsElementNamed("nodes_layers"))
+    {
+    environment.nodes_layers = as<vector<int>>(arg_list["nodes_layers"]);
+    for (auto itr = environment.nodes_layers.begin();
+         itr != environment.nodes_layers.end();
+         ++itr)
+      --(*itr);
+    Rcpp::Rcout << "node_layer after=";
+    for (auto& one_l : environment.nodes_layers)
+      Rcpp::Rcout << " " << one_l;
+    Rcpp::Rcout << "\n";
+    }
+
+  if (arg_list.containsElementNamed("layers"))
+    {
+    Rcpp::DataFrame df_layers = as<Rcpp::DataFrame> (arg_list["layers"]);
+    vector<Layer> layers = Layer::initFromR (df_layers);
+    for (auto& one_l : layers)
+      one_l.print();
+    for (size_t i = 0; i < layers.size (); ++i)
+      for (size_t j = 0; j < layers.size (); ++j)
+        {
+        Rcpp::Rcout << "Layers " << i << "->" << j
+          << ", is_connected = " <<  Layer::are_connected (layers[i], layers[j])
+          << ", is_preoriented = " <<  Layer::get_preorientation  (layers[i], layers[j])
+          << "\n";
+        }
+    environment.layers = layers;
+    }
+  //
+  // Remove edges between consequence variables
+  //
+  if (environment.any_consequence)
+    {
+    for (int i = 0; i < n_nodes; i++)
+      for (int j = 0; j < n_nodes; j++)
+        if (environment.is_consequence[i] && environment.is_consequence[j])
+          {
+          environment.edges(i, j).status = 0;
+          environment.edges(i, j).status_init = 0;
+          environment.edges(i, j).status_prev = 0;
+          }
+    }
+  //
+  // Temporal stationary mode
+  //
+  if (environment.temporal)
+    {
+    environment.list_n_layers = as<vector<int>> (arg_list["n_layers"]);
+    environment.layer_max = *std::max_element ( environment.list_n_layers.begin(),
+                                                environment.list_n_layers.end() );
+    environment.n_nodes_not_lagged = environment.list_n_layers.size();
+    //
+    // Pre-compute the class of each variable (unique ID for the part before "_lagX")
+    //
+    for (int node_idx = 0; node_idx < environment.n_nodes_not_lagged; ++node_idx)
+      environment.nodes_class.push_back (node_idx);
+    for (int layer_idx = 2; layer_idx <= environment.layer_max; ++layer_idx)
+      for (int node_idx = 0; node_idx < environment.n_nodes_not_lagged; ++node_idx)
+        if (layer_idx <= environment.list_n_layers[node_idx])
+          environment.nodes_class.push_back (node_idx);
+    //
+    // Pre-compute the lag of each variable: (layer - 1) * delta_t
+    //
+    vector<int> list_delta_t = as<vector<int>> (arg_list["delta_t"]);
+    environment.nodes_lags.assign (environment.n_nodes_not_lagged, 0);
+    for (int layer_idx = 2; layer_idx <= environment.layer_max; ++layer_idx)
+      for (int node_idx = 0; node_idx < environment.n_nodes_not_lagged; ++node_idx)
+        if (layer_idx <= environment.list_n_layers[node_idx])
+          environment.nodes_lags.push_back ( (layer_idx - 1) * list_delta_t[node_idx]);
+    //
+    // For contextual variables, we consider them as very old,
+    // so they are never the consequence of another variable
+    //
+    for (size_t ctx_idx = 0; ctx_idx < environment.is_contextual.size(); ++ctx_idx)
+      if (environment.is_contextual[ctx_idx])
+        environment.nodes_lags[ctx_idx] = INT_MAX;
+    //
+    // Pre-compute the index shifts from a var to its next lagged counterpart
+    // (i.e.: variables: x_lag0, ctr_var, y_lag0, x_lag1, y_lag1
+    //  => nodes_shifts:   3   ,    0   ,   2   ,   0   ,   0)
+    //
+    int n_nodes_shifts = environment.n_nodes_not_lagged;
+    vector <bool> end_reached (environment.n_nodes_not_lagged, false);
+    for (int layer_idx = 2; layer_idx <= environment.layer_max+1; ++layer_idx)
+      for (int node_idx = 0; node_idx < environment.n_nodes_not_lagged; ++node_idx)
+        if (layer_idx <= environment.list_n_layers[node_idx])
+          environment.nodes_shifts.push_back (n_nodes_shifts);
+        else if (!end_reached[node_idx])
+          {
+          end_reached[node_idx] = true;
+          environment.nodes_shifts.push_back (0);
+          --n_nodes_shifts;
+          }
+    //
+    // In temporal mode, we do not start from a complete graph
+    // => Remove all edges not having a node on the layer 0
+    //
+    for (int i = environment.n_nodes_not_lagged; i < n_nodes; i++)
+      for (int j = environment.n_nodes_not_lagged; j < n_nodes; j++)
+        {
+        environment.edges(i, j).status = 0;
+        environment.edges(i, j).status_init = 0;
+        environment.edges(i, j).status_prev = 0;
+        environment.edges(i, j).proba_head = -1;
+        }
+    //
+    // In addition, non lagged variable (i.e.:contextual) can only have edges
+    // with nodes of the layer 0 (others can be found by stationarity)
+    //
+    for (int i = 0; i < environment.n_nodes_not_lagged; i++)
+      if (environment.is_contextual[i])
+        for (int j = environment.n_nodes_not_lagged; j < n_nodes; j++)
+          {
+          environment.edges(i, j).status = 0;
+          environment.edges(i, j).status_init = 0;
+          environment.edges(i, j).status_prev = 0;
+          environment.edges(i, j).proba_head = -1;
+          environment.edges(j, i).status = 0;
+          environment.edges(j, i).status_init = 0;
+          environment.edges(j, i).status_prev = 0;
+          environment.edges(j, i).proba_head = -1;
+          }
+    }
+  //
+  // Multi-layered mode
+  //
+  if (environment.is_layered)
+    {
+    Rcpp::Rcout << "L : Prune edges not connected\n";
+    debug::debugEdges (environment, "Before pruning");
+    // Remove edges of nodes not connected
+    //
+    for (int i = 0; i < environment.n_nodes; i++)
+      for (int j = i+1; j < environment.n_nodes; j++)
+          if ( ! Layer::are_connected (environment.layers[environment.nodes_layers[i]],
+                                       environment.layers[environment.nodes_layers[j]]) )
+            {
+            environment.edges(i, j).status = 0;
+            environment.edges(i, j).status_init = 0;
+            environment.edges(i, j).status_prev = 0;
+            environment.edges(i, j).proba_head = -1;
+            environment.edges(j, i).status = 0;
+            environment.edges(j, i).status_init = 0;
+            environment.edges(j, i).status_prev = 0;
+            environment.edges(j, i).proba_head = -1;
+            }
+    debug::debugEdges (environment, "After pruning");
+    }
 }
 }  // namespace utility
 }  // namespace miic

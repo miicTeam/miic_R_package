@@ -1,5 +1,6 @@
 #include <Rcpp.h>
 #include "orientation.h"
+#include "layers.h"
 
 #ifdef _OPENMP
 #include <omp.h>
@@ -145,6 +146,53 @@ void completeOrientationUsingPrior (Environment& environment,
     }
   }
 
+//-----------------------------------------------------------------------------
+// completeOrientationUsingLayers
+//-----------------------------------------------------------------------------
+void completeOrientationUsingLayers (Environment& environment,
+                                   const std::vector<Triple>& triples)
+  {
+  const auto& edge_list = environment.connected_list;
+  for (auto iter0 = begin(edge_list); iter0 != end(edge_list); ++iter0)
+    {
+    int posX = iter0->X, posY = iter0->Y;
+    //
+    // If edge is in triple, head/tail probas have already been computed
+    // and applied in adjacency matrix
+    //
+    bool is_in_triple = false;
+    for (unsigned int i = 0; i < triples.size() ; i++)
+      if (   ( (triples[i][0] == posX) && (triples[i][1] == posY) )
+          || ( (triples[i][0] == posY) && (triples[i][1] == posX) )
+          || ( (triples[i][1] == posX) && (triples[i][2] == posY) )
+          || ( (triples[i][1] == posY) && (triples[i][2] == posX) ) ) {
+        is_in_triple = true;
+        break;
+      }
+    if (is_in_triple)
+      continue;
+    //
+    // get the orient from layers
+    //
+    //
+    int orient = Layer::get_preorientation (
+      environment.layers[environment.nodes_layers[posX]],
+      environment.layers[environment.nodes_layers[posY]]);
+    if (orient == 0)
+      continue;
+    //
+    // The edge is not in open triples, has a pre-oirentation
+    // => we need to orient it using the layer information
+    // edge orientation x->Y if pre-orient > 0 and X<-Y if pre-orient  < 0
+    //
+    Rcpp::Rcout << "Post-orient " << posX << "-" << posY << " as " << orient << "\n";
+    if (orient > 0)
+      updateAdj(environment, posX, posY, 0, 1);
+    else
+      updateAdj(environment, posX, posY, 1, 0);
+    }
+  }
+
 vector<vector<string>> orientationProbability(Environment& environment) {
   vector<Triple> triples;
   //
@@ -186,6 +234,8 @@ vector<vector<string>> orientationProbability(Environment& environment) {
       completeOrientationUsingPrior (environment, triples);
     if (environment.temporal)
       tmiic::completeOrientationUsingTime (environment, triples);
+    if (environment.is_layered)
+      completeOrientationUsingLayers (environment, triples);
     return vector<vector<string>>();
   }
 
@@ -207,6 +257,7 @@ vector<vector<string>> orientationProbability(Environment& environment) {
   // Compute the arrowhead probability of each edge endpoint
   vector<ProbaArray> probas_list = getOriProbasList(triples, I3_list,
           environment.is_contextual, environment.is_consequence,
+          environment.is_layered, environment.nodes_layers, environment.layers,
           environment.latent_orientation, environment.degenerate,
           environment.propagation, environment.half_v_structure,
           environment.temporal, environment.nodes_lags);
@@ -305,6 +356,8 @@ vector<vector<string>> orientationProbability(Environment& environment) {
   //
   if ( (environment.any_contextual) || (environment.any_consequence) )
     completeOrientationUsingPrior (environment, triples);
+  if (environment.is_layered)
+    completeOrientationUsingLayers (environment, triples);
   //
   // In temporal mode, we add in adj matrix the orientation of temporal edges
   // that were not already oriented (edges was not part of an open triple)

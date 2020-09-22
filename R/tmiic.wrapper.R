@@ -6,210 +6,105 @@
 # Author     : Franck SIMON
 #*******************************************************************************
 
+#===============================================================================
+# FUNCTIONS
+#===============================================================================
+# tmiic_extract_trajectories
 #-------------------------------------------------------------------------------
-# tmiic_lag_state_order
+# Extract the trajectories from a data frame and return them in a list
+# - input_data: a data frame with the time steps in the 1st column
+#   A new trajectory is identified when time step < previous time step
+# - check: optional, default=T. Emit warnings when:
+#   * there is a gap between 2 consecutive time steps
+#   * the time step value is not incremented  between 2 consecutive rows
+#   * the 1st time step of a trajectory is not 1
+# Returns:
+# - a list: the list of trajectories
+#   Note that the time step information in each trajectory is renumbered from 1
+#   to number of time steps of the trajectory (so no gap, no unchanged time step)
 #-------------------------------------------------------------------------------
-# Modify the state order into a lagged version: the lagged variables are
-# completed and/or repeated with lagX to match the lagged temporal graph.
-# inputs:
-# - state_order: a dataframe, the state order returned by
-#   tmiic_check_state_order_part2
-# Returns: a dataframe: the lagged state_order
-#-------------------------------------------------------------------------------
-tmiic_lag_state_order <- function (state_order)
+tmiic_extract_trajectories <- function (input_data, check=T)
   {
-  n_vars <- nrow (state_order)
-  state_order$lag <- -1
-  state_order$initial_var <- -1
-  #
-  # Put lag0 and not lagged variable first
-  #
-  state_lagged <- state_order
-  for (var_idx in 1:n_vars)
+  timesteps <- input_data[, 1]
+  if ( any ( is.na (timesteps) ) )
+    miic_error ("trajectories check", "the time steps column (column 1) contains NA(s).")
+  if ( ! all (is.numeric (timesteps)) )
+    miic_error ("trajectories check", "the time steps column (column 1) is not integer.")
+  if ( ! all (round (timesteps, 0) == timesteps) )
+    miic_error ("trajectories check", "the time steps column (column 1) is not integer.")
+  timesteps <- as.integer(timesteps)
+  timesteps_next <- c (timesteps[2:length(timesteps)], 0)
+  breaks <- which (timesteps_next < timesteps)
+
+  list_traj <- list()
+  row_prev <- 1
+  for ( i in 1:length (breaks) )
     {
-    if (state_lagged [var_idx, "is_contextual"] == 0)
-      {
-      state_lagged [var_idx, "var_names"] = paste0 (state_order [var_idx, "var_names"], "_lag0")
-      state_lagged [var_idx, "lag"] = 0
-      state_lagged [var_idx, "initial_var"] = var_idx
-      }
-    else
-      {
-      state_lagged [var_idx, "lag"] = 0
-      state_lagged [var_idx, "initial_var"] = var_idx
-      }
+    row_new <- breaks[[i]]
+    list_traj[[i]] <- input_data[row_prev:row_new,,F]
+    row_prev <- row_new + 1
+    }
+
+  if (check)
+    {
+    no_inc <- which (timesteps_next == timesteps)
+    if (length (no_inc) > 0)
+      miic_warning ("check trajectories", "time steps unchanged at ",
+                    length (no_inc), " position(s).")
+    gaps <- which (timesteps_next > timesteps + 1)
+    if (length (gaps) > 0)
+      miic_warning ("check trajectories", "gap in time steps at ",
+                    length (gaps), " position(s).")
+    wrong_starts <- which ( unlist (lapply (list_traj,
+                      FUN=function (x) { return (x[1,1] != 1) } ) ) )
+    if (length (wrong_starts) > 0)
+      miic_warning ("check trajectories", length (wrong_starts),
+        " trajectorie(s) don't start with 1 as first time step.")
+    max_nb_ts <- max (unlist (lapply (list_traj, FUN=nrow) ) )
+    if (max_nb_ts == 1)
+      miic_error ("trajectories check",
+                  "all trajectories have only 1 time step.")
     }
   #
-  # Duplicate rows for lagged variables
+  # Renum time steps
   #
-  state_lagged_nrows <- nrow (state_lagged)
-  n_layers_back_max <- max ( (state_lagged$n_layers - 1) )
-  n_layers_back_idx = 1
-  for (n_layers_back_idx in 1:n_layers_back_max)
-    {
-    var_idx = 1
-    for (var_idx in 1:n_vars)
-      {
-      n_layers_back_of_var <- state_lagged[var_idx, "n_layers"]  - 1
-      if (n_layers_back_idx <= n_layers_back_of_var)
-        {
-        state_lagged_nrows <- state_lagged_nrows + 1
-        state_lagged [state_lagged_nrows,] <- state_order [var_idx,]
-        lag <- n_layers_back_idx * state_order[var_idx, "delta_t"]
-        state_lagged [state_lagged_nrows, "var_names"] <- paste0 (
-          state_order [var_idx, "var_names"], "_lag", lag)
-        state_lagged [state_lagged_nrows, "lag"] <- lag
-        state_lagged [state_lagged_nrows, "initial_var"] <- var_idx
-        }
-      }
-    }
-  return (state_lagged)
+  for ( i in 1:length (list_traj) )
+    list_traj[[i]][,1] <- 1:nrow (list_traj[[i]])
+  return (list_traj)
   }
 
 #-------------------------------------------------------------------------------
-# tmiic_lag_other_df
+# tmiic_group_trajectories
 #-------------------------------------------------------------------------------
-# Modify the complementary df int a lagged version: the 3 column dataframes are
-# transformed into a 2 columns one, in which variables are transformed into
-# their lagged representation. i.e:
-# - lagged_var1 - lagged_var2 - 1 becomes lagged_var1_lag1 - lagged_var2_lag0
-# - ctx_var1 - lagged_var2 - NA becomes ctx_var1 - lagged_var2_lag0
-# inputs:
-# - df: the dataframe to transform in its lagged version
-# - state_order: a dataframe, the state order returned by
-#   tmiic_check_state_order_part2
-# Returns: a dataframe: the lagged dataframe
+# Merge a list of trajectories into a data frame
+# - list_traj: the list of trajectories
+# Returns:
+# - a data frame: data frame with all the trajectories
 #-------------------------------------------------------------------------------
-tmiic_lag_other_df <- function (state_order, df)
+tmiic_group_trajectories <- function (list_traj)
   {
-  if ( (is.null (df)) || (nrow (df) <= 0) )
-    return (df)
+  # Pre-allocate the data frame with the same structure as trajectories
+  # and the same number of rows as all the trajectories
+  # VOIR data <- data[1:n_row_tot,]
+  #
+  df <- list_traj[[1]][FALSE,]
+  n_row_tot <- sum (unlist (lapply(list_traj, nrow)))
+  df <- df[seq_len(n_row_tot), , drop=F]
+  rownames(df) <- NULL
 
-  for (i in 1:nrow (df))
-    {
-    orig_node_idx <- which (state_order$var_names == df[i, 1])
-    if (state_order[orig_node_idx, "is_contextual"] == 0)
-      df[i, 1] = paste0 (df [i, 1], "_lag", df [i, 3])
-    df[i, 2] = paste0 (df [i, 2], "_lag0")
-    }
-  df <- df[,-3]
+  row_idx <- 1
+  for (i in 1:length(list_traj) )
+    if (nrow(list_traj[[i]]) > 0)
+      {
+      df[row_idx:(row_idx-1+nrow(list_traj[[i]])),] <- list_traj[[i]]
+      row_idx <- row_idx + nrow(list_traj[[i]])
+      }
   return (df)
   }
 
 #-------------------------------------------------------------------------------
-# tmiic_lag_input_data
-#-------------------------------------------------------------------------------
-# Reorganizes the inputs in a format usable by miic: input data are lagged
-# using the history to create lagged variables
-# The function slices the input data according to the information supplied in
-# the state_order n_layers and delta_t.
-#
-# The number of variables is increased and renamed on n_layers
-# layers by delta_t. steps.
-# i.e. with n_layers=3 and delta_t.=3 : var1, var2 =>
-# var1_lag0, var2_lag0, var1_lag3, var2_lag3, var1_lag6, var2_lag6.
-#
-# Every time step (until number of time steps - (n_layers  - 1) * delta_t.)
-# is converted into a sample in the lagged data.
-#
-# Exemple with n_layers=3 and delta_t.=3:
-#
-# Time step Var & value    Var & value  => Sample  Var & value   Var & value
-#   t-6     Var1_val(t-6) Var2_val(t-6) =>   i    Var1_lag6_val Var2_lag6_val
-#   t-3     Var1_val(t-3) Var2_val(t-3) =>   i    Var1_lag3_val Var2_lag3_val
-#    t       Var1_val(t)   Var2_val(t)  =>   i    Var1_lag0_val Var2_lag0_val
-#
-#   t-7     Var1_val(t-7) Var2_val(t-7) =>   i'   Var1_lag6_val Var2_lag6_val
-#   t-4     Var1_val(t-4) Var2_val(t-4) =>   i'   Var1_lag3_val Var2_lag3_val
-#   t-1     Var1_val(t-1) Var2_val(t-1) =>   i'   Var1_lag0_val Var2_lag0_val
-#
-#   t-8     Var1_val(t-8) Var2_val(t-8) =>   i"   Var1_lag6_val Var2_lag6_val
-#   t-5     Var1_val(t-5) Var2_val(t-5) =>   i"   Var1_lag3_val Var2_lag3_val
-#   t-2     Var1_val(t-2) Var2_val(t-2) =>   i"   Var1_lag0_val Var2_lag0_val
-#
-#   ...     ............. ............. => ...... ............. ............
-#
-# until number of time steps - (n_layers - 1) * delta_t is reached.
-# The same process is applied to all input time series.
-#
-# Note that the lagging can be different for each input variable
-# if different values of n_layers or delta_t are supplied and some
-# variables can be not lagged at all like contextual ones.
-#
-# inputs:
-# - list_ts: the list of time series
-# - state_order: a dataframe, the lagged state order returned by
-#   tmiic_lag_state_order
-# - keep_max_data: boolean flag, optional, FALSE by default
-#   When FALSE, the rows containing NA introduced by the lagging process
-#   are deleted, otherwise when TRUE, the rows are kept
-#-------------------------------------------------------------------------------
-tmiic_lag_input_data <- function (list_ts, state_order, keep_max_data=FALSE)
-  {
-  tau_max = max(state_order$lag)
-  na_count = 0
-  list_ret = list()
-  for ( ts_idx in 1:length(list_ts) )
-    {
-    df = list_ts[[ts_idx]]
-    #
-    # Check if the df has enough rows = timsteps to be lagged
-    #
-    if (nrow (df) <= tau_max)
-      {
-      if (!keep_max_data)
-        {
-        miic_warning ("data lagging", "the trajectory ", ts_idx, " has only ",
-          nrow (df), " time steps and will be ignored.")
-        list_ret[[ts_idx]] = df[FALSE,]
-        next
-        }
-      miic_warning ("data lagging", "the trajectory ", ts_idx, " has only ",
-        nrow (df), " time steps and can not be lagged over ", tau_max,
-        " time steps back.")
-      }
-    #
-    # Lag the df
-    #
-    list_tmp = list()
-    for ( var_idx in 1:nrow (state_order) )
-      {
-      if (state_order[var_idx, "lag"] == 0)
-        list_tmp[[var_idx]] = df[,(var_idx+1)]
-      else
-        {
-        max_row = nrow(df) - state_order[var_idx, "lag"]
-        if (max_row <= 0)
-          list_tmp[[var_idx]] = rep (NA, nrow(df) )
-        else
-          list_tmp[[var_idx]] = c ( rep (NA, state_order[var_idx, "lag"]),
-                                    df [1:max_row,
-                                        state_order[var_idx, "initial_var"]+1] )
-        }
-      }
-    names(list_tmp) = state_order$var_names
-    # df <- as.data.frame (do.call (cbind, list_tmp) )
-    df <- data.frame (list_tmp)
-    if (!keep_max_data)
-      df = df [(tau_max+1):nrow(df),]
-    #
-    # Check rows with only NAs
-    #
-    rows_only_na <- ( rowSums (is.na (df)) == ncol (df) )
-    df <- df [!rows_only_na, ]
-    na_count = na_count + sum (rows_only_na)
-
-    list_ret[[ts_idx]] = df
-    }
-  if (na_count > 0)
-    miic_warning ("data lagging", "the lagged data contains ", sum(na_count),
-             " row(s) with only NAs. These row(s) have been removed.")
-  return (list_ret)
-  }
-
-#-----------------------------------------------------------------------------
 # tmiic_precompute_lags_layers_and_shifts
-#-----------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 # Utility function to precompute lags, layers and shifts of nodes in the
 # lagged network
 #
@@ -240,24 +135,24 @@ tmiic_precompute_lags_layers_and_shifts <- function (tmiic_obj)
     node_name <- list_nodes_not_lagged[[node_idx]]
     list_corresp_nodes[[i]] <- node_name
 
-    if (is_contextual[[node_idx]] == 0)
+    if (list_n_layers_back[[node_idx]] >= 1)
       node_name <- paste0 (node_name, "_lag0")
     list_nodes_lagged [[i]] <- node_name
     i <- i + 1
     }
 
   n_layers_back_max <- max (list_n_layers_back)
-  for (n_layers_back_idx in 1:n_layers_back_max)
+  for (n_layers_back_max in 1:n_layers_back_max)
     {
     for (node_idx in 1:n_nodes_not_lagged)
       {
       n_layers_back_of_var <- list_n_layers_back[[node_idx]]
-      if (n_layers_back_idx <= n_layers_back_of_var)
+      if (n_layers_back_max <= n_layers_back_of_var)
         {
         node_name <- list_nodes_not_lagged[[node_idx]]
         list_corresp_nodes[[i]] <- node_name
 
-        lag <- n_layers_back_idx * list_delta_t[[node_idx]];
+        lag <- n_layers_back_max * list_delta_t[[node_idx]];
         node_name <- paste0 (node_name, "_lag", lag)
         list_nodes_lagged [[i]] <- node_name
         list_lags[[i]] <- lag
@@ -401,11 +296,11 @@ tmiic_combine_probas <- function (df, comb_orient)
   #
   for ( idx in 1:nrow(df) )
     if (df[idx,"x"] > df[idx,"y"])
-        {
-        temp <- df[idx, "p_y2x"]
-        df[idx, "p_y2x"] <- df[idx, "p_x2y"]
-        df[idx, "p_x2y"] <- temp
-        }
+      {
+      temp <- df[idx, "p_y2x"]
+      df[idx, "p_y2x"] <- df[idx, "p_x2y"]
+      df[idx, "p_x2y"] <- temp
+      }
   #
   # Depending on the pre-computed combined orientation, keep max/min/avg
   #
@@ -664,11 +559,12 @@ tmiic_flatten_network <- function (tmiic_obj, flatten_mode="compact",
 #
 # returns: a dataframe with edges completed by stationarity
 #-----------------------------------------------------------------------------
+#
 tmiic_repeat_edges_over_history <- function (tmiic_obj)
   {
   # Consider only edges found by miic  type = "P", "TP", "FP"
   #
-  df_edges <- tmiic_obj$summary[tmiic_obj$summary$type %in% c('P', 'TP', 'FP'), ]
+  df_edges <- tmiic_obj$summary[tmiic_obj$summary$type %in% c('P', 'TP', 'FP'), , drop=F]
   if (nrow(df_edges) <= 0)
     return (df_edges)
   #

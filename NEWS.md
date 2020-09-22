@@ -1,3 +1,9 @@
+# Development
+
+## Features
+
+- Extension of temporal mode to non stationary time series
+
 # v2.0.3
 
 ## Features
