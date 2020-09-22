@@ -12,6 +12,7 @@
 #include "get_information.h"
 #include "linear_allocator.h"
 #include "proba_orientation.h"
+#include "tmiic.h"
 
 namespace miic {
 namespace reconstruction {
@@ -41,24 +42,91 @@ void updateAdj(Environment& env, int x, int y, double y2x, double x2y) {
 }  // anonymous namespace
 
 vector<vector<string>> orientationProbability(Environment& environment) {
-  // Get all unshielded triples X -- Z -- Y
   vector<Triple> triples;
-  const auto& edge_list = environment.connected_list;
-  for (auto iter0 = begin(edge_list); iter0 != end(edge_list); ++iter0) {
-    int posX = iter0->X, posY = iter0->Y;
-
-    for (auto iter1 = iter0 + 1; iter1 != end(edge_list); ++iter1) {
-      int posX1 = iter1->X, posY1 = iter1->Y;
-      if (posY1 == posX && !environment.edges(posY, posX1).status)
-        triples.emplace_back(Triple{posY, posX, posX1});
-      else if (posY1 == posY && !environment.edges(posX, posX1).status)
-        triples.emplace_back(Triple{posX, posY, posX1});
-      if (posX1 == posX && !environment.edges(posY, posY1).status)
-        triples.emplace_back(Triple{posY, posX, posY1});
-      else if (posX1 == posY && !environment.edges(posX, posY1).status)
-        triples.emplace_back(Triple{posX, posY, posY1});
+  if (environment.tau <= 0) {
+    // In regular mode , get all unshielded triples X -- Z -- Y
+    //
+    const auto& edge_list = environment.connected_list;
+    for (auto iter0 = begin(edge_list); iter0 != end(edge_list); ++iter0) {
+      int posX = iter0->X, posY = iter0->Y;
+  
+      for (auto iter1 = iter0 + 1; iter1 != end(edge_list); ++iter1) {
+        int posX1 = iter1->X, posY1 = iter1->Y;
+        if (posY1 == posX && !environment.edges(posY, posX1).status)
+          triples.emplace_back(Triple{posY, posX, posX1});
+        else if (posY1 == posY && !environment.edges(posX, posX1).status)
+          triples.emplace_back(Triple{posX, posY, posX1});
+        if (posX1 == posX && !environment.edges(posY, posY1).status)
+          triples.emplace_back(Triple{posY, posX, posY1});
+        else if (posX1 == posY && !environment.edges(posX, posY1).status)
+          triples.emplace_back(Triple{posX, posY, posY1});
+      }
     }
   }
+  else {
+    // In temporal mode: 
+    //
+    // When latent variable discovry is activated, duplicate edges over history 
+    // assuming stationarity to increasethe number of possible unshielded triples.
+    // Get only unshielded triples X -- Z -- Y having a node at lag0
+    // (the past only triples are not interesting as edges forming these past
+    // only triples are the result of the duplication and these edges will
+    // be removed at the end of this function)
+    // In addition of unshielded triples, get also edges not already included
+    // in the triples having a lag0 node and which can be oriented using time
+    //
+    if (environment.latent || environment.latent_orientation)
+      tmiic::repeatEdgesOverHistory (environment);
+    //
+    // Get unshielded triples with at least one lag0 node
+    //
+    const auto& edge_list = environment.connected_list;
+    for (auto iter0 = begin(edge_list); iter0 != end(edge_list); ++iter0) {
+      int posX = iter0->X, posY = iter0->Y;
+      bool edge_has_lag0 =    (posX < environment.n_nodes_not_lagged)
+                           || (posY < environment.n_nodes_not_lagged);
+
+      for (auto iter1 = iter0 + 1; iter1 != end(edge_list); ++iter1) {
+        int posX1 = iter1->X, posY1 = iter1->Y;
+        bool edge1_has_lag0 =    (posX1 < environment.n_nodes_not_lagged)
+                              || (posY1 < environment.n_nodes_not_lagged);
+        if (! (edge_has_lag0 || edge1_has_lag0) )
+          continue;
+
+        if (posY1 == posX && !environment.edges(posY, posX1).status)
+          triples.emplace_back(Triple{posY, posX, posX1});
+        else if (posY1 == posY && !environment.edges(posX, posX1).status)
+          triples.emplace_back(Triple{posX, posY, posX1});
+        if (posX1 == posX && !environment.edges(posY, posY1).status)
+          triples.emplace_back(Triple{posY, posX, posY1});
+        else if (posX1 == posY && !environment.edges(posX, posY1).status)
+          triples.emplace_back(Triple{posX, posY, posY1});
+      }
+    }
+    //
+    // Add as fake triple the lagged edges with at least one lag0 node
+    // not already in triples
+    //
+    for (auto iter0 = begin(edge_list); iter0 != end(edge_list); ++iter0) {
+      int posX = iter0->X, posY = iter0->Y;
+      if ( ! (   (posX < environment.n_nodes_not_lagged)
+              || (posY < environment.n_nodes_not_lagged) ) )
+        continue;
+
+      bool is_in_triple = false;
+      for (int i = 0; i < triples.size() ; i++)
+        if (   ( (triples[i][0] == posX) && (triples[i][1] == posY) )
+            || ( (triples[i][0] == posY) && (triples[i][1] == posX) )
+            || ( (triples[i][1] == posX) && (triples[i][2] == posY) )
+            || ( (triples[i][1] == posY) && (triples[i][2] == posX) ) ) {
+          is_in_triple = true;
+          break;
+        }
+      if (!is_in_triple)
+        triples.emplace_back(Triple{posX, posY, posX});
+    }
+  }
+  
   if (triples.empty())
     return vector<vector<string>>();
 
@@ -69,16 +137,22 @@ vector<vector<string>> orientationProbability(Environment& environment) {
 #endif
   for (size_t i = 0; i < triples.size(); ++i) {
     int X{triples[i][0]}, Z{triples[i][1]}, Y{triples[i][2]};
-    const auto& ui_list = environment.edges(X, Y).shared_info->ui_list;
-    vector<int> ui_no_z(ui_list);
-    ui_no_z.erase(remove(begin(ui_no_z), end(ui_no_z), Z), end(ui_no_z));
-
-    I3_list[i] = getInfo3PointOrScore(
-        environment, X, Y, Z, ui_no_z, /* get_info = */ true);
+    if (X == Y) // fake triple, put highest rank in the list
+      I3_list[i] = 0;
+    else
+      {
+      const auto& ui_list = environment.edges(X, Y).shared_info->ui_list;
+      vector<int> ui_no_z(ui_list);
+      ui_no_z.erase(remove(begin(ui_no_z), end(ui_no_z), Z), end(ui_no_z));
+  
+      I3_list[i] = getInfo3PointOrScore(
+          environment, X, Y, Z, ui_no_z, /* get_info = */ true);
+      }
   }
 
   // Compute the arrowhead probability of each edge endpoint
   vector<ProbaArray> probas_list = getOriProbasList(triples, I3_list,
+      environment.tau, environment.nodes, environment.latent,                                            
       environment.latent_orientation, environment.degenerate,
       environment.propagation, environment.half_v_structure);
   // update probas_list for possible inconsistencies
@@ -147,6 +221,15 @@ vector<vector<string>> orientationProbability(Environment& environment) {
         environment.nodes[triple[2]].name,
         to_string(I3_list[i]), error});
   }
+  //
+  // In temporal mode, when latent variable discovery is enabled, 
+  // we duplicated the edges over the history at the beginning 
+  // of the function => we need now to drop these extra edges
+  //
+  if (   (environment.tau >= 1) 
+      && (environment.latent || environment.latent_orientation) )
+      tmiic::dropPastEdges (environment);
+  
   return orientations;
 }
 

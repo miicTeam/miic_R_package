@@ -15,7 +15,8 @@ miic.reconstruct <- function(input_data = NULL,
                              sample_weights = NULL,
                              test_mar = TRUE,
                              consistent = "no",
-                             max_iteration = NULL
+                             max_iteration = NULL,
+                             tau = -1
                              ) {
   n_samples <- nrow(input_data)
   n_nodes <- ncol(input_data)
@@ -70,6 +71,7 @@ miic.reconstruct <- function(input_data = NULL,
     "test_mar" = test_mar,
     "max_bins" = 50,
     "var_names" = var_names,
+    "tau" = tau,
     "verbose" = verbose
   )
   if (!is.null(black_box)) {

@@ -17,6 +17,8 @@ using computation::CompCache;
 struct Environment {
   int n_samples;
   int n_nodes;
+  // In temporal node, store the number of non lagged nodes 
+  int n_nodes_not_lagged=-1;
   Grid2d<int> data_numeric;
   Grid2d<double> data_double;
   // data_numeric_idx(j, i) = index of i'th smallest value in data_double(j, )
@@ -76,6 +78,9 @@ struct Environment {
   CompCache cache;
   bool verbose = false;
 
+  // Maximum lag. Switch miic to temporal mode if >=1
+  int tau=-1;
+  
   Environment(int n_samples, int n_nodes, vector<int> vec_numeric,
       vector<int> vec_index, vector<int> is_continuous_, vector<int> levels_);
   Environment() = default;

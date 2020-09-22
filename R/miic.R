@@ -5,11 +5,19 @@
 #' from indirect effects amongst correlated variables, including cause-effect
 #' relationships and the effect of unobserved latent causes.
 #'
-#' @details Starting from a complete graph, the method iteratively removes
+#' @details  In regular mode, starting from a complete graph, the method iteratively removes
 #' dispensable edges, by uncovering significant information contributions from
 #' indirect paths, and assesses edge-specific confidences from randomization of
 #' available data. The remaining edges are then oriented based on the signature
 #' of causality in observational data.
+#'
+#' In temporal mode (when \emph{tau} >= 1), miic reorganizes the dataset 
+#' using the \emph{tau} and \emph{delta_tau} parameters to transform the timesteps 
+#' into lagged samples. As starting point, a lagged graph is created with 
+#' only edges having at least one node laying on the last timestep. 
+#' Then, miic standard algorithm is applied to remove dispensable edges. 
+#' The remaining edges are then oriented by using the temporality and the 
+#' signature of causality in observational data.
 #'
 #' The method relies on an information theoretic based (conditional) independence
 #' test which is described in (Verny \emph{et al.}, PLoS Comp. Bio. 2017),
@@ -34,11 +42,17 @@
 #' }
 #'
 #' @param input_data [a data frame]
-#' A n*d data frame (n samples, d variables) that contains the observational data.
-#' Each column corresponds to one variable and each row is a sample that gives the
+#' A n*d data frame (n rows, d variables) that contains the observational data.
+#' 
+#' In regular mode, each column corresponds to one variable and each row is a sample that gives the
 #' values for all the observed variables. The column names correspond to the
 #' names of the observed variables. Numeric columns will be treated as continuous
 #' values, factors and character as categorical.
+#' 
+#' In temporal mode (when \emph{tau} >= 1), the expected dataframe layout
+#' is variables as columns and timeseries/timesteps as rows. 
+#' The timestep information must be supplied in the first column and, 
+#' for each timeseries, be in ascending order.
 #'
 #' @param black_box [a data frame]
 #' An optional E*2 data frame containing E pairs of variables that will be considered
@@ -152,6 +166,26 @@
 #' [consensus_threshold], then set B as the status of the edge in the consensus
 #' graph, otherwise set undirected edge as the status. Set to 0.8 by default.
 #'
+#' @param tau [an integer] Optional, -1 by default.\cr
+#' Max lag used for temporal series. If \emph{tau} is supplied (integer >= 1), 
+#' miic switches to temporal mode: it contructs a lagged graph over 
+#' \emph{tau} / \emph{delta_tau} periods of time, and looks both for temporal 
+#' and contemporaneous edges.\cr
+#' Note that if \emph{delta_tau} is also supplied, \emph{tau} must be a
+#' multiple of \emph{delta_tau}.
+#' 
+#' @param movavg [an integer] Optional, -1 by default.\cr
+#' Used only in temporal mode. If \emph{movavg} is supplied (integer > 1), 
+#' a moving average operation is applied to each time series.\cr
+#' 
+#' @param delta_tau [an integer] Optional, 1 by default.\cr
+#' Used only in temporal mode. When \emph{delta_tau} is supplied (integer > 1), 
+#' the samples will be constructed using 1 timestep every \emph{delta_tau} 
+#' timesteps starting from the last.\cr 
+#' i.e.: on 1000 timesteps with  \emph{tau} = 14 and \emph{delta_tau} = 7, 
+#' the timesteps used during the samples conversion will be 1000, 993, 986 
+#' for the first sample, the next sample will use 999, 992, 985 and so on.
+#' 
 #' @param verbose [a boolean value] If TRUE, debugging output is printed.
 #'
 #' @param n_threads [a positive integer]
@@ -305,6 +339,23 @@
 #' # write graph to graphml format. Note that to correctly visualize
 #' # the network we created the miic style for Cytoscape (http://www.cytoscape.org/).
 #' miic.write.network.cytoscape(g = miic.res, file = file.path(tempdir(), "temp"))
+#'
+#' # EXAMPLE COVID CASES (timeseries demo)
+#' data(covidCases)
+#' # execute MIIC (reconstruct graph in temporal mode)
+#' tmiic.res <- miic(input_data = covidCases, tau = 2, movavg = 14)
+#'
+#' # plot temporal graph
+#' if(require(igraph)) {
+#'  plot(tmiic.res)
+#' }
+#'
+#' # to plot a condensed graph
+#' flatten.res <- tmiic.flatten_network(tmiic.res)
+#' if(require(igraph)) {
+#'  plot(flatten.res)
+#' }
+#' 
 #' }
 #'
 miic <- function(input_data,
@@ -325,6 +376,9 @@ miic <- function(input_data,
                  consistent = c("no", "orientation", "skeleton"),
                  max_iteration = 100,
                  consensus_threshold = 0.8,
+                 tau = -1,
+                 movavg = -1,
+                 delta_tau = 1,
                  verbose = FALSE) {
   res <- NULL
 
@@ -335,6 +389,17 @@ miic <- function(input_data,
   if (!is.data.frame(input_data)) {
     stop("The input data is not a dataframe")
   }
+  
+  if (tau > 0) {
+    # If we use temporal version of miic, convert history into lagged nodes and samples
+    #
+    cat ("Using temporal version of miic\n")
+    struct_ret <- miic:::tmiic.transform_data_for_miic (input_data, tau, 
+        state_order=state_order, movavg=movavg, delta_tau=delta_tau)
+    input_data <- struct_ret$input_data
+    state_order <- struct_ret$state_order
+  }
+  
   # Remove rows with only NAs
   input_data <- input_data[rowSums(is.na(input_data)) != ncol(input_data), ]
   if (length(input_data) == 0) {
@@ -488,7 +553,8 @@ miic <- function(input_data,
         sample_weights = sample_weights,
         test_mar = test_mar,
         consistent = consistent,
-        max_iteration = max_iteration
+        max_iteration = max_iteration,
+        tau = tau
       )
     if (res$interrupted) {
       stop("Interupted by user")
@@ -516,7 +582,10 @@ miic <- function(input_data,
     )
   }
 
-  class(res) <- "miic"
+  if (tau >= 1)
+    class(res) <- "tmiic"
+  else
+    class(res) <- "miic"
   return(res)
 }
 

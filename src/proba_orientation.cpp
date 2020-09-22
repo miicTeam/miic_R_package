@@ -5,6 +5,7 @@
 #include <cmath>
 #include <numeric>  // std::iota
 #include <tuple>  // std::tie
+#include <regex>
 
 namespace miic {
 namespace reconstruction {
@@ -158,11 +159,51 @@ void propagate(bool latent, bool propagation, double I3,
 // param I3_list the 3-point mutual info (N * I'(X;Y;Z|{ui})) of each Triple
 // return vector<ProbaArray> Each ProbaArray is bound to a unshielded Triple
 vector<ProbaArray> getOriProbasList(const vector<Triple>& triples,
-    const vector<double>& I3_list, bool latent, bool degenerate,
+    const vector<double>& I3_list, int tau, 
+    const vector<miic::structure::Node>& nodes,
+    bool latent, bool latent_orientation, bool degenerate,
     bool propagation, bool half_v_structure) {
   int n_triples = triples.size();
   vector<ProbaArray> probas_list(n_triples);  // to be returned
   for (auto& p_array : probas_list) p_array.fill(0.5);
+  //
+  // In temporal mode, use time for orientation
+  //
+  if (tau >= 1) {
+    // When orientation can be deduced from time, The probability for the tail end 
+    // depends on latent variable discovery: 0 if not activated, 0.5 when activated
+    //
+    double proba_tail = 0;
+    if (latent || latent_orientation)
+      proba_tail = 0.5;
+    //
+    // Orient each triple using time when possible
+    //
+    std::regex lag_expr(".*lag");
+    for (int i = 0; i < n_triples; i++) {
+      int nodeX_lag = stoi (std::regex_replace( nodes[ triples[i][0] ].name, lag_expr, "" ) );
+      int nodeZ_lag = stoi (std::regex_replace( nodes[ triples[i][1] ].name, lag_expr, "" ) );
+      int nodeY_lag = stoi (std::regex_replace( nodes[ triples[i][2] ].name, lag_expr, "" ) );
+                              
+      if (nodeX_lag < nodeZ_lag) {
+        probas_list[i][0] = 1;
+        probas_list[i][1] = proba_tail;
+      }
+      else if (nodeX_lag > nodeZ_lag) {
+        probas_list[i][0] = proba_tail;
+        probas_list[i][1] = 1;
+      }
+      
+      if (nodeZ_lag < nodeY_lag) {
+        probas_list[i][2] = 1;
+        probas_list[i][3] = proba_tail;
+      }
+      else if (nodeZ_lag > nodeY_lag) {
+        probas_list[i][2] = proba_tail;
+        probas_list[i][3] = 1;
+      }
+    }
+  }
 
   auto probas_list2 = probas_list;  // copy
   // For a Triple (X, Z, Y), score is initialized as the probability of the
@@ -190,7 +231,7 @@ vector<ProbaArray> getOriProbasList(const vector<Triple>& triples,
       }
       probas_list2[i][1] = score[i];  // Pr(X *-> Z)
       probas_list2[i][2] = score[i];  // Pr(Y *-> Z)
-      if (!latent) {
+      if (!latent_orientation) {
         probas_list2[i][0] = 1 - probas_list2[i][1];
         probas_list2[i][3] = 1 - probas_list2[i][2];
       }
@@ -222,9 +263,9 @@ vector<ProbaArray> getOriProbasList(const vector<Triple>& triples,
       z2x = max_probas2[0];
       x2z = max_probas2[1];
       max_probas[1] = max_probas2[1];
-      if ((!latent && isLikely(max_probas[1])) ||
+      if ((!latent_orientation && isLikely(max_probas[1])) ||
           (propagation && isUnlikely(max_probas[1]))) {
-        // establish arrowhead/tail if no latent or
+        // establish arrowhead/tail if no latent_orientation or
         // arrowhead final proba on 0 (x 0<-1 z 2-3 y)
         max_probas[0] = max_probas2[0];
       }
@@ -238,9 +279,9 @@ vector<ProbaArray> getOriProbasList(const vector<Triple>& triples,
       y2z = max_probas2[2];
       z2y = max_probas2[3];
       max_probas[2] = max_probas2[2];
-      if ((!latent && isLikely(max_probas[2])) ||
+      if ((!latent_orientation && isLikely(max_probas[2])) ||
           (propagation && isUnlikely(max_probas[2]))) {
-        // establish arrowhead/tail if no latent or
+        // establish arrowhead/tail if no latent_orientation or
         // arrowhead final proba on 3 (x 0-1 z 2->3 y)
         max_probas[3] = max_probas2[3];
       }
@@ -251,39 +292,39 @@ vector<ProbaArray> getOriProbasList(const vector<Triple>& triples,
       bool remove_triple = false;
       if (X != -1) {
         if (triples[i][0] == X && triples[i][1] == Z) {
-          updateProba(1, 0, x2z, z2x, latent, propagation, probas_list[i],
+          updateProba(1, 0, x2z, z2x, latent_orientation, propagation, probas_list[i],
               probas_list2[i], need_propagation, remove_triple);
         } else if (triples[i][0] == Z && triples[i][1] == X) {
-          updateProba(0, 1, x2z, z2x, latent, propagation, probas_list[i],
+          updateProba(0, 1, x2z, z2x, latent_orientation, propagation, probas_list[i],
               probas_list2[i], need_propagation, remove_triple);
         } else if (triples[i][2] == X && triples[i][1] == Z) {
-          updateProba(2, 3, x2z, z2x, latent, propagation, probas_list[i],
+          updateProba(2, 3, x2z, z2x, latent_orientation, propagation, probas_list[i],
               probas_list2[i], need_propagation, remove_triple);
         } else if (triples[i][2] == Z && triples[i][1] == X) {
-          updateProba(3, 2, x2z, z2x, latent, propagation, probas_list[i],
+          updateProba(3, 2, x2z, z2x, latent_orientation, propagation, probas_list[i],
               probas_list2[i], need_propagation, remove_triple);
         }
         if (need_propagation)
-          propagate(latent, propagation, I3_list[i], probas_list[i],
+          propagate(latent_orientation, propagation, I3_list[i], probas_list[i],
               probas_list2[i], score[i], log_score[i]);
       }    // if (X != -1)
       need_propagation = false;
       if (Y != -1) {
         if (triples[i][0] == Y && triples[i][1] == Z) {
-          updateProba(1, 0, y2z, z2y, latent, propagation, probas_list[i],
+          updateProba(1, 0, y2z, z2y, latent_orientation, propagation, probas_list[i],
               probas_list2[i], need_propagation, remove_triple);
         } else if (triples[i][0] == Z && triples[i][1] == Y) {
-          updateProba(0, 1, y2z, z2y, latent, propagation, probas_list[i],
+          updateProba(0, 1, y2z, z2y, latent_orientation, propagation, probas_list[i],
               probas_list2[i], need_propagation, remove_triple);
         } else if (triples[i][2] == Y && triples[i][1] == Z) {
-          updateProba(2, 3, y2z, z2y, latent, propagation, probas_list[i],
+          updateProba(2, 3, y2z, z2y, latent_orientation, propagation, probas_list[i],
               probas_list2[i], need_propagation, remove_triple);
         } else if (triples[i][2] == Z && triples[i][1] == Y) {
-          updateProba(3, 2, y2z, z2y, latent, propagation, probas_list[i],
+          updateProba(3, 2, y2z, z2y, latent_orientation, propagation, probas_list[i],
               probas_list2[i], need_propagation, remove_triple);
         }
         if (need_propagation)
-          propagate(latent, propagation, I3_list[i], probas_list[i],
+          propagate(latent_orientation, propagation, I3_list[i], probas_list[i],
               probas_list2[i], score[i], log_score[i]);
       }
       if (remove_triple) i = kRemoveTripleMark;

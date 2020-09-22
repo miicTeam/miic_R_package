@@ -4,6 +4,8 @@
 #include <array>
 #include <vector>
 
+#include "structure.h"
+
 namespace miic {
 namespace reconstruction {
 // An unshielded Triple (X, Z, Y):
@@ -21,7 +23,9 @@ using Triple = std::array<int, 3>;
 using ProbaArray = std::array<double, 4>;
 
 std::vector<ProbaArray> getOriProbasList(const std::vector<Triple>&,
-    const std::vector<double>& I3_list, bool latent, bool degenerate,
+    const std::vector<double>& I3_list, int tau, 
+    const std::vector<structure::Node>& nodes, 
+    bool latent, bool latent_orientation, bool degenerate,
     bool propagation, bool half_v_structure);
 
 }  // namespace reconstruction

@@ -10,6 +10,8 @@
 namespace miic {
 namespace structure {
 
+#include "tmiic.h"
+
 using std::vector;
 using namespace miic::utility;
 using namespace miic::computation;

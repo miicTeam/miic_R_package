@@ -7,6 +7,8 @@
 #include <string>
 #include <vector>
 
+#include "tmiic.h"
+
 namespace miic {
 namespace utility {
 
@@ -113,6 +115,22 @@ void setEnvironmentFromR(const Rcpp::List& input_data,
   omp_set_num_threads(environment.n_threads);
 #endif
 
+  if (arg_list.containsElementNamed("tau")) 
+    environment.tau = as<int>(arg_list["tau"]);
+  //
+  // In temporal mode, we do not start from a complete graph
+  // => Remove all edges not having a node on the last timestep
+  //
+  if (environment.tau >= 1) {
+    environment.n_nodes_not_lagged = tmiic::countNbNodesNotLagged (environment);
+
+    for (int i = environment.n_nodes_not_lagged; i < n_nodes; i++) 
+      for (int j = environment.n_nodes_not_lagged; j < n_nodes; j++) {
+        environment.edges(i, j).status = 0;
+        environment.edges(i, j).status_prev = 0;
+      }
+  }
+    
   if (arg_list.containsElementNamed("verbose"))
     environment.verbose = as<bool>(arg_list["verbose"]);
 

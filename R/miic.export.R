@@ -110,7 +110,8 @@ getIgraph <- function(miic.res) {
     }
   }
   # Create igraph object from summary
-  ig_graph = igraph::graph_from_data_frame(summary)
+  ig_graph = igraph::graph_from_data_frame(summary,
+                                           vertices=colnames(miic.res$adj_matrix) )
 
   # Set correct orientations
   igraph::E(ig_graph)$arrow.mode = rep(0, igraph::gsize(ig_graph))
@@ -135,10 +136,9 @@ getIgraph <- function(miic.res) {
   edge_colors_indices = sapply(
     igraph::E(ig_graph)$partial_correlation,
     function(pcor) {
-      ifelse(is.na(pcor), 100, abs(round(pcor * 100)) + 100 * (pcor > 0))
+      ifelse(is.na(pcor), 100, max(1,abs(round(as.numeric(pcor) * 100))) + 100 * (as.numeric(pcor) > 0))
     }
   )
   igraph::E(ig_graph)$color <- pcor_palette(200)[edge_colors_indices]
-
   return(ig_graph)
 }
