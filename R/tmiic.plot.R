@@ -250,8 +250,6 @@ tmiic.prepareEdgesForPlotting <- function (tmiic.res) {
 # flattened (if the tmiic object is not flattened, the function does nothing) 
 # 
 # @return df_mult [a dataframe] The dataframe containing the multiple edges
-#
-#' @importFrom magrittr "%>%"                             
 #-----------------------------------------------------------------------------
 tmiic.getMultipleEdgesForPlotting <- function (tmiic.res) {
   # Find couples of nodes having mutiple edges
@@ -275,7 +273,7 @@ tmiic.getMultipleEdgesForPlotting <- function (tmiic.res) {
 #' @details See the documentation of \code{\link{tmiic.export}} for further
 #' details.
 #'
-#' @param tmiic.res [a tmiic graph object]
+#' @param x [a tmiic graph object]
 #' The graph object returned by \code{\link{miic}} in temporal mode, 
 #' eventually flatten
 #' 
@@ -287,8 +285,6 @@ tmiic.getMultipleEdgesForPlotting <- function (tmiic.res) {
 #' 
 #' For igraph, see \code{\link[igraph]{igraph.plotting}}.
 #'
-#' @importFrom magrittr "%>%"                             
-#' 
 #' @export
 #'
 #' @seealso \code{\link{tmiic.export}} for generic exports,
@@ -313,22 +309,21 @@ tmiic.getMultipleEdgesForPlotting <- function (tmiic.res) {
 #' if(require(igraph)) {
 #'  plot(flatten.res)
 #' }
-
 #-----------------------------------------------------------------------------
-plot.tmiic = function(tmiic.res, method = 'igraph', ...) {
+plot.tmiic = function(x, method = 'igraph', ...) {
   
-  if (class(tmiic.res) != "tmiic")
+  if (class(x) != "tmiic")
     stop("Not a tmiic object.")
   if (method != 'igraph')
     stop("Method not supported. See ?tmiic.export for supported methods.")
   if ( !base::requireNamespace("igraph", quietly = TRUE) ) 
     stop("Package 'igraph' is required.")
-  if ( is.null (tmiic.res$adj_matrix) ) 
+  if ( is.null (x$adj_matrix) ) 
     stop ("The learnt graphical model adjacency matrix does not exist")
   
-  tmiic.res <- tmiic.prepareEdgesForPlotting(tmiic.res)
-  df_mult <- tmiic.getMultipleEdgesForPlotting(tmiic.res)
-  list_nodes <- colnames (tmiic.res$adj_matrix)
+  x <- tmiic.prepareEdgesForPlotting(x)
+  df_mult <- tmiic.getMultipleEdgesForPlotting(x)
+  list_nodes <- colnames (x$adj_matrix)
   is_graph_lagged = tmiic.isLaggeg (list_nodes)
   #
   # Set a layout if none supplied by user : grid for lagged, 
@@ -350,8 +345,8 @@ plot.tmiic = function(tmiic.res, method = 'igraph', ...) {
   #
   # Export the graph to a graphical objet and plot
   #
-  graph <- tmiic.export (tmiic.res, method)
-  df_edges <- tmiic.res$all.edges.summary
+  graph <- tmiic.export (x, method)
+  df_edges <- x$all.edges.summary
   if (nrow (df_mult) <= 0) {
     # No multiple edges between the same nodes, we draw in one go
     #

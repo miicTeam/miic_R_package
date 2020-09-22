@@ -4,10 +4,10 @@
 \alias{plot.tmiic}
 \title{Basic plot function of a tmiic network inference result}
 \usage{
-\method{plot}{tmiic}(tmiic.res, method = "igraph", ...)
+\method{plot}{tmiic}(x, method = "igraph", ...)
 }
 \arguments{
-\item{tmiic.res}{[a tmiic graph object]
+\item{x}{[a tmiic graph object]
 The graph object returned by \code{\link{miic}} in temporal mode, 
 eventually flatten}
 

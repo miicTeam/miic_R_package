@@ -394,7 +394,7 @@ miic <- function(input_data,
     # If we use temporal version of miic, convert history into lagged nodes and samples
     #
     cat ("Using temporal version of miic\n")
-    struct_ret <- miic:::tmiic.transform_data_for_miic (input_data, tau, 
+    struct_ret <- tmiic.transform_data_for_miic (input_data, tau, 
         state_order=state_order, movavg=movavg, delta_tau=delta_tau)
     input_data <- struct_ret$input_data
     state_order <- struct_ret$state_order

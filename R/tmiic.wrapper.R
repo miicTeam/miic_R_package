@@ -136,16 +136,16 @@ tmiic.transform_data_for_miic <- function (input_data, tau, state_order=NULL,
     timestep = input_data[row_idx,1]
     if (timestep < previous_timestep) {
       one_timeseries <- input_data[previous_row_idx:(row_idx-1), list_nodes]
-      df_ret <- miic:::tmiic.lag_one_timeseries (one_timeseries, tau, list_nodes_lagged,
-                                                 movavg, delta_tau)
+      df_ret <- tmiic.lag_one_timeseries (one_timeseries, tau, list_nodes_lagged,
+                                          movavg, delta_tau)
       df_lagged <- rbind (df_lagged, df_ret)
       previous_row_idx <- row_idx
     }
     previous_timestep <- timestep
   }
   one_timeseries <- input_data[previous_row_idx:row_idx, list_nodes]
-  df_ret <- miic:::tmiic.lag_one_timeseries (one_timeseries, tau, list_nodes_lagged,
-                                             movavg, delta_tau)
+  df_ret <- tmiic.lag_one_timeseries (one_timeseries, tau, list_nodes_lagged,
+                                      movavg, delta_tau)
   df_lagged <- rbind (df_lagged, df_ret)
   #
   # returns the dataframe as miic expects and state_order (if supplied) lagged
@@ -314,8 +314,6 @@ tmiic.lag_one_timeseries <- function (df_timeseries, tau, list_nodes_lagged,
 #' as this information make less sense after flattening. Orientations are 
 #' replaced by lag(s) in the adjacency matrix.
 #'     
-#' @importFrom magrittr "%>%"     
-#'                         
 #' @export
 #-----------------------------------------------------------------------------
 tmiic.flatten_network <- function (miic_result, flatten_mode="normal", 
@@ -480,8 +478,10 @@ tmiic.flatten_network <- function (miic_result, flatten_mode="normal",
     # If some rows between same nodes have the same log_confidence 
     # We addd a second step keeping the edges with the minimum lag 
     #
-    df_group <- df_edges %>% dplyr::group_by(x,y) %>% dplyr::top_n(n=1, wt=log_confidence)
-    df_group <- df_group %>% dplyr::group_by(x,y) %>% dplyr::top_n(n=1, wt=-lag)
+    df_group <- dplyr::group_by (df_edges, x,y)
+    df_group <- dplyr::top_n (df_group, n=1, wt=log_confidence)
+    df_group <- dplyr::group_by (df_group, x, y) 
+    df_group <- dplyr::top_n (df_group, n=1, wt=-lag)
     df_group <- as.data.frame (df_group)
     #
     # If the flatten_mode is "unique" or "drop", nothing more to do for now
