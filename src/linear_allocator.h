@@ -23,6 +23,10 @@ namespace detail {
 
 using std::size_t;
 
+// To accommodate to older gcc (<= 4.9.x) with missing std::align
+// Ref: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=57350
+void* align(size_t alignment, size_t size, void*& ptr, size_t& space);
+
 class LinearAllocator {
  public:
   LinearAllocator(size_t size)
@@ -35,7 +39,7 @@ class LinearAllocator {
   void* Allocate(size_t size, unsigned alignment /* power of 2 */) {
     //assert((alignment & (alignment - 1)) == 0);  // assert power of 2
     auto current_p = static_cast<void*>(m_ptr_ + (m_capacity_ - m_free_space_));
-    auto return_p = std::align(alignment, size, current_p, m_free_space_);
+    auto return_p = align(alignment, size, current_p, m_free_space_);
     // no space
     if (!return_p) {
       assert(false && "Linear allocator full!");
