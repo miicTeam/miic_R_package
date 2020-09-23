@@ -191,9 +191,8 @@ tmiic.getNbNodesNonLagged <- function (list_nodes) {
 # Prepare the edges for plotting
 #
 # @description This function firstly filters the edges in the summary to keep
-# only the ones detected by miic (type = "P") then makes sure that, for each  
-# edge, node name X >= node name Y and adds the couple of nodes of the edge 
-# as id 
+# only the ones detected by miic and adds to everay edges an id constructed
+# using the couple of nodes ordered alphabetically ("node1" < "node2") 
 # 
 # @param  [a tmiic graph object] The graph object returned by the miic 
 # execution in temporal mode, eventually flattened
@@ -218,7 +217,6 @@ tmiic.prepareEdgesForPlotting <- function (tmiic.res) {
   #
   # Order the edges so that all orientations goes from x to y
   #
-  # Re-order df_edges so that all edges go from "x" to "y"
   for(row in 1:nrow(df_edges)){
     if(df_edges[row, "infOrt"] == -2){
       df_edges[row, c("x","y")] = df_edges[row, c("y","x")]
@@ -240,7 +238,7 @@ tmiic.prepareEdgesForPlotting <- function (tmiic.res) {
 #-----------------------------------------------------------------------------
 # tmiic.getMultipleEdgesForPlotting
 #-----------------------------------------------------------------------------
-# Look for mutiple edges that needs specific plotting
+# Look for mutiple edges (that needs specific plotting)
 #
 # @description This function identifies the couple of nodes having mutiples 
 # edges
@@ -252,12 +250,11 @@ tmiic.prepareEdgesForPlotting <- function (tmiic.res) {
 # @return df_mult [a dataframe] The dataframe containing the multiple edges
 #-----------------------------------------------------------------------------
 tmiic.getMultipleEdgesForPlotting <- function (tmiic.res) {
-  # Find couples of nodes having mutiple edges
-  #
-  df_mult <- dplyr::group_by (tmiic.res$all.edges.summary, xy)
-  df_mult <- dplyr::summarise (df_mult, count=dplyr::n())
+  df_mult <- tmiic.res$all.edges.summary
+  df_mult$count <- 1
+  df_mult <- stats::aggregate(data.frame(count = df_mult$count), 
+                              by = list(xy = df_mult$xy), sum)
   df_mult <- df_mult[df_mult$count > 1,]
-  df_mult <- as.data.frame (df_mult)
   return (df_mult)
 } 
   

@@ -478,11 +478,12 @@ tmiic.flatten_network <- function (miic_result, flatten_mode="normal",
     # If some rows between same nodes have the same log_confidence 
     # We addd a second step keeping the edges with the minimum lag 
     #
-    df_group <- dplyr::group_by (df_edges, x,y)
-    df_group <- dplyr::top_n (df_group, n=1, wt=log_confidence)
-    df_group <- dplyr::group_by (df_group, x, y) 
-    df_group <- dplyr::top_n (df_group, n=1, wt=-lag)
-    df_group <- as.data.frame (df_group)
+    df_group <- stats::aggregate(data.frame(log_confidence = df_edges$log_confidence), 
+                                 by = list(x = df_edges$x, y = df_edges$y), max)
+    df_group <- merge (x=df_group, y=df_edges, by=c("x","y", "log_confidence"), )
+    df_group <- stats::aggregate(data.frame(lag = df_group$lag), 
+                                 by = list(x = df_group$x, y = df_group$y), min)
+    df_group <- merge (x=df_group, y=df_edges, by=c("x","y","lag"), )
     #
     # If the flatten_mode is "unique" or "drop", nothing more to do for now
     #
@@ -490,8 +491,8 @@ tmiic.flatten_network <- function (miic_result, flatten_mode="normal",
     # 
     if (flatten_mode == "combine") {
       #
-      # Update the orientions (in case the grouped edges have different orientations)
-      # and put in the lag column the list of lags
+      # Update the orientations (in case the grouped edges have different 
+      # orientations) and put in the lag column the list of lags
       #
       for (edge_idx in 1:nrow(df_group) ) {
         one_edge <- df_group[edge_idx,]

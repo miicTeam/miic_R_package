@@ -51,7 +51,6 @@ Imports:
     scales,
     stats,
     data.table,
-    dplyr,
     stringr,
 Suggests:
     igraph,
