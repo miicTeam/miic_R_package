@@ -76,11 +76,12 @@ struct Environment {
   ExecutionTime exec_time;
   int n_threads = 1;
   CompCache cache;
-  bool verbose = false;
 
   // Maximum lag. Switch miic to temporal mode if >=1
   int tau=-1;
   
+  bool verbose = false;
+
   Environment(int n_samples, int n_nodes, vector<int> vec_numeric,
       vector<int> vec_index, vector<int> is_continuous_, vector<int> levels_);
   Environment() = default;
