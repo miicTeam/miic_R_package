@@ -114,7 +114,7 @@ vector<vector<string>> orientationProbability(Environment& environment) {
         continue;
 
       bool is_in_triple = false;
-      for (int i = 0; i < triples.size() ; i++)
+      for (unsigned int i = 0; i < triples.size() ; i++)
         if (   ( (triples[i][0] == posX) && (triples[i][1] == posY) )
             || ( (triples[i][0] == posY) && (triples[i][1] == posX) )
             || ( (triples[i][1] == posX) && (triples[i][2] == posY) )

@@ -82,26 +82,14 @@ void repeatEdgesOverHistory (Environment& environment) {
   // Now, we iterate over computed edges to duplicate (if needed)
   // the edges over the history
   //
-  int n_layers_tot = environment.n_nodes / environment.n_nodes_not_lagged;
   auto& edge_list = environment.connected_list;
   auto edge_end = end(edge_list);
   for (auto iter0 = begin(edge_list); iter0 != edge_end; ++iter0) {
-    // 
-    // For each edge, we compute the layer of each node
-    //    
-    int node1_pos = iter0->X;
-    int node2_pos = iter0->Y;
-    int node1_layer = node1_pos / environment.n_nodes_not_lagged;
-    int node2_layer = node2_pos / environment.n_nodes_not_lagged;
-    // 
-    // When the layer is smaller than the total layers in the temporal graph,
-    // We can add lagged edges in the history until total layers is reached
-    //    
-    int min_layer = std::min (node1_layer, node2_layer); // Normally 0 as one node should be lag0
-    int n_layers_between_nodes = std::abs (node1_layer - node2_layer);
     //
     // Find the Edge structure that will be duplicated 
     //
+    int node1_pos = iter0->X;
+    int node2_pos = iter0->Y;
     const Edge& edge_orig = environment.edges(node1_pos, node2_pos);
     //
     // To create the same edge over history, we switch the nodes pos by n_nodes_not_lagged
