@@ -1,11 +1,12 @@
 #include "skeleton.h"
 
-#include <algorithm>  // std::sort, std::max_element
-#include <vector>
-
 #ifdef _OPENMP
 #include <omp.h>
 #endif
+#include <Rcpp.h>
+
+#include <algorithm>  // std::sort, std::max_element
+#include <vector>
 
 #include "get_information.h"
 #include "structure.h"
@@ -13,7 +14,6 @@
 
 using Rcpp::Rcerr;
 using Rcpp::Rcout;
-using std::vector;
 using namespace miic::computation;
 using namespace miic::structure;
 using namespace miic::utility;
@@ -25,8 +25,8 @@ namespace reconstruction {
 int initializeEdge(Environment& environment, int X, int Y) {
   // Compute the mutual information and the corresponding CPLX
   auto info = environment.edges(X, Y).shared_info;
-  auto xy = getCondMutualInfo(X, Y, vector<int>(), environment.data_numeric,
-      environment.data_numeric_idx, environment);
+  auto xy = getCondMutualInfo(X, Y, std::vector<int>(),
+      environment.data_numeric, environment.data_numeric_idx, environment);
   info->Nxy = xy.n_samples;
   info->Ixy = xy.I;
   info->cplx_no_u = xy.k;
@@ -57,31 +57,31 @@ int initializeEdge(Environment& environment, int X, int Y) {
 }
 
 bool initializeSkeleton(Environment& environment) {
-  bool interrupt = false;
+  auto& edges = environment.edges;
+  bool interrupt{false};
 #ifdef _OPENMP
-#pragma omp parallel for schedule(dynamic)
+#pragma omp parallel
 #endif
-  for (int i = 0; i < environment.n_nodes - 1; i++) {
-    if (interrupt) continue;  // will continue until out of for loop
-
-    int threadnum = 0;
+  {
+    int threadnum{0};
 #ifdef _OPENMP
     threadnum = omp_get_thread_num();
+#pragma omp for schedule(dynamic)
 #endif
-    if (threadnum == 0) {
-      if (checkInterrupt()) {
-        interrupt = true;
-        continue;
+    for (int i = 0; i < environment.n_nodes - 1; ++i) {
+      if (threadnum == 0) {
+        if (checkInterrupt()) interrupt = true;
+      }
+      if (interrupt) continue;  // will continue until out of for loop
+
+      for (int j = i + 1; j < environment.n_nodes; ++j) {
+        edges(i, j).shared_info = std::make_shared<EdgeSharedInfo>();
+        edges(j, i).shared_info = edges(i, j).shared_info;
+
+        if (edges(i, j).status) initializeEdge(environment, i, j);
       }
     }
-    for (int j = i + 1; j < environment.n_nodes && !interrupt; j++) {
-      environment.edges(i, j).shared_info = std::make_shared<EdgeSharedInfo>();
-      environment.edges(j, i).shared_info = environment.edges(i, j).shared_info;
-      if (environment.edges(i, j).status) {
-        initializeEdge(environment, i, j);
-      }
-    }
-  }
+  }  // omp parallel
   return interrupt ? false : true;
 }
 
@@ -107,50 +107,51 @@ bool setBestContributingNode(
   bool interrupt = false;
   auto loop_start_time = getLapStartTime();
 #ifdef _OPENMP
-#pragma omp parallel for schedule(dynamic)
+#pragma omp parallel
 #endif
-  for (size_t i = 0; i < environment.unsettled_list.size(); ++i) {
-    if (interrupt) continue;  // will continue until out of for loop
-
-    int threadnum = 0;
+  {
+    int threadnum{0};
 #ifdef _OPENMP
     threadnum = omp_get_thread_num();
+#pragma omp for schedule(dynamic)
 #endif
-    if (threadnum == 0) {
-      if (checkInterrupt()) interrupt = true;
-    }
+    for (size_t i = 0; i < environment.unsettled_list.size(); ++i) {
+      if (threadnum == 0) {
+        if (checkInterrupt()) interrupt = true;
+      }
+      if (interrupt) continue;  // will continue until out of for loop
 
-    const auto& edgeid = unsettled_list[i];
-    auto info = edgeid.getEdge().shared_info;
-    int X = edgeid.X, Y = edgeid.Y;
+      const auto& edgeid = unsettled_list[i];
+      auto info = edgeid.getEdge().shared_info;
+      int X = edgeid.X, Y = edgeid.Y;
 
-    bcc.setCandidateZ(X, Y, info->zi_list);
-    if (!info->zi_list.empty())
-      searchForBestContributingNode(environment, X, Y, /* parallel */ false);
+      bcc.setCandidateZ(X, Y, info->zi_list);
+      if (!info->zi_list.empty())
+        searchForBestContributingNode(environment, X, Y, /* parallel */ false);
 
 #ifdef _OPENMP
 #pragma omp atomic
-    ++n_jobs_done;
 #endif
-    if (threadnum == 0 && !environment.verbose)
-      printProgress(static_cast<double>(n_jobs_done) / n_jobs_total,
-          loop_start_time, progress_percentile);
-  }
+      ++n_jobs_done;
+      if (threadnum == 0 && !environment.verbose)
+        printProgress(static_cast<double>(n_jobs_done) / n_jobs_total,
+            loop_start_time, progress_percentile);
+    }
+  }  // omp parallel
   if (interrupt) return false;
   if (!environment.verbose) {
     printProgress(1.0, loop_start_time, progress_percentile);  // finish
     Rcerr << '\n';
   }
-  // Move edges without top contributing node to connected_list
-  unsettled_list.erase(remove_if(begin(unsettled_list), end(unsettled_list),
-                           [&connected_list](auto& id) {
-                             auto info = id.getEdge().shared_info;
-                             if (info->top_z != -1) return false;
-
-                             connected_list.push_back(id);
-                             info->connected = 1;
-                             return true;
-                           }),
+  auto no_z_found = [&connected_list](auto& id) {
+    if (id.getEdge().shared_info->top_z != -1) return false;
+    // Move edges without top contributing node to connected_list
+    connected_list.push_back(id);
+    id.getEdge().shared_info->connected = 1;
+    return true;
+  };
+  unsettled_list.erase(
+      remove_if(begin(unsettled_list), end(unsettled_list), no_z_found),
       end(unsettled_list));
 
   return true;

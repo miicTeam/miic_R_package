@@ -223,13 +223,12 @@ void searchForBestContributingNode(
   auto info = environment.edges(X, Y).shared_info;
   auto& zi_list = info->zi_list;
   if (!environment.latent) {
+    auto is_isolated = [&environment, X, Y](int Z) {
+      return !environment.edges(X, Z).status && !environment.edges(Y, Z).status;
+    };
     // remove zi that is not connected to neither x nor y
-    zi_list.erase(std::remove_if(begin(zi_list), end(zi_list),
-                      [&environment, X, Y](int Z) {
-                        const auto& edges = environment.edges;
-                        return !edges(X, Z).status && !edges(Y, Z).status;
-                      }),
-        zi_list.end());
+    zi_list.erase(
+        remove_if(begin(zi_list), end(zi_list), is_isolated), end(zi_list));
   }
 
   int n_zi = zi_list.size();
