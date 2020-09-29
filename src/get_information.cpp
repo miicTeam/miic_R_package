@@ -4,10 +4,11 @@
 #include <omp.h>
 #endif
 
+#include <algorithm>  // std::remove_if
 #define _USE_MATH_DEFINES
 #include <cmath>
 #include <limits>
-#include <tuple>
+#include <tuple>  // std::tie
 
 #include "computation_continuous.h"
 #include "computation_discrete.h"

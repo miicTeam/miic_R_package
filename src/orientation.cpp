@@ -4,6 +4,7 @@
 #include <omp.h>
 #endif
 
+#include <algorithm>  // std::minmax, std::remove, std::transform
 #define _USE_MATH_DEFINES
 #include <cmath>
 #include <tuple>  // std::tie

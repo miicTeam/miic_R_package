@@ -3,6 +3,7 @@
 #ifdef _OPENMP
 #include <omp.h>
 #endif
+#include <Rcpp.h>
 
 #include <algorithm>  // std::sort
 #include <set>

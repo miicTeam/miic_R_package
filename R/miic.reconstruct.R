@@ -1,11 +1,11 @@
 miic.reconstruct <- function(input_data = NULL,
                              is_continuous = NULL,
                              black_box = NULL,
-                             n_threads = n_threads,
+                             n_threads = 1,
                              n_eff = -1,
-                             cplx = c("nml", "mdl"),
+                             cplx = "nml",
                              eta = 1,
-                             latent = c("no", "yes", "orientation"),
+                             latent = "no",
                              n_shuffles = 0,
                              orientation = TRUE,
                              ori_proba_ratio = 1,
@@ -14,12 +14,8 @@ miic.reconstruct <- function(input_data = NULL,
                              verbose = FALSE,
                              sample_weights = NULL,
                              test_mar = TRUE,
-                             consistent = c(
-                               "no",
-                               "orientation",
-                               "skeleton"
-                             ),
-                             max_iteration = max_iteration
+                             consistent = "no",
+                             max_iteration = NULL
                              ) {
   n_samples <- nrow(input_data)
   n_nodes <- ncol(input_data)
@@ -49,21 +45,8 @@ miic.reconstruct <- function(input_data = NULL,
   input_double <- as.vector(input_double)
 
   var_names <- colnames(input_data)
-  if (!is.null(black_box)) {
-    # transform var names to var indices
-    black_box[] <- sapply(black_box, function(x) {
-      match(as.character(x), colnames(input_data)) - 1 } )
-    black_box[] <- black_box[stats::complete.cases(black_box),]
-  } else {
-    black_box <- list()  # pass to cpp as empty vector
-  }
-
-  if (is.null(sample_weights)) {
-    sample_weights <- numeric(0)  # pass to cpp as empty vector<double>
-  }
 
   arg_list <- list(
-    "black_box" = black_box,
     "conf_threshold" = conf_threshold,
     "consistent" = consistent,
     "cplx" = cplx,
@@ -84,12 +67,22 @@ miic.reconstruct <- function(input_data = NULL,
     "orientation" = orientation,
     "ori_proba_ratio" = ori_proba_ratio,
     "propagation" = propagation,
-    "sample_weights" = sample_weights,
     "test_mar" = test_mar,
     "max_bins" = 50,
     "var_names" = var_names,
     "verbose" = verbose
   )
+  if (!is.null(black_box)) {
+    # transform var names to var indices
+    black_box[] <- sapply(black_box, function(x) {
+      match(as.character(x), colnames(input_data)) - 1 } )
+    black_box[] <- black_box[stats::complete.cases(black_box),]
+    arg_list[["black_box"]] <- as.vector(as.matrix(t(black_box)))
+  }
+  if (!is.null(sample_weights)) {
+    arg_list[["sample_weights"]] <- sample_weights
+  }
+
   cpp_input <- list("factor" = input_factor, "double" = input_double,
                     "order" = input_order)
   # Call C++ function

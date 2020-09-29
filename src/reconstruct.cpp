@@ -9,11 +9,14 @@
 #include "biconnected_component.h"
 #include "confidence_cut.h"
 #include "cycle_tracker.h"
+#include "environment.h"
 #include "orientation.h"
+#include "r_cpp_interface.h"
 #include "skeleton.h"
 #include "utilities.h"
 
 using Rcpp::_;
+using Rcpp::as;
 using Rcpp::List;
 using Rcpp::Rcout;
 using std::string;
@@ -26,7 +29,15 @@ List empty_results() { return List::create(_["interrupted"] = true); }
 
 // [[Rcpp::export]]
 List reconstruct(List input_data, List arg_list) {
-  Environment environment(input_data, arg_list);
+  // Initialize Environment with mandatory inputs
+  Environment environment(as<int>(arg_list["n_samples"]),
+      as<int>(arg_list["n_nodes"]), as<vector<int>>(input_data["factor"]),
+      as<vector<int>>(input_data["order"]),
+      as<vector<int>>(arg_list["is_continuous"]),
+      as<vector<int>>(arg_list["levels"]));
+
+  // Set optional parameters
+  setEnvironmentFromR(input_data, arg_list, environment);
 
   size_t li_alloc_size = getLinearAllocatorSize(environment.n_samples,
       environment.n_nodes, environment.maxbins, environment.initbins,

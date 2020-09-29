@@ -7,11 +7,13 @@
 #include "computation_continuous.h"
 #include "environment.h"
 #include "linear_allocator.h"
+#include "r_cpp_interface.h"
 #include "utilities.h"
 
 constexpr int kStepMax = 50;
 
 using Rcpp::_;
+using Rcpp::as;
 using Rcpp::List;
 using Rcpp::NumericMatrix;
 using std::vector;
@@ -21,7 +23,15 @@ using namespace miic::utility;
 
 // [[Rcpp::export]]
 List mydiscretizeMutual(List input_data, List arg_list) {
-  Environment environment(input_data, arg_list);
+  // Initialize Environment with mandatory inputs
+  Environment environment(as<int>(arg_list["n_samples"]),
+      as<int>(arg_list["n_nodes"]), as<vector<int>>(input_data["factor"]),
+      as<vector<int>>(input_data["order"]),
+      as<vector<int>>(arg_list["is_continuous"]),
+      as<vector<int>>(arg_list["levels"]));
+
+  // Set optional parameters
+  setEnvironmentFromR(input_data, arg_list, environment);
   int nbrU = environment.n_nodes - 2;
   int maxbins = environment.maxbins;
 
