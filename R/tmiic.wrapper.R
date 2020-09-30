@@ -354,9 +354,9 @@ tmiic.flatten_network <- function (miic_result, flatten_mode="normal",
     #
     one_edge <- df_edges[edge_idx,]
     #
-    # Edges with type != "P" are not true edges
+    # Edges with type != "P", "TP", "FP" are not true edges
     #
-    if (one_edge$type != "P") {
+    if ( ! (one_edge$type %in% c("P", "TP", "FP") ) ) {
       df_edges[edge_idx,]$x <- "DROP"
       df_edges[edge_idx,]$y <- "DROP"
       next
@@ -478,12 +478,19 @@ tmiic.flatten_network <- function (miic_result, flatten_mode="normal",
     # If some rows between same nodes have the same log_confidence 
     # We addd a second step keeping the edges with the minimum lag 
     #
-    df_group <- stats::aggregate(data.frame(log_confidence = df_edges$log_confidence), 
-                                 by = list(x = df_edges$x, y = df_edges$y), max)
-    df_group <- merge (x=df_group, y=df_edges, by=c("x","y", "log_confidence"), )
-    df_group <- stats::aggregate(data.frame(lag = df_group$lag), 
-                                 by = list(x = df_group$x, y = df_group$y), min)
-    df_group <- merge (x=df_group, y=df_edges, by=c("x","y","lag"), )
+    df_edges_rownames <- cbind (df_edges,row_names=rownames(df_edges))
+    df_group <- stats::aggregate (data.frame(log_confidence = df_edges_rownames$log_confidence), 
+                                  by = list(x = df_edges_rownames$x, y = df_edges_rownames$y), 
+                                  max)
+    df_group <- merge (x=df_group, y=df_edges_rownames, by=c("x", "y", "log_confidence") )
+    df_group <- stats::aggregate (data.frame(lag = df_group$lag), 
+        by = list(x = df_group$x, y = df_group$y, log_confidence = df_group$log_confidence), 
+        min)
+    df_group <- merge (x=df_group, y=df_edges_rownames, by=c("x", "y", "lag", "log_confidence") )
+    df_group <- stats::aggregate (data.frame(row_names = df_group$row_names), 
+        by = list(x = df_group$x, y = df_group$y, log_confidence = df_group$log_confidence, lag = df_group$lag), 
+        min)
+    df_group <- merge (x=df_group, y=df_edges_rownames, by=c("x", "y", "lag", "log_confidence", "row_names") )
     #
     # If the flatten_mode is "unique" or "drop", nothing more to do for now
     #
@@ -498,7 +505,7 @@ tmiic.flatten_network <- function (miic_result, flatten_mode="normal",
         one_edge <- df_group[edge_idx,]
         node_x <- one_edge$x
         node_y <- one_edge$y
-        lag <- one_edge$lag
+        row_name <- one_edge$row_names
         #
         # Update the list of lags (value has been computed in lag matrix)
         #
@@ -506,9 +513,9 @@ tmiic.flatten_network <- function (miic_result, flatten_mode="normal",
         #
         # Select the other edges between same nodes for orientation update
         #
-        cond_for_orient <- ( (df_edges[["x"]] == node_x) 
-                           & (df_edges[["y"]] == node_y) 
-                           & (df_edges[["lag"]] != lag) )
+        cond_for_orient <- ( (df_edges_rownames[["x"]] == node_x) 
+                           & (df_edges_rownames[["y"]] == node_y) 
+                           & (df_edges_rownames[["row_names"]] != row_name) )
         #
         # If edge was unique (no different lag between the nodes), nothing to do
         #
@@ -531,7 +538,7 @@ tmiic.flatten_network <- function (miic_result, flatten_mode="normal",
           }
         }
         
-        df_other <- df_edges[cond_for_orient,]
+        df_other <- df_edges_rownames[cond_for_orient,]
         for (other_idx in 1:nrow(df_other) ) {
           other_edge <- df_other[other_idx,]
           #
@@ -594,8 +601,7 @@ tmiic.flatten_network <- function (miic_result, flatten_mode="normal",
           df_group[edge_idx,]$proba <- paste(tail_proba, head_proba, sep=";")
       }
     }
-      
-    df_edges <- df_group
+    df_edges <- within (df_group, rm(row_names))
   }
   #
   # If we do not want to keep info about lag at all
