@@ -1,6 +1,7 @@
 #include "cycle_tracker.h"
 
 #include <algorithm>  // std::sort, std::none_of
+#include <set>
 
 #include "linear_allocator.h"
 #include "structure.h"

@@ -5,7 +5,6 @@
 #include <cmath>
 #include <deque>
 #include <map>
-#include <set>
 #include <utility>  // std::pair
 #include <vector>
 
@@ -15,7 +14,6 @@ namespace miic {
 namespace reconstruction {
 
 namespace detail {
-using std::set;
 using std::vector;
 using namespace structure;
 

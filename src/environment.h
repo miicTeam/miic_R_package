@@ -1,8 +1,6 @@
 #ifndef MIIC_ENVIRONMENT_H_
 #define MIIC_ENVIRONMENT_H_
 
-#include <map>
-#include <string>
 #include <vector>
 
 #include "computation_cache.h"
@@ -13,7 +11,6 @@ namespace structure {
 
 namespace detail {
 
-using std::string;
 using std::vector;
 using computation::CompCache;
 

@@ -3,7 +3,6 @@
 
 #define _USE_MATH_DEFINES
 #include <cmath>    // std::log
-#include <vector>
 
 #include "computation_cache.h"
 #include "structure.h"
@@ -30,7 +29,6 @@ namespace detail {
 using namespace structure;
 using namespace utility;
 using std::log;
-using std::vector;
 
 // rux 0:x,1;u,2:ux
 // cplx 0: MDL, 1: NML

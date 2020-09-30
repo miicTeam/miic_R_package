@@ -3,7 +3,6 @@
 
 #include <functional>  // std::reference_wrapper
 #include <memory>      // std::shared_ptr
-#include <set>
 #include <string>
 #include <type_traits>
 #include <vector>
@@ -16,7 +15,6 @@ namespace structure {
 namespace detail {
 
 using std::size_t;
-using std::string;
 using std::vector;
 
 // In absence of c++17 and to accomodate older compiler (ref: CWG 1558)
@@ -203,8 +201,8 @@ struct EdgeSharedInfo {
 };
 
 struct Node {
-  string name;
-  Node(string name) : name(std::move(name)) {}
+  std::string name;
+  Node(std::string name) : name(std::move(name)) {}
 };
 
 struct Edge {

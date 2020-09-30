@@ -1,8 +1,9 @@
 #include "biconnected_component.h"
-#include "linear_allocator.h"
 
 #include <algorithm>  // std::copy_if, std::count
 #include <queue>
+
+#include "linear_allocator.h"
 
 namespace miic {
 namespace reconstruction {
