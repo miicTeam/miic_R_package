@@ -478,16 +478,19 @@ tmiic.flatten_network <- function (miic_result, flatten_mode="normal",
     # If some rows between same nodes have the same log_confidence 
     # We addd a second step keeping the edges with the minimum lag 
     #
-    df_edges_rownames <- cbind (df_edges,row_names=rownames(df_edges))
-    df_group <- stats::aggregate (data.frame(log_confidence = df_edges_rownames$log_confidence), 
+    df_rownames <- as.data.frame (rownames(df_edges), stringsAsFactors = FALSE)
+    names (df_rownames) <- c("row_names")    
+    df_edges_rownames <- merge (x = df_rownames, y = df_edges, by.x = "row_names", by.y = 0)
+    df_group <- stats::aggregate (data.frame(log_confidence = df_edges_rownames$log_confidence, 
+                                             stringsAsFactors = FALSE), 
                                   by = list(x = df_edges_rownames$x, y = df_edges_rownames$y), 
                                   max)
     df_group <- merge (x=df_group, y=df_edges_rownames, by=c("x", "y", "log_confidence") )
-    df_group <- stats::aggregate (data.frame(lag = df_group$lag), 
+    df_group <- stats::aggregate (data.frame(lag = df_group$lag, stringsAsFactors = FALSE), 
         by = list(x = df_group$x, y = df_group$y, log_confidence = df_group$log_confidence), 
         min)
     df_group <- merge (x=df_group, y=df_edges_rownames, by=c("x", "y", "lag", "log_confidence") )
-    df_group <- stats::aggregate (data.frame(row_names = df_group$row_names), 
+    df_group <- stats::aggregate (data.frame(row_names = df_group$row_names, stringsAsFactors = FALSE), 
         by = list(x = df_group$x, y = df_group$y, log_confidence = df_group$log_confidence, lag = df_group$lag), 
         min)
     df_group <- merge (x=df_group, y=df_edges_rownames, by=c("x", "y", "lag", "log_confidence", "row_names") )
