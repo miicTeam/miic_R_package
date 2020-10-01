@@ -616,6 +616,7 @@ tmiic.flatten_network <- function (miic_result, flatten_mode="normal",
   #
   miic_result$adj_matrix <- df_adj
   miic_result$all.edges.summary <- df_edges
+  miic_result$tmiic_specific[["is_lagged"]] = FALSE
   return (miic_result)
 }
 

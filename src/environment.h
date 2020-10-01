@@ -17,8 +17,7 @@ using computation::CompCache;
 struct Environment {
   int n_samples;
   int n_nodes;
-  // In temporal node, store the number of non lagged nodes 
-  int n_nodes_not_lagged=-1;
+  
   Grid2d<int> data_numeric;
   Grid2d<double> data_double;
   // data_numeric_idx(j, i) = index of i'th smallest value in data_double(j, )

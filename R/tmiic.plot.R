@@ -123,7 +123,7 @@ tmiic.getIgraph <- function (tmiic.res){
   graph <- getIgraph(tmiic.res)
   class(tmiic.res) <- "tmiic"
   
-  if ( tmiic.isLaggeg (colnames(tmiic.res$adj_matrix)) ) {
+  if (tmiic.res$tmiic_specific[["is_lagged"]]) {
     igraph::V(graph)$label.dist = 1
     igraph::V(graph)$label.degree = pi/2
     igraph::E(graph)$curved = TRUE
@@ -135,56 +135,6 @@ tmiic.getIgraph <- function (tmiic.res){
   return(graph)
 }
  
-#-----------------------------------------------------------------------------
-# tmiic.isLaggeg
-#-----------------------------------------------------------------------------
-# Test if the list of nodes corresponds to a lagged or non lagged graph
-#
-# @param list_nodes [a list of string]
-#
-# @return A boolean value, TRUE if the network is lagged, FALSE otherwise
-#-----------------------------------------------------------------------------
-tmiic.isLaggeg <- function (list_nodes) {
-  is_graph_lagged = TRUE
-  for (one_node in list_nodes) {
-    regex_found = grepl ("_lag.*$", one_node)
-    if (!regex_found) {
-      is_graph_lagged = FALSE
-      break
-    }
-  }
-  return (is_graph_lagged)
-}
-
-#-----------------------------------------------------------------------------
-# tmiic.getNbNodesNonLagged
-#-----------------------------------------------------------------------------
-# Get the number of non lagged nodes in a list of nodes
-#
-# @description This functions iterates on the list of nodes until if
-# find a node not ending with lag0 and returns the number of iterations done. 
-# 
-# @param list_nodes [a list of string] The expected list of nodes is 
-# a lagged one: all nodes finishing by "lagX"
-#
-# @return A number
-#-----------------------------------------------------------------------------
-tmiic.getNbNodesNonLagged <- function (list_nodes) {
-  n_nodes <- 0
-  for (one_node in list_nodes) {
-    pos_lag_x <- stringr::str_locate(one_node, "_lag")
-    lag <- 0
-    if ( !is.na(pos_lag_x[1]) ) {
-      lag <- stringr::str_remove(one_node, ".*_lag")
-      lag <- strtoi (lag)
-    }
-    if (lag > 0)
-      break
-    n_nodes <- n_nodes + 1
-  } 
-  return (n_nodes)
-} 
-  
 #-----------------------------------------------------------------------------
 # tmiic.prepareEdgesForPlotting
 #-----------------------------------------------------------------------------
@@ -321,7 +271,7 @@ plot.tmiic = function(x, method = 'igraph', ...) {
   x <- tmiic.prepareEdgesForPlotting(x)
   df_mult <- tmiic.getMultipleEdgesForPlotting(x)
   list_nodes <- colnames (x$adj_matrix)
-  is_graph_lagged = tmiic.isLaggeg (list_nodes)
+  is_graph_lagged = x$tmiic_specific[["is_lagged"]]
   #
   # Set a layout if none supplied by user : grid for lagged, 
   # layout_with_kk for flatten
@@ -329,7 +279,7 @@ plot.tmiic = function(x, method = 'igraph', ...) {
   layout <- NULL
   if ( ! ("layout" %in% names(list(...))) ) {
     if (is_graph_lagged) {
-      n_nodes <- tmiic.getNbNodesNonLagged (list_nodes)
+      n_nodes <- x$tmiic_specific[["n_nodes_not_lagged"]]
       max_lag_plus1 <- length(list_nodes) %/% n_nodes
       layout <- data.frame (rep(1:max_lag_plus1, each=n_nodes),
                             rep(1:n_nodes, times=max_lag_plus1) )

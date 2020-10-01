@@ -122,15 +122,14 @@ void setEnvironmentFromR(const Rcpp::List& input_data,
   // => Remove all edges not having a node on the last timestep
   //
   if (environment.tau >= 1) {
-    environment.n_nodes_not_lagged = tmiic::countNbNodesNotLagged (environment);
-
-    for (int i = environment.n_nodes_not_lagged; i < n_nodes; i++) 
-      for (int j = environment.n_nodes_not_lagged; j < n_nodes; j++) {
+    int n_nodes_not_lagged = n_nodes / (environment.tau + 1);
+    for (int i = n_nodes_not_lagged; i < n_nodes; i++) 
+      for (int j = n_nodes_not_lagged; j < n_nodes; j++) {
         environment.edges(i, j).status = 0;
         environment.edges(i, j).status_prev = 0;
       }
   }
-    
+  
   if (arg_list.containsElementNamed("verbose"))
     environment.verbose = as<bool>(arg_list["verbose"]);
 

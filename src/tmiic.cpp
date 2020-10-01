@@ -36,33 +36,6 @@ using std::string;
 using namespace miic::structure;
 using namespace miic::utility;
 
-//=============================================================================
-// FUNCTIONS
-//=============================================================================
-// countNbNodesNotLagged
-//-----------------------------------------------------------------------------
-// Description: Counts the number of nodes not lagged
-//
-// Detail: Counts the number of nodes ending with lag0
-//
-// Params: 
-// - Environment&: the environment structure
-//
-// Returns: int, the number of nodes not lagged
-//-----------------------------------------------------------------------------
-int countNbNodesNotLagged (Environment& environment) {
-  std::regex lag_expr(".*lag");
-  int n_nodes_not_lagged = 0;
-  while (n_nodes_not_lagged < environment.n_nodes) {
-    string node_name = environment.nodes[n_nodes_not_lagged].name;
-    int node_lag = std::stoi (std::regex_replace(node_name, lag_expr, "") );
-    if (node_lag > 0)
-      break;
-    n_nodes_not_lagged++;
-  }
-  return (n_nodes_not_lagged);
-}
-
 //-----------------------------------------------------------------------------
 // repeatEdgesOverHistory
 //-----------------------------------------------------------------------------
@@ -82,6 +55,7 @@ void repeatEdgesOverHistory (Environment& environment) {
   // Now, we iterate over computed edges to duplicate (if needed)
   // the edges over the history
   //
+  int n_nodes_not_lagged = environment.n_nodes / (environment.tau + 1);
   auto& edge_list = environment.connected_list;
   auto edge_end = end(edge_list);
   for (auto iter0 = begin(edge_list); iter0 != edge_end; ++iter0) {
@@ -96,8 +70,8 @@ void repeatEdgesOverHistory (Environment& environment) {
     // until node pos > nb total nodes
     //
     while (true) {
-      node1_pos += environment.n_nodes_not_lagged;
-      node2_pos += environment.n_nodes_not_lagged;
+      node1_pos += n_nodes_not_lagged;
+      node2_pos += n_nodes_not_lagged;
       if ( (node1_pos >= environment.n_nodes) || (node2_pos >= environment.n_nodes) )
         break;
      //
@@ -136,11 +110,11 @@ void repeatEdgesOverHistory (Environment& environment) {
 // Returns: none
 //--------------------------------------------------------------------------------
 void dropPastEdges (Environment& environment) {
+  int n_nodes_not_lagged = environment.n_nodes / (environment.tau + 1);
   //
   // We iterate over computed edges to find edges previously duplicated using stationary.
   // All the edges duplicated are disconnected and removed from environment.connected_list
   //
-  std::regex lag_expr(".*lag");
   auto it = begin(environment.connected_list); 
   while ( it != end(environment.connected_list) ) {
     // 
@@ -148,8 +122,8 @@ void dropPastEdges (Environment& environment) {
     //    
     int node1_pos = it->X;
     int node2_pos = it->Y;
-    int node1_layer = node1_pos / environment.n_nodes_not_lagged;
-    int node2_layer = node2_pos / environment.n_nodes_not_lagged;
+    int node1_layer = node1_pos / n_nodes_not_lagged;
+    int node2_layer = node2_pos / n_nodes_not_lagged;
     // 
     // When the two lag are greater than 0, the edge is not contemporanous
     // and is removed
@@ -157,13 +131,13 @@ void dropPastEdges (Environment& environment) {
     if ((node1_layer > 0) && (node2_layer > 0))
       it = environment.connected_list.erase(it);
     else
-			it++;
-	 }  
+      it++;
+  }  
   //
   // We remove from the edges all those having pos > n_nodes_not_lagged
   //
-  for (int node1_pos = environment.n_nodes_not_lagged; node1_pos < environment.n_nodes; node1_pos++)
-    for (int node2_pos = environment.n_nodes_not_lagged; node2_pos < environment.n_nodes; node2_pos++) {
+  for (int node1_pos = n_nodes_not_lagged; node1_pos < environment.n_nodes; node1_pos++)
+    for (int node2_pos = n_nodes_not_lagged; node2_pos < environment.n_nodes; node2_pos++) {
       environment.edges(node1_pos,node2_pos).status = 0;
       environment.edges(node1_pos,node2_pos).status_init = 0;
       environment.edges(node1_pos,node2_pos).status_prev = 0;

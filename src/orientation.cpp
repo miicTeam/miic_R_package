@@ -66,7 +66,9 @@ vector<vector<string>> orientationProbability(Environment& environment) {
   else {
     // In temporal mode: 
     //
-    // When latent variable discovry is activated, duplicate edges over history 
+    int n_nodes_not_lagged = environment.n_nodes / (environment.tau + 1);
+    //
+    // When latent variable discovery is activated, duplicate edges over history 
     // assuming stationarity to increasethe number of possible unshielded triples.
     // Get only unshielded triples X -- Z -- Y having a node at lag0
     // (the past only triples are not interesting as edges forming these past
@@ -83,13 +85,11 @@ vector<vector<string>> orientationProbability(Environment& environment) {
     const auto& edge_list = environment.connected_list;
     for (auto iter0 = begin(edge_list); iter0 != end(edge_list); ++iter0) {
       int posX = iter0->X, posY = iter0->Y;
-      bool edge_has_lag0 =    (posX < environment.n_nodes_not_lagged)
-                           || (posY < environment.n_nodes_not_lagged);
+      bool edge_has_lag0 = (posX < n_nodes_not_lagged) || (posY < n_nodes_not_lagged);
 
       for (auto iter1 = iter0 + 1; iter1 != end(edge_list); ++iter1) {
         int posX1 = iter1->X, posY1 = iter1->Y;
-        bool edge1_has_lag0 =    (posX1 < environment.n_nodes_not_lagged)
-                              || (posY1 < environment.n_nodes_not_lagged);
+        bool edge1_has_lag0 = (posX1 < n_nodes_not_lagged) || (posY1 < n_nodes_not_lagged);
         if (! (edge_has_lag0 || edge1_has_lag0) )
           continue;
 
@@ -109,8 +109,8 @@ vector<vector<string>> orientationProbability(Environment& environment) {
     //
     for (auto iter0 = begin(edge_list); iter0 != end(edge_list); ++iter0) {
       int posX = iter0->X, posY = iter0->Y;
-      if ( ! (   (posX < environment.n_nodes_not_lagged)
-              || (posY < environment.n_nodes_not_lagged) ) )
+      if ( ! (   (posX < n_nodes_not_lagged)
+              || (posY < n_nodes_not_lagged) ) )
         continue;
 
       bool is_in_triple = false;
