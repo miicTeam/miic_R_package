@@ -1,5 +1,14 @@
 # Development version
 
+# v1.5.2
+
+## Fixes and improvements
+- Further refactoring of the C++ code for the computation of information
+
+- Fix minor bugs in the continuous computation
+
+- Fix incompatibility with older versions of GCC (std::align)
+
 # v1.5.1
 
 ## Fixes and improvements
