@@ -162,7 +162,7 @@ struct EdgeSharedInfo {
   // Conditional mutual information
   double Ixy_ui = 0;
   // Complexity with conditioning
-  double cplx = 0;
+  double kxy_ui = 0;
   // Count of joint factors without NA
   int Nxy_ui = -1;
   // 1 or 0. An edge is by default connected.
@@ -170,7 +170,7 @@ struct EdgeSharedInfo {
   // Mutual information without conditioning
   double Ixy = 0;
   // Complexity without conditioning
-  double cplx_no_u = 0;
+  double kxy = 0;
   // Count of joint factors without NA
   int Nxy = -1;
   // if doing shuffling, exp(-I_shuffle)
@@ -184,7 +184,7 @@ struct EdgeSharedInfo {
     top_z = -1;
     Rxyz_ui = 0;
     Ixy_ui = Ixy;
-    cplx = cplx_no_u;
+    kxy_ui = kxy;
     Nxy_ui = Nxy;
     connected = 1;
   }
@@ -194,7 +194,7 @@ struct EdgeSharedInfo {
     top_z = -1;
     Rxyz_ui = 0;
     Ixy_ui = Ixy;
-    cplx = cplx_no_u;
+    kxy_ui = kxy;
     Nxy_ui = Nxy;
     connected = 1;
   }
@@ -206,13 +206,12 @@ struct Node {
 };
 
 struct Edge {
-  // Edge is stored in Edge** edges
-  // Status code (suppose edges(X, Y)):
+  // For a pair of nodes (X, Y), status describes the arrow tip of the edge
+  // (X *-* Y) at the Y side ('*' means either head '>' or tail '-')
+  // Status code
   // 0: not connected;
-  // 1: connected and undirected;
-  // 2: connected directed X -> Y;
-  // -2: connected directed X <- Y;
-  // 6: connected bidirected X <-> Y;
+  // 1: tail (X *-- Y);
+  // 2: head (X *-> Y);
   short int status;       // Current status.
   short int status_init;  // Status after initialization.
   short int status_prev;  // Status in the previous iteration.

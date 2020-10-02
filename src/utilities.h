@@ -16,8 +16,7 @@ inline double getLapInterval(TimePoint start_time) {
   return second(std::chrono::steady_clock::now() - start_time).count();
 }
 
-std::vector<std::vector<int>> getAdjMatrix(
-    const structure::Grid2d<structure::Edge>&);
+std::vector<int> getAdjMatrix(const structure::Grid2d<structure::Edge>&);
 
 std::string toNameString(
     const std::vector<structure::Node>&, const std::vector<int>&);

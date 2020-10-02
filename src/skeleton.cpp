@@ -29,13 +29,13 @@ int initializeEdge(Environment& environment, int X, int Y) {
       environment.data_numeric, environment.data_numeric_idx, environment);
   info->Nxy = xy.n_samples;
   info->Ixy = xy.I;
-  info->cplx_no_u = xy.k;
+  info->kxy = xy.k;
 
   info->Nxy_ui = info->Nxy;
   info->Ixy_ui = info->Ixy;
-  info->cplx = info->cplx_no_u;
+  info->kxy_ui = info->kxy;
 
-  double shifted_mi = info->Ixy - info->cplx_no_u;
+  double shifted_mi = info->Ixy - info->kxy;
   if (!environment.no_init_eta) shifted_mi -= environment.log_eta;
 
   if (shifted_mi <= 0) {
@@ -190,7 +190,7 @@ bool searchForConditionalIndependence(Environment& environment) {
         environment.data_numeric, environment.data_numeric_idx, environment);
     top_info->Nxy_ui = res.n_samples;
     top_info->Ixy_ui = res.I;
-    top_info->cplx = res.k;
+    top_info->kxy_ui = res.k;
 
     if (environment.verbose) {
       Rcout << "Edge " << iter_count << ": " << environment.nodes[X].name
@@ -200,9 +200,9 @@ bool searchForConditionalIndependence(Environment& environment) {
         Rcout << environment.nodes[u].name << ", ";
       Rcout << "}\n";
       Rcout << "Ixy_ui " << top_info->Ixy_ui << "\n";
-      Rcout << "kxy_ui " << top_info->cplx << "\n";
+      Rcout << "kxy_ui " << top_info->kxy_ui << "\n";
     }
-    if (top_info->Ixy_ui - top_info->cplx - environment.log_eta <= 0) {
+    if (top_info->Ixy_ui - top_info->kxy_ui - environment.log_eta <= 0) {
       // Conditional independence found, remove edge
       unsettled_list.erase(it_max);
       environment.edges(X, Y).status = 0;

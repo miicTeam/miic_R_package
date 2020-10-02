@@ -7,7 +7,6 @@
 #include <algorithm>  // std::minmax, std::remove, std::transform
 #define _USE_MATH_DEFINES
 #include <cmath>
-#include <tuple>  // std::tie
 #include <map>
 
 #include "get_information.h"
@@ -27,31 +26,16 @@ using namespace miic::utility;
 namespace {
 
 bool acceptProba(double proba, double ori_proba_ratio) {
-  if (proba <= 0.5) return false;
   return (1 - proba) / proba < ori_proba_ratio;
 }
 
 // y2x: probability that there is an arrow from node y to x
 // x2y: probability that there is an arrow from node x to y
 void updateAdj(Environment& env, int x, int y, double y2x, double x2y) {
-  double lower, higher;
-  std::tie(lower, higher) = std::minmax(y2x, x2y);
-  // No arrowhead
-  if (higher <= 0.5) return;
-  // Only one arrowhead
-  if (lower <= 0.5) {
-    if (y2x == higher && acceptProba(y2x, env.ori_proba_ratio)) {
-      env.edges(x, y).status = -2;
-      env.edges(y, x).status = 2;
-    } else if (acceptProba(x2y, env.ori_proba_ratio)) {
-      env.edges(x, y).status = 2;
-      env.edges(y, x).status = -2;
-    }
-  } else if (acceptProba(x2y, env.ori_proba_ratio) &&
-             acceptProba(y2x, env.ori_proba_ratio)) {
-    env.edges(x, y).status = 6;
-    env.edges(y, x).status = 6;
-  }
+  if (acceptProba(x2y, env.ori_proba_ratio))
+    env.edges(x, y).status = 2;
+  if (acceptProba(y2x, env.ori_proba_ratio))
+    env.edges(y, x).status = 2;
 }
 
 }  // anonymous namespace

@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "structure.h"
+#include "utilities.h"
 
 namespace miic {
 namespace reconstruction {
@@ -16,6 +17,15 @@ namespace reconstruction {
 namespace detail {
 using std::vector;
 using namespace structure;
+using utility::getAdjMatrix;
+
+// convert 2d index in a n_nodes * n_nodes grid to 1d index
+inline int getIndex1D(int i, int j, int n_nodes) { return j + i * n_nodes; }
+
+// convert 1d index to 2d index in a n_nodes * n_nodes grid
+inline std::pair<int, int> getIndex2D(int k, int n_nodes) {
+  return std::make_pair(k / n_nodes, k % n_nodes);
+}
 
 // During each consistent iteration of the network reconstruction, keep track of
 // number of edges in the graph, edges with modified status with respect to the
@@ -25,16 +35,6 @@ class CycleTracker {
  public:
   CycleTracker(Grid2d<Edge>& edges, const vector<EdgeID>& edge_list)
       : edges_(edges), edge_list_(edge_list) {}
-  // convert lower triangular indices to 1d index
-  static int getEdgeIndex1D(int i, int j) {
-    return (j < i ? j + i * (i - 1) / 2 : i + j * (j - 1) / 2);
-  }
-  // convert 1d index to lower triangular indices
-  std::pair<int, int> getEdgeIndex2D(int k) {
-    int i = std::floor(0.5 + std::sqrt(0.25 + 2 * k));
-    int j = k - i * (i - 1) / 2;
-    return std::make_pair(i, j);
-  }
   vector<vector<int>> getAdjMatrices(int size);
   int getCycleSize() { return cycle_size; }
   // check if a cycle exists between the current and the past iterations
@@ -49,20 +49,14 @@ class CycleTracker {
     vector<int> adj_matrix_1d;
 
     Iteration(const Grid2d<Edge>& edges, int i)
-        : index(i), adj_matrix_1d(edges.size(), 0) {
+        : index(i), adj_matrix_1d(getAdjMatrix(edges)) {
       int n_nodes = edges.n_rows();
       for (int i = 0; i < n_nodes; ++i) {
         for (int j = 0; j < n_nodes; ++j) {
-          adj_matrix_1d[j + i * n_nodes] = edges(i, j).status;
-        }
-      }
-      // Keep track of the lower triangular part
-      for (int i = 1; i < n_nodes; ++i) {
-        for (int j = 0; j < i; ++j) {
           const auto& edge = edges(i, j);
           if (edge.status_prev == edge.status) continue;
 
-          auto index_1d = getEdgeIndex1D(i, j);
+          auto index_1d = getIndex1D(i, j, n_nodes);
           changed_edges.insert(std::make_pair(index_1d, edge.status_prev));
         }
       }
@@ -81,9 +75,9 @@ class CycleTracker {
     size_t size() { return iteration_list_.size(); }
 
     auto begin() { return iteration_list_.begin(); }
-    auto cbegin() const { return iteration_list_.cbegin(); }
+    auto begin() const { return iteration_list_.cbegin(); }
     auto end() { return iteration_list_.end(); }
-    auto cend() const { return iteration_list_.cend(); }
+    auto end() const { return iteration_list_.cend(); }
 
    private:
     std::deque<Iteration> iteration_list_;

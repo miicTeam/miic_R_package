@@ -49,11 +49,18 @@ void BiconnectedComponent::setCandidateZ(int x, int y, vector<int>& zi_list) {
   zi_list.clear();
   if (consistent_) {
     auto set_z = getCandidateZ(x, y);
-    copy_if(
-        begin(set_z), end(set_z), back_inserter(zi_list), [this, x, y](int i) {
-          return (latent_ || edges_(i, x).status_prev > 0 ||
-                  edges_(i, y).status_prev > 0);
-        });
+    auto is_consistent = [this, x, y](int z){
+      if (latent_) return true;
+      // For double arrow headed edge (x <-> z), z is considered consistent
+      if ((edges_(x, z).status_prev == 2 && edges_(z, x).status_prev == 2) ||
+          (edges_(y, z).status_prev == 2 && edges_(z, y).status_prev == 2))
+        return true;
+      // status is either 0 (not connected) or 2 (z is the child of x or y)
+      if (edges_(x, z).status_prev != 1 && edges_(y, z).status_prev != 1)
+        return false;
+      return true;
+    };
+    copy_if(begin(set_z), end(set_z), back_inserter(zi_list), is_consistent);
   } else {
     for (int z = 0; z < n_nodes_; ++z) {
       if (z == x || z == y) continue;
@@ -70,9 +77,15 @@ bool BiconnectedComponent::isConsistent(
   if (vect_z.empty()) return true;
   set<int> set_z = getCandidateZ(x, y);
   for (auto& z : vect_z) {
-    if (set_z.find(z) == set_z.end() ||
-        (edges_(z, x).status <= 0 &&
-            edges_(z, y).status <= 0))
+    // Not in the consistent set
+    if (set_z.find(z) == set_z.end())
+      return false;
+    // For double arrow headed edge (x <-> z), z is considered consistent
+    if ((edges_(x, z).status == 2 && edges_(z, x).status == 2) ||
+        (edges_(y, z).status == 2 && edges_(z, y).status == 2))
+      continue;
+    // status is either 0 (not connected) or 2 (z is the child of x or y)
+    if (edges_(x, z).status != 1 && edges_(y, z).status != 1)
       return false;
   }
   return true;

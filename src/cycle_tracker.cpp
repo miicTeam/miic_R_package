@@ -2,6 +2,7 @@
 
 #include <algorithm>  // std::sort, std::none_of
 #include <set>
+#include <tuple>  // std::tie
 
 #include "linear_allocator.h"
 #include "structure.h"
@@ -33,33 +34,35 @@ bool CycleTracker::hasCycle() {
   saveIteration();
   if (no_cycle_found) return false;
   // Backtracking requires starting from the largest index first
-  std::sort(iter_indices.begin(), iter_indices.end(), std::greater<int>());
-  // Set of edges that are to be marked as connected and undirected
-  std::set<int> edges_union;
-  // Check if an edge is changed. vector is chosen over map for quicker access
-  // and simpler syntax, at the cost of extra memory trace and (possible) extra
-  // time complexity (in practice there are very few changes between each pair
-  // of iterations).
-  TempVector<int> changed(n_nodes * (n_nodes - 1) / 2, 0);
-  // backtracking over iteration to get changed_edges
+  std::sort(begin(iter_indices), end(iter_indices), std::greater<int>());
+  // Whether the status of an edge has changed for at least once among all
+  // iterations, if true the edge will be marked as connected and undirected
+  TempGrid2d<int> has_changed(n_nodes, n_nodes, 0);
+  // Whether the status of an edge is different between the current iteration
+  // and the iteration before the one under consideration.
+  TempVector<int> changed(n_nodes * n_nodes, 0);
+  // Backtracking over iteration to get changed_edges
   cycle_size = 0;
   for (const auto& iter : iterations_) {
     ++cycle_size;
     for (const auto& k : iter.changed_edges) {
-      edges_union.insert(k.first);
+      int i{0}, j{0};
+      std::tie(i, j) = getIndex2D(k.first, n_nodes);
+      has_changed(i, j) = 1;
       // compare the status in the previous iteration against the latest status
-      std::pair<int, int> p = getEdgeIndex2D(k.first);
-      changed[k.first] = (k.second != edges_(p.first, p.second).status);
+      changed[k.first] = (k.second != edges_(i, j).status);
     }
     if (iter.index != iter_indices.front()) continue;
     iter_indices.pop_front();
     using std::none_of;
     if (none_of(begin(changed), end(changed), [](int j) { return j != 0; })) {
-      for (auto& k : edges_union) {
-        std::pair<int, int> p = getEdgeIndex2D(k);
-        edges_(p.first, p.second).status = 1;
-        edges_(p.second, p.first).status = 1;
-        edges_(p.first, p.second).shared_info->setUndirected();
+      for (int i = 0; i < n_nodes; ++i) {
+        for (int j = 0; j < n_nodes; ++j) {
+          if (has_changed(i, j) == 0) continue;
+
+          edges_(i, j).status = 1;
+          edges_(i, j).shared_info->setUndirected();
+        }
       }
       return true;
     }
@@ -71,8 +74,7 @@ bool CycleTracker::hasCycle() {
 
 vector<vector<int>> CycleTracker::getAdjMatrices(int size) {
   vector<vector<int>> adj_matrices;
-  for (auto i = iterations_.begin(), e = iterations_.begin() + size; i != e;
-       ++i) {
+  for (auto i = iterations_.begin(); i != iterations_.begin() + size; ++i) {
     adj_matrices.push_back(i->adj_matrix_1d);
   }
   return adj_matrices;

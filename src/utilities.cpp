@@ -185,12 +185,36 @@ TempGrid2d<double> getJointFreqs(const Grid2d<int>& data_numeric, int X, int Y,
 
 }  // anonymous namespace
 
-vector<vector<int>> getAdjMatrix(const Grid2d<Edge>& edges) {
-  vector<vector<int>> adj(edges.n_rows(), vector<int>(edges.n_cols(), 0));
-  for (size_t i = 1; i < edges.n_rows(); ++i) {
-    for (size_t j = 0; j < i; ++j) {
-      adj[i][j] = edges(i, j).status;
-      adj[j][i] = edges(j, i).status;
+// 0: not connected;
+// 1: connected and undirected;
+// 2: connected directed X -> Y;
+// -2: connected directed X <- Y;
+// 6: connected bidirected X <-> Y;
+vector<int> getAdjMatrix(const Grid2d<Edge>& edges) {
+  vector<int> adj(edges.size(), 0);
+  int n_nodes = edges.n_rows();
+  for (size_t X = 1; X < edges.n_rows(); ++X) {
+    for (size_t Y = 0; Y < X; ++Y) {
+      int x2y = edges(X, Y).status;
+      int y2x = edges(Y, X).status;
+      int index_1d_x2y = Y + X * n_nodes;
+      int index_1d_y2x = X + Y * n_nodes;
+      if (x2y == 0 && y2x == 0) {
+        adj[index_1d_x2y] = 0;
+        adj[index_1d_y2x] = 0;
+      } else if (x2y == 1 && y2x == 1) {
+        adj[index_1d_x2y] = 1;
+        adj[index_1d_y2x] = 1;
+      } else if (x2y == 2 && y2x == 2) {
+        adj[index_1d_x2y] = 6;
+        adj[index_1d_y2x] = 6;
+      } else if (x2y == 2 && y2x == 1) {
+        adj[index_1d_x2y] = 2;
+        adj[index_1d_y2x] = -2;
+      } else if (x2y == 1 && y2x == 2) {
+        adj[index_1d_x2y] = -2;
+        adj[index_1d_y2x] = 2;
+      }
     }
   }
   return adj;
@@ -227,7 +251,7 @@ vector<vector<string>> getEdgesInfoTable(
     auto info = edge.getEdge().shared_info;
     double confidence = -1;
     if (info->exp_shuffle != -1)
-      confidence = exp(info->cplx - info->Ixy_ui) / info->exp_shuffle;
+      confidence = exp(info->kxy_ui - info->Ixy_ui) / info->exp_shuffle;
 
     using std::to_string;
     table.emplace_back(std::initializer_list<string>{
@@ -238,7 +262,7 @@ vector<vector<string>> getEdgesInfoTable(
         toNameString(nodes, info->zi_list),
         to_string(info->Ixy),
         to_string(info->Ixy_ui),
-        to_string(info->cplx),
+        to_string(info->kxy_ui),
         to_string(info->Rxyz_ui),
         to_string(info->connected),
         to_string(info->Nxy_ui),

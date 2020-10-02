@@ -104,7 +104,7 @@ void confidenceCut(Environment& environment) {
   auto to_delete = [&environment](EdgeID& id) {
     int X = id.X, Y = id.Y;
     auto info = id.getEdge().shared_info;
-    double I_prime_original = info->Ixy_ui - info->cplx;
+    double I_prime_original = info->Ixy_ui - info->kxy_ui;
     // exp(I_shuffle - I_original)
     auto confidence = exp(-I_prime_original) / info->exp_shuffle;
     if (confidence > environment.conf_threshold) {
