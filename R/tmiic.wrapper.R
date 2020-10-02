@@ -276,8 +276,9 @@ tmiic.lag_one_timeseries <- function (df_timeseries, tau, list_nodes_lagged,
 #' Possible values are \emph{"normal"}, \emph{"combine"}, \emph{"unique"}, 
 #' \emph{"drop"}:
 #' \itemize{
-#' \item When \emph{flatten_mode} = \emph{"normal"}, the default, edges are 
-#'   simply converted into a flattened version.\cr
+#' \item When \emph{flatten_mode} = \emph{"normal"}, the default. Nodes 
+#'   and edges are converted into a flattened version preserving all 
+#'   the initial information.\cr
 #'   i.e.: X_lag1->Y_lag0, X_lag2<-Y_lag0 become respectively X->Y lag=1, 
 #'   X<-Y lag=2. 
 #' \item When \emph{flatten_mode} = \emph{"combine"}, one edge will be kept
@@ -303,8 +304,9 @@ tmiic.lag_one_timeseries <- function (df_timeseries, tau, list_nodes_lagged,
 #' }
 #' Note that for all modes other than \emph{"drop"}, lag is a new column 
 #' added in the dataframe. 
+#' 
 #' @param keep_edges_on_same_node [a boolean] Optional, TRUE by default.
-#' When TRUE, the edges like X_lag0-X_lag1 are kept during flatenning
+#' When TRUE, the edges like X_lag0-X_lag1 are kept during flattening
 #' (it becomes an X-X edge). When FALSE, only edges having different nodes 
 #' are kept in the flatten network.
 #' 
@@ -350,7 +352,7 @@ tmiic.flatten_network <- function (miic_result, flatten_mode="normal",
   df_edges$lag <- -1
   for (edge_idx in 1:nrow(df_edges) ) {
     #
-    # Get nodes the edge wthout "_lagX"
+    # Get nodes of the edge without "_lagX"
     #
     one_edge <- df_edges[edge_idx,]
     #
@@ -383,7 +385,7 @@ tmiic.flatten_network <- function (miic_result, flatten_mode="normal",
       tau_idx_y <- strtoi (tau_idx_y)
     }
     #
-    # It temporal, ensure to order from oldest to newest
+    # Ensure to order from oldest to newest
     #
     lag = tau_idx_x - tau_idx_y
     if (lag < 0) {

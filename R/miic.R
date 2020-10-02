@@ -345,15 +345,14 @@
 #' # execute MIIC (reconstruct graph in temporal mode)
 #' tmiic.res <- miic(input_data = covidCases, tau = 2, movavg = 14)
 #'
-#' # plot temporal graph
+#' # to plot the default graph (compact)
 #' if(require(igraph)) {
 #'  plot(tmiic.res)
 #' }
-#'
-#' # to plot a condensed graph
-#' flatten.res <- tmiic.flatten_network(tmiic.res)
+#' 
+#' # to plot the full temporal graph
 #' if(require(igraph)) {
-#'  plot(flatten.res)
+#'  plot(tmiic.res, flatten_mode="none")
 #' }
 #' 
 #' }

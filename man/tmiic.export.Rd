@@ -4,12 +4,59 @@
 \alias{tmiic.export}
 \title{Export temporal miic (tmiic) result to different plotting methods}
 \usage{
-tmiic.export(tmiic.res, method = "igraph")
+tmiic.export(
+  tmiic.res,
+  flatten_mode = "normal",
+  show_self_loops = TRUE,
+  method = "igraph"
+)
 }
 \arguments{
 \item{tmiic.res}{[a tmiic graph object]
-The graph object returned by the miic execution in temporal mode, 
-eventually flattened.}
+The graph object returned by the \code{\link{miic}} execution in temporal mode.}
+
+\item{flatten_mode}{[a string]. Optional, default value "normal".
+Possible values are \emph{"none"}, \emph{"normal"}, \emph{"combine"}, 
+\emph{"unique"}, \emph{"drop"}:
+\itemize{
+\item When \emph{flatten_mode} = \emph{"none"}, the export function will
+  use the tmiic graph object as it, leading to the return of a lagged
+  graph. 
+\item When \emph{flatten_mode} = \emph{"normal"}, the default, nodes 
+  and edges are converted into a flattened version to produce a compact 
+  view of the temporal network whilst still presenting all the information
+  in the export.\cr
+  i.e.: X_lag1->Y_lag0, X_lag2<-Y_lag0 become respectively X->Y lag=1, 
+  X<-Y lag=2.  
+\item When \emph{flatten_mode} = \emph{"combine"}, prior to the export,
+  a preprocessing will be applied to kept only one edge
+  per couple of nodes. The log_confidence will be the highest one 
+  of the summarized edges whilst the lag and orientation of the
+  summarized edge will be an aggregation.\cr 
+  i.e.: X_lag1->Y_lag0, X_lag2<-Y_lag0 will become X<->Y lag=1,2 with
+  the log_confidence of X_lag1->Y_lag0 if log_confidence of 
+  X_lag1->Y_lag0 > X_lag2<-Y_lag0.
+\item When \emph{flatten_mode} = \emph{"unique"}, prior to the export,
+  a preprocessing will be applied to kept only the edges having the
+  highest log_confidence for a couple of nodes. 
+  If several edges between the sames nodes have the same
+  log_confidence, then the edge kept is the one with the minimum lag.\cr 
+  i.e.: X_lag1->Y_lag0, X_lag2<-Y_lag0 with log_confidence of 
+  X_lag1->Y_lag0 > X_lag2<-Y_lag0 become X->Y lag=1.
+\item When \emph{flatten_mode} = \emph{"drop"}, prior to the export,
+  a preprocessing will be applied to kept only the edges having the 
+  highest log_confidence for a couple of nodes. 
+  If several edges between the sames nodes have the same
+  log_confidence, then the edge kept is the one with the minimum lag.\cr
+  i.e. :  X_lag1->Y_lag0, X_lag2<-Y_lag0 with log_confidence of 
+  X_lag1->Y_lag0 > X_lag2<-Y_lag0 become X->Y. 
+  The lag information is dropped during the preprocessing and 
+  will not be exported.
+}}
+
+\item{show_self_loops}{[a boolean] Optional, TRUE by default.
+When TRUE, the edges like X_lag0-X_lag1 are exported.
+When FALSE, only edges having different nodes are exported.}
 
 \item{method}{A string representing the plotting method.
 Currently only "igraph" is supported.}
@@ -25,36 +72,6 @@ different plotting methods.
 \details{
 See the details of specific function for each method.
 For igraph, see \code{\link{tmiic.getIgraph}}.
-}
-\examples{
-\donttest{
-library(miic)
-data(covidCases)
-# execute MIIC (reconstruct graph in temporal mode)
-tmiic.res <- miic(input_data = covidCases, tau = 2, movavg = 14)
-
-# Plot temporal network Using igraph
-if(require(igraph)) {
-g = tmiic.export(tmiic.res, "igraph")
-plot(g) # Default visualisation, calls igraph::plot.igraph()
-
-# Specifying layout (see ?igraph::layout_)
-l <- layout_on_grid(g, width = 5, height = 3, dim = 2)
-plot(g, layout=l)
-
-# Override some graphical parameters
-plot(g, edge.arrow.size = 0.75)
-plot(g, vertex.shape="none", edge.color="gray85", vertex.label.color="gray10")
-
-# For compact graph, please be aware that the rendering of
-# igraph::plot.igraph() is not optimal when the graph contains
-# multiple edges between the same nodes.
-# So the recommend way to plot a compact graph is to use tmiic:  
-flatten.res <- tmiic.flatten_network(tmiic.res)
-plot(flatten.res)
-}
-
-}
 }
 \seealso{
 \code{\link{tmiic.getIgraph}} for details on the igraph exported object.

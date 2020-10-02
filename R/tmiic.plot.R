@@ -27,8 +27,50 @@
 #' For igraph, see \code{\link{tmiic.getIgraph}}.
 #'
 #' @param tmiic.res [a tmiic graph object]
-#' The graph object returned by the miic execution in temporal mode, 
-#' eventually flattened.
+#' The graph object returned by the \code{\link{miic}} execution in temporal mode.
+#' 
+#' @param flatten_mode [a string]. Optional, default value "normal".
+#' Possible values are \emph{"none"}, \emph{"normal"}, \emph{"combine"}, 
+#' \emph{"unique"}, \emph{"drop"}:
+#' \itemize{
+#' \item When \emph{flatten_mode} = \emph{"none"}, the export function will
+#'   use the tmiic graph object as it, leading to the return of a lagged
+#'   graph. 
+#' \item When \emph{flatten_mode} = \emph{"normal"}, the default, nodes 
+#'   and edges are converted into a flattened version to produce a compact 
+#'   view of the temporal network whilst still presenting all the information
+#'   in the export.\cr
+#'   i.e.: X_lag1->Y_lag0, X_lag2<-Y_lag0 become respectively X->Y lag=1, 
+#'   X<-Y lag=2.  
+#' \item When \emph{flatten_mode} = \emph{"combine"}, prior to the export,
+#'   a preprocessing will be applied to kept only one edge
+#'   per couple of nodes. The log_confidence will be the highest one 
+#'   of the summarized edges whilst the lag and orientation of the
+#'   summarized edge will be an aggregation.\cr 
+#'   i.e.: X_lag1->Y_lag0, X_lag2<-Y_lag0 will become X<->Y lag=1,2 with
+#'   the log_confidence of X_lag1->Y_lag0 if log_confidence of 
+#'   X_lag1->Y_lag0 > X_lag2<-Y_lag0.
+#' \item When \emph{flatten_mode} = \emph{"unique"}, prior to the export,
+#'   a preprocessing will be applied to kept only the edges having the
+#'   highest log_confidence for a couple of nodes. 
+#'   If several edges between the sames nodes have the same
+#'   log_confidence, then the edge kept is the one with the minimum lag.\cr 
+#'   i.e.: X_lag1->Y_lag0, X_lag2<-Y_lag0 with log_confidence of 
+#'   X_lag1->Y_lag0 > X_lag2<-Y_lag0 become X->Y lag=1.
+#' \item When \emph{flatten_mode} = \emph{"drop"}, prior to the export,
+#'   a preprocessing will be applied to kept only the edges having the 
+#'   highest log_confidence for a couple of nodes. 
+#'   If several edges between the sames nodes have the same
+#'   log_confidence, then the edge kept is the one with the minimum lag.\cr
+#'   i.e. :  X_lag1->Y_lag0, X_lag2<-Y_lag0 with log_confidence of 
+#'   X_lag1->Y_lag0 > X_lag2<-Y_lag0 become X->Y. 
+#'   The lag information is dropped during the preprocessing and 
+#'   will not be exported.
+#' }
+#' 
+#' @param show_self_loops [a boolean] Optional, TRUE by default.
+#' When TRUE, the edges like X_lag0-X_lag1 are exported.
+#' When FALSE, only edges having different nodes are exported.
 #' 
 #' @param method A string representing the plotting method.
 #' Currently only "igraph" is supported.
@@ -47,9 +89,14 @@
 #' # execute MIIC (reconstruct graph in temporal mode)
 #' tmiic.res <- miic(input_data = covidCases, tau = 2, movavg = 14)
 #'
-#' # Plot temporal network Using igraph
+#' # Plot default compact temporal network Using igraph
 #' if(require(igraph)) {
-#' g = tmiic.export(tmiic.res, "igraph")
+#' g = tmiic.export(tmiic.res, method="igraph")
+#' plot(g) # Default visualisation, calls igraph::plot.igraph()
+#'
+#' # Plot full temporal network Using igraph
+#' if(require(igraph)) {
+#' g = tmiic.export(tmiic.res, flatten_mode="none", method="igraph")
 #' plot(g) # Default visualisation, calls igraph::plot.igraph()
 #'
 #' # Specifying layout (see ?igraph::layout_)
@@ -60,17 +107,17 @@
 #' plot(g, edge.arrow.size = 0.75)
 #' plot(g, vertex.shape="none", edge.color="gray85", vertex.label.color="gray10")
 #' 
-#' # For compact graph, please be aware that the rendering of
+#' # For compact graphs, please be aware that the rendering of
 #' # igraph::plot.igraph() is not optimal when the graph contains
 #' # multiple edges between the same nodes.
-#' # So the recommend way to plot a compact graph is to use tmiic:  
-#' flatten.res <- tmiic.flatten_network(tmiic.res)
-#' plot(flatten.res)
+#' # So the recommend way to plot a compact graph is to use tmiic plotting:  
+#' plot(tmiic.res)
 #' }
 #'
 #' }
 #-----------------------------------------------------------------------------
-tmiic.export <- function (tmiic.res, method = "igraph") {
+tmiic.export <- function (tmiic.res, flatten_mode="normal", 
+                          show_self_loops=TRUE, method="igraph") {
   if (is.null(tmiic.res$all.edges.summary)) {
     stop("The inferred network does not exist")
   }
@@ -80,7 +127,8 @@ tmiic.export <- function (tmiic.res, method = "igraph") {
   if (method != "igraph") {
     stop("Method not supported")
   }
-  return(tmiic.getIgraph(tmiic.res))
+  return(tmiic.getIgraph(tmiic.res, flatten_mode=flatten_mode, 
+                         show_self_loops=show_self_loops))
 }
 
 #-----------------------------------------------------------------------------
@@ -102,9 +150,50 @@ tmiic.export <- function (tmiic.res, method = "igraph") {
 #' based on the conditional mutual information minus the complexity cost.
 #'
 #' @param tmiic.res [a tmiic graph object]
-#' The graph object returned by the miic execution in temporal mode, 
-#' eventually flattened
+#' The graph object returned by the \code{\link{miic}} execution in temporal mode
 #'
+#' @param flatten_mode [a string]. Optional, default value "normal".
+#' Possible values are \emph{"none"}, \emph{"normal"}, \emph{"combine"}, 
+#' \emph{"unique"}, \emph{"drop"}:
+#' \itemize{
+#' \item When \emph{flatten_mode} = \emph{"none"}, the function will
+#'   use the tmiic graph object as it, leading to the return of a lagged
+#'   graph.  
+#' \item When \emph{flatten_mode} = \emph{"normal"}, the default, nodes 
+#'   and edges are converted into a flattened version to produce a compact 
+#'   view of the temporal network whilst still presenting all the information.\cr
+#'   i.e.: X_lag1->Y_lag0, X_lag2<-Y_lag0 become respectively X->Y lag=1, 
+#'   X<-Y lag=2.  
+#' \item When \emph{flatten_mode} = \emph{"combine"}, 
+#'   a preprocessing will be applied to kept only one edge
+#'   per couple of nodes. The log_confidence will be the highest one 
+#'   of the summarized edges whilst the lag and orientation of the
+#'   summarized edge will be an aggregation.\cr 
+#'   i.e.: X_lag1->Y_lag0, X_lag2<-Y_lag0 will become X<->Y lag=1,2 with
+#'   the log_confidence of X_lag1->Y_lag0 if log_confidence of 
+#'   X_lag1->Y_lag0 > X_lag2<-Y_lag0.
+#' \item When \emph{flatten_mode} = \emph{"unique"}, 
+#'   a preprocessing will be applied to kept only the edges having the
+#'   highest log_confidence for a couple of nodes. 
+#'   If several edges between the sames nodes have the same
+#'   log_confidence, then the edge kept is the one with the minimum lag.\cr 
+#'   i.e.: X_lag1->Y_lag0, X_lag2<-Y_lag0 with log_confidence of 
+#'   X_lag1->Y_lag0 > X_lag2<-Y_lag0 become X->Y lag=1.
+#' \item When \emph{flatten_mode} = \emph{"drop"}, prior to the plotting,
+#'   a preprocessing will be applied to kept only the edges having the 
+#'   highest log_confidence for a couple of nodes. 
+#'   If several edges between the sames nodes have the same
+#'   log_confidence, then the edge kept is the one with the minimum lag.\cr
+#'   i.e. :  X_lag1->Y_lag0, X_lag2<-Y_lag0 with log_confidence of 
+#'   X_lag1->Y_lag0 > X_lag2<-Y_lag0 become X->Y. 
+#'   The lag information is dropped during the preprocessing.
+#' }
+#' 
+#' @param show_self_loops [a boolean] Optional, TRUE by default.
+#' When TRUE, the edges like X_lag0-X_lag1 are included in the iGraph object. 
+#' When FALSE, only edges having different nodes are present in the iGraph 
+#' object.
+#' 
 #' @return An igraph graph object.
 #' 
 #' @export
@@ -114,11 +203,15 @@ tmiic.export <- function (tmiic.res, method = "igraph") {
 #' \code{\link[igraph]{igraph.plotting}} for the detailed description of the
 #' plotting parameters and \code{\link[igraph]{layout}} for different layouts.
 #-----------------------------------------------------------------------------
-tmiic.getIgraph <- function (tmiic.res){
+tmiic.getIgraph <- function (tmiic.res, flatten_mode="normal", show_self_loops=TRUE){
   if (class(tmiic.res) != "tmiic") {
     stop("Not a tmiic object.")
   }
   
+  if (flatten_mode != "none")
+    tmiic.res <- tmiic.flatten_network(tmiic.res, flatten_mode=flatten_mode,
+                                       keep_edges_on_same_node=show_self_loops)
+    
   class(tmiic.res) <- "miic"
   graph <- getIgraph(tmiic.res)
   class(tmiic.res) <- "tmiic"
@@ -130,7 +223,8 @@ tmiic.getIgraph <- function (tmiic.res){
   }
   else {
     igraph::E(graph)$curved = FALSE
-    igraph::E(graph)$label <- tmiic.res$all.edges.summary$lag
+    if ( "lag" %in% colnames(tmiic.res$all.edges.summary) )
+      igraph::E(graph)$label <- tmiic.res$all.edges.summary$lag
   }
   return(graph)
 }
@@ -141,7 +235,7 @@ tmiic.getIgraph <- function (tmiic.res){
 # Prepare the edges for plotting
 #
 # @description This function firstly filters the edges in the summary to keep
-# only the ones detected by miic and adds to everay edges an id constructed
+# only the ones detected by miic and adds to every edge an id constructed
 # using the couple of nodes ordered alphabetically ("node1" < "node2") 
 # 
 # @param  [a tmiic graph object] The graph object returned by the miic 
@@ -221,8 +315,52 @@ tmiic.getMultipleEdgesForPlotting <- function (tmiic.res) {
 #' details.
 #'
 #' @param x [a tmiic graph object]
-#' The graph object returned by \code{\link{miic}} in temporal mode, 
-#' eventually flatten
+#' The graph object returned by \code{\link{miic}} in temporal mode
+#' 
+#' @param flatten_mode [a string]. Optional, default value "normal".
+#' Possible values are \emph{"none"}, \emph{"normal"}, \emph{"combine"}, 
+#' \emph{"unique"}, \emph{"drop"}:
+#' \itemize{
+#' \item When \emph{flatten_mode} = \emph{"none"}, the plot function will
+#'   use the tmiic graph object as it, leading to the display of a lagged
+#'   graph. Unless a specific layout is specified, nodes will be positioned 
+#'   on a grid. 
+#' \item When \emph{flatten_mode} = \emph{"normal"}, the default, nodes 
+#'   and edges are converted into a flattened version to produce a compact 
+#'   view of the temporal network whilst still presenting all the information
+#'   in the plotting.\cr
+#'   i.e.: X_lag1->Y_lag0, X_lag2<-Y_lag0 become respectively X->Y lag=1, 
+#'   X<-Y lag=2.  
+#' \item When \emph{flatten_mode} = \emph{"combine"}, prior to the plotting,
+#'   a preprocessing will be applied to kept only one edge
+#'   per couple of nodes. The log_confidence will be the highest one 
+#'   of the summarized edges whilst the lag and orientation of the
+#'   summarized edge will be an aggregation.\cr 
+#'   i.e.: X_lag1->Y_lag0, X_lag2<-Y_lag0 will become X<->Y lag=1,2 with
+#'   the log_confidence of X_lag1->Y_lag0 if log_confidence of 
+#'   X_lag1->Y_lag0 > X_lag2<-Y_lag0.
+#' \item When \emph{flatten_mode} = \emph{"unique"}, prior to the plotting,
+#'   a preprocessing will be applied to kept only the edges having the
+#'   highest log_confidence for a couple of nodes. 
+#'   If several edges between the sames nodes have the same
+#'   log_confidence, then the edge kept is the one with the minimum lag.\cr 
+#'   i.e.: X_lag1->Y_lag0, X_lag2<-Y_lag0 with log_confidence of 
+#'   X_lag1->Y_lag0 > X_lag2<-Y_lag0 become X->Y lag=1.
+#' \item When \emph{flatten_mode} = \emph{"drop"}, prior to the plotting,
+#'   a preprocessing will be applied to kept only the edges having the 
+#'   highest log_confidence for a couple of nodes. 
+#'   If several edges between the sames nodes have the same
+#'   log_confidence, then the edge kept is the one with the minimum lag.\cr
+#'   i.e. :  X_lag1->Y_lag0, X_lag2<-Y_lag0 with log_confidence of 
+#'   X_lag1->Y_lag0 > X_lag2<-Y_lag0 become X->Y. 
+#'   The lag information is dropped during the preprocessing and 
+#'   will not be displayed on the final plotting.
+#' }
+#' 
+#' @param show_self_loops [a boolean] Optional, TRUE by default.
+#' When TRUE, the edges like X_lag0-X_lag1 are included in the iGraph object. 
+#' When FALSE, only edges having different nodes are present in the iGraph 
+#' object.
 #' 
 #' @param method A string representing the plotting method. Default to "igraph".
 #' Currently only "igraph" is supported.
@@ -246,18 +384,19 @@ tmiic.getMultipleEdgesForPlotting <- function (tmiic.res) {
 #' # execute MIIC (reconstruct graph in temporal mode)
 #' tmiic.res <- miic(input_data = covidCases, tau = 2, movavg = 14)
 #'
-#' # plot temporal graph
+#' # to plot the default compact graph
 #' if(require(igraph)) {
 #'  plot(tmiic.res)
+#'  
+#' # to plot the full temporal graph
+#' if(require(igraph)) {
+#'  plot(tmiic.res, flatten_mode="none")
 #' }
 #'
-#' # to plot a condensed graph
-#' flatten.res <- tmiic.flatten_network(tmiic.res)
-#' if(require(igraph)) {
-#'  plot(flatten.res)
 #' }
 #-----------------------------------------------------------------------------
-plot.tmiic = function(x, method = 'igraph', ...) {
+plot.tmiic = function(x, flatten_mode="normal", show_self_loops=TRUE,
+                      method = 'igraph', ...) {
   
   if (class(x) != "tmiic")
     stop("Not a tmiic object.")
@@ -268,18 +407,24 @@ plot.tmiic = function(x, method = 'igraph', ...) {
   if ( is.null (x$adj_matrix) ) 
     stop ("The learnt graphical model adjacency matrix does not exist")
   
-  x <- tmiic.prepareEdgesForPlotting(x)
-  df_mult <- tmiic.getMultipleEdgesForPlotting(x)
-  list_nodes <- colnames (x$adj_matrix)
-  is_graph_lagged = x$tmiic_specific[["is_lagged"]]
+  if ( (x$tmiic_specific[["is_lagged"]]) & (flatten_mode != "none") )
+    x <- tmiic.flatten_network(x, flatten_mode=flatten_mode, 
+                               keep_edges_on_same_node=show_self_loops)
+  
+  df_mult <- data.frame(count=integer(), stringsAsFactors = FALSE)
+  if (!x$tmiic_specific[["is_lagged"]]) {
+    x <- tmiic.prepareEdgesForPlotting(x)
+    df_mult <- tmiic.getMultipleEdgesForPlotting(x)
+  }
   #
   # Set a layout if none supplied by user : grid for lagged, 
   # layout_with_kk for flatten
   #
   layout <- NULL
   if ( ! ("layout" %in% names(list(...))) ) {
-    if (is_graph_lagged) {
+    if (x$tmiic_specific[["is_lagged"]]) {
       n_nodes <- x$tmiic_specific[["n_nodes_not_lagged"]]
+      list_nodes <- colnames (x$adj_matrix)
       max_lag_plus1 <- length(list_nodes) %/% n_nodes
       layout <- data.frame (rep(1:max_lag_plus1, each=n_nodes),
                             rep(1:n_nodes, times=max_lag_plus1) )
@@ -290,10 +435,9 @@ plot.tmiic = function(x, method = 'igraph', ...) {
     }
   }
   #
-  # Export the graph to a graphical objet and plot
+  # Export the graph to a graphical object and plot
   #
-  graph <- tmiic.export (x, method)
-  df_edges <- x$all.edges.summary
+  graph <- tmiic.export (x, flatten_mode="none", method=method)
   if (nrow (df_mult) <= 0) {
     # No multiple edges between the same nodes, we draw in one go
     #
@@ -305,6 +449,7 @@ plot.tmiic = function(x, method = 'igraph', ...) {
   else {
     # Multiple edges between the same nodes exist, draw iteratively
     #
+    df_edges <- x$all.edges.summary
     edges_colors_iter <- igraph::E(graph)$color
     edges_labels_iter <- igraph::E(graph)$label
     #
@@ -352,7 +497,7 @@ plot.tmiic = function(x, method = 'igraph', ...) {
         }
       }
       #
-      # Draw mutliple egdes one by one
+      # Draw multiple egdes one by one
       #
       list_to_draw = which(df_edges[, "xy"] == one_mult$xy)
       for (idx_to_draw in 1:length(list_to_draw) ) {
