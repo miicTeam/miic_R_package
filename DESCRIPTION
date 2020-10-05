@@ -50,8 +50,7 @@ Imports:
     Rcpp,
     scales,
     stats,
-    data.table,
-    stringr,
+    data.table
 Suggests:
     igraph,
     grDevices,

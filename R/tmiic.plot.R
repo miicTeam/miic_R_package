@@ -29,14 +29,14 @@
 #' @param tmiic.res [a tmiic graph object]
 #' The graph object returned by the \code{\link{miic}} execution in temporal mode.
 #' 
-#' @param flatten_mode [a string]. Optional, default value "normal".
-#' Possible values are \emph{"none"}, \emph{"normal"}, \emph{"combine"}, 
+#' @param flatten_mode [a string]. Optional, default value "compact".
+#' Possible values are \emph{"none"}, \emph{"compact"}, \emph{"combine"}, 
 #' \emph{"unique"}, \emph{"drop"}:
 #' \itemize{
 #' \item When \emph{flatten_mode} = \emph{"none"}, the export function will
 #'   use the tmiic graph object as it, leading to the return of a lagged
 #'   graph. 
-#' \item When \emph{flatten_mode} = \emph{"normal"}, the default, nodes 
+#' \item When \emph{flatten_mode} = \emph{"compact"}, the default, nodes 
 #'   and edges are converted into a flattened version to produce a compact 
 #'   view of the temporal network whilst still presenting all the information
 #'   in the export.\cr
@@ -116,7 +116,7 @@
 #'
 #' }
 #-----------------------------------------------------------------------------
-tmiic.export <- function (tmiic.res, flatten_mode="normal", 
+tmiic.export <- function (tmiic.res, flatten_mode="compact", 
                           show_self_loops=TRUE, method="igraph") {
   if (is.null(tmiic.res$all.edges.summary)) {
     stop("The inferred network does not exist")
@@ -152,14 +152,14 @@ tmiic.export <- function (tmiic.res, flatten_mode="normal",
 #' @param tmiic.res [a tmiic graph object]
 #' The graph object returned by the \code{\link{miic}} execution in temporal mode
 #'
-#' @param flatten_mode [a string]. Optional, default value "normal".
-#' Possible values are \emph{"none"}, \emph{"normal"}, \emph{"combine"}, 
+#' @param flatten_mode [a string]. Optional, default value "compact".
+#' Possible values are \emph{"none"}, \emph{"compact"}, \emph{"combine"}, 
 #' \emph{"unique"}, \emph{"drop"}:
 #' \itemize{
 #' \item When \emph{flatten_mode} = \emph{"none"}, the function will
 #'   use the tmiic graph object as it, leading to the return of a lagged
 #'   graph.  
-#' \item When \emph{flatten_mode} = \emph{"normal"}, the default, nodes 
+#' \item When \emph{flatten_mode} = \emph{"compact"}, the default, nodes 
 #'   and edges are converted into a flattened version to produce a compact 
 #'   view of the temporal network whilst still presenting all the information.\cr
 #'   i.e.: X_lag1->Y_lag0, X_lag2<-Y_lag0 become respectively X->Y lag=1, 
@@ -203,7 +203,7 @@ tmiic.export <- function (tmiic.res, flatten_mode="normal",
 #' \code{\link[igraph]{igraph.plotting}} for the detailed description of the
 #' plotting parameters and \code{\link[igraph]{layout}} for different layouts.
 #-----------------------------------------------------------------------------
-tmiic.getIgraph <- function (tmiic.res, flatten_mode="normal", show_self_loops=TRUE){
+tmiic.getIgraph <- function (tmiic.res, flatten_mode="compact", show_self_loops=TRUE){
   if (class(tmiic.res) != "tmiic") {
     stop("Not a tmiic object.")
   }
@@ -211,12 +211,15 @@ tmiic.getIgraph <- function (tmiic.res, flatten_mode="normal", show_self_loops=T
   if (flatten_mode != "none")
     tmiic.res <- tmiic.flatten_network(tmiic.res, flatten_mode=flatten_mode,
                                        keep_edges_on_same_node=show_self_loops)
-    
-  class(tmiic.res) <- "miic"
-  graph <- getIgraph(tmiic.res)
-  class(tmiic.res) <- "tmiic"
   
-  if (tmiic.res$tmiic_specific[["is_lagged"]]) {
+  if (tmiic.res$tmiic_specific[["graph_type"]] != "lagged") {
+    list_nodes <- tmiic.res$tmiic_specific[["nodes_not_lagged"]]
+    tmiic.res$adj_matrix <- matrix(NA, nrow=0, ncol=length (list_nodes)) 
+    colnames(tmiic.res$adj_matrix) <- list_nodes
+  }
+  graph <- getIgraph(tmiic.res)
+  
+  if (tmiic.res$tmiic_specific[["graph_type"]] == "lagged") {
     igraph::V(graph)$label.dist = 1
     igraph::V(graph)$label.degree = pi/2
     igraph::E(graph)$curved = TRUE
@@ -252,11 +255,9 @@ tmiic.prepareEdgesForPlotting <- function (tmiic.res) {
   for (edge_idx in 1:nrow(df_edges)) {
     one_edge <- df_edges[edge_idx,]
     if (one_edge$x < one_edge$y) 
-      df_edges[edge_idx, "xy"] <- paste (df_edges[edge_idx,"x"], "-",
-                                         df_edges[edge_idx,"y"], sep="")
+      df_edges[edge_idx, "xy"] <- paste (one_edge$x, "-", one_edge$y, sep="")
     else
-      df_edges[edge_idx, "xy"] <- paste (df_edges[edge_idx,"y"], "-",
-                                         df_edges[edge_idx,"x"], sep="")
+      df_edges[edge_idx, "xy"] <- paste (one_edge$y, "-", one_edge$x, sep="")
   }
   #
   # Order the edges so that all orientations goes from x to y
@@ -317,15 +318,15 @@ tmiic.getMultipleEdgesForPlotting <- function (tmiic.res) {
 #' @param x [a tmiic graph object]
 #' The graph object returned by \code{\link{miic}} in temporal mode
 #' 
-#' @param flatten_mode [a string]. Optional, default value "normal".
-#' Possible values are \emph{"none"}, \emph{"normal"}, \emph{"combine"}, 
+#' @param flatten_mode [a string]. Optional, default value "compact".
+#' Possible values are \emph{"none"}, \emph{"compact"}, \emph{"combine"}, 
 #' \emph{"unique"}, \emph{"drop"}:
 #' \itemize{
 #' \item When \emph{flatten_mode} = \emph{"none"}, the plot function will
 #'   use the tmiic graph object as it, leading to the display of a lagged
 #'   graph. Unless a specific layout is specified, nodes will be positioned 
 #'   on a grid. 
-#' \item When \emph{flatten_mode} = \emph{"normal"}, the default, nodes 
+#' \item When \emph{flatten_mode} = \emph{"compact"}, the default, nodes 
 #'   and edges are converted into a flattened version to produce a compact 
 #'   view of the temporal network whilst still presenting all the information
 #'   in the plotting.\cr
@@ -395,7 +396,7 @@ tmiic.getMultipleEdgesForPlotting <- function (tmiic.res) {
 #'
 #' }
 #-----------------------------------------------------------------------------
-plot.tmiic = function(x, flatten_mode="normal", show_self_loops=TRUE,
+plot.tmiic = function(x, flatten_mode="compact", show_self_loops=TRUE,
                       method = 'igraph', ...) {
   
   if (class(x) != "tmiic")
@@ -407,27 +408,27 @@ plot.tmiic = function(x, flatten_mode="normal", show_self_loops=TRUE,
   if ( is.null (x$adj_matrix) ) 
     stop ("The learnt graphical model adjacency matrix does not exist")
   
-  if ( (x$tmiic_specific[["is_lagged"]]) & (flatten_mode != "none") )
+  if ( (x$tmiic_specific[["graph_type"]] == "lagged") & (flatten_mode != "none") )
     x <- tmiic.flatten_network(x, flatten_mode=flatten_mode, 
                                keep_edges_on_same_node=show_self_loops)
   
+  x <- tmiic.prepareEdgesForPlotting(x)
+  
   df_mult <- data.frame(count=integer(), stringsAsFactors = FALSE)
-  if (!x$tmiic_specific[["is_lagged"]]) {
-    x <- tmiic.prepareEdgesForPlotting(x)
+  if (x$tmiic_specific[["graph_type"]] == "compact")
     df_mult <- tmiic.getMultipleEdgesForPlotting(x)
-  }
   #
   # Set a layout if none supplied by user : grid for lagged, 
   # layout_with_kk for flatten
   #
   layout <- NULL
   if ( ! ("layout" %in% names(list(...))) ) {
-    if (x$tmiic_specific[["is_lagged"]]) {
-      n_nodes <- x$tmiic_specific[["n_nodes_not_lagged"]]
+    if (x$tmiic_specific[["graph_type"]] == "lagged") {
+      n_nodes_not_lagged <- length(x$tmiic_specific[["nodes_not_lagged"]])
       list_nodes <- colnames (x$adj_matrix)
-      max_lag_plus1 <- length(list_nodes) %/% n_nodes
-      layout <- data.frame (rep(1:max_lag_plus1, each=n_nodes),
-                            rep(1:n_nodes, times=max_lag_plus1) )
+      max_lag_plus1 <- length(list_nodes) %/% n_nodes_not_lagged
+      layout <- data.frame (rep(1:max_lag_plus1, each=n_nodes_not_lagged),
+                            rep(1:n_nodes_not_lagged, times=max_lag_plus1) )
       layout <- as.matrix (layout)
     }
     else {

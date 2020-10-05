@@ -393,7 +393,7 @@ miic <- function(input_data,
     # If we use temporal version of miic, convert history into lagged nodes and samples
     #
     cat ("Using temporal version of miic\n")
-    n_nodes_not_lagged <- ncol(input_data) - 1
+    nodes_not_lagged <- colnames(input_data)[-1]
     struct_ret <- tmiic.transform_data_for_miic (input_data, tau, 
         state_order=state_order, movavg=movavg, delta_tau=delta_tau)
     input_data <- struct_ret$input_data
@@ -585,7 +585,7 @@ miic <- function(input_data,
 
   if (tau >= 1) {
     class(res) <- "tmiic"
-    res$tmiic_specific <- list( is_lagged = TRUE, n_nodes_not_lagged = n_nodes_not_lagged)
+    res$tmiic_specific <- list (graph_type="lagged", nodes_not_lagged=nodes_not_lagged)
   }
   else {
     class(res) <- "miic"

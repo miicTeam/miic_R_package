@@ -267,16 +267,16 @@ tmiic.lag_one_timeseries <- function (df_timeseries, tau, list_nodes_lagged,
 #' In temporal mode, the network returned by miic contains lagged nodes 
 #' (X_lag0, X_lag1, ...). This function flatten the  network depending 
 #' of the \emph{flatten_mode} parameter.\cr
-#' Note that only the adj_matrix and summary data frames are flatened.
+#' Note that only the summary data frame is flatened.
 #' 
 #' @param miic_result [a miic object] The object returned by miic's 
 #' execution.
 #' 
-#' @param flatten_mode [a string]. Optional, default value "normal".
-#' Possible values are \emph{"normal"}, \emph{"combine"}, \emph{"unique"}, 
+#' @param flatten_mode [a string]. Optional, default value "compact".
+#' Possible values are \emph{"compact"}, \emph{"combine"}, \emph{"unique"}, 
 #' \emph{"drop"}:
 #' \itemize{
-#' \item When \emph{flatten_mode} = \emph{"normal"}, the default. Nodes 
+#' \item When \emph{flatten_mode} = \emph{"compact"}, the default. Nodes 
 #'   and edges are converted into a flattened version preserving all 
 #'   the initial information.\cr
 #'   i.e.: X_lag1->Y_lag0, X_lag2<-Y_lag0 become respectively X->Y lag=1, 
@@ -311,43 +311,22 @@ tmiic.lag_one_timeseries <- function (df_timeseries, tau, list_nodes_lagged,
 #' are kept in the flatten network.
 #' 
 #' @return [a list] The returned list is the one received as input where
-#' the adjacency and summary dataframes has been flattened.\cr
-#' Note that the adjacency matrix does not contain any more the orientation
-#' as this information make less sense after flattening. Orientations are 
-#' replaced by lag(s) in the adjacency matrix.
+#' the summary dataframe has been flattened.
 #'     
 #' @export
 #-----------------------------------------------------------------------------
-tmiic.flatten_network <- function (miic_result, flatten_mode="normal", 
+tmiic.flatten_network <- function (miic_result, flatten_mode="compact", 
                                    keep_edges_on_same_node=TRUE) {
   #
   # Construct the list of nodes not lagged 
   #
   list_nodes_lagged = colnames (miic_result$adj_matrix)
-  list_nodes_not_lagged = list ()
-  for (node_idx in 1:length (list_nodes_lagged) ) {
-    #
-    # As long we find "_lag0" at the end of the node name
-    #
-    one_node = list_nodes_lagged[[node_idx]]
-    if ( endsWith(one_node, "_lag0") ) {
-      #
-      # Remove "_lag0" information from the nodes names and add it to list
-      #
-      one_node <- gsub("_lag0", "", one_node)
-      list_nodes_not_lagged[[node_idx]] <- one_node
-    }
-    else
-      break
-  }
+  list_nodes_not_lagged = miic_result$tmiic_specific[["nodes_not_lagged"]]
   n_nodes = length (list_nodes_not_lagged)
   #
-  # First step, perform flatten_mode="normal" : 
-  # - on adjacency matrix : construct a n_nodes x n_nodes with lags in each cell
-  # - on summary: remove lag info from nodes names and put it into a lag column
+  # First step, perform flatten_mode="compact": from summary, remove lag info 
+  # from nodes names and put it into a lag column
   #
-  df_adj <- array ( data="", dim=c(n_nodes ,n_nodes),
-                    dimnames=list(list_nodes_not_lagged, list_nodes_not_lagged) )
   df_edges <- miic_result$all.edges.summary
   df_edges$lag <- -1
   for (edge_idx in 1:nrow(df_edges) ) {
@@ -370,19 +349,25 @@ tmiic.flatten_network <- function (miic_result, flatten_mode="normal",
     node_y <- one_edge$y
     orient <- one_edge$infOrt
     #
-    # Get the lag for each node of the edge
+    # Get the lag for each node of the edge and
+    # remove "_lag" information from the nodes names
     #
-    pos_lag_x <- stringr::str_locate(node_x, "_lag")
-    tau_idx_x <- 0
-    if ( !is.na(pos_lag_x[1]) ) {
-      tau_idx_x <- stringr::str_replace(node_x, ".*_lag", "")
-      tau_idx_x <- strtoi (tau_idx_x)
-    }
-    pos_lag_y <- stringr::str_locate(node_y, "_lag")
-    tau_idx_y <- 0
-    if ( !is.na(pos_lag_y[1]) ) {
-      tau_idx_y <- stringr::str_replace(node_y, ".*_lag", "")
-      tau_idx_y <- strtoi (tau_idx_y)
+    pos_lag_x <- regexpr("_lag[0-9]+$", node_x)
+    tau_idx_x <- substr ( node_x, start=pos_lag_x[1] + 4, stop=nchar(node_x) )
+    tau_idx_x <- strtoi (tau_idx_x)
+    node_x <- strtrim(node_x, pos_lag_x[1] - 1)
+
+    pos_lag_y <- regexpr("_lag[0-9]+$", node_y)
+    tau_idx_y <- substr (node_y, start=pos_lag_y[1] + 4, stop=nchar(node_y) )
+    tau_idx_y <- strtoi (tau_idx_y)
+    node_y <- strtrim(node_y, pos_lag_y[1] - 1)
+    #
+    # If we oblige the nodes to be different, discard edges between the same node
+    #
+    if ( (!keep_edges_on_same_node) & (node_x == node_y) ) {
+      df_edges[edge_idx,]$x <- "DROP"
+      df_edges[edge_idx,]$y <- "DROP"
+      next
     }
     #
     # Ensure to order from oldest to newest
@@ -403,62 +388,30 @@ tmiic.flatten_network <- function (miic_result, flatten_mode="normal",
         orient = -orient
     }
     #
-    # Remove "_lag" information from the nodes names
-    #
-    node_x <- gsub("_lag.*","",node_x)
-    node_y <- gsub("_lag.*","",node_y)
-    #
-    # If we oblige the nodes to be different, discard edges between the same node
-    #
-    if ( (!keep_edges_on_same_node) & (node_x == node_y) ) {
-      df_edges[edge_idx,]$x <- "DROP"
-      df_edges[edge_idx,]$y <- "DROP"
-      next
-    }
-    #
     # Edge kept, Update it
     #
     df_edges[edge_idx,]$x <- node_x
     df_edges[edge_idx,]$y <- node_y
     df_edges[edge_idx,]$infOrt <- orient
     df_edges[edge_idx,]$lag <- lag
-    #
-    # Update adjacency matrix
-    #
-    if (df_adj[node_x,node_y] == "")
-      df_adj[node_x,node_y] = paste (lag, sep="")
-    else
-      df_adj[node_x,node_y] = paste (df_adj[node_x,node_y], ",", lag, sep="")
-    df_adj[node_y,node_x] = df_adj[node_x,node_y]
   }
   #
   # Drop rows flagged 
   #
   df_edges <- df_edges[!(df_edges$x=="DROP"),]
   #
-  # Order the list of lag in the adjacency matrix
+  # Step 1 "compact" node done
   #
-  for (i in 1:ncol (df_adj) ) {
-    for (j in i:ncol (df_adj) ) {
-      lags_str <- df_adj[i,j]
-      if (nchar (lags_str) > 0)
-        if ( grepl (',', lags_str, fixed = TRUE) ) {
-          split_str <- strsplit (lags_str, ",")[[1]]
-          split_num <- as.integer (split_str)
-          split_sorted <- sort (split_num)
-          df_adj[i,j] <- paste (split_sorted, collapse=',', sep="")
-          df_adj[j,i] <- df_adj[i,j]
-        }
-    }
-  }
-  #
-  # Step 1 "normal" node done
-  #
-  # If we want only one edge per couple of nodes 
-  #
-  if (flatten_mode != "normal") {
-    # At first, we ensure X string < Y string and we create an extra
-    # column containing x-y so we have an id to perform a duplicate check
+  if (flatten_mode != "compact") {
+    #
+    # We want only one edge per couple of nodes 
+    #
+    # If the flatten_mode is "combine", keep the lags for future use
+    #
+    if (flatten_mode == "combine")
+      df_lags <- df_edges [,c("x", "y", "lag")]
+    #
+    # We ensure X string < Y string to perform duplicate check
     #
     for (edge_idx in 1:nrow(df_edges))  {
       one_edge <- df_edges[edge_idx,]
@@ -499,12 +452,11 @@ tmiic.flatten_network <- function (miic_result, flatten_mode="normal",
     #
     # If the flatten_mode is "unique" or "drop", nothing more to do for now
     #
-    # If the flatten_mode is "combine", combine orientations
+    # If the flatten_mode is "combine", combine lags and orientations
     # 
     if (flatten_mode == "combine") {
       #
-      # Update the orientations (in case the grouped edges have different 
-      # orientations) and put in the lag column the list of lags
+      # Put the list of lags in the lag column 
       #
       for (edge_idx in 1:nrow(df_group) ) {
         one_edge <- df_group[edge_idx,]
@@ -512,11 +464,7 @@ tmiic.flatten_network <- function (miic_result, flatten_mode="normal",
         node_y <- one_edge$y
         row_name <- one_edge$row_names
         #
-        # Update the list of lags (value has been computed in lag matrix)
-        #
-        df_group[edge_idx,]$lag <- df_adj[node_x, node_y]
-        #
-        # Select the other edges between same nodes for orientation update
+        # Select the other edges between same nodes for lag and orientation update
         #
         cond_for_orient <- ( (df_edges_rownames[["x"]] == node_x) 
                            & (df_edges_rownames[["y"]] == node_y) 
@@ -527,8 +475,43 @@ tmiic.flatten_network <- function (miic_result, flatten_mode="normal",
         if (sum(cond_for_orient) == 0) 
           next
         #
-        # Edge was having two or more lags, update proba and orientation
+        # Edge was having two or more lags, update lags
         #
+        lags <- list("","","")
+        cond_x_past_to_y <- (df_lags[["x"]] == node_x) & (df_lags[["y"]] == node_y) & (df_lags[["lag"]] > 0)
+        cond_lag0 <- ( ( (df_lags[["x"]] == node_x) & (df_lags[["y"]] == node_y) 
+                       | (df_lags[["x"]] == node_y) & (df_lags[["y"]] == node_x) ) 
+                     & (df_lags[["lag"]] == 0) )
+        cond_y_past_to_x <- (df_lags[["x"]] == node_y) & (df_lags[["y"]] == node_x) & (df_lags[["lag"]] > 0)
+        
+        if (node_x != node_y) {
+          if (sum (cond_y_past_to_x) > 0) {
+            lags[[1]] <- sort (df_lags[cond_x_past_to_y,]$lag, decreasing = TRUE)
+            lags[[1]] <- paste (unlist(lags[[1]]), collapse=",")
+          }
+          else {
+            lags[[3]] <- sort (df_lags[cond_x_past_to_y,]$lag)
+            lags[[3]] <- paste (unlist(lags[[3]]), collapse=",")
+          }
+        }
+        
+        if (sum(cond_lag0) > 0)
+          lags[[2]] <- "0"
+        
+        if (sum (cond_y_past_to_x) > 0) {
+          lags[[3]] <- sort (df_lags[cond_y_past_to_x,]$lag)
+          lags[[3]] <- paste (unlist(lags[[3]]), collapse=",")
+        }
+
+        lags <- lags[lags != ""]
+        if ( (length(lags) == 3) | ( (length(lags) == 2) & (sum(cond_lag0) == 0) ) ) 
+          lags <- paste (unlist(lags), collapse="-")
+        else
+          lags <- paste (unlist(lags), collapse=",")
+        df_group[edge_idx,"lag"] <- lags
+        #
+        # Update proba and orientation
+        # 
         head_proba <- 0
         tail_proba <- 0
         if ( (abs(one_edge$infOrt) >= 2) & (!is.na(one_edge$proba)) ) {
@@ -616,9 +599,8 @@ tmiic.flatten_network <- function (miic_result, flatten_mode="normal",
   #
   # returns the list of dataframes where network has been flattened
   #
-  miic_result$adj_matrix <- df_adj
   miic_result$all.edges.summary <- df_edges
-  miic_result$tmiic_specific[["is_lagged"]] = FALSE
+  miic_result$tmiic_specific[["graph_type"]] = flatten_mode
   return (miic_result)
 }
 
