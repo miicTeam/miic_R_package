@@ -6,7 +6,7 @@
 \usage{
 \method{plot}{tmiic}(
   x,
-  flatten_mode = "normal",
+  flatten_mode = "compact",
   show_self_loops = TRUE,
   method = "igraph",
   ...
@@ -16,15 +16,15 @@
 \item{x}{[a tmiic graph object]
 The graph object returned by \code{\link{miic}} in temporal mode}
 
-\item{flatten_mode}{[a string]. Optional, default value "normal".
-Possible values are \emph{"none"}, \emph{"normal"}, \emph{"combine"}, 
+\item{flatten_mode}{[a string]. Optional, default value "compact".
+Possible values are \emph{"none"}, \emph{"compact"}, \emph{"combine"}, 
 \emph{"unique"}, \emph{"drop"}:
 \itemize{
 \item When \emph{flatten_mode} = \emph{"none"}, the plot function will
   use the tmiic graph object as it, leading to the display of a lagged
   graph. Unless a specific layout is specified, nodes will be positioned 
   on a grid. 
-\item When \emph{flatten_mode} = \emph{"normal"}, the default, nodes 
+\item When \emph{flatten_mode} = \emph{"compact"}, the default, nodes 
   and edges are converted into a flattened version to produce a compact 
   view of the temporal network whilst still presenting all the information
   in the plotting.\cr

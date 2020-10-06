@@ -6,7 +6,7 @@
 \usage{
 tmiic.flatten_network(
   miic_result,
-  flatten_mode = "normal",
+  flatten_mode = "compact",
   keep_edges_on_same_node = TRUE
 )
 }
@@ -14,11 +14,11 @@ tmiic.flatten_network(
 \item{miic_result}{[a miic object] The object returned by miic's 
 execution.}
 
-\item{flatten_mode}{[a string]. Optional, default value "normal".
-Possible values are \emph{"normal"}, \emph{"combine"}, \emph{"unique"}, 
+\item{flatten_mode}{[a string]. Optional, default value "compact".
+Possible values are \emph{"compact"}, \emph{"combine"}, \emph{"unique"}, 
 \emph{"drop"}:
 \itemize{
-\item When \emph{flatten_mode} = \emph{"normal"}, the default. Nodes 
+\item When \emph{flatten_mode} = \emph{"compact"}, the default. Nodes 
   and edges are converted into a flattened version preserving all 
   the initial information.\cr
   i.e.: X_lag1->Y_lag0, X_lag2<-Y_lag0 become respectively X->Y lag=1, 
@@ -54,10 +54,7 @@ are kept in the flatten network.}
 }
 \value{
 [a list] The returned list is the one received as input where
-the adjacency and summary dataframes has been flattened.\cr
-Note that the adjacency matrix does not contain any more the orientation
-as this information make less sense after flattening. Orientations are 
-replaced by lag(s) in the adjacency matrix.
+the summary dataframe has been flattened.
 }
 \description{
 Flattten the lagged network returned by tmiic
@@ -66,5 +63,5 @@ Flattten the lagged network returned by tmiic
 In temporal mode, the network returned by miic contains lagged nodes 
 (X_lag0, X_lag1, ...). This function flatten the  network depending 
 of the \emph{flatten_mode} parameter.\cr
-Note that only the adj_matrix and summary data frames are flatened.
+Note that only the summary data frame is flatened.
 }
