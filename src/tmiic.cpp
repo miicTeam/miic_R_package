@@ -12,15 +12,6 @@
 //=============================================================================
 // INCLUDE SECTION
 //=============================================================================
-#include <algorithm>
-#include <cstdlib>
-#include <iostream>
-#include <regex>
-#include <string>
-#include <vector>
-
-#include "environment.h"
-#include "structure.h"
 #include "tmiic.h"
 
 //=============================================================================
