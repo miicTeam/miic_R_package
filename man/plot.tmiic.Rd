@@ -76,6 +76,32 @@ temporal mode and plot it.
 See the documentation of \code{\link{tmiic.export}} for further
 details.
 }
+\examples{
+\donttest{
+library(miic)
+
+#' # EXAMPLE COVID CASES (timeseries demo)
+data(covidCases)
+# execute MIIC (reconstruct graph in temporal mode)
+tmiic.res <- miic(input_data = covidCases, tau = 2, movavg = 14)
+
+# to plot the default compact graph
+if(require(igraph)) {
+  plot(tmiic.res)
+}
+ 
+# to plot the raw temporal network Using igraph
+if(require(igraph)) {
+  plot(tmiic.res, display="raw")
+}
+
+# to plot the full temporal network Using igraph
+if(require(igraph)) {
+  plot(tmiic.res, display="lagged")
+}
+
+}
+}
 \seealso{
 \code{\link{tmiic.export}} for generic exports,
 \code{\link{tmiic.getIgraph}} for igraph export,

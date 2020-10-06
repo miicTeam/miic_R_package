@@ -76,6 +76,43 @@ different plotting methods.
 See the details of specific function for each method.
 For igraph, see \code{\link{tmiic.getIgraph}}.
 }
+\examples{
+\donttest{
+library(miic)
+data(covidCases)
+# execute MIIC (reconstruct graph in temporal mode)
+tmiic.res <- miic(input_data = covidCases, tau = 2, movavg = 14)
+
+# Plot default compact temporal network Using igraph
+if(require(igraph)) {
+g = tmiic.export(tmiic.res, method="igraph")
+plot(g) # Default visualisation, calls igraph::plot.igraph()
+
+# Plot raw temporal network Using igraph
+g = tmiic.export(tmiic.res, display="raw", method="igraph")
+plot(g) # Default visualisation, calls igraph::plot.igraph()
+
+# Plot full temporal network Using igraph
+g = tmiic.export(tmiic.res, display="lagged", method="igraph")
+plot(g) # Default visualisation, calls igraph::plot.igraph()
+
+# Specifying layout (see ?igraph::layout_)
+l <- layout_on_grid(g, width = 5, height = 3, dim = 2)
+plot(g, layout=l)
+
+# Override some graphical parameters
+plot(g, edge.arrow.size = 0.75)
+plot(g, vertex.shape="none", edge.color="gray85", vertex.label.color="gray10")
+
+# For compact graphs, please be aware that the rendering of
+# igraph::plot.igraph() is not optimal when the graph contains
+# multiple edges between the same nodes.
+# So the recommend way to plot a compact graph is to use tmiic plotting:  
+plot(tmiic.res)
+}
+
+}
+}
 \seealso{
 \code{\link{tmiic.getIgraph}} for details on the igraph exported object.
 }

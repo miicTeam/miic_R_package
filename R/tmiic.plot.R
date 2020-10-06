@@ -100,12 +100,10 @@
 #' plot(g) # Default visualisation, calls igraph::plot.igraph()
 #'
 #' # Plot raw temporal network Using igraph
-#' if(require(igraph)) {
 #' g = tmiic.export(tmiic.res, display="raw", method="igraph")
 #' plot(g) # Default visualisation, calls igraph::plot.igraph()
 #'
 #' # Plot full temporal network Using igraph
-#' if(require(igraph)) {
 #' g = tmiic.export(tmiic.res, display="lagged", method="igraph")
 #' plot(g) # Default visualisation, calls igraph::plot.igraph()
 #'
@@ -400,6 +398,7 @@ tmiic.getMultipleEdgesForPlotting <- function (tmiic.res) {
 #' \code{\link[igraph]{igraph.plotting}}
 #' 
 #' @examples
+#' \donttest{
 #' library(miic)
 #'
 #' #' # EXAMPLE COVID CASES (timeseries demo)

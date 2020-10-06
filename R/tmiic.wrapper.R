@@ -593,7 +593,7 @@ tmiic.flatten_network <- function (tmiic.res, flatten_mode="compact",
           df_group[edge_idx,]$proba <- paste(tail_proba, head_proba, sep=";")
       }
     }
-    df_edges <- within (df_group, rm(row_names))
+    df_edges <- within (df_group, rm("row_names"))
   }
   #
   # If we do not want to keep info about lag at all
@@ -624,7 +624,7 @@ tmiic.flatten_network <- function (tmiic.res, flatten_mode="compact",
 #' copied as X_lag1-X_lag2 and X_lag2-X_lag3.\cr
 #' Note that only the summary data frame is modified.
 #' 
-#' @param tmiic.rest [a tmiic object] The object returned by miic's 
+#' @param tmiic.res [a tmiic object] The object returned by miic's 
 #' execution in temporal mode.
 #' 
 #' @return [a tmiic object] The tmiic object with a modified summary 

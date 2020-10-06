@@ -7,7 +7,7 @@
 tmiic.repeat_edges_over_history(tmiic.res)
 }
 \arguments{
-\item{tmiic.rest}{[a tmiic object] The object returned by miic's 
+\item{tmiic.res}{[a tmiic object] The object returned by miic's 
 execution in temporal mode.}
 }
 \value{
