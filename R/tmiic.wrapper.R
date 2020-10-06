@@ -11,6 +11,8 @@
 # - 15 june 2020 : add delta_tau and moving average
 # - 27 july 2020 : rewrite of tmiic.transform_data_for_miic to allow variable
 #                  number of timesteps between timeseries
+# - 06 oct  2020 : add tmiic.repeat_edges_over_history duplicated to edges 
+#                  over history
 #*****************************************************************************
 
 #-----------------------------------------------------------------------------
@@ -267,10 +269,10 @@ tmiic.lag_one_timeseries <- function (df_timeseries, tau, list_nodes_lagged,
 #' In temporal mode, the network returned by miic contains lagged nodes 
 #' (X_lag0, X_lag1, ...). This function flatten the  network depending 
 #' of the \emph{flatten_mode} parameter.\cr
-#' Note that only the summary data frame is flatened.
+#' Note that only the summary data frame is flattened.
 #' 
-#' @param miic_result [a miic object] The object returned by miic's 
-#' execution.
+#' @param tmiic.res [a tmiic object] The object returned by miic's 
+#' execution in temporal mode.
 #' 
 #' @param flatten_mode [a string]. Optional, default value "compact".
 #' Possible values are \emph{"compact"}, \emph{"combine"}, \emph{"unique"}, 
@@ -279,27 +281,27 @@ tmiic.lag_one_timeseries <- function (df_timeseries, tau, list_nodes_lagged,
 #' \item When \emph{flatten_mode} = \emph{"compact"}, the default. Nodes 
 #'   and edges are converted into a flattened version preserving all 
 #'   the initial information.\cr
-#'   i.e.: X_lag1->Y_lag0, X_lag2<-Y_lag0 become respectively X->Y lag=1, 
+#'   i.e.: X_lag1->Y_lag0, X_lag0<-Y_lag2 become respectively X->Y lag=1, 
 #'   X<-Y lag=2. 
 #' \item When \emph{flatten_mode} = \emph{"combine"}, one edge will be kept
 #'   per couple of nodes. The log_confidence will be the highest one 
 #'   of the summarized edges whilst the lag and orientation of the
 #'   summarized edge will be an agregation.\cr 
-#'   i.e.: X_lag1->Y_lag0, X_lag2<-Y_lag0 will become X<->Y lag=1,2 with
-#'   the log_confidence of X_lag1->Y_lag0 if log_confidence of 
-#'   X_lag1->Y_lag0 > X_lag2<-Y_lag0.
+#'   i.e.: X_lag2->Y_lag0, X_lag0<-Y_lag1 will become X<->Y lag=1,2 with
+#'   the log_confidence of X_lag2->Y_lag0 if log_confidence of 
+#'   X_lag2->Y_lag0 > X_lag0<-Y_lag1.
 #' \item When \emph{flatten_mode} = \emph{"unique"}, only the edges having the
 #'   highest log_confidence for a couple of nodes are kept in the flattened 
 #'   network. If several edges between the sames nodes have the same
 #'   log_confidence, then the edge kept is the one with the minimum lag.\cr 
-#'   i.e.: X_lag1->Y_lag0, X_lag2<-Y_lag0 with log_confidence of 
-#'   X_lag1->Y_lag0 > X_lag2<-Y_lag0 become X->Y lag=1.
+#'   i.e.: X_lag1->Y_lag0, X_lag0<-Y_lag2 with log_confidence of 
+#'   X_lag1->Y_lag0 > X_lag0<-Y_lag2 become X->Y lag=1.
 #' \item When \emph{flatten_mode} = \emph{"drop"}, only the edges having the 
 #'   highest log_confidence for a couple of nodes are kept in the flattened 
 #'   network. If several edges between the sames nodes have the same
 #'   log_confidence, then the edge kept is the one with the minimum lag.\cr
-#'   i.e. :  X_lag1->Y_lag0, X_lag2<-Y_lag0 with log_confidence of 
-#'   X_lag1->Y_lag0 > X_lag2<-Y_lag0 become X->Y. The lag information is 
+#'   i.e. :  X_lag1->Y_lag0, X_lag0<-Y_lag2 with log_confidence of 
+#'   X_lag1->Y_lag0 > X_lag0<-Y_lag2 become X->Y. The lag information is 
 #'   "lost" after flattening
 #' }
 #' Note that for all modes other than \emph{"drop"}, lag is a new column 
@@ -310,24 +312,26 @@ tmiic.lag_one_timeseries <- function (df_timeseries, tau, list_nodes_lagged,
 #' (it becomes an X-X edge). When FALSE, only edges having different nodes 
 #' are kept in the flatten network.
 #' 
-#' @return [a list] The returned list is the one received as input where
-#' the summary dataframe has been flattened.
+#' @return [a tmiic object] The returned tmiic object is the one received 
+#' as input where the summary dataframe has been flattened.
 #'     
 #' @export
 #-----------------------------------------------------------------------------
-tmiic.flatten_network <- function (miic_result, flatten_mode="compact", 
+tmiic.flatten_network <- function (tmiic.res, flatten_mode="compact", 
                                    keep_edges_on_same_node=TRUE) {
+  if (! tmiic.res$tmiic_specific[["graph_type"]] == "raw")
+    stop ("The miic network must be raw")
   #
   # Construct the list of nodes not lagged 
   #
-  list_nodes_lagged = colnames (miic_result$adj_matrix)
-  list_nodes_not_lagged = miic_result$tmiic_specific[["nodes_not_lagged"]]
+  list_nodes_lagged = colnames (tmiic.res$adj_matrix)
+  list_nodes_not_lagged = tmiic.res$tmiic_specific[["nodes_not_lagged"]]
   n_nodes = length (list_nodes_not_lagged)
   #
   # First step, perform flatten_mode="compact": from summary, remove lag info 
   # from nodes names and put it into a lag column
   #
-  df_edges <- miic_result$all.edges.summary
+  df_edges <- tmiic.res$all.edges.summary
   df_edges$lag <- -1
   for (edge_idx in 1:nrow(df_edges) ) {
     #
@@ -599,8 +603,62 @@ tmiic.flatten_network <- function (miic_result, flatten_mode="compact",
   #
   # returns the list of dataframes where network has been flattened
   #
-  miic_result$all.edges.summary <- df_edges
-  miic_result$tmiic_specific[["graph_type"]] = flatten_mode
-  return (miic_result)
+  tmiic.res$all.edges.summary <- df_edges
+  tmiic.res$tmiic_specific[["graph_type"]] = flatten_mode
+  return (tmiic.res)
 }
 
+#-----------------------------------------------------------------------------
+# tmiic.repeat_edges_over_history
+#-----------------------------------------------------------------------------
+#' tmiic.repeat_edges_over_history
+#'
+#' @description
+#' Duplicates edges found by miic over the history assuming stationnarity
+#' 
+#' @details 
+#' In temporal mode, the network returned by miic contains only edges
+#' with at least one contemporaneous node (lag0). To improve the visual 
+#' aspect when plotting, this function duplicates the edges over the history.  
+#' i.e: assuming that we used tau=3, the edge X_lag0-X_lag1 will be 
+#' copied as X_lag1-X_lag2 and X_lag2-X_lag3.\cr
+#' Note that only the summary data frame is modified.
+#' 
+#' @param tmiic.rest [a tmiic object] The object returned by miic's 
+#' execution in temporal mode.
+#' 
+#' @return [a tmiic object] The tmiic object with a modified summary 
+#'     
+#' @export
+#-----------------------------------------------------------------------------
+tmiic.repeat_edges_over_history <- function (tmiic.res) {
+  if (! tmiic.res$tmiic_specific[["graph_type"]] == "raw")
+    stop ("The miic network must be raw")
+  
+  list_nodes_lagged <- colnames (tmiic.res$adj_matrix)
+  n_nodes_lagged <- length(list_nodes_lagged) 
+  list_nodes_not_lagged <- tmiic.res$tmiic_specific[["nodes_not_lagged"]]
+  n_nodes_not_lagged <- length(list_nodes_not_lagged) 
+  tau_plus_1 <- length(list_nodes_lagged) / length(list_nodes_not_lagged)
+  #
+  # Consider only edges found by miic  type = "P", "TP", "FP"
+  #
+  df_edges <- tmiic.res$all.edges.summary[tmiic.res$all.edges.summary$type %in% c('P', 'TP', 'FP'), ]
+  df_edges_new <- df_edges
+
+  for (edge_idx in 1:nrow(df_edges) ) {
+    one_edge <- df_edges[edge_idx,]
+    node_x_idx <- which(list_nodes_lagged == one_edge$x)
+    node_y_idx <- which(list_nodes_lagged == one_edge$y)
+    while (max (node_x_idx, node_y_idx) <= (n_nodes_lagged - n_nodes_not_lagged) ) {
+      node_x_idx <- node_x_idx + n_nodes_not_lagged
+      node_y_idx <- node_y_idx + n_nodes_not_lagged
+      one_edge$x <- list_nodes_lagged[[node_x_idx]]
+      one_edge$y <- list_nodes_lagged[[node_y_idx]]
+      df_edges_new[ (nrow(df_edges_new) + 1), ] <- one_edge
+    }
+  }  
+  tmiic.res$all.edges.summary <- df_edges_new
+  tmiic.res$tmiic_specific[["graph_type"]] <- "lagged"
+  return (tmiic.res)
+}

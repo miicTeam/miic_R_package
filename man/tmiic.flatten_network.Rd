@@ -5,14 +5,14 @@
 \title{tmiic.flatten_network}
 \usage{
 tmiic.flatten_network(
-  miic_result,
+  tmiic.res,
   flatten_mode = "compact",
   keep_edges_on_same_node = TRUE
 )
 }
 \arguments{
-\item{miic_result}{[a miic object] The object returned by miic's 
-execution.}
+\item{tmiic.res}{[a tmiic object] The object returned by miic's 
+execution in temporal mode.}
 
 \item{flatten_mode}{[a string]. Optional, default value "compact".
 Possible values are \emph{"compact"}, \emph{"combine"}, \emph{"unique"}, 
@@ -21,27 +21,27 @@ Possible values are \emph{"compact"}, \emph{"combine"}, \emph{"unique"},
 \item When \emph{flatten_mode} = \emph{"compact"}, the default. Nodes 
   and edges are converted into a flattened version preserving all 
   the initial information.\cr
-  i.e.: X_lag1->Y_lag0, X_lag2<-Y_lag0 become respectively X->Y lag=1, 
+  i.e.: X_lag1->Y_lag0, X_lag0<-Y_lag2 become respectively X->Y lag=1, 
   X<-Y lag=2. 
 \item When \emph{flatten_mode} = \emph{"combine"}, one edge will be kept
   per couple of nodes. The log_confidence will be the highest one 
   of the summarized edges whilst the lag and orientation of the
   summarized edge will be an agregation.\cr 
-  i.e.: X_lag1->Y_lag0, X_lag2<-Y_lag0 will become X<->Y lag=1,2 with
-  the log_confidence of X_lag1->Y_lag0 if log_confidence of 
-  X_lag1->Y_lag0 > X_lag2<-Y_lag0.
+  i.e.: X_lag2->Y_lag0, X_lag0<-Y_lag1 will become X<->Y lag=1,2 with
+  the log_confidence of X_lag2->Y_lag0 if log_confidence of 
+  X_lag2->Y_lag0 > X_lag0<-Y_lag1.
 \item When \emph{flatten_mode} = \emph{"unique"}, only the edges having the
   highest log_confidence for a couple of nodes are kept in the flattened 
   network. If several edges between the sames nodes have the same
   log_confidence, then the edge kept is the one with the minimum lag.\cr 
-  i.e.: X_lag1->Y_lag0, X_lag2<-Y_lag0 with log_confidence of 
-  X_lag1->Y_lag0 > X_lag2<-Y_lag0 become X->Y lag=1.
+  i.e.: X_lag1->Y_lag0, X_lag0<-Y_lag2 with log_confidence of 
+  X_lag1->Y_lag0 > X_lag0<-Y_lag2 become X->Y lag=1.
 \item When \emph{flatten_mode} = \emph{"drop"}, only the edges having the 
   highest log_confidence for a couple of nodes are kept in the flattened 
   network. If several edges between the sames nodes have the same
   log_confidence, then the edge kept is the one with the minimum lag.\cr
-  i.e. :  X_lag1->Y_lag0, X_lag2<-Y_lag0 with log_confidence of 
-  X_lag1->Y_lag0 > X_lag2<-Y_lag0 become X->Y. The lag information is 
+  i.e. :  X_lag1->Y_lag0, X_lag0<-Y_lag2 with log_confidence of 
+  X_lag1->Y_lag0 > X_lag0<-Y_lag2 become X->Y. The lag information is 
   "lost" after flattening
 }
 Note that for all modes other than \emph{"drop"}, lag is a new column 
@@ -53,8 +53,8 @@ When TRUE, the edges like X_lag0-X_lag1 are kept during flattening
 are kept in the flatten network.}
 }
 \value{
-[a list] The returned list is the one received as input where
-the summary dataframe has been flattened.
+[a tmiic object] The returned tmiic object is the one received 
+as input where the summary dataframe has been flattened.
 }
 \description{
 Flattten the lagged network returned by tmiic
@@ -63,5 +63,5 @@ Flattten the lagged network returned by tmiic
 In temporal mode, the network returned by miic contains lagged nodes 
 (X_lag0, X_lag1, ...). This function flatten the  network depending 
 of the \emph{flatten_mode} parameter.\cr
-Note that only the summary data frame is flatened.
+Note that only the summary data frame is flattened.
 }

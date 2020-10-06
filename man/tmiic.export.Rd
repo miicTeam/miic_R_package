@@ -6,7 +6,7 @@
 \usage{
 tmiic.export(
   tmiic.res,
-  flatten_mode = "compact",
+  display = "compact",
   show_self_loops = TRUE,
   method = "igraph"
 )
@@ -15,41 +15,44 @@ tmiic.export(
 \item{tmiic.res}{[a tmiic graph object]
 The graph object returned by the \code{\link{miic}} execution in temporal mode.}
 
-\item{flatten_mode}{[a string]. Optional, default value "compact".
-Possible values are \emph{"none"}, \emph{"compact"}, \emph{"combine"}, 
-\emph{"unique"}, \emph{"drop"}:
+\item{display}{[a string]. Optional, default value "compact".
+Possible values are \emph{"raw"}, \emph{"lagged"}, \emph{"compact"}, 
+\emph{"combine"}, \emph{"unique"}, \emph{"drop"}:
 \itemize{
-\item When \emph{flatten_mode} = \emph{"none"}, the export function will
+\item When \emph{display} = \emph{"raw"}, the export function will
   use the tmiic graph object as it, leading to the return of a lagged
   graph. 
-\item When \emph{flatten_mode} = \emph{"compact"}, the default, nodes 
+\item When \emph{display} = \emph{"lagged"}, the export function will
+  repeat the edges over history assuming stationarity and return a lagged
+  graph. 
+\item When \emph{display} = \emph{"compact"}, the default, nodes 
   and edges are converted into a flattened version to produce a compact 
   view of the temporal network whilst still presenting all the information
   in the export.\cr
   i.e.: X_lag1->Y_lag0, X_lag2<-Y_lag0 become respectively X->Y lag=1, 
   X<-Y lag=2.  
-\item When \emph{flatten_mode} = \emph{"combine"}, prior to the export,
+\item When \emph{display} = \emph{"combine"}, prior to the export,
   a preprocessing will be applied to kept only one edge
   per couple of nodes. The log_confidence will be the highest one 
   of the summarized edges whilst the lag and orientation of the
   summarized edge will be an aggregation.\cr 
-  i.e.: X_lag1->Y_lag0, X_lag2<-Y_lag0 will become X<->Y lag=1,2 with
-  the log_confidence of X_lag1->Y_lag0 if log_confidence of 
-  X_lag1->Y_lag0 > X_lag2<-Y_lag0.
-\item When \emph{flatten_mode} = \emph{"unique"}, prior to the export,
+  i.e.: X_lag2->Y_lag0, X_lag0<-Y_lag1 will become X<->Y lag=1-2 with
+  the log_confidence of X_lag2->Y_lag0 if log_confidence of 
+  X_lag2->Y_lag0 > X_lag0<-Y_lag1.
+\item When \emph{display} = \emph{"unique"}, prior to the export,
   a preprocessing will be applied to kept only the edges having the
   highest log_confidence for a couple of nodes. 
   If several edges between the sames nodes have the same
   log_confidence, then the edge kept is the one with the minimum lag.\cr 
-  i.e.: X_lag1->Y_lag0, X_lag2<-Y_lag0 with log_confidence of 
-  X_lag1->Y_lag0 > X_lag2<-Y_lag0 become X->Y lag=1.
-\item When \emph{flatten_mode} = \emph{"drop"}, prior to the export,
+  i.e.: X_lag1->Y_lag0, X_lag0<-Y_lag2 with log_confidence of 
+  X_lag1->Y_lag0 > X_lag0<-Y_lag2 become X->Y lag=1.
+\item When \emph{display} = \emph{"drop"}, prior to the export,
   a preprocessing will be applied to kept only the edges having the 
   highest log_confidence for a couple of nodes. 
   If several edges between the sames nodes have the same
   log_confidence, then the edge kept is the one with the minimum lag.\cr
-  i.e. :  X_lag1->Y_lag0, X_lag2<-Y_lag0 with log_confidence of 
-  X_lag1->Y_lag0 > X_lag2<-Y_lag0 become X->Y. 
+  i.e. :  X_lag1->Y_lag0, X_lag0<-Y_lag2 with log_confidence of 
+  X_lag1->Y_lag0 > X_lag0<-Y_lag2 become X->Y. 
   The lag information is dropped during the preprocessing and 
   will not be exported.
 }}

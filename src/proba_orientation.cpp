@@ -179,12 +179,11 @@ vector<ProbaArray> getOriProbasList(const vector<Triple>& triples,
     //
     // Orient each triple using time when possible
     //
-    std::regex lag_expr(".*lag");
+    std::regex lag_expr(".*_lag([0-9]+)$");
     for (int i = 0; i < n_triples; i++) {
-      int nodeX_lag = stoi (std::regex_replace( nodes[ triples[i][0] ].name, lag_expr, "" ) );
-      int nodeZ_lag = stoi (std::regex_replace( nodes[ triples[i][1] ].name, lag_expr, "" ) );
-      int nodeY_lag = stoi (std::regex_replace( nodes[ triples[i][2] ].name, lag_expr, "" ) );
-                              
+      int nodeX_lag = stoi (std::regex_replace( nodes[ triples[i][0] ].name, lag_expr, "$1" ) );
+      int nodeZ_lag = stoi (std::regex_replace( nodes[ triples[i][1] ].name, lag_expr, "$1" ) );
+      int nodeY_lag = stoi (std::regex_replace( nodes[ triples[i][2] ].name, lag_expr, "$1" ) );
       if (nodeX_lag < nodeZ_lag) {
         probas_list[i][0] = 1;
         probas_list[i][1] = proba_tail;

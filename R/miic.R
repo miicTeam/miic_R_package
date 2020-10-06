@@ -350,9 +350,14 @@
 #'  plot(tmiic.res)
 #' }
 #' 
-#' # to plot the full temporal graph
+#' # to plot the raw temporal network Using igraph
 #' if(require(igraph)) {
-#'  plot(tmiic.res, flatten_mode="none")
+#'   plot(tmiic.res, display="raw")
+#' }
+#'
+#' # to plot the full temporal network Using igraph
+#' if(require(igraph)) {
+#'   plot(tmiic.res, display="lagged")
 #' }
 #' 
 #' }
@@ -585,7 +590,7 @@ miic <- function(input_data,
 
   if (tau >= 1) {
     class(res) <- "tmiic"
-    res$tmiic_specific <- list (graph_type="lagged", nodes_not_lagged=nodes_not_lagged)
+    res$tmiic_specific <- list (graph_type="raw", nodes_not_lagged=nodes_not_lagged)
   }
   else {
     class(res) <- "miic"

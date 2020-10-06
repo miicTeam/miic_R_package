@@ -370,9 +370,14 @@ if(require(igraph)) {
  plot(tmiic.res)
 }
 
-# to plot the full temporal graph
+# to plot the raw temporal network Using igraph
 if(require(igraph)) {
- plot(tmiic.res, flatten_mode="none")
+  plot(tmiic.res, display="raw")
+}
+
+# to plot the full temporal network Using igraph
+if(require(igraph)) {
+  plot(tmiic.res, display="lagged")
 }
 
 }
