@@ -316,7 +316,10 @@ compute_partial_correlation <- function(summary, observations, state_order) {
 # 1. it is part of a V-structure `X *-> Z <-* Y` with `Z` being the mid node,
 # 2. `X` is the mid node of another V-structure `V *-> X <-* W`,
 # 3. `(V, X, Z)` (or `(W, X, Z)`) must be a non-V-structure `V *-> X --> Z`
-# (or `W *-> X --> Z`).
+#    (or `W *-> X --> Z`),
+# 4. when 3. is true, but `(W, X, Z)` (or `(V, X, Z)`) is a V-structure,
+#    the absolute value of 3-point information of the non-V-structure must be
+#    greater than that of the V-structure.
 #
 # Condition 1. ensures that the endpoint (2) is a head, condition 2. and 3.
 # ensure that the endpoint (1) is a tail.
@@ -349,12 +352,13 @@ is_causal <- function(summary, probas) {
     }
     main_v_structs <- probas_v$target == target_node &
         (probas_v$source1 == source_node | probas_v$source2 == source_node)
-    # Edge is not part of any V-structure (propagated orientation)
+    # Edge is not part of any V-structure (propagated orientation), condition 1.
+    # not satisfied.
     if (!any(main_v_structs)) {
       next
     }
     second_v_structs <- probas_v$target == source_node
-    # source is not the mid node of any V-structure, cannot ensure tail (-)
+    # source is not the mid node of any V-structure, condition 2. not satisfied.
     if (!any(second_v_structs)) {
       next
     }
@@ -367,14 +371,39 @@ is_causal <- function(summary, probas) {
       s1_non_v <- probas_non_v$target == source_node &
           ((probas_non_v$source1 == s1 & probas_non_v$source2 == target_node) |
           (probas_non_v$source2 == s1 & probas_non_v$source1 == target_node))
+      # s2 --> source_node <-- target_node
+      s2_v <- probas_v$target == source_node &
+          ((probas_v$source1 == s2 & probas_v$source2 == target_node) |
+          (probas_v$source2 == s2 & probas_v$source1 == target_node))
+      # Condition 3.
+      if (any(s1_non_v)) {
+        # Condition 4.
+        # There is at most one true element in s1_non_v and s2_v, still we use
+        # [1, ] to explicitly ensure the correct dimention
+        if (!any(s2_v) || (abs(probas_v[s2_v, ][1, ]$NI3) <
+            abs(probas_non_v[s1_non_v,][1,]$NI3))) {
+          is_causal_results[i] <- "Y"
+          break
+        }
+      }
       # s2 --> source_node --> target_node
       s2_non_v <- probas_non_v$target == source_node &
           ((probas_non_v$source1 == s2 & probas_non_v$source2 == target_node) |
           (probas_non_v$source2 == s2 & probas_non_v$source1 == target_node))
-      # tail on source_node can be ensured by either s1_non_v or s2_non_v
-      if (any(s1_non_v | s2_non_v)) {
-        is_causal_results[i] <- "Y"
-        break
+      # s1 --> source_node <-- target_node
+      s1_v <- probas_v$target == source_node &
+          ((probas_v$source1 == s1 & probas_v$source2 == target_node) |
+          (probas_v$source2 == s1 & probas_v$source1 == target_node))
+      # Condition 3.
+      if (any(s2_non_v)) {
+        # Condition 4.
+        # There is at most one true element in s1_non_v and s2_v, still we use
+        # [1, ] to explicitly ensure the correct dimention
+        if (!any(s1_v) || (abs(probas_v[s1_v, ][1, ]$NI3) <
+            abs(probas_non_v[s2_non_v,][1,]$NI3))) {
+          is_causal_results[i] <- "Y"
+          break
+        }
       }
     }
   }
