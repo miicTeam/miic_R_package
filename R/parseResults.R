@@ -307,52 +307,104 @@ compute_partial_correlation <- function(summary, observations, state_order) {
   return(ppcor_results)
 }
 
+# For an edge `X (1)-(2) Z` with two endpoints (1) and (2), with each of the
+# endpoint being either a head (`<` or `>`) or tail (`-`), the edge is called
+# `causal` if it has one and only one head (`X --> Z` or `X <-- Z`).
+#
+# As a set of sufficient conditions, an edge `X (1)-(2) Z` is causal if
+# (using `X --> Z` as an example, `*` means head or tail)
+# 1. it is part of a V-structure `X *-> Z <-* Y` with `Z` being the mid node,
+# 2. `X` is the mid node of another V-structure `V *-> X <-* W`,
+# 3. `(V, X, Z)` (or `(W, X, Z)`) must be a non-V-structure `V *-> X --> Z`
+#    (or `W *-> X --> Z`),
+# 4. when 3. is true, but `(W, X, Z)` (or `(V, X, Z)`) is a V-structure,
+#    the absolute value of 3-point information of the non-V-structure must be
+#    greater than that of the V-structure.
+#
+# Condition 1. ensures that the endpoint (2) is a head, condition 2. and 3.
+# ensure that the endpoint (1) is a tail.
 is_causal <- function(summary, probas) {
   is_causal_results <- rep("N", (nrow(summary)))
-  v_structs <- probas$NI3 < 0
-  if (length(which(v_structs)) == 0) {
+  v_structs <- probas$NI3 < 0 & probas$Error == 0
+  if (!any(v_structs)) {
     return(is_causal_results)
   }
-  probas_V_structs = probas[v_structs,]
-
-  vstruct_matrix <- matrix_from_3_columns(
-    probas_V_structs, "source1",
-    "source2", "target"
-  )
-  error_matrix <- matrix_from_3_columns(
-    probas_V_structs, "source1",
-    "source2", "Error"
-  )
+  probas_v <- probas[v_structs, ]
+  probas_non_v <- probas[probas$NI3 > 0 & probas$Error == 0, ]
 
   for (i in 1:nrow(summary)) {
     row <- summary[i, ]
-    if (row$type %in% c("TN", "FN", "N") || # Negative edge
-      row$infOrt == 1) { # Non oriented edge
-      # If any of these conditions is true, edge cannot be causal
+    # Negative or Non oriented edge cannot be causal
+    if (row$type %in% c("TN", "FN", "N") || row$infOrt == 1) {
       next
     }
+    # Bi-directed edge cannot be causal
     if (row$infOrt == 6) {
-      is_causal_results[i] <- "Y"
       next
     }
-
+    # source --> target (source (tail)-(head) target)
     if (row$infOrt == 2) {
-      source <- row$x
-      target <- row$y
+      source_node <- row$x
+      target_node <- row$y
     } else {
-      source <- row$y
-      target <- row$x
+      source_node <- row$y
+      target_node <- row$x
     }
-
-    if (!any(probas_V_structs[, "target"] == source)) {
-      # Propagated orientation
+    main_v_structs <- probas_v$target == target_node &
+        (probas_v$source1 == source_node | probas_v$source2 == source_node)
+    # Edge is not part of any V-structure (propagated orientation), condition 1.
+    # not satisfied.
+    if (!any(main_v_structs)) {
       next
     }
-
-    # If there is another V-structure pointing to the source node, which
-    # is not an error.
-    if (any(error_matrix[vstruct_matrix == source] == 0)) {
-      is_causal_results[i] <- "Y"
+    second_v_structs <- probas_v$target == source_node
+    # source is not the mid node of any V-structure, condition 2. not satisfied.
+    if (!any(second_v_structs)) {
+      next
+    }
+    probas_second_v_list <- probas_v[second_v_structs, ]
+    for (j in 1:nrow(probas_second_v_list)) {
+      proba_row <- probas_second_v_list[j, ]
+      s1 <- proba_row$source1
+      s2 <- proba_row$source2
+      # s1 --> source_node --> target_node
+      s1_non_v <- probas_non_v$target == source_node &
+          ((probas_non_v$source1 == s1 & probas_non_v$source2 == target_node) |
+          (probas_non_v$source2 == s1 & probas_non_v$source1 == target_node))
+      # s2 --> source_node <-- target_node
+      s2_v <- probas_v$target == source_node &
+          ((probas_v$source1 == s2 & probas_v$source2 == target_node) |
+          (probas_v$source2 == s2 & probas_v$source1 == target_node))
+      # Condition 3.
+      if (any(s1_non_v)) {
+        # Condition 4.
+        # There is at most one true element in s1_non_v and s2_v, still we use
+        # [1, ] to explicitly ensure the correct dimension
+        if (!any(s2_v) || (abs(probas_v[s2_v, ][1, ]$NI3) <
+            abs(probas_non_v[s1_non_v,][1,]$NI3))) {
+          is_causal_results[i] <- "Y"
+          break
+        }
+      }
+      # s2 --> source_node --> target_node
+      s2_non_v <- probas_non_v$target == source_node &
+          ((probas_non_v$source1 == s2 & probas_non_v$source2 == target_node) |
+          (probas_non_v$source2 == s2 & probas_non_v$source1 == target_node))
+      # s1 --> source_node <-- target_node
+      s1_v <- probas_v$target == source_node &
+          ((probas_v$source1 == s1 & probas_v$source2 == target_node) |
+          (probas_v$source2 == s1 & probas_v$source1 == target_node))
+      # Condition 3.
+      if (any(s2_non_v)) {
+        # Condition 4.
+        # There is at most one true element in s1_non_v and s2_v, still we use
+        # [1, ] to explicitly ensure the correct dimension
+        if (!any(s1_v) || (abs(probas_v[s1_v, ][1, ]$NI3) <
+            abs(probas_non_v[s2_non_v,][1,]$NI3))) {
+          is_causal_results[i] <- "Y"
+          break
+        }
+      }
     }
   }
 
@@ -456,7 +508,7 @@ get_edge_stats_table <- function(row, var_names, adj_matrices) {
   # row[1]: variable name of x
   # row[2]: variable name of y
   n_var <- length(var_names)
-  # adj_matrices is of dimention (n_var * n_var, n_cycle), i.e., each
+  # adj_matrices is of dimension (n_var * n_var, n_cycle), i.e., each
   # column is a 1-d adjacency matrix
   index_1d <- n_var * (match(row[1], var_names) - 1) + match(row[2], var_names)
   n_cycle <- dim(adj_matrices)[2]
