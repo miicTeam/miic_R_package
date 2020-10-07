@@ -379,7 +379,7 @@ is_causal <- function(summary, probas) {
       if (any(s1_non_v)) {
         # Condition 4.
         # There is at most one true element in s1_non_v and s2_v, still we use
-        # [1, ] to explicitly ensure the correct dimention
+        # [1, ] to explicitly ensure the correct dimension
         if (!any(s2_v) || (abs(probas_v[s2_v, ][1, ]$NI3) <
             abs(probas_non_v[s1_non_v,][1,]$NI3))) {
           is_causal_results[i] <- "Y"
@@ -398,7 +398,7 @@ is_causal <- function(summary, probas) {
       if (any(s2_non_v)) {
         # Condition 4.
         # There is at most one true element in s1_non_v and s2_v, still we use
-        # [1, ] to explicitly ensure the correct dimention
+        # [1, ] to explicitly ensure the correct dimension
         if (!any(s1_v) || (abs(probas_v[s1_v, ][1, ]$NI3) <
             abs(probas_non_v[s2_non_v,][1,]$NI3))) {
           is_causal_results[i] <- "Y"
@@ -508,7 +508,7 @@ get_edge_stats_table <- function(row, var_names, adj_matrices) {
   # row[1]: variable name of x
   # row[2]: variable name of y
   n_var <- length(var_names)
-  # adj_matrices is of dimention (n_var * n_var, n_cycle), i.e., each
+  # adj_matrices is of dimension (n_var * n_var, n_cycle), i.e., each
   # column is a 1-d adjacency matrix
   index_1d <- n_var * (match(row[1], var_names) - 1) + match(row[2], var_names)
   n_cycle <- dim(adj_matrices)[2]
