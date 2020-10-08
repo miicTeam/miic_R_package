@@ -12,14 +12,16 @@
 #include "structure.h"
 #include "utilities.h"
 
+namespace miic {
+namespace reconstruction {
+
 using Rcpp::Rcerr;
 using Rcpp::Rcout;
 using namespace miic::computation;
 using namespace miic::structure;
 using namespace miic::utility;
 
-namespace miic {
-namespace reconstruction {
+constexpr double kMinCheckInterval = 1;
 
 // Initialize the edges of the network
 int initializeEdge(Environment& environment, int X, int Y) {
@@ -59,6 +61,7 @@ int initializeEdge(Environment& environment, int X, int Y) {
 bool initializeSkeleton(Environment& environment) {
   auto& edges = environment.edges;
   bool interrupt{false};
+  auto t_last_check{getLapStartTime()};
 #ifdef _OPENMP
 #pragma omp parallel
 #endif
@@ -69,10 +72,15 @@ bool initializeSkeleton(Environment& environment) {
 #pragma omp for schedule(dynamic)
 #endif
     for (int i = 0; i < environment.n_nodes - 1; ++i) {
-      if (threadnum == 0) {
-        if (checkInterrupt()) interrupt = true;
+      if (interrupt) continue;  // Will continue until out of for loop
+      // Check interrupt on main thread, if enough time passed since last check
+      if (threadnum == 0 && getLapInterval(t_last_check) > kMinCheckInterval) {
+        t_last_check = getLapStartTime();
+        if (checkInterrupt()) {
+          interrupt = true;
+          continue;
+        }
       }
-      if (interrupt) continue;  // will continue until out of for loop
 
       for (int j = i + 1; j < environment.n_nodes; ++j) {
         edges(i, j).shared_info = std::make_shared<EdgeSharedInfo>();
@@ -106,6 +114,7 @@ bool setBestContributingNode(
   int progress_percentile{-1}, n_jobs_done{0};
   bool interrupt = false;
   auto loop_start_time = getLapStartTime();
+  auto t_last_check{loop_start_time};
 #ifdef _OPENMP
 #pragma omp parallel
 #endif
@@ -116,10 +125,15 @@ bool setBestContributingNode(
 #pragma omp for schedule(dynamic)
 #endif
     for (size_t i = 0; i < environment.unsettled_list.size(); ++i) {
-      if (threadnum == 0) {
-        if (checkInterrupt()) interrupt = true;
+      if (interrupt) continue;  // Will continue until out of for loop
+      // Check interrupt on main thread, if enough time passed since last check
+      if (threadnum == 0 && getLapInterval(t_last_check) > kMinCheckInterval) {
+        t_last_check = getLapStartTime();
+        if (checkInterrupt()) {
+          interrupt = true;
+          continue;
+        }
       }
-      if (interrupt) continue;  // will continue until out of for loop
 
       const auto& edgeid = unsettled_list[i];
       auto info = edgeid.getEdge().shared_info;
@@ -167,8 +181,12 @@ bool searchForConditionalIndependence(Environment& environment) {
   int n_jobs_total = environment.unsettled_list.size();
   int progress_percentile = -1;
   auto loop_start_time = getLapStartTime();
+  auto t_last_check{loop_start_time};
   while (!environment.unsettled_list.empty()) {
-    if (checkInterrupt()) return false;
+    if (getLapInterval(t_last_check) > kMinCheckInterval) {
+      t_last_check = getLapStartTime();
+      if (checkInterrupt()) return false;
+    }
     ++iter_count;
 
     auto it_max = std::max_element(begin(unsettled_list), end(unsettled_list),
