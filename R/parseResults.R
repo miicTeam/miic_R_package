@@ -5,7 +5,7 @@ summarizeResults <- function(observations = NULL, results = NULL,
   # - Edges that exist in the miic reconstruction (oriented or not)
   # - Edges that were conditioned away with a non-empty separating set
   # - If ground truth is known, any other positive edge
-  summarized_edges <- matrix(ncol = 2)
+  summarized_edges <- matrix(ncol = 2, nrow = 0)
   adj_matrix <- results$adj_matrix
   var_names <- colnames(adj_matrix)
 
@@ -15,7 +15,7 @@ summarizeResults <- function(observations = NULL, results = NULL,
   predicted_edges <- which(half_adj_matrix != 0, arr.ind = TRUE, useNames = FALSE)
   predicted_edges <- apply(predicted_edges, 2, function(x) { var_names[x] })
   # Add to summarized edges list
-  summarized_edges <- predicted_edges
+  if(length(predicted_edges > 0)) summarized_edges <- predicted_edges
 
   edges <- results$edges
   # List of negative edges with non null conditioning set
@@ -60,9 +60,10 @@ summarizeResults <- function(observations = NULL, results = NULL,
     proba = character(n),
     stringsAsFactors = FALSE
   )
+  if(n == 0) return(summary)
 
   # Edge ordering (A<-B or B->A) is given by lexicographical sort
-  summary[,c('x','y')] = t(apply(summarized_edges[,c(1,2)], 1, function(row){sort(row)}))
+  summary[,c('x','y')] = t(apply(as.data.frame(summarized_edges)[,c(1,2)], 1, function(row){sort(row)}))
 
   # Edge 'type' correponds to the miic prediction : P(ositive) or N(egative)
   # for respectively presence or absence of an edge, without considering
