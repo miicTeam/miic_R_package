@@ -5,7 +5,7 @@
 #' from indirect effects amongst correlated variables, including cause-effect
 #' relationships and the effect of unobserved latent causes.
 #'
-#' @details  In regular mode, starting from a complete graph, the method iteratively removes
+#' @details In regular mode, starting from a complete graph, the method iteratively removes
 #' dispensable edges, by uncovering significant information contributions from
 #' indirect paths, and assesses edge-specific confidences from randomization of
 #' available data. The remaining edges are then oriented based on the signature

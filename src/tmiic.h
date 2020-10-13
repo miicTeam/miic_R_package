@@ -11,6 +11,8 @@
 #ifndef TMIIC_
 #define TMIIC_
 
+#include <array>
+
 #include "environment.h"
 
 
