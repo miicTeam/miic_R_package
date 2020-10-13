@@ -30,6 +30,8 @@ bool acceptProba(double proba, double ori_proba_ratio) {
   return (1 - proba) / proba < ori_proba_ratio;
 }
 
+}  // anonymous namespace
+
 // y2x: probability that there is an arrow from node y to x
 // x2y: probability that there is an arrow from node x to y
 void updateAdj(Environment& env, int x, int y, double y2x, double x2y) {
@@ -39,96 +41,54 @@ void updateAdj(Environment& env, int x, int y, double y2x, double x2y) {
     env.edges(y, x).status = 2;
 }
 
-}  // anonymous namespace
-
 vector<vector<string>> orientationProbability(Environment& environment) {
   vector<Triple> triples;
-  if (environment.tau <= 0) {
-    // In regular mode , get all unshielded triples X -- Z -- Y
-    //
-    const auto& edge_list = environment.connected_list;
-    for (auto iter0 = begin(edge_list); iter0 != end(edge_list); ++iter0) {
-      int posX = iter0->X, posY = iter0->Y;
-  
-      for (auto iter1 = iter0 + 1; iter1 != end(edge_list); ++iter1) {
-        int posX1 = iter1->X, posY1 = iter1->Y;
-        if (posY1 == posX && !environment.edges(posY, posX1).status)
-          triples.emplace_back(Triple{posY, posX, posX1});
-        else if (posY1 == posY && !environment.edges(posX, posX1).status)
-          triples.emplace_back(Triple{posX, posY, posX1});
-        if (posX1 == posX && !environment.edges(posY, posY1).status)
-          triples.emplace_back(Triple{posY, posX, posY1});
-        else if (posX1 == posY && !environment.edges(posX, posY1).status)
-          triples.emplace_back(Triple{posX, posY, posY1});
-      }
-    }
-  }
-  else {
-    // In temporal mode: 
-    //
-    int n_nodes_not_lagged = environment.n_nodes / (environment.tau + 1);
-    //
-    // When latent variable discovery is activated, duplicate edges over history 
-    // assuming stationarity to increasethe number of possible unshielded triples.
-    // Get only unshielded triples X -- Z -- Y having a node at lag0
-    // (the past only triples are not interesting as edges forming these past
-    // only triples are the result of the duplication and these edges will
-    // be removed at the end of this function)
-    // In addition of unshielded triples, get also edges not already included
-    // in the triples having a lag0 node and which can be oriented using time
-    //
+  int n_nodes_not_lagged = -1;
+  if (environment.tau >= 1) {
+    // Used to compute the layer of nodes and deduce if node is lag0
+    n_nodes_not_lagged = environment.n_nodes / (environment.tau + 1);
+    // In temporal mode, when latent variable discovery is activated, 
+    // duplicate edges over history assuming stationarity to increase 
+    // the number of possible unshielded triples.
     if (environment.latent || environment.latent_orientation)
       tmiic::repeatEdgesOverHistory (environment);
-    //
-    // Get unshielded triples with at least one lag0 node
-    //
-    const auto& edge_list = environment.connected_list;
-    for (auto iter0 = begin(edge_list); iter0 != end(edge_list); ++iter0) {
-      int posX = iter0->X, posY = iter0->Y;
-      bool edge_has_lag0 = (posX < n_nodes_not_lagged) || (posY < n_nodes_not_lagged);
-
-      for (auto iter1 = iter0 + 1; iter1 != end(edge_list); ++iter1) {
-        int posX1 = iter1->X, posY1 = iter1->Y;
+  }
+  //
+  // In regular mode, get all unshielded triples X -- Z -- Y
+  // In temporal mode, get only unshielded triples X -- Z -- Y having 
+  // a node at lag0 (the past only triples are not interesting as edges 
+  // forming these past only triples are the consequence of repeatEdgesOverHistory 
+  // and these edges will be removed at the end of this function)
+  //
+  const auto& edge_list = environment.connected_list;
+  for (auto iter0 = begin(edge_list); iter0 != end(edge_list); ++iter0) {
+    int posX = iter0->X, posY = iter0->Y;
+    for (auto iter1 = iter0 + 1; iter1 != end(edge_list); ++iter1) {
+      int posX1 = iter1->X, posY1 = iter1->Y;
+      
+      if (environment.tau >= 1) {
+        bool edge_has_lag0  = (posX  < n_nodes_not_lagged) || (posY  < n_nodes_not_lagged);
         bool edge1_has_lag0 = (posX1 < n_nodes_not_lagged) || (posY1 < n_nodes_not_lagged);
-        if (! (edge_has_lag0 || edge1_has_lag0) )
+        if (! (edge_has_lag0 || edge1_has_lag0) ) {
           continue;
-
-        if (posY1 == posX && !environment.edges(posY, posX1).status)
-          triples.emplace_back(Triple{posY, posX, posX1});
-        else if (posY1 == posY && !environment.edges(posX, posX1).status)
-          triples.emplace_back(Triple{posX, posY, posX1});
-        if (posX1 == posX && !environment.edges(posY, posY1).status)
-          triples.emplace_back(Triple{posY, posX, posY1});
-        else if (posX1 == posY && !environment.edges(posX, posY1).status)
-          triples.emplace_back(Triple{posX, posY, posY1});
-      }
-    }
-    //
-    // Add as fake triple the lagged edges with at least one lag0 node
-    // not already in triples
-    //
-    for (auto iter0 = begin(edge_list); iter0 != end(edge_list); ++iter0) {
-      int posX = iter0->X, posY = iter0->Y;
-      if ( ! (   (posX < n_nodes_not_lagged)
-              || (posY < n_nodes_not_lagged) ) )
-        continue;
-
-      bool is_in_triple = false;
-      for (unsigned int i = 0; i < triples.size() ; i++)
-        if (   ( (triples[i][0] == posX) && (triples[i][1] == posY) )
-            || ( (triples[i][0] == posY) && (triples[i][1] == posX) )
-            || ( (triples[i][1] == posX) && (triples[i][2] == posY) )
-            || ( (triples[i][1] == posY) && (triples[i][2] == posX) ) ) {
-          is_in_triple = true;
-          break;
         }
-      if (!is_in_triple)
-        triples.emplace_back(Triple{posX, posY, posX});
+      }
+      
+      if (posY1 == posX && !environment.edges(posY, posX1).status)
+        triples.emplace_back(Triple{posY, posX, posX1});
+      else if (posY1 == posY && !environment.edges(posX, posX1).status)
+        triples.emplace_back(Triple{posX, posY, posX1});
+      if (posX1 == posX && !environment.edges(posY, posY1).status)
+        triples.emplace_back(Triple{posY, posX, posY1});
+      else if (posX1 == posY && !environment.edges(posX, posY1).status)
+        triples.emplace_back(Triple{posX, posY, posY1});
     }
   }
-  
-  if (triples.empty())
+  if (triples.empty()) {
+    if (environment.tau >= 1)
+      tmiic::completeOrientationUsingTime (environment, triples);
     return vector<vector<string>>();
+  }
 
   // Compute the 3-point mutual info (N * I'(X;Y;Z|{ui})) for each triple
   vector<double> I3_list(triples.size());
@@ -137,17 +97,12 @@ vector<vector<string>> orientationProbability(Environment& environment) {
 #endif
   for (size_t i = 0; i < triples.size(); ++i) {
     int X{triples[i][0]}, Z{triples[i][1]}, Y{triples[i][2]};
-    if (X == Y) // fake triple, put highest rank in the list
-      I3_list[i] = 0;
-    else
-      {
-      const auto& ui_list = environment.edges(X, Y).shared_info->ui_list;
-      vector<int> ui_no_z(ui_list);
-      ui_no_z.erase(remove(begin(ui_no_z), end(ui_no_z), Z), end(ui_no_z));
-  
-      I3_list[i] = getInfo3PointOrScore(
-          environment, X, Y, Z, ui_no_z, /* get_info = */ true);
-      }
+    const auto& ui_list = environment.edges(X, Y).shared_info->ui_list;
+    vector<int> ui_no_z(ui_list);
+    ui_no_z.erase(remove(begin(ui_no_z), end(ui_no_z), Z), end(ui_no_z));
+
+    I3_list[i] = getInfo3PointOrScore(
+        environment, X, Y, Z, ui_no_z, /* get_info = */ true);
   }
 
   // Compute the arrowhead probability of each edge endpoint
@@ -194,6 +149,10 @@ vector<vector<string>> orientationProbability(Environment& environment) {
     updateAdj(environment, triple[0], triple[1], probas[0], probas[1]);
     updateAdj(environment, triple[1], triple[2], probas[2], probas[3]);
   }
+  // In temporal mode, we add in adj matrix the orientation of temporal edges 
+  // that were not already oriented (edges was not part of an open triple)
+  if (environment.tau >= 1)
+    tmiic::completeOrientationUsingTime (environment, triples);
   // Write output
   vector<vector<string>> orientations{
       {"source1", "p1", "p2", "target", "p3", "p4", "source2", "NI3", "Error"}};

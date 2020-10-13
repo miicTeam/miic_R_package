@@ -13,10 +13,14 @@
 
 #include "environment.h"
 
-namespace tmiic {
 
-int countNbNodesNotLagged (miic::structure::Environment&); 
+namespace tmiic {
+// An unshielded Triple (X, Z, Y):
+using Triple = std::array<int, 3>;
+
 void repeatEdgesOverHistory (miic::structure::Environment&);
+void completeOrientationUsingTime (miic::structure::Environment&,
+                                   const std::vector<Triple>&);
 void dropPastEdges (miic::structure::Environment&);
 
 }  // namespace tmiic

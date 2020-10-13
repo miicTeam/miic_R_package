@@ -7,8 +7,6 @@
 #include <string>
 #include <vector>
 
-#include "tmiic.h"
-
 namespace miic {
 namespace utility {
 

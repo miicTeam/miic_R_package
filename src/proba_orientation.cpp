@@ -5,7 +5,7 @@
 #include <cmath>
 #include <numeric>  // std::iota
 #include <tuple>  // std::tie
-#include <regex>
+#include <regex> // std::regex & std::regex_replace
 
 namespace miic {
 namespace reconstruction {

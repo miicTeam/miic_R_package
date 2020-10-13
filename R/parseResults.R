@@ -414,6 +414,11 @@ is_causal <- function(summary, probas) {
 
 findProba <- function(outputSummary.df, proba, index) {
   # I'm sorry... I didn't rewrite that one
+  
+  # In temporal mode, an edge can be oriented only using time
+  # and has no proba
+  if (length (proba) <= 0)
+    return(NA)
 
   # find probability of this edge in the proba file
   if (outputSummary.df[index, "infOrt"] == 2) {

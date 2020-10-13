@@ -7,11 +7,13 @@
 //
 // Changes history:
 // - 07 may 2020 : initial version
+// - 13 oct 2020 : add of completeOrientationUsingTime
 //*****************************************************************************
 
 //=============================================================================
 // INCLUDE SECTION
 //=============================================================================
+#include "orientation.h"
 #include "tmiic.h"
 
 //=============================================================================
@@ -38,8 +40,6 @@ using namespace miic::utility;
 //
 // Params: 
 // - Environment&: the environment structure
-//
-// Returns: none
 //-----------------------------------------------------------------------------
 void repeatEdgesOverHistory (Environment& environment) {
   //
@@ -65,23 +65,87 @@ void repeatEdgesOverHistory (Environment& environment) {
       node2_pos += n_nodes_not_lagged;
       if ( (node1_pos >= environment.n_nodes) || (node2_pos >= environment.n_nodes) )
         break;
-     //
+      //
       // Duplicate the edge info into environment.edges array
       //
       Edge& edge_to_modif = environment.edges(node1_pos,node2_pos);
       edge_to_modif.status = edge_orig.status;
       edge_to_modif.status_init = edge_orig.status_init;
       edge_to_modif.status_prev = edge_orig.status_prev;
-      //
-      // Add the nodes into connected_list
-      //
-      environment.connected_list.emplace_back (node1_pos, node2_pos, environment.edges(node1_pos,node2_pos) );
 
       Edge& edge_to_modif_inverse = environment.edges(node2_pos,node1_pos);
       edge_to_modif_inverse.status = edge_orig.status;
       edge_to_modif_inverse.status_init = edge_orig.status_init;
       edge_to_modif_inverse.status_prev = edge_orig.status_prev;
+      //
+      // Add the nodes into connected_list
+      //
+      environment.connected_list.emplace_back (node1_pos, node2_pos, environment.edges(node1_pos,node2_pos) );
     }
+  }
+}
+
+//-----------------------------------------------------------------------------
+// completeOrientationUsingTime
+//-----------------------------------------------------------------------------
+// Description: Complete the orientations with the orientation of temporal  
+// edges that were not previously oriented 
+//
+// Detail: completeOrientationUsingTime will look in the list of connected
+// edges the ones that have not been oriented using the unshielded triples, 
+// are lagged and have a lag0 node (edges not having a lag0 are only a 
+// consequence of duplicating edges over history to maximize the number of 
+// unshielded triples and we are not interested to orient them as they will
+// be removed at the end of the orientation step). Edges matching these
+// criteria will be oriented using time from oldest node to newest node.
+//
+// Params:
+// - Environment&: the environment structure
+// - std::vector<Triple>& : list of unshielded triples
+//--------------------------------------------------------------------------------
+void completeOrientationUsingTime (Environment& environment, 
+                                   const std::vector<Triple>& triples) {
+  int n_nodes_not_lagged = environment.n_nodes / (environment.tau + 1);
+  const auto& edge_list = environment.connected_list;
+  for (auto iter0 = begin(edge_list); iter0 != end(edge_list); ++iter0) {
+    int posX = iter0->X, posY = iter0->Y;
+    //
+    // If edges has no lag0 node, it is a duplicated one => skip it
+    //
+    if ( ! (   (posX < n_nodes_not_lagged)
+            || (posY < n_nodes_not_lagged) ) )
+      continue;
+    //
+    // If the edge is not lagged, no information from time => skip it
+    //
+    int layer_x = int(posX / n_nodes_not_lagged);
+    int layer_y = int(posY / n_nodes_not_lagged);
+    if (layer_x == layer_y)
+      continue;
+    //
+    // If edge is in triple, head/tail probas have already been computed
+    // and applied in adjacency matrix
+    //
+    bool is_in_triple = false;
+    for (unsigned int i = 0; i < triples.size() ; i++)
+      if (   ( (triples[i][0] == posX) && (triples[i][1] == posY) )
+          || ( (triples[i][0] == posY) && (triples[i][1] == posX) )
+          || ( (triples[i][1] == posX) && (triples[i][2] == posY) )
+          || ( (triples[i][1] == posY) && (triples[i][2] == posX) ) ) {
+        is_in_triple = true;
+        break;
+      }
+    if (is_in_triple)
+      continue;
+    //
+    // The edge was not in open triples, has a lag0 node and is lagged
+    // => we can and need to orient it using time 
+    // As time goes from past to present: edge orientation is max layer -> min layer
+    //
+    if (layer_x > layer_y)
+      miic::reconstruction::updateAdj(environment, posX, posY, 0, 1);
+    else
+      miic::reconstruction::updateAdj(environment, posX, posY, 1, 0);
   }
 }
 
@@ -97,8 +161,6 @@ void repeatEdgesOverHistory (Environment& environment) {
 //
 // Params: 
 // - Environment&: the environment structure
-//
-// Returns: none
 //--------------------------------------------------------------------------------
 void dropPastEdges (Environment& environment) {
   int n_nodes_not_lagged = environment.n_nodes / (environment.tau + 1);
@@ -109,14 +171,14 @@ void dropPastEdges (Environment& environment) {
   auto it = begin(environment.connected_list); 
   while ( it != end(environment.connected_list) ) {
     // 
-    // For each edge, we compute the minimum lag of the 2 nodes
+    // For each edge, we compute the layer
     //    
     int node1_pos = it->X;
     int node2_pos = it->Y;
     int node1_layer = node1_pos / n_nodes_not_lagged;
     int node2_layer = node2_pos / n_nodes_not_lagged;
     // 
-    // When the two lag are greater than 0, the edge is not contemporanous
+    // When the two lags are greater than 0, the edge is not contemporaneous
     // and is removed
     //    
     if ((node1_layer > 0) && (node2_layer > 0))
