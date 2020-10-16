@@ -448,8 +448,8 @@ InfoBlock computeIxy(const TempGrid2d<int>& data,
     Ikxy = 0;
   }
   if (save_cuts) {
-    cuts_info->Ik = Ikxy / n_samples;
-    cuts_info->I = Ixy / n_samples;
+    cuts_info->Ik = Ikxy / n_eff;
+    cuts_info->I = Ixy / n_eff;
     cuts_info->I_equal_freq_max = best_res;
   }
 
@@ -758,8 +758,8 @@ InfoBlock computeIxyui(const TempGrid2d<int>& data,
     Ikxy_ui = 0;
   }
   if (save_cuts) {
-    cuts_info->Ik = Ikxy_ui / n_samples;
-    cuts_info->I = Ixy_ui / n_samples;
+    cuts_info->Ik = Ikxy_ui / n_eff;
+    cuts_info->I = Ixy_ui / n_eff;
   }
 
   return InfoBlock(n_samples, Ixy_ui, Ixy_ui - Ikxy_ui);

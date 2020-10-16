@@ -545,7 +545,10 @@ bool filterNA(int X, int Y, int Z, const vector<int>& ui_list,
         data_numeric_red(j, i) = data_numeric(index, i);
         if (is_continuous_red[j])
           data_numeric_idx_red(j, i) = data_numeric_idx(index, i);
-        if (j == 0) sample_weights_red[i] = sample_weights[i];
+        if (j == 0) {
+          sample_weights_red[i] = sample_weights[i];
+          if (sample_weights_red[i] != 1.0) flag_sample_weights = true;
+        }
       } else {
         if (sample_is_not_NA[i] == 1) {
           // Row at index i does not contain any NA
