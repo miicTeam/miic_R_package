@@ -109,7 +109,7 @@ double compute_k_nearest_distance(
 // <space 1> is the subsampling of <space 2> after removing NAs.
 double compute_kl_divergence_continuous(vector<vector<double>>& space1,
     vector<vector<double>>& space2, int n1, int n2, int ndims, int k,
-    const TempVector<bool>& flag_break_ties, const TempVector<int>& map_samples,
+    const TempVector<int>& flag_break_ties, const TempVector<int>& map_samples,
     const vector<double>& noise_vec) {
   double sumlog = 0;
   double noise;
@@ -358,7 +358,7 @@ double compute_kl_divergence(const Grid2d<int>& data_numeric,
         i_non_na++;
       }
     }
-    TempVector<bool> flag_break_ties(2);
+    TempVector<int> flag_break_ties(2);
     for (int k = 0; k < 2; k++) {
       flag_break_ties[k] = false || (AllLevels_red[k] != samplesNotNA) ||
                            (AllLevels_red[k] != current_samplesNotNA);
@@ -440,7 +440,7 @@ double compute_kl_divergence(const Grid2d<int>& data_numeric,
           i_level_non_na++;
         }
       }
-      TempVector<bool> flag_break_ties{
+      TempVector<int> flag_break_ties{
           (AllLevels_red[continuous_pos_binary] != samplesNotNA) ||
           (AllLevels_red[continuous_pos_binary] != current_samplesNotNA)};
 
