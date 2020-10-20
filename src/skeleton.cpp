@@ -61,7 +61,7 @@ int initializeEdge(Environment& environment, int X, int Y) {
 bool initializeSkeleton(Environment& environment) {
   auto& edges = environment.edges;
   bool interrupt{false};
-  auto t_last_check{getLapStartTime()};
+  auto t_last_check = getLapStartTime();
 #ifdef _OPENMP
 #pragma omp parallel
 #endif
@@ -114,7 +114,7 @@ bool setBestContributingNode(
   int progress_percentile{-1}, n_jobs_done{0};
   bool interrupt = false;
   auto loop_start_time = getLapStartTime();
-  auto t_last_check{loop_start_time};
+  auto t_last_check = loop_start_time;
 #ifdef _OPENMP
 #pragma omp parallel
 #endif
@@ -181,7 +181,7 @@ bool searchForConditionalIndependence(Environment& environment) {
   int n_jobs_total = environment.unsettled_list.size();
   int progress_percentile = -1;
   auto loop_start_time = getLapStartTime();
-  auto t_last_check{loop_start_time};
+  auto t_last_check = loop_start_time;
   while (!environment.unsettled_list.empty()) {
     if (getLapInterval(t_last_check) > kMinCheckInterval) {
       t_last_check = getLapStartTime();
