@@ -126,6 +126,13 @@ void setEnvironmentFromR(const Rcpp::List& input_data,
         environment.edges(i, j).status = 0;
         environment.edges(i, j).status_prev = 0;
       }
+    // Remove all edges between contemporaneous edges at first
+    for (int i = 0; i < n_nodes_not_lagged; i++) {
+      for (int j = (i+1); j < n_nodes_not_lagged; j++) {
+        environment.edges(i, j).status = 0;
+        environment.edges(i, j).status_prev = 0;
+      }
+    }
   }
   
   if (arg_list.containsElementNamed("verbose"))

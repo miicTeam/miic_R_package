@@ -60,6 +60,7 @@ List reconstruct(List input_data, List arg_list) {
   vector<vector<string>> orientations;
   int iter_count{0};
   bool is_consistent{false};
+  bool laggedSkeletonPhase{true};
   do {
     if (environment.consistent != 0) bcc.analyse();
     // Store current status in status_prev and revert to the structure at the
@@ -71,9 +72,36 @@ List reconstruct(List input_data, List arg_list) {
       }
     }
     lap_start = getLapStartTime();
+    if(laggedSkeletonPhase){
+      Rcout << "Search for candidate separating nodes...\n";
+      if (!setBestContributingNode(environment, bcc, laggedSkeletonPhase)) return empty_results();
+
+      if (!environment.unsettled_list.empty()) {
+        Rcout << "Search for conditional independence relations...\n";
+        // If interrupted
+        if (!searchForConditionalIndependence(environment))
+          return (empty_results());
+      }
+      for (int i = 0; i < environment.n_nodes; i++) {
+        for (int j = 0; j < environment.n_nodes; j++) {
+          environment.edges(i, j).status_prev = environment.edges(i, j).status;
+        }
+      }
+
+      // Put back all edges between contemporaneous edges
+      int n_nodes_not_lagged = environment.n_nodes / (environment.tau + 1);
+      for (int i = 0; i < n_nodes_not_lagged; i++) {
+        for (int j = (i+1); j < n_nodes_not_lagged; j++) {
+          environment.edges(i, j).status = 1;
+          environment.edges(i, j).status_prev = 1;
+        }
+      }
+      initializeSkeleton(environment);
+      laggedSkeletonPhase = false;
+    }
     Rcout << "Search for candidate separating nodes...\n";
     // If interrupted
-    if (!setBestContributingNode(environment, bcc)) return empty_results();
+    if (!setBestContributingNode(environment, bcc, laggedSkeletonPhase)) return empty_results();
 
     if (!environment.unsettled_list.empty()) {
       Rcout << "Search for conditional independence relations...\n";

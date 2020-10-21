@@ -8,7 +8,8 @@ namespace miic {
 namespace reconstruction {
 
 bool initializeSkeleton(structure::Environment&);
-bool setBestContributingNode(structure::Environment&, BiconnectedComponent&);
+bool setBestContributingNode(structure::Environment&, BiconnectedComponent&,
+                             bool laggedSkeletonPhase);
 bool searchForConditionalIndependence(structure::Environment&);
 
 }  // namespace reconstruction

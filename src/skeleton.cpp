@@ -58,6 +58,42 @@ int initializeEdge(Environment& environment, int X, int Y) {
   return environment.edges(X, Y).status;
 }
 
+void setCandidateZ(
+  int x, int y, std::vector<int>& zi_list, BiconnectedComponent& bcc,
+  Environment& environment, bool laggedSkeletonPhase) {
+  zi_list.clear();
+
+  if(environment.consistent) {
+    bcc.setCandidateZ(x, y, zi_list);
+  } else {
+    for (int z = 0; z < environment.n_nodes; ++z) {
+      if (z == x || z == y) continue;
+      if (environment.latent || environment.edges(x, z).status_prev ||
+          environment.edges(y, z).status_prev) {
+        zi_list.push_back(z);
+      }
+    }
+  }
+  if(environment.tau > 0 && laggedSkeletonPhase){
+    // Remove contemporaneous nodes
+    int n_nodes_not_lagged = environment.n_nodes / (environment.tau + 1);
+    for (int contemporaneous_z = 0; contemporaneous_z < n_nodes_not_lagged;
+        contemporaneous_z++) {
+      zi_list.erase(std::remove(zi_list.begin(), zi_list.end(), contemporaneous_z),
+                    zi_list.end());
+    }
+  }
+  //printf("\n%s - %s   [",
+  //  environment.nodes[x].name.c_str(),
+  //  environment.nodes[y].name.c_str()
+  //);
+  //for(auto z : zi_list){
+  //  printf("%s, ", environment.nodes[z].name.c_str()) ;
+  //}
+  //printf("]\n");
+
+}
+
 bool initializeSkeleton(Environment& environment) {
   auto& edges = environment.edges;
   bool interrupt{false};
@@ -94,7 +130,8 @@ bool initializeSkeleton(Environment& environment) {
 }
 
 bool setBestContributingNode(
-    Environment& environment, BiconnectedComponent& bcc) {
+    Environment& environment, BiconnectedComponent& bcc,
+    bool laggedSkeletonPhase) {
   auto& connected_list = environment.connected_list;
   auto& unsettled_list = environment.unsettled_list;
   auto& edges = environment.edges;
@@ -139,7 +176,7 @@ bool setBestContributingNode(
       auto info = edgeid.getEdge().shared_info;
       int X = edgeid.X, Y = edgeid.Y;
 
-      bcc.setCandidateZ(X, Y, info->zi_list);
+      setCandidateZ(X, Y, info->zi_list, bcc, environment, laggedSkeletonPhase);
       if (!info->zi_list.empty())
         searchForBestContributingNode(environment, X, Y, /* parallel */ false);
 
