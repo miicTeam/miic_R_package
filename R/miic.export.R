@@ -95,50 +95,54 @@ getIgraph <- function(miic.res) {
   }
 
   summary = miic.res$all.edges.summary[miic.res$all.edges.summary$type %in% c('P', 'TP', 'FP'), ]
-  # Re-order summary so that all edges go from "x" to "y"
-  for(row in 1:nrow(summary)){
-    if(summary[row, "infOrt"] == -2){
-      summary[row, c("x","y")] = summary[row, c("y","x")]
-      summary[row, "infOrt"] = 2
-      if(!is.na(summary[row, "proba"])){
-        summary[row, "proba"] = paste0(rev(
-          strsplit(summary[row, "proba"], ";")[[1]]), collapse=";")
-      }
-      if(!is.na(summary[row, "trueOrt"])){
-        summary[row, "trueOrt"] = 2
+  if (nrow(summary) > 0) {
+    # Re-order summary so that all edges go from "x" to "y"
+    for(row in 1:nrow(summary)){
+      if(summary[row, "infOrt"] == -2){
+        summary[row, c("x","y")] = summary[row, c("y","x")]
+        summary[row, "infOrt"] = 2
+        if(!is.na(summary[row, "proba"])){
+          summary[row, "proba"] = paste0(rev(
+            strsplit(summary[row, "proba"], ";")[[1]]), collapse=";")
+        }
+        if(!is.na(summary[row, "trueOrt"])){
+          summary[row, "trueOrt"] = 2
+        }
       }
     }
   }
   # Create igraph object from summary
-  ig_graph = igraph::graph_from_data_frame(summary)
-
-  # Set correct orientations
-  igraph::E(ig_graph)$arrow.mode = rep(0, igraph::gsize(ig_graph))
-  igraph::E(ig_graph)$arrow.mode[igraph::E(ig_graph)$infOrt == 2]  = 2
-  igraph::E(ig_graph)$arrow.mode[igraph::E(ig_graph)$infOrt == -2] = 1
-  igraph::E(ig_graph)$arrow.mode[igraph::E(ig_graph)$infOrt == 6]  = 3
+  ig_graph = igraph::graph_from_data_frame(summary,
+                                           vertices=colnames(miic.res$adj_matrix))
 
   # Set visuals
   igraph::V(ig_graph)$color <- "lightblue"
   igraph::V(ig_graph)$label.cex <- 0.8
   igraph::V(ig_graph)$size <- 12
 
-  min_width = 0.2
-  igraph::E(ig_graph)$width <-
-    pmax(log10(igraph::E(ig_graph)$info_cond - igraph::E(ig_graph)$cplx),
-         min_width)
-  igraph::E(ig_graph)$arrow.size <- scales::rescale(igraph::E(ig_graph)$width, to=c(0.2,1))
-
-  # Negative pcors are blue, null is dark grey and positive are red
-  igraph::E(ig_graph)$color <- "darkgray"
-  pcor_palette = grDevices::colorRampPalette(c("blue", "darkgrey", "red"))
-  edge_colors_indices = sapply(
-    igraph::E(ig_graph)$partial_correlation,
-    function(pcor) {
-      ifelse(is.na(pcor), 100, abs(round(pcor * 100)) + 100 * (pcor > 0))
-    }
-  )
-  igraph::E(ig_graph)$color <- pcor_palette(200)[edge_colors_indices]
-
+  if (nrow(summary) > 0) {
+    # Set correct orientations
+    igraph::E(ig_graph)$arrow.mode = rep(0, igraph::gsize(ig_graph))
+    igraph::E(ig_graph)$arrow.mode[igraph::E(ig_graph)$infOrt == 2]  = 2
+    igraph::E(ig_graph)$arrow.mode[igraph::E(ig_graph)$infOrt == -2] = 1
+    igraph::E(ig_graph)$arrow.mode[igraph::E(ig_graph)$infOrt == 6]  = 3
+  
+    min_width = 0.2
+    igraph::E(ig_graph)$width <-
+      pmax(log10(igraph::E(ig_graph)$info_cond - igraph::E(ig_graph)$cplx),
+           min_width)
+    igraph::E(ig_graph)$arrow.size <- scales::rescale(igraph::E(ig_graph)$width, to=c(0.2,1))
+  
+    # Negative pcors are blue, null is dark grey and positive are red
+    igraph::E(ig_graph)$color <- "darkgray"
+    pcor_palette = grDevices::colorRampPalette(c("blue", "darkgrey", "red"))
+    edge_colors_indices = sapply(
+      igraph::E(ig_graph)$partial_correlation,
+      function(pcor) {
+        ifelse(is.na(pcor), 100, abs(round(pcor * 100)) + 100 * (pcor > 0))
+      }
+    )
+    igraph::E(ig_graph)$color <- pcor_palette(200)[edge_colors_indices]
+  }
   return(ig_graph)
 }
