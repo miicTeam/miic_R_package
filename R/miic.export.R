@@ -116,7 +116,7 @@ getIgraph <- function(miic.res) {
   ig_graph = igraph::graph_from_data_frame(summary,
                                            vertices=colnames(miic.res$adj_matrix))
 
-  # Set visuals
+  # Set nodes visuals
   igraph::V(ig_graph)$color <- "lightblue"
   igraph::V(ig_graph)$label.cex <- 0.8
   igraph::V(ig_graph)$size <- 12
@@ -132,6 +132,7 @@ getIgraph <- function(miic.res) {
   igraph::E(ig_graph)$arrow.mode[igraph::E(ig_graph)$infOrt == -2] = 1
   igraph::E(ig_graph)$arrow.mode[igraph::E(ig_graph)$infOrt == 6]  = 3
 
+  # Set edges visuals
   min_width = 0.2
   igraph::E(ig_graph)$width <-
     pmax(log10(igraph::E(ig_graph)$info_cond - igraph::E(ig_graph)$cplx),
