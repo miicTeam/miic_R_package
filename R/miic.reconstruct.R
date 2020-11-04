@@ -68,7 +68,7 @@ miic.reconstruct <- function(input_data = NULL,
     "ori_proba_ratio" = ori_proba_ratio,
     "propagation" = propagation,
     "test_mar" = test_mar,
-    "max_bins" = 50,
+    "max_bins" = min(50, n_samples),
     "var_names" = var_names,
     "verbose" = verbose
   )

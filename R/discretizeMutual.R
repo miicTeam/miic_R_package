@@ -188,16 +188,6 @@ discretizeMutual <- function(X,
     )
   }
 
-  initbins <- NULL
-  if ((initbins > length(X)) || is.null(initbins)) {
-    initbins <- round(length(X)**(1 / 3))
-  }
-
-  if ((maxbins > length(X)) ||
-    is.null(maxbins) || (maxbins < initbins)) {
-    maxbins <- 5 * initbins
-  }
-
   # Remove rows for which any input vector is NA
   matrix_u_NA <- matrix()
   NArows <- logical(length(X))
@@ -230,6 +220,16 @@ discretizeMutual <- function(X,
     for (k in 1:ncol(matrix_u)) {
       matrix_u_NA[, k] <- matrix_u[!NArows, k]
     }
+  }
+
+  initbins <- NULL
+  if ((initbins > length(X)) || is.null(initbins)) {
+    initbins <- min(30, round(length(X)**(1 / 3)))
+  }
+
+  if ((maxbins > length(X)) ||
+    is.null(maxbins) || (maxbins < initbins)) {
+    maxbins <- min(length(X), 5 * initbins)
   }
 
   # Converting factors to discrete numerical variables

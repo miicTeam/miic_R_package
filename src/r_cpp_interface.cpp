@@ -105,6 +105,8 @@ void setEnvironmentFromR(const Rcpp::List& input_data,
 
   if (arg_list.containsElementNamed("max_bins"))
     environment.maxbins = as<int>(arg_list["max_bins"]);
+  if (environment.maxbins > n_samples)
+    environment.maxbins = n_samples;
 
   if (arg_list.containsElementNamed("n_threads"))
     environment.n_threads = as<int>(arg_list["n_threads"]);
