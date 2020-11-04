@@ -111,6 +111,7 @@ getIgraph <- function(miic.res) {
       }
     }
   }
+  
   # Create igraph object from summary
   ig_graph = igraph::graph_from_data_frame(summary,
                                            vertices=colnames(miic.res$adj_matrix))
@@ -120,29 +121,33 @@ getIgraph <- function(miic.res) {
   igraph::V(ig_graph)$label.cex <- 0.8
   igraph::V(ig_graph)$size <- 12
 
-  if (nrow(summary) > 0) {
-    # Set correct orientations
-    igraph::E(ig_graph)$arrow.mode = rep(0, igraph::gsize(ig_graph))
-    igraph::E(ig_graph)$arrow.mode[igraph::E(ig_graph)$infOrt == 2]  = 2
-    igraph::E(ig_graph)$arrow.mode[igraph::E(ig_graph)$infOrt == -2] = 1
-    igraph::E(ig_graph)$arrow.mode[igraph::E(ig_graph)$infOrt == 6]  = 3
-  
-    min_width = 0.2
-    igraph::E(ig_graph)$width <-
-      pmax(log10(igraph::E(ig_graph)$info_cond - igraph::E(ig_graph)$cplx),
-           min_width)
-    igraph::E(ig_graph)$arrow.size <- scales::rescale(igraph::E(ig_graph)$width, to=c(0.2,1))
-  
-    # Negative pcors are blue, null is dark grey and positive are red
-    igraph::E(ig_graph)$color <- "darkgray"
-    pcor_palette = grDevices::colorRampPalette(c("blue", "darkgrey", "red"))
-    edge_colors_indices = sapply(
-      igraph::E(ig_graph)$partial_correlation,
-      function(pcor) {
-        ifelse(is.na(pcor), 100, abs(round(pcor * 100)) + 100 * (pcor > 0))
-      }
-    )
-    igraph::E(ig_graph)$color <- pcor_palette(200)[edge_colors_indices]
+  if (nrow(summary) == 0) {
+    # When no edge, returns immediately the graph, do not define edges visuals
+    return (ig_graph)
   }
+  
+  # Set correct orientations
+  igraph::E(ig_graph)$arrow.mode = rep(0, igraph::gsize(ig_graph))
+  igraph::E(ig_graph)$arrow.mode[igraph::E(ig_graph)$infOrt == 2]  = 2
+  igraph::E(ig_graph)$arrow.mode[igraph::E(ig_graph)$infOrt == -2] = 1
+  igraph::E(ig_graph)$arrow.mode[igraph::E(ig_graph)$infOrt == 6]  = 3
+
+  min_width = 0.2
+  igraph::E(ig_graph)$width <-
+    pmax(log10(igraph::E(ig_graph)$info_cond - igraph::E(ig_graph)$cplx),
+         min_width)
+  igraph::E(ig_graph)$arrow.size <- scales::rescale(igraph::E(ig_graph)$width, to=c(0.2,1))
+
+  # Negative pcors are blue, null is dark grey and positive are red
+  igraph::E(ig_graph)$color <- "darkgray"
+  pcor_palette = grDevices::colorRampPalette(c("blue", "darkgrey", "red"))
+  edge_colors_indices = sapply(
+    igraph::E(ig_graph)$partial_correlation,
+    function(pcor) {
+      ifelse(is.na(pcor), 100, abs(round(pcor * 100)) + 100 * (pcor > 0))
+    }
+  )
+  igraph::E(ig_graph)$color <- pcor_palette(200)[edge_colors_indices]
+
   return(ig_graph)
 }
