@@ -13,4 +13,5 @@ src/*.dll
 src/miic.so
 # clangd
 src/.clangd/
+src/.cache/clangd/
 compile_commands.json
