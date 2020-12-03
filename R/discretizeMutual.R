@@ -222,14 +222,10 @@ discretizeMutual <- function(X,
     }
   }
 
-  initbins <- NULL
-  if ((initbins > length(X)) || is.null(initbins)) {
-    initbins <- min(30, round(length(X)**(1 / 3)))
-  }
+  initbins <- min(30, round(length(X)**(1 / 3)))
 
-  if ((maxbins > length(X)) ||
-    is.null(maxbins) || (maxbins < initbins)) {
-    maxbins <- min(length(X), 5 * initbins)
+  if (is.null(maxbins) || maxbins > length(X) || maxbins < initbins) {
+    maxbins <- min(length(X), 5 * initbins, 50)
   }
 
   # Converting factors to discrete numerical variables
