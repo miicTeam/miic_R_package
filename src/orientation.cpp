@@ -137,7 +137,8 @@ vector<vector<string>> orientationProbability(Environment& environment) {
     if ((info_int != 0 && info_sign != proba_sign) ||
         (info_int == 0 && proba_sign == -1))
       error = "1";
-
+    if (I3_list[i] == 0)
+      error = "0";
     using std::to_string;
     orientations.emplace_back(std::initializer_list<string>{
         environment.nodes[triple[0]].name,
