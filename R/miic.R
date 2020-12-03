@@ -108,6 +108,12 @@
 #' the sign of an edge using partial linear correlation. If the variable is
 #' categorical but not ordinal, this column may instead contain NA.
 #'
+#' "is_contextual" (optional) contains a binary value that specifies if a
+#' variable is to be considered as a contextual variable (1) or not (0).
+#' Contextual variables cannot be the child node of any other variable (cannot
+#' have edge with arrowhead pointing to them), no edge can exist between two
+#' contextual variables.
+#'
 #' @param true_edges [a data frame]
 #' An optional E*2 data frame containing the E edges of the true graph for
 #' computing performance after the run.
@@ -409,6 +415,7 @@ miic <- function(input_data,
     cat("START miic...\n")
   }
 
+  is_contextual <- NULL
   is_continuous <- sapply(input_data, is.numeric)
   # Use the "state order" file to convert discrete numerical variables to factors
   if (!is.null(state_order)) {
@@ -417,6 +424,9 @@ miic <- function(input_data,
       print(errorCodeToString(err_code))
       print("WARNING: Category order file will be ignored!")
       state_order <- NULL
+    }
+    if (!is.null(state_order$is_contextual)) {
+      is_contextual <- as.numeric(state_order$is_contextual)
     }
     for (row in 1:nrow(state_order)) {
       col <- as.character(state_order[row, "var_names"])
@@ -488,6 +498,7 @@ miic <- function(input_data,
         propagation = propagation,
         conf_threshold = conf_threshold,
         verbose = verbose,
+        is_contextual = is_contextual,
         is_continuous = is_continuous,
         sample_weights = sample_weights,
         test_mar = test_mar,
