@@ -25,6 +25,8 @@ using namespace miic::utility;
 
 namespace {
 
+constexpr double kEpsI3 = 1.0e-10;
+
 bool acceptProba(double proba, double ori_proba_ratio) {
   return (1 - proba) / proba < ori_proba_ratio;
 }
@@ -127,18 +129,15 @@ vector<vector<string>> orientationProbability(Environment& environment) {
     const auto& triple = triples[i];
     const auto& probas = probas_list[i];
 
-    int info_int = round(I3_list[i] - 0.5);
-    int info_sign = (info_int > 0) - (info_int < 0);
+    double I3 = fabs(I3_list[i]) < kEpsI3 ? 0 : I3_list[i];
+    int info_sign = (I3 > 0) - (I3 < 0);
+    // -1: v-structure, 1: non-v-structure
+    int proba_sign = (probas[1] > 0.5 && probas[2] > 0.5) ? -1 : 1;
+    // error if I3 is non-zero but info_sign is different from proba_sign,
+    // since positive I3 indicates non-v-structure and negative I3 indicates
+    // v-structure.
+    string error = (I3 != 0 && info_sign != proba_sign) ? "1" : "0";
 
-    int proba_sign = 1;
-    if (probas[1] > 0.5 && probas[2] > 0.5) proba_sign = -1;
-
-    string error = "0";
-    if ((info_int != 0 && info_sign != proba_sign) ||
-        (info_int == 0 && proba_sign == -1))
-      error = "1";
-    if (I3_list[i] == 0)
-      error = "0";
     using std::to_string;
     orientations.emplace_back(std::initializer_list<string>{
         environment.nodes[triple[0]].name,
