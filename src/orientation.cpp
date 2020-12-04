@@ -24,7 +24,7 @@ using namespace miic::structure;
 using namespace miic::utility;
 
 namespace {
-// If I3 is that small, it will be considered as zero
+
 constexpr double kEpsI3 = 1.0e-10;
 
 bool acceptProba(double proba, double ori_proba_ratio) {
