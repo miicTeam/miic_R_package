@@ -80,7 +80,7 @@ miic.write.network.cytoscape <- function(g, file, layout = NULL) {
     )
     line <- paste(
       line,
-      "\t<key id=\"log_confidence\" for=\"edge\" attr.name=\"log_confidence\" attr.type=\"double\"/>\n",
+      "\t<key id=\"info_shifted\" for=\"edge\" attr.name=\"info_shifted\" attr.type=\"double\"/>\n",
       sep = ""
     )
     line <- paste(
@@ -128,8 +128,8 @@ miic.write.network.cytoscape <- function(g, file, layout = NULL) {
 
     # cicle on edges
     for (index in indexes) {
-      if (!is.na(summary[index, "log_confidence"])) {
-        weigth <- summary[index, "log_confidence"]
+      if (!is.na(summary[index, "info_shifted"])) {
+        weigth <- summary[index, "info_shifted"]
       } else {
         weigth <- (summary[index, "partial_correlation"])
       }
@@ -355,13 +355,13 @@ miic.write.network.cytoscape <- function(g, file, layout = NULL) {
         )
       }
 
-      if (!all(is.na(summary[, "log_confidence"]))) {
-        if (summary[index, "log_confidence"] <= 1) {
+      if (!all(is.na(summary[, "info_shifted"]))) {
+        if (summary[index, "info_shifted"] <= 1) {
           value <- 1
-        } else if (summary[index, "log_confidence"] >= 20) {
+        } else if (summary[index, "info_shifted"] >= 20) {
           value <- 8
         } else {
-          value <- summary[index, "log_confidence"] * 8 / 20
+          value <- summary[index, "info_shifted"] * 8 / 20
         }
       } else {
         value <- (abs(summary[index, "partial_correlation"]) + 1) * 4
@@ -397,8 +397,8 @@ miic.write.network.cytoscape <- function(g, file, layout = NULL) {
         sep = ""
       )
       line <- paste(line,
-        "\t\t\t<data key=\"log_confidence\">",
-        summary[index, "log_confidence"],
+        "\t\t\t<data key=\"info_shifted\">",
+        summary[index, "info_shifted"],
         "</data>\n",
         sep = ""
       )
@@ -670,12 +670,12 @@ miic.write.network.cytoscape <- function(g, file, layout = NULL) {
         targetArrowNum <- fromStringToNumberArrowType(value)
       }
 
-      if (summary[index, "log_confidence"] <= 1) {
+      if (summary[index, "info_shifted"] <= 1) {
         value <- 1
-      } else if (summary[index, "log_confidence"] >= 20) {
+      } else if (summary[index, "info_shifted"] >= 20) {
         value <- 8
       } else {
-        value <- summary[index, "log_confidence"] * 8 / 20
+        value <- summary[index, "info_shifted"] * 8 / 20
       }
 
       line <- paste(
@@ -715,8 +715,8 @@ miic.write.network.cytoscape <- function(g, file, layout = NULL) {
       )
       line <- paste(
         line,
-        "\t\t\t<att name=\"log_confidence\" type=\"double\" value=\"",
-        summary[index, "log_confidence"],
+        "\t\t\t<att name=\"info_shifted\" type=\"double\" value=\"",
+        summary[index, "info_shifted"],
         "\"/>\n",
         sep = ""
       )
