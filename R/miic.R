@@ -105,8 +105,9 @@
 #' "levels_increasing_order" (optional) contains a single character string
 #' with all of the unique levels of the ordinal variable in increasing order,
 #' delimited by comma ','. It will be used during the post-processing to compute
-#' the sign of an edge using partial linear correlation. If the variable is
-#' categorical but not ordinal, this column may instead contain NA.
+#' the sign of an edge using Spearman's rank correlation. If the variable is
+#' continuous or is categorical but not ordinal, this column may be left empty
+#' or contain NA instead.
 #'
 #' "is_contextual" (optional) contains a binary value that specifies if a
 #' variable is to be considered as a contextual variable (1) or not (0).
