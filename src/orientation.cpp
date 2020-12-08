@@ -80,9 +80,10 @@ vector<vector<string>> orientationProbability(Environment& environment) {
   }
 
   // Compute the arrowhead probability of each edge endpoint
-  vector<ProbaArray> probas_list = getOriProbasList(triples, I3_list,
-      environment.latent_orientation, environment.degenerate,
-      environment.propagation, environment.half_v_structure);
+  vector<ProbaArray> probas_list =
+      getOriProbasList(triples, I3_list, environment.is_contextual,
+          environment.latent_orientation, environment.degenerate,
+          environment.propagation, environment.half_v_structure);
   // update probas_list for possible inconsistencies
   class ProbaArrayMap : public std::map<std::pair<int, int>, double> {
    public:

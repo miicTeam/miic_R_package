@@ -1,4 +1,5 @@
 miic.reconstruct <- function(input_data = NULL,
+                             is_contextual = NULL,
                              is_continuous = NULL,
                              black_box = NULL,
                              n_threads = 1,
@@ -81,6 +82,9 @@ miic.reconstruct <- function(input_data = NULL,
   }
   if (!is.null(sample_weights)) {
     arg_list[["sample_weights"]] <- sample_weights
+  }
+  if (!is.null(is_contextual)) {
+    arg_list[["is_contextual"]] <- is_contextual
   }
 
   cpp_input <- list("factor" = input_factor, "double" = input_double,

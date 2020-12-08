@@ -79,6 +79,24 @@ void setEnvironmentFromR(const Rcpp::List& input_data,
   if (arg_list.containsElementNamed("conf_threshold"))
     environment.conf_threshold = as<double>(arg_list["conf_threshold"]);
 
+  if (arg_list.containsElementNamed("is_contextual")) {
+    environment.is_contextual = as<vector<int>>(arg_list["is_contextual"]);
+    // Forbid edges between two contextual variables
+    for (int i = 1; i < n_nodes; ++i) {
+      if (!environment.is_contextual[i]) continue;
+      for (int j = 0; j < i; ++j) {
+        if (environment.is_contextual[j]) {
+          environment.edges(i, j).status = 0;
+          environment.edges(i, j).status_prev = 0;
+          environment.edges(j, i).status = 0;
+          environment.edges(j, i).status_prev = 0;
+        }
+      }
+    }
+  } else {
+    environment.is_contextual.resize(n_nodes, 0);
+  }
+
   if (arg_list.containsElementNamed("sample_weights"))
     environment.sample_weights = as<vector<double>>(arg_list["sample_weights"]);
   if (environment.sample_weights.empty()) {

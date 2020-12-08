@@ -158,11 +158,29 @@ void propagate(bool latent, bool propagation, double I3,
 // param I3_list the 3-point mutual info (N * I'(X;Y;Z|{ui})) of each Triple
 // return vector<ProbaArray> Each ProbaArray is bound to a unshielded Triple
 vector<ProbaArray> getOriProbasList(const vector<Triple>& triples,
-    const vector<double>& I3_list, bool latent, bool degenerate,
-    bool propagation, bool half_v_structure) {
+    const vector<double>& I3_list, const vector<int>& is_contextual,
+    bool latent, bool degenerate, bool propagation, bool half_v_structure) {
   int n_triples = triples.size();
   vector<ProbaArray> probas_list(n_triples);  // to be returned
   for (auto& p_array : probas_list) p_array.fill(0.5);
+  // Set initial probability for triples involving contextual variables
+  for (int i = 0; i < n_triples; ++i) {
+    int X = triples[i][0], Z = triples[i][1], Y = triples[i][2];
+    if (is_contextual[X]) {
+      // Pr(X *-> Z), X cannot be the child node of Z
+      probas_list[i][1] = 1.0;
+    }
+    if (is_contextual[Z]) {
+      // Pr(X <-* Z), Z cannot be the child node of X
+      probas_list[i][0] = 1.0;
+      // Pr(Z *-> Y), Z cannot be the child node of Y
+      probas_list[i][3] = 1.0;
+    }
+    if (is_contextual[Y]) {
+      // Pr(Z <-* Y), Y cannot be the child node of Z
+      probas_list[i][2] = 1.0;
+    }
+  }
 
   auto probas_list2 = probas_list;  // copy
   // For a Triple (X, Z, Y), score is initialized as the probability of the

@@ -34,17 +34,28 @@ values for all the observed variables. The column names correspond to the
 names of the observed variables. Numeric columns will be treated as continuous
 values, factors and character as categorical.}
 
-\item{state_order}{[a data frame]
-An optional d*(2-3) data frame giving the order of the ordinal categorical variables.
-It will be used during post-processing to compute the signs of the edges using partial
-linear correlation. 
-If specified, the data frame must have at least a "var_names" column, containing the
-names of each variable as specified by colnames(input_data). A "var_type" column may
-specify if each variable is to be considered as discrete (0) or continuous (1). And 
-the "levels_increasing_order" column contains a single character string with all of
-the unique levels of the ordinal variable in increasing order, delimited by a comma.
-If the variable is categorical but not ordinal, the "levels_increasing_order" column
-may instead contain NA.}
+\item{state_order}{[a data frame] An optional data frame providing extra
+information for variables. It must have d rows where d is the number of input
+variables, and the following structure (named columns):
+
+"var_names" (required) contains the name of each variable as specified
+by colnames(input_data).
+
+"var_type" (optional) contains a binary value that specifies if each
+variable is to be considered as discrete (0) or continuous (1).
+
+"levels_increasing_order" (optional) contains a single character string
+with all of the unique levels of the ordinal variable in increasing order,
+delimited by comma ','. It will be used during the post-processing to compute
+the sign of an edge using Spearman's rank correlation. If the variable is
+continuous or is categorical but not ordinal, this column may be left empty
+or contain NA instead.
+
+"is_contextual" (optional) contains a binary value that specifies if a
+variable is to be considered as a contextual variable (1) or not (0).
+Contextual variables cannot be the child node of any other variable (cannot
+have edge with arrowhead pointing to them), no edge can exist between two
+contextual variables.}
 
 \item{true_edges}{[a data frame]
 An optional E*2 data frame containing the E edges of the true graph for

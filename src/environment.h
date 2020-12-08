@@ -22,6 +22,7 @@ struct Environment {
   // data_numeric_idx(j, i) = index of i'th smallest value in data_double(j, )
   Grid2d<int> data_numeric_idx;
 
+  vector<int> is_contextual;
   vector<int> is_continuous;
   vector<int> levels;
   vector<int> has_na;
