@@ -54,10 +54,10 @@ summarizeResults <- function(observations = NULL, results = NULL,
   summary <- data.frame(
     x = character(n), y = character(n), type = character(n), ai = character(n),
     info = numeric(n), info_cond = numeric(n), cplx = numeric(n),
-    Nxy_ai = numeric(n), log_confidence = numeric(n), infOrt = numeric(n),
+    Nxy_ai = numeric(n), info_shifted = numeric(n), infOrt = numeric(n),
     trueOrt = numeric(n), isOrtOk = character(n), sign = character(n),
     partial_correlation = numeric(n), isCausal = character(n),
-    proba = character(n),
+    proba = character(n), confidence = character(n),
     stringsAsFactors = FALSE
   )
   if(n == 0) return(summary)
@@ -109,8 +109,13 @@ summarizeResults <- function(observations = NULL, results = NULL,
   # Nxy_ai is the number of samples without missing values used for this edge
   summary$Nxy_ai <- fill_summary_column(summary, edges, "x", "y", "Nxy_ai")
 
-  # log_confidence is the difference between MI and cplx
-  summary$log_confidence <- summary$info_cond - summary$cplx
+  # info_shifted is the difference between MI and cplx
+  summary$info_shifted <- summary$info_cond - summary$cplx
+
+  # confidence is the ratio of info_shifted between randomized and normal sample
+  summary$confidence <- fill_summary_column(
+      summary, edges, "x", "y", "confidence")
+  summary$confidence[summary$confidence == -1] <- NA
 
   # infOrt is the inferred edge orientation
   summary$infOrt <- apply(summary, 1, function(row, adj_matrix) {
@@ -193,7 +198,7 @@ summarizeResults <- function(observations = NULL, results = NULL,
   }
 
   # Sort summary by log confidence and return it
-  summary <- summary[order(summary$log_confidence, decreasing = TRUE), ]
+  summary <- summary[order(summary$info_shifted, decreasing = TRUE), ]
   rownames(summary) <- c()
   return(summary)
 }

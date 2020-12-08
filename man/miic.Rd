@@ -179,7 +179,7 @@ A \emph{miic-like} object that contains:
  the  complexity have been computed. If the input dataset has no missing value, the
  number of samples is the same for all pairs and corresponds to the total
  number of samples.
- \item \emph{log_confidence:} represents the \emph{info} - \emph{cplx} value.
+ \item \emph{info_shifted:} represents the \emph{info} - \emph{cplx} value.
  It is a way to quantify the strength of the edge (\emph{x}, \emph{y}).
  \item \emph{confidenceRatio:} this column is present if the confidence cut
  is > 0 and it represents the ratio between the probability to reject
