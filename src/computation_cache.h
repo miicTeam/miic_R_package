@@ -123,6 +123,7 @@ struct ScoreKey {
 using MutualInfoMap = std::map<MutualInfoKey, InfoBlock>;
 using Info3PointMap = std::map<Info3PointKey, double>;
 using ScoreMap = std::map<ScoreKey, double>;
+using EntropyMap = std::map<ScoreKey, double>;
 
 class InfoScoreCache {
  public:
@@ -168,10 +169,23 @@ class InfoScoreCache {
     score_map_.insert({ScoreKey(X, Y, Z, ui), score});
   }
 
+  pair<double, bool> getEntropy(int X, int Y, int Z, const vector<int>& ui) {
+    auto it = entropy_map_.find(ScoreKey(X, Y, Z, ui));
+    bool found = it != entropy_map_.end();
+    return std::make_pair(found ? it->second : 0, found);
+  }
+
+  void saveEntropy(int X, int Y, int Z, const vector<int>& ui, double H) {
+    // Already in critical block
+    entropy_map_.insert({ScoreKey(X, Y, Z, ui), H});
+  }
+
+
  private:
   MutualInfoMap mi_map_;
   Info3PointMap i3_map_;
   ScoreMap score_map_;
+  EntropyMap entropy_map_;
 };
 
 struct CompCache {
