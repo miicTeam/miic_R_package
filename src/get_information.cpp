@@ -218,6 +218,96 @@ InfoBlock getCondMutualInfo(int X, int Y, const vector<int>& ui_list,
   return res;
 }
 
+double getEntropy(Environment& environment, int Z, int X, int Y) {
+  TempAllocatorScope scope;
+  auto& cache = environment.cache.info_score;
+
+  double H{0};
+  bool found{false};
+  vector<int> ui_list; 
+  std::tie(H, found) = cache->getEntropy(X, Y, Z, ui_list);
+  if (found) return H;
+
+  bool any_na = environment.has_na[X] || environment.has_na[Y] ||
+                environment.has_na[Z];
+  // Mark rows containing NAs and count the number of complete samples
+  // 1: sample contains no NA, 0: sample contains NA
+  TempVector<int> sample_is_not_NA(environment.n_samples, 1);
+  // vector with the number of rows containing NAs seen at rank i
+  TempVector<int> na_count(environment.n_samples, 0);
+  int n_samples_non_na_z = environment.n_samples;
+  if (any_na)
+    n_samples_non_na_z = countNonNA(
+        X, Y, Z, ui_list, environment.data_numeric, sample_is_not_NA, na_count);
+
+  if (n_samples_non_na_z <= 2) {  // not sufficient statistics
+      cache->saveEntropy(X, Y, Z, ui_list, 0);
+      return 0;
+  }
+
+  // Allocate data reducted *_red without rows containing NAs
+  // All *_red variables are passed to the optimization routine
+  TempGrid2d<int> data_red(3, n_samples_non_na_z);
+  TempGrid2d<int> data_idx_red(3, n_samples_non_na_z);
+  TempVector<int> levels_red(3);
+  TempVector<int> is_continuous_red(3);
+  TempVector<int> var_idx_red(3);
+  TempVector<double> weights_red(n_samples_non_na_z);
+
+  bool flag_sample_weights = filterNA(X, Y, Z, ui_list,
+      environment.data_numeric, environment.data_numeric_idx,
+      environment.levels, environment.is_continuous, environment.sample_weights,
+      sample_is_not_NA, na_count, data_red, data_idx_red, levels_red,
+      is_continuous_red, var_idx_red, weights_red, any_na);
+
+  // If Z has 1 or less level, its entropy is zero.
+  if (levels_red[2] <= 1) {
+      cache->saveEntropy(X, Y, Z, ui_list, 0);
+      return 0;
+  }
+
+  for(int skip = 0; skip <= 1; skip++){
+    // Compute I(X;Z) and I(Y;Z) on {X,Y,Z} support (complete samples)
+    // We cannot use the InfoScoreCache because of this support
+    TempGrid2d<int> part_data_red(2, n_samples_non_na_z);
+    TempGrid2d<int> part_data_idx_red(2, n_samples_non_na_z);
+    TempVector<int> part_levels_red(2);
+    TempVector<int> part_is_continuous_red(2);
+    TempVector<int> part_var_idx_red(2);
+    InfoBlock res{0, 0, 0};
+
+    for(int l = 0; l < 2; l++){
+      int skip_l = l + (l >= skip);
+      copy(data_red.row_begin(skip_l), data_red.row_end(skip_l),
+           part_data_red.row_begin(l));
+      copy(data_idx_red.row_begin(skip_l), data_idx_red.row_end(skip_l),
+           part_data_idx_red.row_begin(l));
+      part_levels_red[l] = levels_red[skip_l];
+      part_is_continuous_red[l] = is_continuous_red[skip_l];
+      part_var_idx_red[l] = l;
+    }
+
+    if (std::all_of(begin(part_is_continuous_red), end(part_is_continuous_red),
+            [](int x) { return x == 0; })) {
+      res = computeCondMutualInfoDiscrete(part_data_red, part_levels_red,
+          part_var_idx_red, weights_red, environment.cplx,
+          environment.cache.cterm);
+    } else {
+      res = computeCondMutualInfo(part_data_red, part_data_idx_red,
+          part_levels_red, part_is_continuous_red, part_var_idx_red, weights_red,
+          flag_sample_weights, environment.initbins, environment.maxbins,
+          environment.cplx, environment.cache.cterm);
+    }
+    if (std::fabs(res.I) < kPrecision) res.I = 0;
+    if (std::fabs(res.k) < kPrecision) res.k = 0;
+
+    H += res.I-res.k;
+  }
+
+  cache->saveEntropy(X, Y, Z, ui_list, H);
+  return H;
+}
+
 // parallel: whether the search can be done in parallel
 void searchForBestContributingNode(
     Environment& environment, int X, int Y, bool parallel) {
@@ -244,10 +334,19 @@ void searchForBestContributingNode(
 #ifdef _OPENMP
 #pragma omp critical
 #endif
+{
     if (score > info->Rxyz_ui) {
       info->top_z = Z;
       info->Rxyz_ui = score;
+    } else if (score == info->Rxyz_ui) {
+      double H_old = getEntropy(environment, info->top_z, X, Y);
+      double H_new = getEntropy(environment, Z, X, Y);
+      if (H_new > H_old || (H_new == H_old && environment.noise_vec[0] > 0)){
+        info->top_z = Z;
+        info->Rxyz_ui = score;
+      }
     }
+}
   }
 }
 
