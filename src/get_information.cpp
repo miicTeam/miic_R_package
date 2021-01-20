@@ -23,6 +23,7 @@ using namespace miic::utility;
 using std::vector;
 
 constexpr double kPrecision = 1.e-10;
+constexpr double kEpsScore = 1.0e-12;
 
 // Return either (when bool get_info == true)
 //   shifted 3-point information I(X;Y;Z|ui) - k(X;Y;Z|ui),
@@ -224,8 +225,7 @@ double getEntropy(Environment& environment, int Z, int X, int Y) {
 
   double H{0};
   bool found{false};
-  vector<int> ui_list; 
-  std::tie(H, found) = cache->getEntropy(X, Y, Z, ui_list);
+  std::tie(H, found) = cache->getEntropy(X, Y, Z);
   if (found) return H;
 
   bool any_na = environment.has_na[X] || environment.has_na[Y] ||
@@ -238,10 +238,10 @@ double getEntropy(Environment& environment, int Z, int X, int Y) {
   int n_samples_non_na_z = environment.n_samples;
   if (any_na)
     n_samples_non_na_z = countNonNA(
-        X, Y, Z, ui_list, environment.data_numeric, sample_is_not_NA, na_count);
+        X, Y, Z, vector<int>(), environment.data_numeric, sample_is_not_NA, na_count);
 
   if (n_samples_non_na_z <= 2) {  // not sufficient statistics
-      cache->saveEntropy(X, Y, Z, ui_list, 0);
+      cache->saveEntropy(X, Y, Z, 0);
       return 0;
   }
 
@@ -254,7 +254,7 @@ double getEntropy(Environment& environment, int Z, int X, int Y) {
   TempVector<int> var_idx_red(3);
   TempVector<double> weights_red(n_samples_non_na_z);
 
-  bool flag_sample_weights = filterNA(X, Y, Z, ui_list,
+  bool flag_sample_weights = filterNA(X, Y, Z, vector<int>(),
       environment.data_numeric, environment.data_numeric_idx,
       environment.levels, environment.is_continuous, environment.sample_weights,
       sample_is_not_NA, na_count, data_red, data_idx_red, levels_red,
@@ -262,7 +262,7 @@ double getEntropy(Environment& environment, int Z, int X, int Y) {
 
   // If Z has 1 or less level, its entropy is zero.
   if (levels_red[2] <= 1) {
-      cache->saveEntropy(X, Y, Z, ui_list, 0);
+      cache->saveEntropy(X, Y, Z, 0);
       return 0;
   }
 
@@ -304,7 +304,7 @@ double getEntropy(Environment& environment, int Z, int X, int Y) {
     H += res.I-res.k;
   }
 
-  cache->saveEntropy(X, Y, Z, ui_list, H);
+  cache->saveEntropy(X, Y, Z, H);
   return H;
 }
 
@@ -338,10 +338,11 @@ void searchForBestContributingNode(
     if (score > info->Rxyz_ui) {
       info->top_z = Z;
       info->Rxyz_ui = score;
-    } else if (score == info->Rxyz_ui) {
+    } else if (fabs(score - info->Rxyz_ui) < kEpsScore) {
       double H_old = getEntropy(environment, info->top_z, X, Y);
       double H_new = getEntropy(environment, Z, X, Y);
-      if (H_new > H_old || (H_new == H_old && environment.noise_vec[0] > 0)){
+      if (H_new > H_old ||
+          (fabs(H_new - H_old) < kEpsScore && environment.noise_vec[0] > 0)) {
         info->top_z = Z;
         info->Rxyz_ui = score;
       }
