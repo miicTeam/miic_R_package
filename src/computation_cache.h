@@ -169,15 +169,15 @@ class InfoScoreCache {
     score_map_.insert({ScoreKey(X, Y, Z, ui), score});
   }
 
-  pair<double, bool> getEntropy(int X, int Y, int Z, const vector<int>& ui) {
-    auto it = entropy_map_.find(ScoreKey(X, Y, Z, ui));
+  pair<double, bool> getEntropy(int X, int Y, int Z) {
+    auto it = entropy_map_.find(ScoreKey(X, Y, Z, vector<int>()));
     bool found = it != entropy_map_.end();
     return std::make_pair(found ? it->second : 0, found);
   }
 
-  void saveEntropy(int X, int Y, int Z, const vector<int>& ui, double H) {
+  void saveEntropy(int X, int Y, int Z, double H) {
     // Already in critical block
-    entropy_map_.insert({ScoreKey(X, Y, Z, ui), H});
+    entropy_map_.insert({ScoreKey(X, Y, Z, vector<int>()), H});
   }
 
 
