@@ -66,8 +66,10 @@ List reconstruct(List input_data, List arg_list) {
     // moment of initialization
     for (int i = 0; i < environment.n_nodes; i++) {
       for (int j = 0; j < environment.n_nodes; j++) {
-        environment.edges(i, j).status_prev = environment.edges(i, j).status;
-        environment.edges(i, j).status = environment.edges(i, j).status_init;
+        auto& edge = environment.edges(i, j);
+        edge.status_prev = edge.status;
+        edge.status = edge.status_init;
+        if (edge.status != 0) edge.proba_head = 0.5;
       }
     }
     lap_start = getLapStartTime();
@@ -160,6 +162,7 @@ List reconstruct(List input_data, List arg_list) {
   const auto& time = environment.exec_time;
   List result = List::create(
       _["adj_matrix"]        = getAdjMatrix(environment.edges),
+      _["proba_adj_matrix"]  = getProbaAdjMatrix(environment.edges),
       _["edges"]             = getEdgesInfoTable(environment.edges,
                                    environment.nodes),
       _["orientations.prob"] = orientations,
@@ -170,6 +173,8 @@ List reconstruct(List input_data, List arg_list) {
     int size = is_consistent ? cycle_tracker.getCycleSize()
                              : environment.max_iteration;
     result.push_back(cycle_tracker.getAdjMatrices(size), "adj_matrices");
+    result.push_back(
+        cycle_tracker.getProbaAdjMatrices(size), "proba_adj_matrices");
     result.push_back(is_consistent, "is_consistent");
   }
   delete li_alloc_ptr;

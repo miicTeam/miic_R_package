@@ -17,7 +17,7 @@ namespace reconstruction {
 namespace detail {
 using std::vector;
 using namespace structure;
-using utility::getAdjMatrix;
+using namespace utility;
 
 // convert 2d index in a n_nodes * n_nodes grid to 1d index
 inline int getIndex1D(int i, int j, int n_nodes) { return j + i * n_nodes; }
@@ -36,6 +36,7 @@ class CycleTracker {
   CycleTracker(Grid2d<Edge>& edges, const vector<EdgeID>& edge_list)
       : edges_(edges), edge_list_(edge_list) {}
   vector<vector<int>> getAdjMatrices(int size);
+  vector<vector<double>> getProbaAdjMatrices(int size);
   int getCycleSize() { return cycle_size; }
   // check if a cycle exists between the current and the past iterations
   bool hasCycle();
@@ -47,9 +48,12 @@ class CycleTracker {
     // value: status of edge in the previous iteration
     std::map<int, int> changed_edges;
     vector<int> adj_matrix_1d;
+    vector<double> proba_adj_matrix_1d;
 
     Iteration(const Grid2d<Edge>& edges, int i)
-        : index(i), adj_matrix_1d(getAdjMatrix(edges)) {
+        : index(i),
+          adj_matrix_1d(getAdjMatrix(edges)),
+          proba_adj_matrix_1d(getProbaAdjMatrix(edges)) {
       int n_nodes = edges.n_rows();
       for (int i = 0; i < n_nodes; ++i) {
         for (int j = 0; j < n_nodes; ++j) {

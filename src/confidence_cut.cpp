@@ -111,6 +111,8 @@ void confidenceCut(Environment& environment) {
       info->connected = 0;
       environment.edges(X, Y).status = 0;
       environment.edges(Y, X).status = 0;
+      environment.edges(X, Y).proba_head = -1;
+      environment.edges(Y, X).proba_head = -1;
       return true;
     } else {
       return false;

@@ -220,6 +220,17 @@ vector<int> getAdjMatrix(const Grid2d<Edge>& edges) {
   return adj;
 }
 
+vector<double> getProbaAdjMatrix(const Grid2d<Edge>& edges) {
+  vector<double> adj(edges.size(), 0.5);
+  size_t n_nodes = edges.n_rows();
+  for (size_t X = 0; X < n_nodes; ++X) {
+    for (size_t Y = 0; Y < n_nodes; ++Y) {
+      adj[Y + X * n_nodes] = edges(X, Y).proba_head;
+    }
+  }
+  return adj;
+}
+
 string toNameString(const vector<Node>& nodes, const vector<int>& vec) {
   if (vec.empty()) {
     return "NA";

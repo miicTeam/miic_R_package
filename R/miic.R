@@ -80,11 +80,18 @@
 #' procedure relyes on probabilities; for more details, see Verny \emph{et al.}, PLoS Comp. Bio. 2017).
 #' If set to FALSE the orientation step is not performed.
 #'
-#' @param ori_proba_ratio [a floating point between 0 and 1] When orienting an
-#' edge according to the probability of orientation, the threshold to accept the
-#' orientation. For a given edge, denote by p > 0.5 the probability of
-#' orientation, the orientation is accepted if (1 - p) / p < ori_proba_ratio.
-#' 0 means reject all orientations, 1 means accept all orientations.
+#' @param ori_proba_ratio [a floating point between 0 and 1] The threshold when
+#' deducing the type of an edge tip (head/tail) from the probability of
+#' orientation. For a given edge tip, denote by p the probability of it being a
+#' head, the orientation is accepted if (1 - p) / p < ori_proba_ratio. 0 means
+#' reject all orientations, 1 means accept all orientations.
+#'
+#' @param ori_consensus_ratio [a floating point between 0 and 1] The threshold
+#' when deducing the type of an consensus edge tip (head/tail) from the average
+#' probability of orientation. For a given edge tip, denote by p the probability
+#' of it being a head, the orientation is accepted if (1 - p) / p <
+#' ori_consensus_ratio. 0 means reject all orientations, 1 means accept all
+#' orientations.
 #'
 #' @param propagation [a boolean value]
 #' If set to FALSE, the skeleton is partially oriented with only the
@@ -150,18 +157,20 @@
 #' is set to "skeleton" or "orientation", the maximum number of iterations
 #' allowed when trying to find a consistent graph. Set to 100 by default.
 #'
-#' @param consensus_threshold [a floating point between 0.5 and 1.0]
-#' When the \emph{consistent} parameter is set to "skeleton" or "orientation",
-#' and when the result graph is inconsistent, or is a union of more than one
-#' inconsistent graphs, a consensus graph will be produced based on a pool of
-#' graphs. If the result graph is inconsistent, then the pool is made of
-#' [max_iteration] graphs from the iterations, otherwise it is made of those
-#' graphs in the union. In the consensus graph, the status of each edge is
-#' determined as follows: Choose from the pool the most probable status. For
-#' example, if the pool contains [A, B, B, B, C], then choose status B, if the
-#' frequency of presence of B (0.6 in the example) is equal to or higher than
-#' [consensus_threshold], then set B as the status of the edge in the consensus
-#' graph, otherwise set undirected edge as the status. Set to 0.8 by default.
+#' @param consensus_threshold [a floating point between 0.5 and 1.0] When the
+#' \emph{consistent} parameter is set to "skeleton" or "orientation", and when
+#' the result graph is inconsistent, or is a union of more than one inconsistent
+#' graphs, a consensus graph will be produced based on a pool of graphs. If the
+#' result graph is inconsistent, then the pool is made of [max_iteration] graphs
+#' from the iterations, otherwise it is made of those graphs in the union. In
+#' the consensus graph, an edge is present when the proportion of non-zero
+#' status in the pool is above the threshold. For example, if the pool contains
+#' [A, B, B, 0, 0], where "A", "B" are different status of the edge and "0"
+#' indicates the absence of the edge. Then the edge is set to connected ("1") if
+#' the proportion of non-zero status (0.6 in the example) is equal to or higher
+#' than [consensus_threshold]. (When set to connected, the orientation of the
+#' edge will be further determined by the average probability of orientation.)
+#' Set to 0.8 by default.
 #'
 #' @param verbose [a boolean value] If TRUE, debugging output is printed.
 #'
@@ -326,6 +335,7 @@ miic <- function(input_data,
                  cplx = c("nml", "mdl"),
                  orientation = TRUE,
                  ori_proba_ratio = 1,
+                 ori_consensus_ratio = 1,
                  propagation = TRUE,
                  latent = c("no", "yes", "orientation"),
                  n_eff = -1,
@@ -528,6 +538,9 @@ miic <- function(input_data,
       true_edges = true_edges,
       state_order = state_order,
       consensus_threshold = consensus_threshold,
+      ori_consensus_ratio = ori_consensus_ratio,
+      latent = latent != "no",
+      propagation = propagation,
       verbose = verbose
     )
   }

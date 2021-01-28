@@ -88,8 +88,10 @@ void setEnvironmentFromR(const Rcpp::List& input_data,
         if (environment.is_contextual[j]) {
           environment.edges(i, j).status = 0;
           environment.edges(i, j).status_prev = 0;
+          environment.edges(i, j).proba_head = -1;
           environment.edges(j, i).status = 0;
           environment.edges(j, i).status_prev = 0;
+          environment.edges(j, i).proba_head = -1;
         }
       }
     }

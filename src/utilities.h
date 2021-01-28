@@ -17,6 +17,8 @@ inline double getLapInterval(TimePoint start_time) {
 }
 
 std::vector<int> getAdjMatrix(const structure::Grid2d<structure::Edge>&);
+std::vector<double> getProbaAdjMatrix(
+    const structure::Grid2d<structure::Edge>&);
 
 std::string toNameString(
     const std::vector<structure::Node>&, const std::vector<int>&);

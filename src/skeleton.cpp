@@ -47,6 +47,8 @@ int initializeEdge(Environment& environment, int X, int Y) {
     environment.edges(Y, X).status = 0;
     environment.edges(X, Y).status_init = 0;
     environment.edges(Y, X).status_init = 0;
+    environment.edges(X, Y).proba_head = -1;
+    environment.edges(Y, X).proba_head = -1;
   } else {
     info->connected = 1;
     environment.edges(X, Y).status = 1;
@@ -225,6 +227,8 @@ bool searchForConditionalIndependence(Environment& environment) {
       unsettled_list.erase(it_max);
       environment.edges(X, Y).status = 0;
       environment.edges(Y, X).status = 0;
+      environment.edges(X, Y).proba_head = -1;
+      environment.edges(Y, X).proba_head = -1;
       top_info->connected = 0;
     } else {
       // Search for next candidate separating node

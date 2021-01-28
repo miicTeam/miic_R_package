@@ -34,8 +34,10 @@ bool acceptProba(double proba, double ori_proba_ratio) {
 // y2x: probability that there is an arrow from node y to x
 // x2y: probability that there is an arrow from node x to y
 void updateAdj(Environment& env, int x, int y, double y2x, double x2y) {
+  env.edges(x, y).proba_head = x2y;
   if (acceptProba(x2y, env.ori_proba_ratio))
     env.edges(x, y).status = 2;
+  env.edges(y, x).proba_head = y2x;
   if (acceptProba(y2x, env.ori_proba_ratio))
     env.edges(y, x).status = 2;
 }
@@ -124,8 +126,8 @@ vector<vector<string>> orientationProbability(Environment& environment) {
     updateAdj(environment, triple[1], triple[2], probas[2], probas[3]);
   }
   // Write output
-  vector<vector<string>> orientations{
-      {"source1", "p1", "p2", "target", "p3", "p4", "source2", "NI3", "Error"}};
+  vector<vector<string>> orientations{{"source1", "p1", "p2", "target", "p3",
+      "p4", "source2", "NI3", "Conflict"}};
   for (size_t i = 0; i < triples.size(); i++) {
     const auto& triple = triples[i];
     const auto& probas = probas_list[i];
@@ -134,10 +136,10 @@ vector<vector<string>> orientationProbability(Environment& environment) {
     int info_sign = (I3 > 0) - (I3 < 0);
     // -1: v-structure, 1: non-v-structure
     int proba_sign = (probas[1] > 0.5 && probas[2] > 0.5) ? -1 : 1;
-    // error if I3 is non-zero but info_sign is different from proba_sign,
+    // conflict if I3 is non-zero but info_sign is different from proba_sign,
     // since positive I3 indicates non-v-structure and negative I3 indicates
     // v-structure.
-    string error = (I3 != 0 && info_sign != proba_sign) ? "1" : "0";
+    string conflict = (I3 != 0 && info_sign != proba_sign) ? "1" : "0";
 
     using std::to_string;
     orientations.emplace_back(std::initializer_list<string>{
@@ -146,7 +148,7 @@ vector<vector<string>> orientationProbability(Environment& environment) {
         environment.nodes[triple[1]].name,
         to_string(probas[2]), to_string(probas[3]),
         environment.nodes[triple[2]].name,
-        to_string(I3_list[i]), error});
+        to_string(I3_list[i]), conflict});
   }
   return orientations;
 }
