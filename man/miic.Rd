@@ -13,7 +13,7 @@ miic(
   cplx = c("nml", "mdl"),
   orientation = TRUE,
   ori_proba_ratio = 1,
-  ori_consensus_ratio = 1,
+  ori_consensus_ratio = NULL,
   propagation = TRUE,
   latent = c("no", "yes", "orientation"),
   n_eff = -1,

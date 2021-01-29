@@ -335,7 +335,7 @@ miic <- function(input_data,
                  cplx = c("nml", "mdl"),
                  orientation = TRUE,
                  ori_proba_ratio = 1,
-                 ori_consensus_ratio = 1,
+                 ori_consensus_ratio = NULL,
                  propagation = TRUE,
                  latent = c("no", "yes", "orientation"),
                  n_eff = -1,
@@ -420,6 +420,10 @@ miic <- function(input_data,
 
   if (orientation != TRUE && orientation != FALSE) {
     stop("The orientation type is not correct. Allowed types are TRUE or FALSE")
+  }
+
+  if (is.null(ori_consensus_ratio)) {
+    ori_consensus_ratio <- ori_proba_ratio
   }
 
   if (verbose) {
