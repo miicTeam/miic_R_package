@@ -112,14 +112,31 @@ miic.reconstruct <- function(input_data = NULL,
   res$edges <- df
 
   #  adj_matrix
-  res$adj_matrix <- matrix(unlist(res$adj_matrix), nrow = length(input_data), byrow = TRUE)
+  res$adj_matrix <- matrix(unlist(res$adj_matrix), nrow = length(input_data),
+                           byrow = TRUE)
   colnames(res$adj_matrix) <- var_names
   rownames(res$adj_matrix) <- var_names
+
+  #  proba_adj_matrix
+  res$proba_adj_matrix <- matrix(unlist(res$proba_adj_matrix),
+                                 nrow = length(input_data), byrow = TRUE)
+  colnames(res$proba_adj_matrix) <- var_names
+  rownames(res$proba_adj_matrix) <- var_names
 
   # adj_matrices (when consistent parameter is turned on)
   if (length(res$adj_matrices) > 0) {
     res$adj_matrices <- matrix(unlist(res$adj_matrices),
                                ncol = length(res$adj_matrices))
+  }
+
+  # proba_adj_matrices (when consistent parameter is turned on)
+  if (length(res$proba_adj_matrices) > 0) {
+    res$proba_adj_matrices <- matrix(unlist(res$proba_adj_matrices),
+                               ncol = length(res$proba_adj_matrices))
+    res$proba_adj_matrices[res$proba_adj_matrices == -1] <- NA
+    adj_average <- rowMeans(res$proba_adj_matrices, na.rm = TRUE)
+    res$proba_adj_average <- matrix(unlist(adj_average),
+                                    nrow = length(input_data), byrow = TRUE)
   }
 
   # save time

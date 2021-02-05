@@ -40,6 +40,7 @@ Environment::Environment(int n_samples, int n_nodes, vector<int> vec_numeric,
         // information with other nodes is null.
         edges(i, j).status = 0;
         edges(i, j).status_prev = 0;
+        edges(i, j).proba_head = -1;
       } else {
         // Initialise all other edges.
         edges(i, j).status = 1;
@@ -50,6 +51,7 @@ Environment::Environment(int n_samples, int n_nodes, vector<int> vec_numeric,
   for (int i = 0; i < n_nodes; ++i) {
     edges(i, i).status = 0;
     edges(i, i).status_prev = 0;
+    edges(i, i).proba_head = -1;
   }
 }
 
@@ -59,8 +61,10 @@ void Environment::readBlackbox(const Grid2d<int>& node_list) {
     const auto pair = node_list.getConstRow(i);
     edges(pair[0], pair[1]).status = 0;
     edges(pair[0], pair[1]).status_prev = 0;
+    edges(pair[0], pair[1]).proba_head = -1;
     edges(pair[1], pair[0]).status = 0;
     edges(pair[1], pair[0]).status_prev = 0;
+    edges(pair[1], pair[0]).proba_head = -1;
   }
 }
 

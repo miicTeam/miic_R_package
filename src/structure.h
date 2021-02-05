@@ -212,9 +212,10 @@ struct Edge {
   // 0: not connected;
   // 1: tail (X *-- Y);
   // 2: head (X *-> Y);
-  short int status;       // Current status.
-  short int status_init;  // Status after initialization.
-  short int status_prev;  // Status in the previous iteration.
+  short int status;        // Current status.
+  short int status_init;   // Status after initialization.
+  short int status_prev;   // Status in the previous iteration.
+  double proba_head{0.5};  // Probability that the arrow tip is head (X *-> Y)
   std::shared_ptr<EdgeSharedInfo> shared_info;
 };
 

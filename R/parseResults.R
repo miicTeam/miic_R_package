@@ -1,6 +1,8 @@
 summarizeResults <- function(observations = NULL, results = NULL,
                              true_edges = NULL, state_order = NULL,
-                             consensus_threshold = 0.8, verbose = FALSE) {
+                             consensus_threshold = 0.8,
+                             ori_consensus_ratio = 0.1, latent = TRUE,
+                             propagation = FALSE, verbose = FALSE) {
   # Reduced list of edges that will be summarized. There are 3 categories:
   # - Edges that exist in the miic reconstruction (oriented or not)
   # - Edges that were conditioned away with a non-empty separating set
@@ -56,7 +58,7 @@ summarizeResults <- function(observations = NULL, results = NULL,
     info = numeric(n), info_cond = numeric(n), cplx = numeric(n),
     Nxy_ai = numeric(n), info_shifted = numeric(n), infOrt = numeric(n),
     trueOrt = numeric(n), isOrtOk = character(n), sign = character(n),
-    partial_correlation = numeric(n), isCausal = character(n),
+    partial_correlation = numeric(n), is_causal = NA,
     proba = character(n), confidence = character(n),
     stringsAsFactors = FALSE
   )
@@ -153,23 +155,24 @@ summarizeResults <- function(observations = NULL, results = NULL,
   )
   summary$partial_correlation <- as.numeric(summary$partial_correlation)
 
-  orientation_probabilities <- results$orientations.prob
-  # isCausal considers whether the source node of an oriented edge is also
-  # at the tip of a V-structure. If so, then the source node has a stronger
-  # indication of being causal.
-  summary$isCausal <- "NA"
-  if ((!is.null(nrow(orientation_probabilities))) &&
-      nrow(orientation_probabilities) > 0 ) {
-    summary$isCausal <- is_causal(summary, orientation_probabilities)
-  }
-
   # proba contains the orientation likelihoods as computed by miic (cf
   # Affeldt & Isambert, UAI 2015 proceedings) : the probabilities of
   # both orientations separated by a semi-colon.
+  orientation_probabilities <- results$orientations.prob
   summary$proba <- sapply(1:nrow(summary), function(i) {
-    paste(findProba(summary, orientation_probabilities, i), collapse = ";")
+    row <- summary[i, ]
+    id_x <- match(row$x, var_names)
+    id_y <- match(row$y, var_names)
+    proba_adj <- results$proba_adj_matrix
+    if (!is.null(results$adj_matrices) && ncol(results$adj_matrices) > 1) {
+      proba_adj <- results$proba_adj_average
+    }
+    return(paste(proba_adj[id_y, id_x], proba_adj[id_x, id_y], sep = ";"))
   })
 
+  # Genuine causality is deducible only when latent variables are allowed and
+  # propagation is not allowed
+  causality_deducible <- latent && !propagation
   # If consistent parameter is turned on and the result graph is a union of
   # more than one inconsistent graphs, get the possible orientations of each
   # edge with the correponding frequencies and the consensus status.
@@ -193,8 +196,81 @@ summarizeResults <- function(observations = NULL, results = NULL,
         consensus_threshold
       ),
       edge_stats = sapply(edge_stats_table, get_edge_stats_str),
+      is_causal_consensus = NA,
       summary[, (target + 1):length(summary), drop = FALSE]
     )
+    # Set consensus edge status according to the average probabilities
+    for (i in 1:nrow(summary)) {
+      row <- summary[i, ]
+      if (causality_deducible) {
+        # Set initial values if deducible
+        if (row$infOrt != 0)
+          summary[i, ]$is_causal <- "N"
+        if (row$consensus != 0)
+          summary[i, ]$is_causal_consensus <- "N"
+      }
+      if (row$consensus == 0) next
+
+      id_x <- match(row$x, var_names)
+      id_y <- match(row$y, var_names)
+      # probability of an edge tip being a head (<,>), * means head or tail (-)
+      proba_x2y <- results$proba_adj_average[id_x, id_y]  # proba of x *-> y
+      proba_y2x <- results$proba_adj_average[id_y, id_x]  # proba of x <-* y
+      ratio_x2y <- (1 - proba_x2y) / proba_x2y
+      ratio_y2x <- (1 - proba_y2x) / proba_y2x
+
+      if (ratio_x2y < ori_consensus_ratio && ratio_y2x < ori_consensus_ratio) {
+        summary[i, ]$consensus <- 6
+      } else if (ratio_x2y < ori_consensus_ratio &&
+                 ratio_y2x >= ori_consensus_ratio) {
+        summary[i, ]$consensus <- 2
+        if (1 / ratio_y2x < ori_consensus_ratio && causality_deducible) {
+          summary[i, ]$is_causal_consensus <- "Y"
+          if (row$infOrt == 2) {
+            summary[i, ]$is_causal <- "Y"
+          }
+        }
+      } else if (ratio_y2x < ori_consensus_ratio &&
+                 ratio_x2y >= ori_consensus_ratio) {
+        summary[i, ]$consensus <- -2
+        if (1 / ratio_x2y < ori_consensus_ratio && causality_deducible) {
+          summary[i, ]$is_causal_consensus <- "Y"
+          if (row$infOrt == -2) {
+            summary[i, ]$is_causal <- "Y"
+          }
+        }
+      } else {
+        summary[i, ]$consensus <- 1
+      }
+    }
+  } else if (causality_deducible) {
+    # if (is.null(results$adj_matrices) || ncol(results$adj_matrices) <= 1)
+    # set is_causal by results$proba_adj_matrix
+    for (i in 1:nrow(summary)) {
+      row <- summary[i, ]
+      if (row$infOrt == 0) {
+        next
+      }
+      summary[i, ]$is_causal <- "N"
+
+      id_x <- match(row$x, var_names)
+      id_y <- match(row$y, var_names)
+      # probability of an edge tip being a head (<,>), * means head or tail (-)
+      proba_x2y <- results$proba_adj_matrix[id_x, id_y]  # proba of x *-> y
+      proba_y2x <- results$proba_adj_matrix[id_y, id_x]  # proba of x <-* y
+      ratio_x2y <- (1 - proba_x2y) / proba_x2y
+      ratio_y2x <- (1 - proba_y2x) / proba_y2x
+      if (row$infOrt == 2 &&
+          ratio_x2y < ori_consensus_ratio &&
+          1 / ratio_y2x < ori_consensus_ratio) {
+        summary[i, ]$is_causal <- "Y"
+      }
+      if (row$infOrt == -2 &&
+          ratio_y2x < ori_consensus_ratio &&
+          1 / ratio_x2y < ori_consensus_ratio) {
+        summary[i, ]$is_causal <- "Y"
+      }
+    }
   }
 
   # Sort summary by log confidence and return it
@@ -313,203 +389,6 @@ compute_partial_correlation <- function(summary, observations, state_order) {
   return(ppcor_results)
 }
 
-# For an edge `X (1)-(2) Z` with two endpoints (1) and (2), with each of the
-# endpoint being either a head (`<` or `>`) or tail (`-`), the edge is called
-# `causal` if it has one and only one head (`X --> Z` or `X <-- Z`).
-#
-# As a set of sufficient conditions, an edge `X (1)-(2) Z` is causal if
-# (using `X --> Z` as an example, `*` means head or tail)
-# 1. it is part of a V-structure `X *-> Z <-* Y` with `Z` being the mid node,
-# 2. `X` is the mid node of another V-structure `V *-> X <-* W`,
-# 3. `(V, X, Z)` (or `(W, X, Z)`) must be a non-V-structure `V *-> X --> Z`
-#    (or `W *-> X --> Z`),
-# 4. when 3. is true, but `(W, X, Z)` (or `(V, X, Z)`) is a V-structure,
-#    the absolute value of 3-point information of the non-V-structure must be
-#    greater than that of the V-structure.
-#
-# Condition 1. ensures that the endpoint (2) is a head, condition 2. and 3.
-# ensure that the endpoint (1) is a tail.
-is_causal <- function(summary, probas) {
-  is_causal_results <- rep("N", (nrow(summary)))
-  v_structs <- probas$NI3 < 0 & probas$Error == 0
-  if (!any(v_structs)) {
-    return(is_causal_results)
-  }
-  probas_v <- probas[v_structs, ]
-  probas_non_v <- probas[probas$NI3 > 0 & probas$Error == 0, ]
-
-  for (i in 1:nrow(summary)) {
-    row <- summary[i, ]
-    # Negative or Non oriented edge cannot be causal
-    if (row$type %in% c("TN", "FN", "N") || row$infOrt == 1) {
-      next
-    }
-    # Bi-directed edge cannot be causal
-    if (row$infOrt == 6) {
-      next
-    }
-    # source --> target (source (tail)-(head) target)
-    if (row$infOrt == 2) {
-      source_node <- row$x
-      target_node <- row$y
-    } else {
-      source_node <- row$y
-      target_node <- row$x
-    }
-    main_v_structs <- probas_v$target == target_node &
-        (probas_v$source1 == source_node | probas_v$source2 == source_node)
-    # Edge is not part of any V-structure (propagated orientation), condition 1.
-    # not satisfied.
-    if (!any(main_v_structs)) {
-      next
-    }
-    second_v_structs <- probas_v$target == source_node
-    # source is not the mid node of any V-structure, condition 2. not satisfied.
-    if (!any(second_v_structs)) {
-      next
-    }
-    probas_second_v_list <- probas_v[second_v_structs, ]
-    for (j in 1:nrow(probas_second_v_list)) {
-      proba_row <- probas_second_v_list[j, ]
-      s1 <- proba_row$source1
-      s2 <- proba_row$source2
-      # s1 --> source_node --> target_node
-      s1_non_v <- probas_non_v$target == source_node &
-          ((probas_non_v$source1 == s1 & probas_non_v$source2 == target_node) |
-          (probas_non_v$source2 == s1 & probas_non_v$source1 == target_node))
-      # s2 --> source_node <-- target_node
-      s2_v <- probas_v$target == source_node &
-          ((probas_v$source1 == s2 & probas_v$source2 == target_node) |
-          (probas_v$source2 == s2 & probas_v$source1 == target_node))
-      # Condition 3.
-      if (any(s1_non_v)) {
-        # Condition 4.
-        # There is at most one true element in s1_non_v and s2_v, still we use
-        # [1, ] to explicitly ensure the correct dimension
-        if (!any(s2_v) || (abs(probas_v[s2_v, ][1, ]$NI3) <
-            abs(probas_non_v[s1_non_v,][1,]$NI3))) {
-          is_causal_results[i] <- "Y"
-          break
-        }
-      }
-      # s2 --> source_node --> target_node
-      s2_non_v <- probas_non_v$target == source_node &
-          ((probas_non_v$source1 == s2 & probas_non_v$source2 == target_node) |
-          (probas_non_v$source2 == s2 & probas_non_v$source1 == target_node))
-      # s1 --> source_node <-- target_node
-      s1_v <- probas_v$target == source_node &
-          ((probas_v$source1 == s1 & probas_v$source2 == target_node) |
-          (probas_v$source2 == s1 & probas_v$source1 == target_node))
-      # Condition 3.
-      if (any(s2_non_v)) {
-        # Condition 4.
-        # There is at most one true element in s1_non_v and s2_v, still we use
-        # [1, ] to explicitly ensure the correct dimension
-        if (!any(s1_v) || (abs(probas_v[s1_v, ][1, ]$NI3) <
-            abs(probas_non_v[s2_non_v,][1,]$NI3))) {
-          is_causal_results[i] <- "Y"
-          break
-        }
-      }
-    }
-  }
-
-  return(is_causal_results)
-}
-
-findProba <- function(outputSummary.df, proba, index) {
-  # I'm sorry... I didn't rewrite that one
-
-  # find probability of this edge in the proba file
-  if (outputSummary.df[index, "infOrt"] == 2) {
-    posProba <- which((proba[, 4] == outputSummary.df[index, 2] &
-      proba[, 7] == outputSummary.df[index, 1]))
-    # source2 -> target
-    if (length(posProba) > 0) {
-      posProba <- posProba[1]
-      return(c(proba[posProba, "p3"], proba[posProba, "p4"]))
-    }
-
-    posProba <- which((proba[, 1] == outputSummary.df[index, 1] &
-      proba[, 4] == outputSummary.df[index, 2]))
-    if (length(posProba) > 0) {
-      posProba <- posProba[1]
-      return(c(proba[posProba, "p2"], proba[posProba, "p1"]))
-    }
-
-    posProba <- which((proba[, 4] == outputSummary.df[index, 1] &
-      proba[, 1] == outputSummary.df[index, 2]))
-    if (length(posProba) > 0) {
-      posProba <- posProba[1]
-      return(c(proba[posProba, "p1"], proba[posProba, "p2"]))
-    }
-
-    posProba <- which((proba[, 4] == outputSummary.df[index, 1] &
-      proba[, 7] == outputSummary.df[index, 2]))
-    if (length(posProba) > 0) {
-      posProba <- posProba[1]
-      return(c(proba[posProba, "p4"], proba[posProba, "p3"]))
-    }
-  } else if (outputSummary.df[index, "infOrt"] == -2) {
-    posProba <- which((proba[, 4] == outputSummary.df[index, 1] &
-      proba[, 7] == outputSummary.df[index, 2]))
-    if (length(posProba) > 0) {
-      posProba <- posProba[1]
-      return(c(proba[posProba, "p3"], proba[posProba, "p4"]))
-    }
-
-    posProba <- which((proba[, 1] == outputSummary.df[index, 2] &
-      proba[, 4] == outputSummary.df[index, 1]))
-    if (length(posProba) > 0) {
-      posProba <- posProba[1]
-      return(c(proba[posProba, "p2"], proba[posProba, "p1"]))
-    }
-
-    posProba <- which((proba[, 4] == outputSummary.df[index, 2] &
-      proba[, 1] == outputSummary.df[index, 1]))
-    if (length(posProba) > 0) {
-      posProba <- posProba[1]
-      return(c(proba[posProba, "p1"], proba[posProba, "p2"]))
-    }
-
-    posProba <- which((proba[, 4] == outputSummary.df[index, 2] &
-      proba[, 7] == outputSummary.df[index, 1]))
-    if (length(posProba) > 0) {
-      posProba <- posProba[1]
-      return(c(proba[posProba, "p4"], proba[posProba, "p3"]))
-    }
-  } else if (outputSummary.df[index, "infOrt"] == 6) {
-    posProba <- which((proba[, 4] == outputSummary.df[index, 1] &
-      proba[, 7] == outputSummary.df[index, 2]))
-    if (length(posProba) > 0) {
-      posProba <- posProba[1]
-      return(c(proba[posProba, "p4"], proba[posProba, "p3"]))
-    }
-
-    posProba <- which((proba[, 7] == outputSummary.df[index, 1] &
-      proba[, 4] == outputSummary.df[index, 2]))
-    if (length(posProba) > 1) {
-      posProba <- posProba[1]
-      return(c(proba[posProba, "p3"], proba[posProba, "p4"]))
-    }
-
-    posProba <- which((proba[, 1] == outputSummary.df[index, 1] &
-      proba[, 4] == outputSummary.df[index, 2]))
-    if (length(posProba) > 0) {
-      posProba <- posProba[1]
-      return(c(proba[posProba, "p2"], proba[posProba, "p1"]))
-    }
-
-    posProba <- which((proba[, 4] == outputSummary.df[index, 1] &
-      proba[, 1] == outputSummary.df[index, 2]))
-    if (length(posProba) > 0) {
-      posProba <- posProba[1]
-      return(c(proba[posProba, "p1"], proba[posProba, "p2"]))
-    }
-  }
-  return(NA)
-}
-
 get_edge_stats_table <- function(row, var_names, adj_matrices) {
   # row[1]: variable name of x
   # row[2]: variable name of y
@@ -530,11 +409,13 @@ get_edge_stats_str <- function(stats_table) {
   return(paste(t, "(", names(t), ")", sep = "", collapse = ";"))
 }
 
+# 0: unconnected, 1: connected
 get_consensus_status <- function(stats_table, consensus_threshold) {
   if (length(stats_table) < 1)
     return(NA)
-  # stats_table is sorted, stats_table[[1]] is the highest frequency
-  if (stats_table[[1]] < consensus_threshold)
-    return(1)  # undirected
-  return(as.numeric(names(stats_table)[[1]]))
+  freq_no_edge <- unname(stats_table["0"])
+  # "0" doesn't exist or the percentageof non-"0" is above the threshold
+  if (is.na(freq_no_edge) || freq_no_edge < 1 - consensus_threshold)
+    return(1)
+  return(0)
 }

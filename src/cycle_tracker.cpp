@@ -80,6 +80,14 @@ vector<vector<int>> CycleTracker::getAdjMatrices(int size) {
   return adj_matrices;
 }
 
+vector<vector<double>> CycleTracker::getProbaAdjMatrices(int size) {
+  vector<vector<double>> adj_matrices;
+  for (auto i = iterations_.begin(); i != iterations_.begin() + size; ++i) {
+    adj_matrices.push_back(i->proba_adj_matrix_1d);
+  }
+  return adj_matrices;
+}
+
 }  // namespace detail
 }  // namespace reconstruction
 }  // namespace miic
