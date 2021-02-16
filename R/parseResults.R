@@ -316,7 +316,7 @@ compute_partial_correlation <- function(summary, observations, state_order) {
   for (j in 1:ncol(observations)) {
     col <- colnames(observations)[j]
     if (!is.null(state_order) &&
-      state_order[j, "var_type"] == 0 &&
+      state_order[which(state_order$var_names==col), "var_type"] == 0 &&
       "levels_increasing_order" %in% colnames(state_order) &&
       !is.na(state_order[state_order$var_names == col, "levels_increasing_order"])) {
       # If the variable is described in the state order file, transform to a
