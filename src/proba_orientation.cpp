@@ -26,9 +26,17 @@ struct TripleComparator {
   bool operator()(int i1, int i2) { return scores[i1] > scores[i2]; }
 };
 
-bool isLikely(double proba) { return proba > (0.5 + kEps); }
-bool isUnlikely(double proba) { return proba < (0.5 - kEps); }
-bool isOriented(double proba) { return isLikely(proba) || isUnlikely(proba); }
+bool isHead(double proba) { return proba > (0.5 + kEps); }
+bool isTail(double proba) { return proba < (0.5 - kEps); }
+bool isOriented(double proba) { return isHead(proba) || isTail(proba); }
+// Given an edge (X px -- py Y) with probabilities px and py, and the value of
+// px(py) is determined, then the value of py(px) can be inferred if
+// 1. px(py) is likely an arrowhead but latent variable (bi-directed edge) is
+//    not allowed.
+// 2. px(py) is likely an arrowtail and propagation of orientation is allowed.
+bool isInferable(double proba, bool latent, bool propagation) {
+  return (isHead(proba) && !latent) || (isTail(proba) && propagation);
+}
 
 // Given a Triple t0 (X -- Z -- Y) with the highest log_score, and another
 // Triple t who shares one edge with t0, and whose probabilities can be updated
@@ -48,22 +56,22 @@ bool isOriented(double proba) { return isLikely(proba) || isUnlikely(proba); }
 // then (w2z_index, z2w_index) is (0, 1) or (1, 0), if t is (V -- M -- U), then
 // (w2z_index, z2w_index) is (2, 3) or (3, 2)
 void updateProba(int w2z_index, int z2w_index, double w2z, double z2w,
-    bool latent, bool propagation, ProbaArray& probas, ProbaArray& probas2,
+    bool latent, bool propagation, ProbaArray& final, ProbaArray& current,
     bool& need_propagation, bool& remove_triple) {
-  probas[w2z_index] = w2z;
-  if ((!latent && isLikely(probas[w2z_index])) ||
-      (propagation && isUnlikely(probas[w2z_index])))
-    probas[z2w_index] = z2w;
-  double v2m = std::max(w2z_index, z2w_index) == 1 ? probas[2] : probas[1];
-  double u2m = (w2z_index == 1 || w2z_index == 2) ? w2z : z2w;
-  if (isOriented(u2m) && isOriented(v2m)) {
+  const bool inferable = isInferable(w2z, latent, propagation);
+
+  final[w2z_index] = w2z;
+  if (inferable) final[z2w_index] = z2w;
+  // If both probabilites of the mid node are already oriented, the triple will
+  // not be able to update other triples of lower score in the list.
+  if (isOriented(final[1]) && isOriented(final[2])) {
     remove_triple = true;
   } else {
-    probas2[w2z_index] = w2z;
-    if ((!latent && isLikely(probas[w2z_index])) ||
-        (propagation && isUnlikely(probas[w2z_index])))
-      probas2[z2w_index] = z2w;
     need_propagation = true;
+    // Keep probabilites as the current best, to be later compared with the
+    // result of putative propagation.
+    current[w2z_index] = w2z;
+    if (inferable) current[z2w_index] = z2w;
   }
 }
 
@@ -85,66 +93,66 @@ std::pair<double, double> getInducedProbability(double I3, double w2z) {
 // Update score performing putative propagation
 // See Proposition 1.ii and 2 of Verny et al., 2017 (Supplementary Text)
 void propagate(bool latent, bool propagation, double I3,
-    const ProbaArray& probas, ProbaArray& probas2, double& score,
+    const ProbaArray& final, ProbaArray& current, double& score,
     double& log_score) {
-  double x2z = probas[1], y2z = probas[2];
+  double x2z = final[1], y2z = final[2];
   if (I3 > 0) {  // Proposition 2
     // Define score in case of no true propagation below
     score = fmax(
-        fmin(probas2[1], 1 - probas2[2]), fmin(probas2[2], 1 - probas2[1]));
+        fmin(current[1], 1 - current[2]), fmin(current[2], 1 - current[1]));
     log_score = log1p(score - 1);
     double p_tail{0.5}, logp_tail;
-    if (isLikely(x2z)) {  // Try from X *-> Z to Z --* Y
+    if (isHead(x2z)) {  // Try from X *-> Z to Z --* Y
       std::tie(p_tail, logp_tail) = getInducedProbability(I3, x2z);
       // Propagate to Z [-]-* Y if no previously higher putative propagation
-      if (isLikely(p_tail) && (probas2[2] > (1 - p_tail + kEps))) {
+      if ((p_tail > 0.5 + kEps) && (current[2] > (1 - p_tail + kEps))) {
         log_score = logp_tail;
         score = p_tail;
-        probas2[2] = 1 - p_tail;
+        current[2] = 1 - p_tail;
         // Propagate to Z --[>] Y if no previously higher putative propagation
-        if (propagation && probas2[3] < (1 - probas2[2] - kEps))
-          probas2[3] = 1 - probas2[2];
+        if (propagation && current[3] < (1 - current[2] - kEps))
+          current[3] = 1 - current[2];
       }
-    } else if (isLikely(y2z)) {  // Try from Z <-* Y to X *-- Z
+    } else if (isHead(y2z)) {  // Try from Z <-* Y to X *-- Z
       std::tie(p_tail, logp_tail) = getInducedProbability(I3, y2z);
       // Propagate to X *-[-] Z if no previously higher putative propagation
-      if (isLikely(p_tail) && (probas2[1] > (1 - p_tail + kEps))) {
+      if ((p_tail > 0.5 + kEps) && (current[1] > (1 - p_tail + kEps))) {
         log_score = logp_tail;
         score = p_tail;
-        probas2[1] = 1 - p_tail;
+        current[1] = 1 - p_tail;
         // Propagate to X [<]-- Z if no previously higher putative propagation
-        if (propagation && probas2[0] < (1 - probas2[1] - kEps))
-          probas2[0] = 1 - probas2[1];
+        if (propagation && current[0] < (1 - current[1] - kEps))
+          current[0] = 1 - current[1];
       }
     }
   } else if (I3 < 0) {  // Proposition 1.ii
     // define score in case of no true propagation below
-    if (fabs(probas2[1] - probas2[2]) > kEpsDiff) {
-      score = fmin(probas2[1], probas2[2]);
+    if (fabs(current[1] - current[2]) > kEpsDiff) {
+      score = fmin(current[1], current[2]);
       log_score = log1p(score - 1);
     }
     double p_head{0.5}, logp_head;
-    if (isLikely(x2z)) {  // Try from X *-> Z to Z <-* Y
+    if (isHead(x2z)) {  // Try from X *-> Z to Z <-* Y
       std::tie(p_head, logp_head) = getInducedProbability(I3, x2z);
       // Propagate to Z [<]-* Y if no previously higher putative propagation
-      if (isLikely(p_head) && probas2[2] < (p_head - kEps)) {
+      if ((p_head > 0.5 + kEps) && current[2] < (p_head - kEps)) {
         log_score = logp_head;
         score = p_head;
-        probas2[2] = p_head;
+        current[2] = p_head;
         // Propagate to Z <-[-] Y if no previously higher putative propagation
-        if (!latent && (probas2[3] > (1 - probas2[2] + kEps)))
-          probas2[3] = 1 - probas2[2];
+        if (!latent && (current[3] > (1 - current[2] + kEps)))
+          current[3] = 1 - current[2];
       }
-    } else if (isLikely(y2z)) {  // Try from Z <-* Y to X *-> Z
+    } else if (isHead(y2z)) {  // Try from Z <-* Y to X *-> Z
       std::tie(p_head, logp_head) = getInducedProbability(I3, y2z);
       // Propagate to X *-[>] Z if no previously higher putative propagation
-      if (isLikely(p_head) && (probas2[1] < (p_head - kEps))) {
+      if ((p_head > 0.5 + kEps) && (current[1] < (p_head - kEps))) {
         log_score = logp_head;
         score = p_head;
-        probas2[1] = p_head;
+        current[1] = p_head;
         // Propagate to X [-]-> Z if no previously higher putative propagation
-        if (!latent && (probas2[0] > (1 - probas2[1] + kEps)))
-          probas2[0] = 1 - probas2[1];
+        if (!latent && (current[0] > (1 - current[1] + kEps)))
+          current[0] = 1 - current[1];
       }
     }
   }
@@ -161,32 +169,33 @@ vector<ProbaArray> getOriProbasList(const vector<Triple>& triples,
     const vector<double>& I3_list, const vector<int>& is_contextual,
     bool latent, bool degenerate, bool propagation, bool half_v_structure) {
   int n_triples = triples.size();
-  vector<ProbaArray> probas_list(n_triples);  // to be returned
-  for (auto& p_array : probas_list) p_array.fill(0.5);
+  vector<ProbaArray> probas_final(n_triples);  // to be returned
+  for (auto& p_array : probas_final) p_array.fill(0.5);
   // Set initial probability for triples involving contextual variables
   for (int i = 0; i < n_triples; ++i) {
     int X = triples[i][0], Z = triples[i][1], Y = triples[i][2];
     if (is_contextual[X]) {
       // X --> Z, forced orientation
-      probas_list[i][1] = 1.0;
-      probas_list[i][0] = 0.0;
+      probas_final[i][1] = 1.0;
+      probas_final[i][0] = 0.0;
     }
     if (is_contextual[Z]) {
       // X <-- Z, forced orientation
-      probas_list[i][0] = 1.0;
-      probas_list[i][1] = 0.0;
+      probas_final[i][0] = 1.0;
+      probas_final[i][1] = 0.0;
       // Z --> Y, forced orientation
-      probas_list[i][3] = 1.0;
-      probas_list[i][2] = 0.0;
+      probas_final[i][3] = 1.0;
+      probas_final[i][2] = 0.0;
     }
     if (is_contextual[Y]) {
       // Z <-- Y, forced orientation
-      probas_list[i][2] = 1.0;
-      probas_list[i][3] = 0.0;
+      probas_final[i][2] = 1.0;
+      probas_final[i][3] = 0.0;
     }
   }
-
-  auto probas_list2 = probas_list;  // copy
+  // Keep the current best probas of each triple during the orientation process
+  // Best means most extreme w.r.t. (away from) 0.5
+  auto probas_current = probas_final;  // copy
   // For a Triple (X, Z, Y), score is initialized as the probability of the
   // arrowhead Pr(X *-> Z)
   vector<double> score(n_triples, 0.5);
@@ -210,11 +219,11 @@ vector<ProbaArray> getOriProbasList(const vector<Triple>& triples,
         // larger than p without degenerate
         score[i] = (3 - 2 * exp(I3_list[i])) / (3 - exp(I3_list[i]));
       }
-      probas_list2[i][1] = score[i];  // Pr(X *-> Z)
-      probas_list2[i][2] = score[i];  // Pr(Y *-> Z)
+      probas_current[i][1] = score[i];  // Pr(X *-> Z)
+      probas_current[i][2] = score[i];  // Pr(Y *-> Z)
       if (!latent) {
-        probas_list2[i][0] = 1 - probas_list2[i][1];
-        probas_list2[i][3] = 1 - probas_list2[i][2];
+        probas_current[i][0] = 1 - probas_current[i][1];
+        probas_current[i][3] = 1 - probas_current[i][2];
       }
     }
   }
@@ -222,99 +231,94 @@ vector<ProbaArray> getOriProbasList(const vector<Triple>& triples,
     // Order triples in decreasing log score
     std::sort(begin(orderTpl), end(orderTpl), TripleComparator(log_score));
     int max_idx = orderTpl[0];
-    double maxscoreTpl = score[max_idx];
-    if (!(maxscoreTpl > 0.5 + kEps)) break;
+    if (!(score[max_idx] > 0.5 + kEps)) break;
     orderTpl.erase(begin(orderTpl));  // Remove the triple with max score
 
-    auto& max_triple = triples[max_idx];
-    auto& max_probas = probas_list[max_idx];
-    auto& max_probas2 = probas_list2[max_idx];
+    const auto& max_triple = triples[max_idx];
+    const auto& max_current = probas_current[max_idx];
+    auto& max_final = probas_final[max_idx];
 
     int X{-1}, Z{-1}, Y{-1};
     // Correspond to ProbaArray[0-3]: *2+, proba of arrowhead from * to +
     double z2x{0.5}, x2z{0.5}, y2z{0.5}, z2y{0.5};
     // if arrowhead/tail on Z (x 0-*1 z 2-3 y) is not already established
     // through an earlier propagation
-    if ((fabs(max_probas[1] - 0.5) < (fabs(max_probas2[1] - 0.5) - kEps)) &&
+    if ((fabs(max_final[1] - 0.5) < (fabs(max_current[1] - 0.5) - kEps)) &&
         (half_v_structure || I3_list[max_idx] > 0 ||
-            max_probas[2] > (0.5 - kEps))) {
+            max_final[2] > (0.5 - kEps))) {
       // establish arrowhead/tail final proba on 1 (x 0-*1 z 2-3 y)
+      max_final[1] = max_current[1];
+      if (isInferable(max_final[1], latent, propagation))
+        max_final[0] = max_current[0];
+
       X = max_triple[0];
       Z = max_triple[1];
-      z2x = max_probas2[0];
-      x2z = max_probas2[1];
-      max_probas[1] = max_probas2[1];
-      if ((!latent && isLikely(max_probas[1])) ||
-          (propagation && isUnlikely(max_probas[1]))) {
-        // establish arrowhead/tail if no latent or
-        // arrowhead final proba on 0 (x 0<-1 z 2-3 y)
-        max_probas[0] = max_probas2[0];
-      }
+      z2x = max_current[0];
+      x2z = max_current[1];
     }
-    if ((fabs(max_probas[2] - 0.5) < (fabs(max_probas2[2] - 0.5) - kEps)) &&
+    if ((fabs(max_final[2] - 0.5) < (fabs(max_current[2] - 0.5) - kEps)) &&
         (half_v_structure || I3_list[max_idx] > 0 ||
-            max_probas[1] > (0.5 - kEps))) {
+            max_final[1] > (0.5 - kEps))) {
       // establish arrowhead/tail final proba on 2 (x 0-1 z 2*-3 y)
+      max_final[2] = max_current[2];
+      if (isInferable(max_final[2], latent, propagation))
+        max_final[3] = max_current[3];
+
       Z = max_triple[1];
       Y = max_triple[2];
-      y2z = max_probas2[2];
-      z2y = max_probas2[3];
-      max_probas[2] = max_probas2[2];
-      if ((!latent && isLikely(max_probas[2])) ||
-          (propagation && isUnlikely(max_probas[2]))) {
-        // establish arrowhead/tail if no latent or
-        // arrowhead final proba on 3 (x 0-1 z 2->3 y)
-        max_probas[3] = max_probas2[3];
-      }
+      y2z = max_current[2];
+      z2y = max_current[3];
     }
-
+    // No new final orientation found, goto next triple
+    if (X == -1 && Y == -1) continue;
+    // Update probas of all remaining triples with the newly found orientation
     for (auto i : orderTpl) {
       bool need_propagation = false;
       bool remove_triple = false;
       if (X != -1) {
         if (triples[i][0] == X && triples[i][1] == Z) {
-          updateProba(1, 0, x2z, z2x, latent, propagation, probas_list[i],
-              probas_list2[i], need_propagation, remove_triple);
+          updateProba(1, 0, x2z, z2x, latent, propagation, probas_final[i],
+              probas_current[i], need_propagation, remove_triple);
         } else if (triples[i][0] == Z && triples[i][1] == X) {
-          updateProba(0, 1, x2z, z2x, latent, propagation, probas_list[i],
-              probas_list2[i], need_propagation, remove_triple);
+          updateProba(0, 1, x2z, z2x, latent, propagation, probas_final[i],
+              probas_current[i], need_propagation, remove_triple);
         } else if (triples[i][2] == X && triples[i][1] == Z) {
-          updateProba(2, 3, x2z, z2x, latent, propagation, probas_list[i],
-              probas_list2[i], need_propagation, remove_triple);
+          updateProba(2, 3, x2z, z2x, latent, propagation, probas_final[i],
+              probas_current[i], need_propagation, remove_triple);
         } else if (triples[i][2] == Z && triples[i][1] == X) {
-          updateProba(3, 2, x2z, z2x, latent, propagation, probas_list[i],
-              probas_list2[i], need_propagation, remove_triple);
+          updateProba(3, 2, x2z, z2x, latent, propagation, probas_final[i],
+              probas_current[i], need_propagation, remove_triple);
         }
         if (need_propagation)
-          propagate(latent, propagation, I3_list[i], probas_list[i],
-              probas_list2[i], score[i], log_score[i]);
-      }    // if (X != -1)
+          propagate(latent, propagation, I3_list[i], probas_final[i],
+              probas_current[i], score[i], log_score[i]);
+      }  // if (X != -1)
       need_propagation = false;
       if (Y != -1) {
         if (triples[i][0] == Y && triples[i][1] == Z) {
-          updateProba(1, 0, y2z, z2y, latent, propagation, probas_list[i],
-              probas_list2[i], need_propagation, remove_triple);
+          updateProba(1, 0, y2z, z2y, latent, propagation, probas_final[i],
+              probas_current[i], need_propagation, remove_triple);
         } else if (triples[i][0] == Z && triples[i][1] == Y) {
-          updateProba(0, 1, y2z, z2y, latent, propagation, probas_list[i],
-              probas_list2[i], need_propagation, remove_triple);
+          updateProba(0, 1, y2z, z2y, latent, propagation, probas_final[i],
+              probas_current[i], need_propagation, remove_triple);
         } else if (triples[i][2] == Y && triples[i][1] == Z) {
-          updateProba(2, 3, y2z, z2y, latent, propagation, probas_list[i],
-              probas_list2[i], need_propagation, remove_triple);
+          updateProba(2, 3, y2z, z2y, latent, propagation, probas_final[i],
+              probas_current[i], need_propagation, remove_triple);
         } else if (triples[i][2] == Z && triples[i][1] == Y) {
-          updateProba(3, 2, y2z, z2y, latent, propagation, probas_list[i],
-              probas_list2[i], need_propagation, remove_triple);
+          updateProba(3, 2, y2z, z2y, latent, propagation, probas_final[i],
+              probas_current[i], need_propagation, remove_triple);
         }
         if (need_propagation)
-          propagate(latent, propagation, I3_list[i], probas_list[i],
-              probas_list2[i], score[i], log_score[i]);
-      }
+          propagate(latent, propagation, I3_list[i], probas_final[i],
+              probas_current[i], score[i], log_score[i]);
+      }  // if (Y != -1)
       if (remove_triple) i = kRemoveTripleMark;
     }  // for (auto i : orderTpl)
     orderTpl.erase(remove(begin(orderTpl), end(orderTpl), kRemoveTripleMark),
         end(orderTpl));
   }
 
-  return probas_list;
+  return probas_final;
 }
 
 }  // namespace reconstruction
