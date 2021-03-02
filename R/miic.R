@@ -440,14 +440,21 @@ miic <- function(input_data,
       print("WARNING: Category order file will be ignored!")
       state_order <- NULL
     }
-    if (!is.null(state_order$is_contextual)) {
-      is_contextual <- as.numeric(state_order$is_contextual)
+    set_contextual <- !is.null(state_order$is_contextual)
+    if (set_contextual) {
+      is_contextual <- rep(0, ncol(input_data))
+      names(is_contextual) <- colnames(input_data)
     }
+
     for (row in 1:nrow(state_order)) {
       col <- as.character(state_order[row, "var_names"])
       if (state_order[row, "var_type"] == 0) {
         input_data[, col] <- factor(input_data[, col])
         is_continuous[[col]] <- FALSE
+      }
+      contextual <- state_order[row, "is_contextual"]
+      if (set_contextual && !is.na(contextual) && contextual == 1) {
+        is_contextual[[col]] <- 1
       }
     }
   }
