@@ -227,7 +227,9 @@ vector<ProbaArray> getOriProbasList(const vector<Triple>& triples,
   }
 
   auto compareTriples = [&log_score, &I3_list](int a, int b) {
-    if (fabs(log_score[a] - log_score[b]) > kEps) {
+    // log scores are non-positive, when the score (proba) is close to 1, i.e.,
+    // when the abs(NI3) is large enough, log score can be subnormal.
+    if (log_score[a] != log_score[b]) {
       return log_score[a] > log_score[b];
     } else {
       return fabs(I3_list[a]) > fabs(I3_list[b]);
