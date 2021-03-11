@@ -192,7 +192,7 @@ vector<ProbaArray> getOriProbasList(const vector<Triple>& triples,
   // arrowhead Pr(X *-> Z)
   vector<double> score(n_triples, 0.5);
   // For dataset with large n_samples, use log score for numerical presicion
-  vector<double> log_score(n_triples);
+  vector<double> log_score(n_triples, log(0.5));
   vector<int> orderTpl(n_triples);
   std::iota(begin(orderTpl), end(orderTpl), 0);
   // Initialize score and log_score
@@ -201,27 +201,23 @@ vector<ProbaArray> getOriProbasList(const vector<Triple>& triples,
     if (isHead(probas_final[i][1]) || isHead(probas_final[i][2])) {
       propagate(latent, propagation, I3_list[i], probas_final[i],
           probas_current[i], score[i], log_score[i]);
-    } else {
-      if (I3_list[i] >= 0) {
-        log_score[i] = log(score[i]);  // log(0.5)
+    } else if (I3_list[i] < 0) {
+      if (!degenerate) {
+        // if I3_list < 0 (likely a v-structure),
+        // Pr(X *-> Z) = Pr(Y *-> Z) = (1 + exp(I3)) / (1 + 3 * exp(I3))
+        // See Proposition 1.i of Verny et al., 2017 (Supplementary Text)
+        // use log1p and expm1 to accommodate large N(n_samples) case
+        log_score[i] = log1p(exp(I3_list[i])) - log1p(3 * exp(I3_list[i]));
+        score[i] = expm1(log_score[i]) + 1;
       } else {
-        if (!degenerate) {
-          // if I3_list < 0 (likely a v-structure),
-          // Pr(X *-> Z) = Pr(Y *-> Z) = (1 + exp(I3)) / (1 + 3 * exp(I3))
-          // See Proposition 1.i of Verny et al., 2017 (Supplementary Text)
-          // use log1p and expm1 to accommodate large N(n_samples) case
-          log_score[i] = log1p(exp(I3_list[i])) - log1p(3 * exp(I3_list[i]));
-          score[i] = expm1(log_score[i]) + 1;
-        } else {
-          // larger than p without degenerate
-          score[i] = (3 - 2 * exp(I3_list[i])) / (3 - exp(I3_list[i]));
-        }
-        probas_current[i][1] = score[i];  // Pr(X *-> Z)
-        probas_current[i][2] = score[i];  // Pr(Y *-> Z)
-        if (!latent) {
-          probas_current[i][0] = 1 - probas_current[i][1];
-          probas_current[i][3] = 1 - probas_current[i][2];
-        }
+        // larger than p without degenerate
+        score[i] = (3 - 2 * exp(I3_list[i])) / (3 - exp(I3_list[i]));
+      }
+      probas_current[i][1] = score[i];  // Pr(X *-> Z)
+      probas_current[i][2] = score[i];  // Pr(Y *-> Z)
+      if (!latent) {
+        probas_current[i][0] = 1 - probas_current[i][1];
+        probas_current[i][3] = 1 - probas_current[i][2];
       }
     }
   }
