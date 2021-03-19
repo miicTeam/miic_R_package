@@ -55,8 +55,7 @@ or contain NA instead.
 "is_contextual" (optional) contains a binary value that specifies if a
 variable is to be considered as a contextual variable (1) or not (0).
 Contextual variables cannot be the child node of any other variable (cannot
-have edge with arrowhead pointing to them), no edge can exist between two
-contextual variables.}
+have edge with arrowhead pointing to them).}
 
 \item{true_edges}{[a data frame]
 An optional E*2 data frame containing the E edges of the true graph for

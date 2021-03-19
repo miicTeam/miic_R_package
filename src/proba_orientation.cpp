@@ -167,21 +167,17 @@ vector<ProbaArray> getOriProbasList(const vector<Triple>& triples,
   for (int i = 0; i < n_triples; ++i) {
     int X = triples[i][0], Z = triples[i][1], Y = triples[i][2];
     if (is_contextual[X]) {
-      // X --> Z, forced orientation
-      probas_final[i][1] = 1.0;
+      // X --* Z, X cannot be the child of Z
       probas_final[i][0] = 0.0;
     }
     if (is_contextual[Z]) {
-      // X <-- Z, forced orientation
-      probas_final[i][0] = 1.0;
+      // X *-- Z, Z cannot be the child of X
       probas_final[i][1] = 0.0;
-      // Z --> Y, forced orientation
-      probas_final[i][3] = 1.0;
+      // Z --* Y, Z cannot be the child of Y
       probas_final[i][2] = 0.0;
     }
     if (is_contextual[Y]) {
-      // Z <-- Y, forced orientation
-      probas_final[i][2] = 1.0;
+      // Z *-- Y, Y cannot be the child of Z
       probas_final[i][3] = 0.0;
     }
   }
