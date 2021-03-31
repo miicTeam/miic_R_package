@@ -4,7 +4,15 @@
 \alias{plot.tmiic}
 \title{Basic plot function of a tmiic network inference result}
 \usage{
-\method{plot}{tmiic}(x, display = "compact", show_self_loops = TRUE, method = "igraph", ...)
+\method{plot}{tmiic}(
+  x,
+  display = "compact",
+  show_self_loops = TRUE,
+  positioning_for_grid = "greedy",
+  orientation_for_grid = "L",
+  method = "igraph",
+  ...
+)
 }
 \arguments{
 \item{x}{[a tmiic graph object]
@@ -58,6 +66,31 @@ Possible values are \emph{"raw"}, \emph{"lagged"}, \emph{"compact"},
 When TRUE, the edges like X_lag0-X_lag1 are included in the iGraph object. 
 When FALSE, only edges having different nodes are present in the iGraph 
 object.}
+
+\item{positioning_for_grid}{[a string] Optional, "greedy" by default.
+Used only when the display is "raw" or "lagged and no layout is supplied.
+Possible values are \emph{"none"}, \emph{"alphabetical"}, \emph{"layers"}
+\emph{"greedy"} and \emph{"sugiyama"}
+\itemize{
+\item When \emph{positioning_for_grid} = \emph{"none"}
+ The nodes are positioned as they appear in the miic result
+\item When \emph{positioning_for_grid} = \emph{"alphabetical"}
+ The nodes are positioned alphabeticaly in ascending order
+\item When \emph{positioning_for_grid} = \emph{"layers"}
+ The nodes with the less lags wil be placed on the exteriors 
+ while the nodes having the most lags are in the center
+\item When \emph{positioning_for_grid} = \emph{"greedy"}
+ A greedy algorithm will be used to placed the nodes in a way minimizing
+ the crossing edges
+\item When \emph{positioning_for_grid} = \emph{"sugiyama"}
+ The sugiyama algorithm will be used to placed the nodes in a way 
+ minimizing the crossing edges
+}}
+
+\item{orientation_for_grid}{[a string] Optional, "L" by default.
+Used only when the display is "raw" or "lagged and no layout is supplied.
+Indicates the orientation of the draw, possible values are landscape: "L"
+or portrait: "P".}
 
 \item{method}{A string representing the plotting method. Default to "igraph".
 Currently only "igraph" is supported.}
