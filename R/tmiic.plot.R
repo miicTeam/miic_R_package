@@ -968,10 +968,10 @@ tmiic.computeGridLayout <- function (tmiic.res, display="raw",
 #' When FALSE, only edges having different nodes are present in the iGraph 
 #' object.
 #' 
-#' @positioning_for_grid [a string] Optional, "greedy" by default.
+#' @param positioning_for_grid [a string] Optional, "greedy" by default.
 #' Used only when the display is "raw" or "lagged and no layout is supplied.
 #' Possible values are \emph{"none"}, \emph{"alphabetical"}, \emph{"layers"}
-#' \emph{"greedy"}, \emph{"sugiyama"}
+#' \emph{"greedy"} and \emph{"sugiyama"}
 #' \itemize{
 #' \item When \emph{positioning_for_grid} = \emph{"none"}
 #'  The nodes are positioned as they appear in the miic result
@@ -988,7 +988,7 @@ tmiic.computeGridLayout <- function (tmiic.res, display="raw",
 #'  minimizing the crossing edges
 #' }
 #' 
-#' @orientation_for_grid [a string] Optional, "L" by default.
+#' @param orientation_for_grid [a string] Optional, "L" by default.
 #' Used only when the display is "raw" or "lagged and no layout is supplied.
 #' Indicates the orientation of the draw, possible values are landscape: "L"
 #' or portrait: "P".
