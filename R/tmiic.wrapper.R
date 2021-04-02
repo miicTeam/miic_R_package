@@ -166,7 +166,7 @@
 # the content of the black_boxs dataframe will be lagged to match the lagged
 # input data (see details section for an exemple).
 # 
-# @param keep_max_data [a boolean] Optional, TRUE by default. 
+# @param keep_max_data [a boolean] Optional, FALSE by default. 
 # Lagging, and if used, moving average will produce NAs during the process.
 # When keep_max_data is TRUE, rows contained cells with such introduced NAs
 # will be kept, whilst these rows will be dropped when keep_max_data is FALSE.
@@ -183,7 +183,7 @@
 #-----------------------------------------------------------------------------
 tmiic.lag_inputs <- function (input_data, tau=NULL, delta_tau=1, movavg=-1, 
                               state_order=NULL, true_edges=NULL, 
-                              black_box=NULL, keep_max_data=TRUE) {
+                              black_box=NULL, keep_max_data=FALSE) {
   list_vars <- colnames (input_data)[-1]
   n_vars <- length (list_vars)
   #
