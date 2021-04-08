@@ -169,32 +169,16 @@ vector<ProbaArray> getOriProbasList(const vector<Triple>& triples,
     if (is_contextual[X]) {
       // X --* Z, X cannot be the child of Z
       probas_final[i][0] = 0.0;
-      // X --> Z, forced orientation for non-contextual Z
-      if (!is_contextual[Z]) {
-        probas_final[i][1] = 1.0;
-      }
     }
     if (is_contextual[Z]) {
       // X *-- Z, Z cannot be the child of X
       probas_final[i][1] = 0.0;
-      // X <-- Z, forced orientation for non-contextual X
-      if (!is_contextual[X]) {
-        probas_final[i][0] = 1.0;
-      }
       // Z --* Y, Z cannot be the child of Y
       probas_final[i][2] = 0.0;
-      // Z --> Y, forced orientation for non-contextual Y
-      if (!is_contextual[Y]) {
-        probas_final[i][3] = 1.0;
-      }
     }
     if (is_contextual[Y]) {
       // Z *-- Y, Y cannot be the child of Z
       probas_final[i][3] = 0.0;
-      // Z <-- Y, forced orientation for non-contextual Z
-      if (!is_contextual[Z]) {
-        probas_final[i][2] = 1.0;
-      }
     }
   }
   // Keep the current best probas of each triple during the orientation process
