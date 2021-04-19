@@ -80,10 +80,6 @@ bool BiconnectedComponent::isConsistent(
     // Not in the consistent set
     if (set_z.find(z) == set_z.end())
       return false;
-    // For double arrow headed edge (x <-> z), z is considered consistent
-    if ((edges_(x, z).status == 2 && edges_(z, x).status == 2) ||
-        (edges_(y, z).status == 2 && edges_(z, y).status == 2))
-      continue;
     // status is either 0 (not connected) or 2 (z is the child of x or y)
     if (edges_(x, z).status != 1 && edges_(y, z).status != 1)
       return false;
