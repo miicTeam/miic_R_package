@@ -321,6 +321,17 @@ void searchForBestContributingNode(
     zi_list.erase(
         remove_if(begin(zi_list), end(zi_list), is_isolated), end(zi_list));
   }
+  if (environment.tau_max >= 1) {
+    auto contextually_illegal_Z = [&environment, X, Y](int Z) {
+      return (environment.is_contextual[X] &&
+              (environment.nodes_class[Y] == environment.nodes_class[Z])) ||
+             (environment.is_contextual[Y] &&
+              (environment.nodes_class[X] == environment.nodes_class[Z]));
+    };
+    // remove Zi that are the same class as X if Y is contextual, and vice versa
+    zi_list.erase(
+        remove_if(begin(zi_list), end(zi_list), contextually_illegal_Z), end(zi_list));
+  }
 
   int n_zi = zi_list.size();
   info->Rxyz_ui = 0;

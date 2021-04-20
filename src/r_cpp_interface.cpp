@@ -136,6 +136,15 @@ void setEnvironmentFromR(const Rcpp::List& input_data,
     if ( arg_list.containsElementNamed ("delta_tau") ) 
       list_delta_taus = as<vector<int>> (arg_list["delta_tau"]);
     //
+    // Precompute the class of each variable (unique ID for the part before "_lagX")
+    //
+    for (int node_idx = 0; node_idx < environment.n_nodes_not_lagged; ++node_idx)
+      environment.nodes_class.push_back (node_idx);
+    for (int tau_idx = 1; tau_idx <= environment.tau_max; ++tau_idx)
+      for (int node_idx = 0; node_idx < environment.n_nodes_not_lagged; ++node_idx)
+        if (tau_idx <= environment.list_taus[node_idx])
+          environment.nodes_class.push_back (node_idx);
+    //
     // Precompute the lag of each variable: layer * delta_tau
     //
     environment.nodes_lags.assign (environment.n_nodes_not_lagged, 0);
