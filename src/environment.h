@@ -83,6 +83,8 @@ struct Environment {
   int tau_max = -1;  
   // Number of layers for each variable (temporal mode only)
   vector<int> list_taus;
+  // Class for each node (temporal mode only)
+  vector<int> nodes_class;
   // Lag for each node (temporal mode only)
   // Note that we consider contextual variables as very old (= INT_MAX)
   // so from the time point of view, they are never the consequence 
