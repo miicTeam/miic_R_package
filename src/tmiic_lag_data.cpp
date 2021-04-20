@@ -410,11 +410,10 @@ void lagCol (DataFrame &df, string col_name, T col_values, int lag,
     long start_of_ts = list_breaks[ts_idx]; 
     long start_of_next_ts = list_breaks[ts_idx + 1]; 
     long size_of_timeseries = start_of_next_ts - start_of_ts;
-    if (lag > size_of_timeseries)
-      lag = size_of_timeseries;
+    long min_lag_or_size_ts = std::min ((long)lag, size_of_timeseries);
     
     long i = 0;
-    for (; i < lag; ++i)
+    for (; i < min_lag_or_size_ts; ++i)
       col_lagged[++col_lagged_idx] = na_value;
     for (; i < size_of_timeseries; ++i)
       col_lagged[++col_lagged_idx] = col_values[start_of_ts++];
