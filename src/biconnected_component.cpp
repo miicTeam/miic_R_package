@@ -51,10 +51,6 @@ void BiconnectedComponent::setCandidateZ(int x, int y, vector<int>& zi_list) {
     auto set_z = getCandidateZ(x, y);
     auto is_consistent = [this, x, y](int z){
       if (latent_) return true;
-      // For double arrow headed edge (x <-> z), z is considered consistent
-      if ((edges_(x, z).status_prev == 2 && edges_(z, x).status_prev == 2) ||
-          (edges_(y, z).status_prev == 2 && edges_(z, y).status_prev == 2))
-        return true;
       // status is either 0 (not connected) or 2 (z is the child of x or y)
       if (edges_(x, z).status_prev != 1 && edges_(y, z).status_prev != 1)
         return false;
