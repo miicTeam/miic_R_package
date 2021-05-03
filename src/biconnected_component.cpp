@@ -47,10 +47,11 @@ set<int> BiconnectedComponent::getCandidateZ(int x, int y) const {
 
 void BiconnectedComponent::setCandidateZ(int x, int y, vector<int>& zi_list) {
   zi_list.clear();
-  if (consistent_) {
+  if (consistent_ != 0) {
     auto set_z = getCandidateZ(x, y);
     auto is_consistent = [this, x, y](int z){
-      if (latent_) return true;
+      // consistent_ -> 1: orientation consistency; 2: skeleton consistency
+      if (latent_ || consistent_ == 2) return true;
       // For double arrow headed edge (x <-> z), z is considered consistent
       if ((edges_(x, z).status_prev == 2 && edges_(z, x).status_prev == 2) ||
           (edges_(y, z).status_prev == 2 && edges_(z, y).status_prev == 2))
@@ -80,6 +81,9 @@ bool BiconnectedComponent::isConsistent(
     // Not in the consistent set
     if (set_z.find(z) == set_z.end())
       return false;
+    // consistent_ -> 1: orientation consistency; 2: skeleton consistency
+    if (consistent_ == 2)
+      continue;
     // For double arrow headed edge (x <-> z), z is considered consistent
     if ((edges_(x, z).status == 2 && edges_(z, x).status == 2) ||
         (edges_(y, z).status == 2 && edges_(z, y).status == 2))
