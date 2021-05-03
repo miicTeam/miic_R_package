@@ -21,7 +21,7 @@ using namespace miic::utility;
 
 class BiconnectedComponent {
  public:
-  BiconnectedComponent(const Grid2d<Edge>& edges, bool consistent, bool latent)
+  BiconnectedComponent(const Grid2d<Edge>& edges, int consistent, bool latent)
       : edges_(edges),
         n_nodes_(edges.n_rows()),
         consistent_(consistent),
@@ -54,7 +54,7 @@ class BiconnectedComponent {
  private:
   const Grid2d<Edge>& edges_;
   const int n_nodes_;
-  const bool consistent_;
+  const int consistent_;
   const bool latent_;
   vector<int> is_cut_point_;
   vector<int> degree_of_;

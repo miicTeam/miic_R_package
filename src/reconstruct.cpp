@@ -95,9 +95,7 @@ List reconstruct(List input_data, List arg_list) {
             << " edges cut.\n";
       environment.exec_time.cut += getLapInterval(lap_start);
     }
-    // Oriente edges for non-consistent/orientation consistent algorithm
-    if (environment.orientation && !environment.connected_list.empty() &&
-        environment.consistent <= 1) {
+    if (environment.orientation && !environment.connected_list.empty()) {
       lap_start = getLapStartTime();
       Rcout << "Search for edge directions...\n";
       orientations = orientationProbability(environment);
@@ -116,48 +114,6 @@ List reconstruct(List input_data, List arg_list) {
       break;
     }
   } while (environment.consistent != 0);
-
-  int union_n_edges = 0;
-  for (int i = 1; i < environment.n_nodes; i++) {
-    for (int j = 0; j < i; j++) {
-      if (environment.edges(i, j).status) {
-        union_n_edges++;
-      }
-    }
-  }
-  // skeleton consistent algorithm
-  if (environment.consistent == 2 && union_n_edges > 0) {
-    lap_start = getLapStartTime();
-    orientations = orientationProbability(environment);
-    environment.exec_time.ori += getLapInterval(lap_start);
-    // Check inconsistency after orientation, add undirected edge to
-    // pairs with inconsistent conditional independence.
-    bcc.analyse();
-    int n_inconsistency = 0;
-    vector<std::pair<int, int>> inconsistent_edges;
-    for (int i = 1; i < environment.n_nodes; i++) {
-      for (int j = 0; j < i; j++) {
-        const Edge& edge = environment.edges(i, j);
-        if (edge.status || bcc.isConsistent(i, j, edge.shared_info->ui_list))
-          continue;
-        if (environment.verbose) {
-          Rcout << environment.nodes[i].name << ",\t"
-                << environment.nodes[j].name << "\t| "
-                << toNameString(environment.nodes, edge.shared_info->ui_list)
-                << std::endl;
-        }
-        inconsistent_edges.emplace_back(i, j);
-        ++n_inconsistency;
-      }
-    }
-    for (const auto& k : inconsistent_edges) {
-      environment.edges(k.first, k.second).status = 1;
-      environment.edges(k.second, k.first).status = 1;
-      environment.edges(k.first, k.second).shared_info->setUndirected();
-    }
-    Rcout << n_inconsistency << " inconsistent conditional independences"
-          << " found after orientation.\n";
-  }
 
   const auto& time = environment.exec_time;
   List result = List::create(

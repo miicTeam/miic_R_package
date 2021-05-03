@@ -34,8 +34,8 @@ struct Environment {
   bool propagation = false;
   // Level of consistency required for the graph
   // 0: no consistency requirement
-  // 1: skeleton consistent
-  // 2: orientation consistent
+  // 1: orientation consistent
+  // 2: skeleton consistent
   int consistent = 0;
   // When consistent > 0, the maximum number of iterations allowed when trying
   // to find a consistent graph.
