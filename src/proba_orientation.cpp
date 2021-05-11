@@ -158,11 +158,54 @@ void propagate(bool latent, bool propagation, double I3,
 // param I3_list the 3-point mutual info (N * I'(X;Y;Z|{ui})) of each Triple
 // return vector<ProbaArray> Each ProbaArray is bound to a unshielded Triple
 vector<ProbaArray> getOriProbasList(const vector<Triple>& triples,
-    const vector<double>& I3_list, const vector<int>& is_contextual,
-    bool latent, bool degenerate, bool propagation, bool half_v_structure) {
+    const vector<double>& I3_list, structure::Environment& environment) {
+  bool latent = environment.latent_orientation;
+  bool propagation = environment.propagation;
+  bool half_v_structure = environment.half_v_structure;
+  bool degenerate = environment.degenerate;
+  vector<int> is_contextual = environment.is_contextual;
+  
   int n_triples = triples.size();
   vector<ProbaArray> probas_final(n_triples);  // to be returned
   for (auto& p_array : probas_final) p_array.fill(0.5);
+  //
+  // In temporal mode, use time for orientation 
+  //
+  if (environment.tau_max >= 1) {
+    //
+    // Orient each triple using time when possible
+    // Note that the probability for the tail end is 0 when latent variable
+    // discovery is not activated, otherwise keep 0.5
+    //
+    for (int i = 0; i < n_triples; i++) {
+      int nodeX_lag = environment.nodes_lags[ triples[i][0] ];
+      int nodeZ_lag = environment.nodes_lags[ triples[i][1] ];
+      int nodeY_lag = environment.nodes_lags[ triples[i][2] ];
+      
+      if (nodeX_lag < nodeZ_lag) {
+        probas_final[i][0] = 1;
+        if (!latent)
+          probas_final[i][1] = 1 - probas_final[i][0];
+      }
+      else if (nodeX_lag > nodeZ_lag) {
+        probas_final[i][1] = 1;
+        if (!latent)
+          probas_final[i][0] = 1 - probas_final[i][1];
+      }
+      
+      if (nodeZ_lag < nodeY_lag) {
+        probas_final[i][2] = 1;
+        if (!latent)
+          probas_final[i][3] = 1 - probas_final[i][2];
+      }
+      else if (nodeZ_lag > nodeY_lag) {
+        probas_final[i][3] = 1;
+        if (!latent)
+          probas_final[i][2] = 1 - probas_final[i][3];
+      }
+    }
+  }
+  
   // Set initial probability for triples involving contextual variables
   for (int i = 0; i < n_triples; ++i) {
     int X = triples[i][0], Z = triples[i][1], Y = triples[i][2];
@@ -221,7 +264,8 @@ vector<ProbaArray> getOriProbasList(const vector<Triple>& triples,
   auto compareTriples = [&log_score, &I3_list](int a, int b) {
     // log scores are non-positive, when the score (proba) is close to 1, i.e.,
     // when the abs(NI3) is large enough, log score can be subnormal.
-    if (log_score[a] != log_score[b]) {
+    //if (log_score[a] != log_score[b]) {
+    if (fabs(log_score[a] - log_score[b]) > kEps) {
       return log_score[a] > log_score[b];
     } else {
       return fabs(I3_list[a]) > fabs(I3_list[b]);
@@ -238,7 +282,7 @@ vector<ProbaArray> getOriProbasList(const vector<Triple>& triples,
     const auto& max_triple = triples[max_idx];
     const auto& max_current = probas_current[max_idx];
     auto& max_final = probas_final[max_idx];
-
+    
     int X{-1}, Z{-1}, Y{-1};
     // Correspond to ProbaArray[0-3]: *2+, proba of arrowhead from * to +
     double z2x{0.5}, x2z{0.5}, y2z{0.5}, z2y{0.5};

@@ -9,6 +9,7 @@
 namespace miic {
 namespace reconstruction {
 
+void updateAdj(structure::Environment&, int, int, double, double);
 std::vector<std::vector<std::string>> orientationProbability(
     structure::Environment&);
 

@@ -4,6 +4,8 @@
 #include <array>
 #include <vector>
 
+#include "environment.h"
+
 namespace miic {
 namespace reconstruction {
 // An unshielded Triple (X, Z, Y):
@@ -21,8 +23,7 @@ using Triple = std::array<int, 3>;
 using ProbaArray = std::array<double, 4>;
 
 std::vector<ProbaArray> getOriProbasList(const std::vector<Triple>&,
-    const std::vector<double>& I3_list, const std::vector<int>& is_contextual,
-    bool latent, bool degenerate, bool propagation, bool half_v_structure);
+    const std::vector<double>& I3_list, structure::Environment&);
 
 }  // namespace reconstruction
 }  // namespace miic
