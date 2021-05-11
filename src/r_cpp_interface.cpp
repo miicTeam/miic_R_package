@@ -24,11 +24,45 @@ void setEnvironmentFromR(const Rcpp::List& input_data,
     environment.data_double = Grid2d<double>(
         n_nodes, n_samples, as<vector<double>>(input_data["double"]));
 
+  vector<int> list_delta_taus;
+  if ( arg_list.containsElementNamed ("tau") ) {
+    environment.list_taus = as<vector<int>> (arg_list["tau"]);
+    environment.tau_max = *std::max_element ( environment.list_taus.begin(),
+                                              environment.list_taus.end() );
+  }
+  if (environment.tau_max >= 1) {
+    environment.n_nodes_not_lagged = n_nodes;
+    for (auto& one_tau : environment.list_taus)
+      if (one_tau >= 1)
+        environment.n_nodes_not_lagged -= one_tau;
+
+    list_delta_taus = vector<int> (1, environment.n_nodes_not_lagged);
+    if ( arg_list.containsElementNamed ("delta_tau") )
+      list_delta_taus = as<vector<int>> (arg_list["delta_tau"]);
+  }
+
   if (arg_list.containsElementNamed("n_eff"))
     environment.n_eff = as<int>(arg_list["n_eff"]);
-  if (environment.n_eff == -1 || environment.n_eff > n_samples)
+  if (environment.n_eff == -1 || environment.n_eff > n_samples) {
     environment.n_eff = n_samples;
-
+    if (environment.tau_max >= 1) {
+      //
+      // In temporal mode, when delta_tau is > 1, we need to tune the n_eff
+      // Note: this implementation is intended for an unique delta_tau
+      // (excepting non lagged variables like contextual ones)
+      // and needs an update to take into account different delta_taus
+      //
+      int delta_tau_max = *std::max_element ( list_delta_taus.begin(),
+                                              list_delta_taus.end() );
+      if (delta_tau_max > 1) {
+        environment.n_eff = std::round (n_samples / delta_tau_max);
+        Rcpp::Rcout << "Note: n_eff has been set to " << environment.n_eff
+                    << " (nb lagged samples=" << n_samples
+                    << " / max delta_tau=" << delta_tau_max << ")\n";
+      }
+    }
+  }
+    
   if (arg_list.containsElementNamed("var_names")) {
     auto var_names = as<vector<std::string>>(arg_list["var_names"]);
     std::transform(var_names.begin(), var_names.end(),
@@ -121,20 +155,7 @@ void setEnvironmentFromR(const Rcpp::List& input_data,
   omp_set_num_threads(environment.n_threads);
 #endif
 
-  if ( arg_list.containsElementNamed ("tau") ) {
-    environment.list_taus = as<vector<int>> (arg_list["tau"]);
-    environment.tau_max = *std::max_element ( environment.list_taus.begin(), 
-                                              environment.list_taus.end() );
-  }
   if (environment.tau_max >= 1) {
-    environment.n_nodes_not_lagged = n_nodes;
-    for (auto& one_tau : environment.list_taus)
-      if (one_tau >= 1)
-        environment.n_nodes_not_lagged -= one_tau;
-      
-    vector<int> list_delta_taus (1, environment.n_nodes_not_lagged);
-    if ( arg_list.containsElementNamed ("delta_tau") ) 
-      list_delta_taus = as<vector<int>> (arg_list["delta_tau"]);
     //
     // Precompute the class of each variable (unique ID for the part before "_lagX")
     //

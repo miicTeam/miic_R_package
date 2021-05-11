@@ -61,8 +61,8 @@
 #' Variable names must correspond to the \emph{input_data} data frame.
 #'
 #' @param n_eff [a positive integer]
-#' The n samples given in the \emph{input_data} data frame are expected
-#' to be independent. In case of correlated samples such as in time series or
+#' In regular mode, the n samples given in the \emph{input_data} data frame are
+#' expected to be independent. In case of correlated samples such as in
 #' Monte Carlo sampling approaches, the effective number of independent samples
 #' \emph{n_eff} can be estimated using the decay of the autocorrelation function
 #' (Verny \emph{et al.}, PLoS Comp. Bio. 2017). This \emph{effective} number \emph{n_eff}
