@@ -354,7 +354,7 @@ InfoBlock computeIxy(const TempGrid2d<int>& data,
 
     r_temp.assign({r[0], r[1], rxy});
     InfoBlock res_temp = computeMI(datafactors.getRow(0), datafactors.getRow(1),
-        xy_factors, r_temp, n_eff, weights, cache, cplx, 0);
+        xy_factors, r_temp, std::round(n_eff), weights, cache, cplx, 0);
     // All set if both variables are discrete
     if (is_continuous[var_idx[0]] == 0 && is_continuous[var_idx[1]] == 0)
       return res_temp;
@@ -407,7 +407,7 @@ InfoBlock computeIxy(const TempGrid2d<int>& data,
     rxy = setJointFactors(datafactors, r, TempVector<int>{0, 1}, xy_factors);
     r_temp.assign({r[0], r[1], rxy});
     InfoBlock res_temp = computeMI(datafactors.getRow(0), datafactors.getRow(1),
-        xy_factors, r_temp, n_eff, weights, cache, cplx, 0);
+        xy_factors, r_temp, std::round(n_eff), weights, cache, cplx, 0);
     // Adding combinatorial term
     if (is_continuous[var_idx[0]] && r[0] > 1) {
       int n_cuts_max = min(maxbins, levels[var_idx[0]]);
@@ -506,12 +506,12 @@ InfoBlock computeIxyui(const TempGrid2d<int>& data,
     setUyxJointFactors(datafactors, r, -1, uyxfactors, ruyx);
     r_temp.assign({r[1], ruyx[2], ruyx[3]});
     res_temp = computeMI(datafactors.getRow(1), uyxfactors.getRow(2),
-        uyxfactors.getRow(3), r_temp, n_eff, weights, cache, cplx, 1);
+        uyxfactors.getRow(3), r_temp, std::round(n_eff), weights, cache, cplx, 1);
     double Ik_y_xu = res_temp.I - res_temp.k;
 
     r_temp.assign({r[0], ruyx[1], ruyx[3]});
     res_temp = computeMI(datafactors.getRow(0), uyxfactors.getRow(1),
-        uyxfactors.getRow(3), r_temp, n_eff, weights, cache, cplx, 1);
+        uyxfactors.getRow(3), r_temp, std::round(n_eff), weights, cache, cplx, 1);
     double Ik_x_yu = res_temp.I - res_temp.k;
 
     if ((Ik_y_xu + Ik_x_yu) > best_res) {
@@ -565,7 +565,7 @@ InfoBlock computeIxyui(const TempGrid2d<int>& data,
     setUyxJointFactors(datafactors, r_old, -1, uyxfactors, ruyx);
     r_temp.assign({r_old[1], ruyx[2], ruyx[3]});
     res_temp = computeMI(datafactors.getRow(1), uyxfactors.getRow(2),
-        uyxfactors.getRow(3), r_temp, n_eff, weights, cache, cplx, 1);
+        uyxfactors.getRow(3), r_temp, std::round(n_eff), weights, cache, cplx, 1);
     double I_y_xu = res_temp.I;  // Before optimization on X.
     double Ik_y_xu = res_temp.I - res_temp.k;
     if (is_continuous[var_idx[0]] && r_old[0] > 1) {
@@ -621,7 +621,7 @@ InfoBlock computeIxyui(const TempGrid2d<int>& data,
     setUyxJointFactors(datafactors, r_old, -1, uyxfactors, ruyx);
     r_temp.assign({r_old[0], ruyx[1], ruyx[3]});
     res_temp = computeMI(datafactors.getRow(0), uyxfactors.getRow(1),
-        uyxfactors.getRow(3), r_temp, n_eff, weights, cache, cplx, 1);
+        uyxfactors.getRow(3), r_temp, std::round(n_eff), weights, cache, cplx, 1);
     double I_x_yu = res_temp.I;  // Before updating Y (and X).
     double Ik_x_yu = res_temp.I - res_temp.k;
     if ((is_continuous[var_idx[1]] == 1) && (r_old[1] > 1)) {
@@ -679,7 +679,7 @@ InfoBlock computeIxyui(const TempGrid2d<int>& data,
     setUyxJointFactors(datafactors, r_old, -1, uyxfactors, ruyx);
     r_temp.assign({r_old[0], ruyx[0], ruyx[2]});
     res_temp = computeMI(datafactors.getRow(0), uyxfactors.getRow(0),
-        uyxfactors.getRow(2), r_temp, n_eff, weights, cache, cplx, 1);
+        uyxfactors.getRow(2), r_temp, std::round(n_eff), weights, cache, cplx, 1);
     double I_x_u = res_temp.I;  // After optimization on U.
     double Ik_x_u = res_temp.I - res_temp.k;
 
@@ -715,7 +715,7 @@ InfoBlock computeIxyui(const TempGrid2d<int>& data,
     setUyxJointFactors(datafactors, r_old, -1, uyxfactors, ruyx);
     r_temp.assign({r_old[1], ruyx[0], ruyx[1]});
     res_temp = computeMI(datafactors.getRow(1), uyxfactors.getRow(0),
-        uyxfactors.getRow(1), r_temp, n_eff, weights, cache, cplx, 1);
+        uyxfactors.getRow(1), r_temp, std::round(n_eff), weights, cache, cplx, 1);
     double I_y_u = res_temp.I;  // After optimization on U.
     double Ik_y_u = res_temp.I - res_temp.k;
 

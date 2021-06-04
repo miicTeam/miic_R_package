@@ -33,7 +33,7 @@ InfoBlock computeCondMutualInfoDiscrete(const TempGrid2d<int>& data,
 
     TempVector<int> r_temp{rx, ry, rxy};
     return computeMI(data.getConstRow(id_x), data.getConstRow(id_y), xy_factors,
-        r_temp, n_eff, weights, cache, cplx, 0);
+        r_temp, std::round(n_eff), weights, cache, cplx, 0);
   }
 
   TempVector<int> ui_list(begin(var_idx) + 2, end(var_idx));
