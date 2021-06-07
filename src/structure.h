@@ -133,12 +133,13 @@ struct Grid2d {
 
 // Shifted conditional mutual information Nxy_ui * I(X;Y|ui) - k(X;Y|ui)
 struct InfoBlock {
-  int n_samples;
+  double n_samples;  // double to include weighted case
   double I;
   double k;
 
   constexpr InfoBlock() : n_samples(0), I(0), k(0) {}
-  constexpr InfoBlock(int N, double I, double k) : n_samples(N), I(I), k(k) {}
+  constexpr InfoBlock(double N, double I, double k)
+      : n_samples(N), I(I), k(k) {}
 };
 
 struct Info3PointBlock {

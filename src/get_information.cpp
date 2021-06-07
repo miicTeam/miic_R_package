@@ -174,7 +174,7 @@ InfoBlock getCondMutualInfo(int X, int Y, const vector<int>& ui_list,
         X, Y, /*Z*/ -1, ui_list, data_numeric, sample_is_not_NA, na_count);
 
   if (n_samples_non_na <= 2) {
-    InfoBlock res{n_samples_non_na, 0, 0};
+    InfoBlock res{static_cast<double>(n_samples_non_na), 0, 0};
     if (n_ui != 0) cache->saveMutualInfo(X, Y, ui_list, res);
     return res;
   }
@@ -196,7 +196,7 @@ InfoBlock getCondMutualInfo(int X, int Y, const vector<int>& ui_list,
 
   // If X or Y has only 1 level
   if (levels_red[0] <= 1 || levels_red[1] <= 1) {
-    InfoBlock res{n_samples_non_na, 0, 0};
+    InfoBlock res{static_cast<double>(n_samples_non_na), 0, 0};
     if (n_ui != 0) cache->saveMutualInfo(X, Y, ui_list, res);
     return res;
   }
