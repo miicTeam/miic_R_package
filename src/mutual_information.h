@@ -31,6 +31,7 @@ using namespace utility;
 using std::log;
 
 // rux 0:x,1;u,2:ux
+// rux=nbr different levels
 // cplx 0: MDL, 1: NML
 // flag (for cplx == 1 only) 0: mutual info, 1: conditional mutual info
 // When flag == 1 && cplx == 1, x and u are not symmetrical, x represents single
@@ -60,14 +61,14 @@ InfoBlock computeMI(const Cx& xfactors, const Cu& ufactors,
 
     Hx -= x * log(x);
     if (cplx == 1 && flag == 0)
-      sc += cache->getLogC(std::max(1, static_cast<int>(x + 0.5)), rux[1]);
+      sc += cache->getLogC(std::max(1, static_cast<int>(std::round(x))), rux[1]);
   }
   for (const auto u : nu) {
     if (u <= 0) continue;
 
     Hu -= u * log(u);
     if (cplx == 1)
-      sc += cache->getLogC(std::max(1, static_cast<int>(u + 0.5)), rux[0]);
+      sc += cache->getLogC(std::max(1, static_cast<int>(std::round(u))), rux[0]);
   }
   for (const auto ux : nux) {
     if (ux <= 0) continue;
