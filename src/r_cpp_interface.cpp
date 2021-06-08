@@ -25,9 +25,9 @@ void setEnvironmentFromR(const Rcpp::List& input_data,
         n_nodes, n_samples, as<vector<double>>(input_data["double"]));
 
   if (arg_list.containsElementNamed("n_eff"))
-    environment.n_eff = as<int>(arg_list["n_eff"]);
-  if (environment.n_eff == -1 || environment.n_eff > n_samples)
-    environment.n_eff = n_samples;
+    environment.n_eff = as<double>(arg_list["n_eff"]);
+  if (environment.n_eff < 0 || environment.n_eff > n_samples)
+    environment.n_eff = static_cast<double>(n_samples);
 
   if (arg_list.containsElementNamed("var_names")) {
     auto var_names = as<vector<std::string>>(arg_list["var_names"]);
@@ -88,9 +88,7 @@ void setEnvironmentFromR(const Rcpp::List& input_data,
   if (arg_list.containsElementNamed("sample_weights"))
     environment.sample_weights = as<vector<double>>(arg_list["sample_weights"]);
   if (environment.sample_weights.empty()) {
-    double uniform_weight{1};
-    if (environment.n_eff != n_samples)
-      uniform_weight = static_cast<double>(environment.n_eff) / n_samples;
+    double uniform_weight = environment.n_eff / n_samples;
     environment.sample_weights.resize(n_samples, uniform_weight);
   }
 
