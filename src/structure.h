@@ -158,7 +158,8 @@ struct EdgeSharedInfo {
   vector<int> zi_list;
   // Best candidate separating node
   int top_z = -1;
-  // Score of the best contributor
+  // Score of the best contributor, this is the exponential part of the full
+  // score as defined in Verny et al., 2017 (Supplementary Text)
   double Rxyz_ui = 0;
   // Conditional mutual information
   double Ixy_ui = 0;

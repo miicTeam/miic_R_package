@@ -323,6 +323,8 @@ void searchForBestContributingNode(
   }
 
   int n_zi = zi_list.size();
+  // zero corresponds to 1/2 as the full score as defined in Verny et al., 2017
+  // (Supplementary Text)
   info->Rxyz_ui = 0;
 #ifdef _OPENMP
 #pragma omp parallel for if (parallel && n_zi > environment.n_threads)
@@ -338,7 +340,7 @@ void searchForBestContributingNode(
     if (score > info->Rxyz_ui) {
       info->top_z = Z;
       info->Rxyz_ui = score;
-    } else if (fabs(score - info->Rxyz_ui) < kEpsScore) {
+    } else if (info->top_z != -1 && fabs(score - info->Rxyz_ui) < kEpsScore) {
       double H_old = getEntropy(environment, info->top_z, X, Y);
       double H_new = getEntropy(environment, Z, X, Y);
       if (H_new > H_old ||
