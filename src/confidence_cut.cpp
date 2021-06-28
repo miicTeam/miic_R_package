@@ -4,6 +4,8 @@
 #include <omp.h>
 #endif
 #include <Rcpp.h>
+#include <xoshiro.h>
+#include <dqrng_distribution.h>
 
 #include <algorithm>  // std::sort
 #include <set>
@@ -19,18 +21,21 @@ using std::vector;
 using namespace miic::computation;
 using namespace miic::structure;
 
-// shuffle with R rng (std::random_shuffle is deprecated)
+// shuffle with custom function (std::random_shuffle is deprecated)
 // https://en.cppreference.com/w/cpp/algorithm/random_shuffle
-template <class RandomIt>
-void rShuffle(RandomIt first, RandomIt last) {
+template <class RandomIt, class RandomFunc>
+void rShuffle(RandomIt first, RandomIt last, RandomFunc&& r) {
   typename std::iterator_traits<RandomIt>::difference_type i, n;
   n = last - first;
   for (i = n - 1; i > 0; --i) {
-    std::swap(first[i], first[floor(R::unif_rand() * (i + 1))]);
+    std::swap(first[i], first[r(i + 1)]);
   }
 }
 
 void setConfidence(Environment& environment) {
+  dqrng::uniform_distribution dist(0.0, 1.0); // Uniform distribution [0,1)
+  dqrng::xoshiro256plus rng(42);
+
   vector<EdgeID> edge_list;
   std::set<int> columns_to_shuffle;
   for (int i = 1; i < environment.n_nodes; ++i) {
@@ -48,6 +53,13 @@ void setConfidence(Environment& environment) {
 #pragma omp parallel
 #endif
   {
+    dqrng::xoshiro256plus lrng(rng);  // thread local copy
+#ifdef _OPENMP
+    lrng.long_jump(omp_get_thread_num() + 1);  // ensure independency
+#endif
+    // discrete uniform distribution over [0, 1, ..., i-1]
+    auto disc_unif = [&dist, &lrng](int i) { return floor(dist(lrng) * i); };
+
     Grid2d<int> shuffled_data(environment.data_numeric);
     Grid2d<int> shuffled_data_idx(environment.data_numeric_idx);
     vector<int> indices(environment.n_samples);
@@ -60,7 +72,7 @@ void setConfidence(Environment& environment) {
         // [0, 1, ..., n_samples - 1]
         std::iota(begin(indices), end(indices), 0);
         // random permutation
-        rShuffle(begin(indices), end(indices));
+        rShuffle(begin(indices), end(indices), disc_unif);
         for (int row = 0; row < environment.n_samples; row++) {
           shuffled_data(col, indices[row]) = environment.data_numeric(col, row);
           if (environment.is_continuous[col]) {
