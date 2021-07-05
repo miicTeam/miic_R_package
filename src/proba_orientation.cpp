@@ -1,17 +1,16 @@
 #include "proba_orientation.h"
 
-#include <algorithm>
+#include <algorithm>  // std::sort
 #define _USE_MATH_DEFINES
 #include <cmath>
-#include <limits>  // std::numeric_limits
+#include <limits>   // std::numeric_limits
 #include <numeric>  // std::iota
-#include <tuple>  // std::tie
+#include <tuple>    // std::tie
 
 namespace miic {
 namespace reconstruction {
 
 using std::vector;
-using std::fabs;
 
 namespace {
 
@@ -22,7 +21,7 @@ bool isHead(double score) { return score > 0; }  // proba > 0.5
 bool isTail(double score) { return score < 0; }  // proba < 0.5
 bool isOriented(double score) { return isHead(score) || isTail(score); }
 // Given an edge (X px -- py Y) with probabilities px and py, and the value of
-// px(py) is determined, then the value of py(px) can be inferred if
+// px(py) is determined, then the value of py(px) can be induced if
 // 1. px(py) is likely an arrowhead but latent variable (bi-directed edge) is
 //    not allowed.
 // 2. px(py) is likely an arrowtail and propagation of orientation is allowed.
@@ -30,53 +29,45 @@ bool isInducible(double score, bool latent, bool propagation) {
   return (isHead(score) && !latent) || (isTail(score) && propagation);
 }
 
-// Given a Triple t0 (X -- Z -- Y) with the highest score, and another
-// Triple t who shares one edge with t0, and whose probabilities can be updated
-// by those of t0. Suppose the shared edge is W -- Z (W can be X or Y), in the
-// triple t, Z is not necessarily the middle node.
+// Given a Triple t0 (W -- Z -- V) and another Triple t who shares the edge
+// (W -- Z) with t0, update the probabilities of t by those of t0.
+// t can be one of the following:
+//   (W -- Z -- U), (Z -- W -- U), (U -- W -- Z), (U -- Z -- W)
 //
 // Input w2z, z2w the probabilities of t0 (W *-> Z and W <-* Z respectively),
 // where * can be head (< or >) or tail (-)
-// Input/Output probas, probas2, the ProbaArrays of t to be updated
-//
-// Denote by M (can be W or Z) the middle node of t, by U (can be Z or W) the
-// other node in the shared edge, and by V the third node, so t is either (U
-// -- M -- V) or (V -- M -- U)
+// Input/Output best, current, the ProbaArrays of t to be updated
 //
 // Input w2z_index, z2w_index value in [0, 1, 2, 3]. Index of the probabilites
-// in the ProbaArray of t that corresponds to w2z, z2w, If t is (U -- M -- V),
-// then (w2z_index, z2w_index) is (0, 1) or (1, 0), if t is (V -- M -- U), then
-// (w2z_index, z2w_index) is (2, 3) or (3, 2)
-void updateScore(int w2z_index, int z2w_index, double w2z, double z2w,
-    bool inducible, ProbaArray& best, ProbaArray& current,
-    bool& need_induction, bool& remove_triple) {
+// in the ProbaArray of t that corresponds to w2z, z2w
+bool updateScore(int w2z_index, int z2w_index, double w2z, double z2w,
+    bool inducible, ProbaArray& best, ProbaArray& current) {
   best[w2z_index] = w2z;
   if (inducible) best[z2w_index] = z2w;
-  // If both probabilites of the mid node are already oriented, the triple will
-  // not be able to update other triples of lower score in the list.
   if (isOriented(best[1]) && isOriented(best[2])) {
-    remove_triple = true;
+    // If both probabilites of the mid node are already oriented, the triple t
+    // will not be able to update other triples of lower score in the list.
+    return true;  // triple can be removed
   } else {
-    need_induction = true;
-    // Keep probabilites as the current best, to be later compared with the
-    // result of putative propagation.
+    // t will stay in the triple list, so update current
     current[w2z_index] = w2z;
     if (inducible) current[z2w_index] = z2w;
+    return false;  // triple not fully oriented yet, candidate for induction.
   }
 }
 
-// For an unshielded Triple X -- Z -- Y, given three point mutual infomation
-// I3 = I(X;Y;Z|ui) and probability w2z > 0.5 of orientation from one side node
-// W (X or Y) to Z being a head, return the induced probability score v2z
-// of orientation from the other node V (Y or X) to Z
+// Input I3 = N * I'(W;V;Z|{ui}) 3-point infomation of a Triple W -- Z -- V
+// Input w2z > 0 arrowhead probability score from W to Z
+// Return v2z induced head/tail probability score from V to Z.
+//
+// Denote p = 1.0 / (1 + exp(-abs(I3)))
+// If I3 > 0, then p is the probability of non-v-structure W *-> Z --* V, and
+// P(v2z) = P(w2z) * p is the probability Pr(v2z is tail).
+// If I3 < 0, then p is the probability of v-structure W *-> Z <-* V, and
+// P(v2z) = P(w2z) * p is the probability Pr(v2z is head).
 double getInducedScore(double I3, double w2z) {
-  // Denote p = 1.0 / (1 + exp(-abs(I3)))
-  // If I3 > 0, then p is the probability of non-v-structure W *-> Z --* V, and
-  // v2z = w2z * p is the probability Pr(v2z is tail), as score.
-  // if I3 < 0, then p is the probability of v-structure W *-> Z <-* V, and
-  // v2z = w2z * p is the probability Pr(v2z is head), as score.
   double s_min, s_max;  // structured binding is only available after C++17
-  std::tie(s_min, s_max) = std::minmax(fabs(I3), w2z);
+  std::tie(s_min, s_max) = std::minmax(std::fabs(I3), w2z);
   return s_min - std::log1p(std::exp(s_min - s_max) + std::exp(-s_max));
 }
 
@@ -112,7 +103,7 @@ void induceScore(bool latent, bool propagation, double I3,
     }
   } else if (I3 < 0) {  // Proposition 1.ii
     // Define score in case of no update below
-    if (fabs(current[1] - current[2]) > 0) {
+    if (std::fabs(current[1] - current[2]) > 0) {
       max_score = std::fmin(current[1], current[2]);
     }
     if (isHead(x2z)) {  // Try from X *-> Z to Z <-* Y
@@ -143,8 +134,8 @@ void induceScore(bool latent, bool propagation, double I3,
 
 // Iteratively converge towards partially oriented graphs including possible
 // latent variables and Propagation/Non-Propagation rules.
-// param triples list of unshielded Triple (X -- Z -- Y)
-// param I3_list the 3-point mutual info (N * I'(X;Y;Z|{ui})) of each Triple
+// Input triples list of unshielded Triple (X -- Z -- Y)
+// Input I3_list the 3-point information N * I'(X;Y;Z|{ui}) of each Triple
 // return vector<ProbaArray> Each ProbaArray is bound to a unshielded Triple
 vector<ProbaArray> getOriProbasList(const vector<Triple>& triples,
     const vector<double>& I3_list, const vector<int>& is_contextual,
@@ -158,7 +149,8 @@ vector<ProbaArray> getOriProbasList(const vector<Triple>& triples,
   //     score   |--> probability
   // (-inf, inf) |-->   [0, 1]
   vector<ProbaArray> scores_best(n_triples);
-  for (auto& s_array : scores_best) s_array.fill(0);  // 0 score <-> 0.5 proba
+  for (auto& s_array : scores_best)
+    s_array.fill(0);  // 0 score <-> 0.5 proba
   // Set initial probability for triples involving contextual variables
   for (int i = 0; i < n_triples; ++i) {
     int X = triples[i][0], Z = triples[i][1], Y = triples[i][2];
@@ -175,7 +167,8 @@ vector<ProbaArray> getOriProbasList(const vector<Triple>& triples,
   }
   // Keep the current scores of each triple during the orientation process
   auto scores_current = scores_best;  // copy
-  // Keep the highest absolute value of score of each triple for ordering.
+  // Keep the highest absolute value of unsettled score for each triple.
+  // Unsettled means the score could be updated by another score.
   vector<double> max_score(n_triples, 0);
   for (int i = 0; i < n_triples; i++) {
     // Try to induce score with already established arrowhead
@@ -210,52 +203,49 @@ vector<ProbaArray> getOriProbasList(const vector<Triple>& triples,
   vector<int> orderTpl(n_triples);
   std::iota(begin(orderTpl), end(orderTpl), 0);
   while (!orderTpl.empty()) {
-    // Order triples in decreasing log score
+    // Order triples in decreasing max_score
     std::sort(begin(orderTpl), end(orderTpl), compareTriples);
     int top_idx = orderTpl[0];
     if (max_score[top_idx] <= 0) break;  // top proba <= 0.5
-    orderTpl.erase(begin(orderTpl));  // Remove the top triple
+    orderTpl.erase(begin(orderTpl));  // Remove the top triple from the list
 
     const auto& top_triple = triples[top_idx];
     const auto& top_current = scores_current[top_idx];
     auto& top_best = scores_best[top_idx];
 
     int X{-1}, Z{-1}, Y{-1};
-    // Correspond to ProbaArray[0-3]: *2+, proba of arrowhead from * to +
+    // Correspond to ProbaArray[0-3]: X 0 -- 1 Z 2 -- 3 Y
     double z2x{0}, x2z{0}, y2z{0}, z2y{0};
-    // Try updating X 0 -- 1 Z
-    if ((fabs(top_best[1]) < fabs(top_current[1])) &&
+    // Try updating final score on X 0 -- 1 Z
+    if ((std::fabs(top_best[1]) < std::fabs(top_current[1])) &&
         (half_v_structure || I3_list[top_idx] > 0 || top_best[2] >= 0)) {
-      // establish arrowhead/tail final proba on 1 (x 0-*1 z 2-3 y)
       top_best[1] = top_current[1];
       if (isInducible(top_best[1], latent, propagation))
         top_best[0] = top_current[0];
 
       X = top_triple[0];
       Z = top_triple[1];
-      z2x = top_current[0];
-      x2z = top_current[1];
+      z2x = top_best[0];
+      x2z = top_best[1];
     }
-    // Try updating Z 2 -- 3 Y
-    if ((fabs(top_best[2]) < fabs(top_current[2])) &&
+    // Try updating final score on Z 2 -- 3 Y
+    if ((std::fabs(top_best[2]) < std::fabs(top_current[2])) &&
         (half_v_structure || I3_list[top_idx] > 0 || top_best[1] >= 0)) {
-      // establish arrowhead/tail final proba on 2 (x 0-1 z 2*-3 y)
       top_best[2] = top_current[2];
       if (isInducible(top_best[2], latent, propagation))
         top_best[3] = top_current[3];
 
       Z = top_triple[1];
       Y = top_triple[2];
-      y2z = top_current[2];
-      z2y = top_current[3];
+      y2z = top_best[2];
+      z2y = top_best[3];
     }
-    // No score updated, goto next triple
+    // No final score updated, goto next triple
     if (X == -1 && Y == -1) continue;
-    // Update scores of all remaining triples with scores of the top triple
+    // Update scores of all triples in the list sharing edge with the top triple
     for (auto i : orderTpl) {
-      bool remove_triple = false;
       if (X != -1) {
-        int x2z_index{-1}, z2x_index{-1};  // shared edge (scores) markers
+        int x2z_index{-1}, z2x_index{-1};  // shared edge markers
         if (triples[i][0] == X && triples[i][1] == Z) {
           x2z_index = 1;
           z2x_index = 0;
@@ -271,16 +261,17 @@ vector<ProbaArray> getOriProbasList(const vector<Triple>& triples,
         }
         if (x2z_index != -1 && z2x_index != -1) {  // found shared edge
           const bool inducible = isInducible(x2z, latent, propagation);
-          bool need_induction{false};
-          updateScore(x2z_index, z2x_index, x2z, z2x, inducible, scores_best[i],
-              scores_current[i], need_induction, remove_triple);
-          if (need_induction)
+          const bool remove_triple = updateScore(x2z_index, z2x_index, x2z, z2x,
+              inducible, scores_best[i], scores_current[i]);
+          if (remove_triple)
+            i = kRemoveTripleMark;
+          else
             induceScore(latent, propagation, I3_list[i], scores_best[i],
                 scores_current[i], max_score[i]);
         }
       }  // if (X != -1)
-      if (Y != -1) {
-        int y2z_index{-1}, z2y_index{-1};  // shared edge (scores) markers
+      if (Y != -1 && i != kRemoveTripleMark) {
+        int y2z_index{-1}, z2y_index{-1};  // shared edge markers
         if (triples[i][0] == Y && triples[i][1] == Z) {
           y2z_index = 1;
           z2y_index = 0;
@@ -296,22 +287,22 @@ vector<ProbaArray> getOriProbasList(const vector<Triple>& triples,
         }
         if (y2z_index != -1 && z2y_index != -1) {  // found shared edge
           const bool inducible = isInducible(y2z, latent, propagation);
-          bool need_induction{false};
-          updateScore(y2z_index, z2y_index, y2z, z2y, inducible, scores_best[i],
-              scores_current[i], need_induction, remove_triple);
-          if (need_induction)
+          const bool remove_triple = updateScore(y2z_index, z2y_index, y2z, z2y,
+              inducible, scores_best[i], scores_current[i]);
+          if (remove_triple)
+            i = kRemoveTripleMark;
+          else
             induceScore(latent, propagation, I3_list[i], scores_best[i],
                 scores_current[i], max_score[i]);
         }
       }  // if (Y != -1)
-      if (remove_triple) i = kRemoveTripleMark;
     }  // for (auto i : orderTpl)
     orderTpl.erase(remove(begin(orderTpl), end(orderTpl), kRemoveTripleMark),
         end(orderTpl));
   }
-
+  // proba = 1 / (1 + exp(-score))
   vector<ProbaArray> probas_list(n_triples);
-  for (int i=0; i < n_triples; ++i) {
+  for (int i = 0; i < n_triples; ++i) {
     std::transform(begin(scores_best[i]), end(scores_best[i]),
         begin(probas_list[i]),
         [](double score) { return 1.0 / (1.0 + std::exp(-score)); });
