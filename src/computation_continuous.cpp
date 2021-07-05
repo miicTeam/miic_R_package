@@ -528,7 +528,8 @@ InfoBlock computeIxyui(const TempGrid2d<int>& data,
   updateFactors(data_idx, cut, is_continuous, var_idx, 0, 2, datafactors, r);
   TempVector<int> r_old(r);  // n_levels in the previous iteration
 
-  bool re_use_u_cuts = false;
+  bool reuse_x_u_cuts = false;
+  bool reuse_y_u_cuts = false;
 
   int iter_max = save_cuts ? cuts_info->cutpoints.n_rows() : kMaxIter;
   // Keep the result of each iteration
@@ -539,19 +540,19 @@ InfoBlock computeIxyui(const TempGrid2d<int>& data,
   for (int step = 0; step < iter_max; ++step) {
     // optimize I(y;xu) over x and u
     // Either reset cutpoints or re-use I(y;u) cutpoints
-    if(re_use_u_cuts){
+    if(reuse_y_u_cuts){
       for(int l = 2; l < n_nodes; ++l){
         copy(cut_y_u.row_begin(l), cut_y_u.row_end(l), cut.row_begin(l));
       }
     } else {
       resetCutPoints(
-          levels, is_continuous, var_idx, 2, n_nodes, max(2,initbins/(n_nodes-1)),
+          levels, is_continuous, var_idx, 2, n_nodes, max(2,initbins/(n_nodes-2)),
           n_samples, cut);
     }
     updateFactors(
         data_idx, cut, is_continuous, var_idx, 2, n_nodes, datafactors, r);
     copy(begin(r) + 2, end(r), begin(r_old) + 2);
-    for (int count = 0; (count < kMaxIterOnU) && (!re_use_u_cuts); ++count) {
+    for (int count = 0; (count < kMaxIterOnU); ++count) {
       for (int l = 2; l < n_nodes; ++l) {
         if (is_continuous[var_idx[l]] != 1) continue;
         // opt u, I(y;xu)
@@ -602,20 +603,20 @@ InfoBlock computeIxyui(const TempGrid2d<int>& data,
     }
 
     // optimize I(x;yu) over y and u
-    // Either reset cutpoints or re-use I(y;u) cutpoints
-    if(re_use_u_cuts){ 
+    // Either reset cutpoints or re-use I(x;u) cutpoints
+    if(reuse_x_u_cuts){ 
       for(int l = 2; l < n_nodes; ++l){
         copy(cut_x_u.row_begin(l), cut_x_u.row_end(l), cut.row_begin(l));
       }
     } else {
       resetCutPoints(
-          levels, is_continuous, var_idx, 2, n_nodes, max(2,initbins/(n_nodes-1)),
+          levels, is_continuous, var_idx, 2, n_nodes, max(2,initbins/(n_nodes-2)),
           n_samples, cut);
     }
     updateFactors(
         data_idx, cut, is_continuous, var_idx, 2, n_nodes, datafactors, r);
     copy(begin(r) + 2, end(r), begin(r_old) + 2);
-    for (int count = 0; (count < kMaxIterOnU) && (!re_use_u_cuts); ++count) {
+    for (int count = 0; (count < kMaxIterOnU); ++count) {
       for (int l = 2; l < n_nodes; ++l) {
         if (is_continuous[var_idx[l]] != 1) continue;
 
@@ -668,7 +669,7 @@ InfoBlock computeIxyui(const TempGrid2d<int>& data,
 
     // optimize I(x;u) over u
     // Either reset cutpoints or re-use I(y;u) cutpoints
-    if(re_use_u_cuts){ 
+    if(reuse_x_u_cuts){ 
       for(int l = 2; l < n_nodes; ++l){
         copy(cut_x_u.row_begin(l), cut_x_u.row_end(l), cut.row_begin(l));
       }
@@ -682,7 +683,7 @@ InfoBlock computeIxyui(const TempGrid2d<int>& data,
     copy(begin(r) + 2, end(r), begin(r_old) + 2);
     for (int count = 0; count < kMaxIterOnU; ++count) {
       for (int l = 2; l < n_nodes; ++l) {
-        if (is_continuous[var_idx[l]] == 0 || re_use_u_cuts) continue;
+        if (is_continuous[var_idx[l]] == 0 || reuse_x_u_cuts) continue;
 
         setUyxJointFactors(datafactors, r_old, l, uyxfactors, ruyx);
         // init variables for the optimization run
@@ -717,7 +718,7 @@ InfoBlock computeIxyui(const TempGrid2d<int>& data,
 
     // optimize I(y;u) over u
     // Either reset cutpoints or re-use I(y;u) cutpoints
-    if(re_use_u_cuts){
+    if(reuse_y_u_cuts){
       for(int l = 2; l < n_nodes; ++l){
         copy(cut_y_u.row_begin(l), cut_y_u.row_end(l), cut.row_begin(l));
       }
@@ -731,7 +732,7 @@ InfoBlock computeIxyui(const TempGrid2d<int>& data,
     copy(begin(r) + 2, end(r), begin(r_old) + 2);
     for (int count = 0; count < kMaxIterOnU; ++count) {
       for (int l = 2; l < n_nodes; ++l) {
-        if (is_continuous[var_idx[l]] == 0 || re_use_u_cuts) continue;
+        if (is_continuous[var_idx[l]] == 0 || reuse_y_u_cuts) continue;
 
         setUyxJointFactors(datafactors, r_old, l, uyxfactors, ruyx);
         int r0 = ruyx[1];           // yu
@@ -774,13 +775,20 @@ InfoBlock computeIxyui(const TempGrid2d<int>& data,
     }
 
     // Compute I(X;Y|U)
-    double cond_I = 0.5 * (I_x_yu - I_x_u + I_y_xu - I_y_u);
-    double cond_Ik = 0.5 * (Ik_x_yu - Ik_x_u + Ik_y_xu - Ik_y_u);
-    if(cond_I < 0){
-      re_use_u_cuts = true;
+    double part_one = I_x_yu - I_x_u;
+    double part_two = I_y_xu - I_y_u;
+    reuse_x_u_cuts = part_one < 0;
+    reuse_y_u_cuts = part_two < 0;
+
+    if(reuse_x_u_cuts || reuse_y_u_cuts) {
+      continue;
     }
+
+    double cond_I = 0.5 * (part_one + part_two);
+    double cond_Ik = 0.5 * (Ik_x_yu - Ik_x_u + Ik_y_xu - Ik_y_u);
     I_list[step] = cond_I;
     Ik_list[step] = cond_Ik;
+
     // Test stop condition on stop1
     bool converged{false};
     for (int i = step - 1; i >= 0; i--) {
