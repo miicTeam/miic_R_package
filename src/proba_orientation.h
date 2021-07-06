@@ -20,6 +20,14 @@ using Triple = std::array<int, 3>;
 // X [0]-[1] Z [2]-[3] Y
 using ProbaArray = std::array<double, 4>;
 
+struct ProbaScore {
+  double value = 0;
+  // An unsettled score can either be updated by another score, or be used to
+  // update other scores.
+  bool settled = false;
+};
+using ScoreArray = std::array<ProbaScore, 4>;
+
 std::vector<ProbaArray> getOriProbasList(const std::vector<Triple>&,
     const std::vector<double>& I3_list, const std::vector<int>& is_contextual,
     bool latent, bool degenerate, bool propagation, bool half_v_structure);
