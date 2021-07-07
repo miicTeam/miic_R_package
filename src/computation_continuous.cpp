@@ -470,6 +470,7 @@ InfoBlock computeIxyui(const TempGrid2d<int>& data,
   int n_nodes = var_idx.size();
   int n_ui = n_nodes - 2;
   double n_eff = accumulate(begin(weights), end(weights), 0.0);
+  int u_initbins = min(30, max(2, int(0.5 + pow(n_eff, 1.0/(n_nodes)))));
   // allocation factors  x y
   TempGrid2d<int> datafactors(n_nodes, n_samples);
   TempGrid2d<int> cut(n_nodes, maxbins);
@@ -546,7 +547,7 @@ InfoBlock computeIxyui(const TempGrid2d<int>& data,
       }
     } else {
       resetCutPoints(
-          levels, is_continuous, var_idx, 2, n_nodes, max(2,initbins/(n_nodes-2)),
+          levels, is_continuous, var_idx, 2, n_nodes, u_initbins,
           n_samples, cut);
     }
     updateFactors(
@@ -610,7 +611,7 @@ InfoBlock computeIxyui(const TempGrid2d<int>& data,
       }
     } else {
       resetCutPoints(
-          levels, is_continuous, var_idx, 2, n_nodes, max(2,initbins/(n_nodes-2)),
+          levels, is_continuous, var_idx, 2, n_nodes, u_initbins,
           n_samples, cut);
     }
     updateFactors(
@@ -675,7 +676,7 @@ InfoBlock computeIxyui(const TempGrid2d<int>& data,
       }
     } else {
       resetCutPoints(
-          levels, is_continuous, var_idx, 2, n_nodes, max(2,initbins/(n_nodes-2)),
+          levels, is_continuous, var_idx, 2, n_nodes, u_initbins,
           n_samples, cut);
     }
     updateFactors(
@@ -724,7 +725,7 @@ InfoBlock computeIxyui(const TempGrid2d<int>& data,
       }
     } else {
       resetCutPoints(
-          levels, is_continuous, var_idx, 2, n_nodes, max(2, initbins/(n_nodes-2)),
+          levels, is_continuous, var_idx, 2, n_nodes, u_initbins,
           n_samples, cut);
     }
     updateFactors(
