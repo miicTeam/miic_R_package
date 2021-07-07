@@ -34,11 +34,10 @@ bool isInducible(double score, bool latent, bool propagation) {
 //   (W -- Z -- U), (Z -- W -- U), (U -- W -- Z), (U -- Z -- W)
 //
 // Input w2z, z2w the scores of t0 (W *-> Z and W <-* Z respectively),
-// where * can be head (< or >) or tail (-)
-// Input/Output score, settled, of t, to be updated
-//
+//   where * can be head (< or >) or tail (-)
 // Input w2z_index, z2w_index value in [0, 1, 2, 3]. Index of the scores of t
-// that corresponds to w2z, z2w
+//   that corresponds to w2z, z2w
+// Input/Output score ProbaScore of t to be updated
 bool updateScore(int w2z_index, int z2w_index, double w2z, double z2w,
     bool inducible, ScoreArray& score) {
   score[w2z_index] = ProbaScore{w2z, true};
@@ -56,9 +55,10 @@ bool updateScore(int w2z_index, int z2w_index, double w2z, double z2w,
 
 // Input I3 = N * I'(W;V;Z|{ui}) 3-point infomation of a Triple W -- Z -- V
 // Input w2z > 0 arrowhead probability score from W to Z
-// Return v2z induced head/tail probability score from V to Z.
+// Return v2z induced head/tail probability score from V to Z such that
+//   1 / (1 + exp(-v2z)) = {1 / (1 + exp(-abs(I3)))} * {1 / (1 + exp(-w2z))}
 //
-// Denote p = 1.0 / (1 + exp(-abs(I3)))
+// Denote p = 1 / (1 + exp(-abs(I3))).
 // If I3 > 0, then p is the probability of non-v-structure W *-> Z --* V, and
 // P(v2z) = P(w2z) * p is the probability Pr(v2z is tail).
 // If I3 < 0, then p is the probability of v-structure W *-> Z <-* V, and
@@ -69,84 +69,84 @@ double getInducedScore(double I3, double w2z) {
   return s_min - std::log1p(std::exp(s_min - s_max) + std::exp(-s_max));
 }
 
-// Given X *- (x2z) Z (y2z) -* Y, try to induce x2z from y2z, or vice versa.
+// Given X *- (x2z) Z (y2z) -* Y, try to induce y2z from x2z.
 // See Proposition 1.ii and 2 of Verny et al., 2017 (Supplementary Text).
 void induceScore(
     bool latent, bool propagation, double I3, ScoreArray& score, double& rank) {
-  double x2z = score[1].value, y2z = score[2].value;
-  if (I3 > 0) {  // Proposition 2
-    if (isHead(x2z) && score[1].settled) {  // From X *-> Z to Z --* Y
-      double s_tail = getInducedScore(I3, x2z);
-      // Update Z [-]-* Y if current proba is less likely a tail
-      if (s_tail > 0 && std::fabs(score[2].value) < s_tail) {
-        rank = s_tail;
-        score[2].value = -s_tail;
-        // Update Z --[>] Y if current proba is less likely a head
-        if (propagation && score[3].value < -score[2].value)
-          score[3].value = -score[2].value;
-      }
-    } else if (isHead(y2z) && score[2].settled) {  // From Z <-* Y to X *-- Z
-      double s_tail = getInducedScore(I3, y2z);
-      // Update X *-[-] Z if current proba is less likely a tail
-      if (s_tail > 0 && std::fabs(score[1].value) < s_tail) {
-        rank = s_tail;
-        score[1].value = -s_tail;
-        // Update X [<]-- Z if current proba is less likely a head
-        if (propagation && score[0].value < -score[1].value)
-          score[0].value = -score[1].value;
-      }
-    }
-  } else if (I3 < 0) {  // Proposition 1.ii
-    if (isHead(x2z) && score[1].settled) {  // From X *-> Z to Z <-* Y
-      double s_head = getInducedScore(I3, x2z);
-      // Update Z [<]-* Y if current proba is less likely a head
-      if (s_head > 0 && std::fabs(score[2].value) < s_head) {
-        rank = s_head;
-        score[2].value = s_head;
-        // Update Z <-[-] Y if current proba is less likely a tail
-        if (!latent && score[3].value > -score[2].value)
-          score[3].value = -score[2].value;
-      }
-    } else if (isHead(y2z) && score[2].settled) {  // From Z <-* Y to X *-> Z
-      double s_head = getInducedScore(I3, y2z);
-      // Update X *-[>] Z if current proba is less likely a head
-      if (s_head > 0 && std::fabs(score[1].value) < s_head) {
-        rank = s_head;
-        score[1].value = s_head;
-        // Update X [-]-> Z if current proba is less likely a tail
-        if (!latent && score[0].value > -score[1].value)
-          score[0].value = -score[1].value;
-      }
-    }
+  int x2z_index{-1};                 // Index of settled score
+  int y2z_index{-1}, z2y_index{-1};  // Indices of scores to be induced
+  if (isHead(score[1].value) && score[1].settled) {  // X *-> Z [</-]-* Y
+    x2z_index = 1;
+    y2z_index = 2;
+    z2y_index = 3;
+  } else if (isHead(score[2].value) && score[2].settled) {  // Y *-[-/>] Z <-* X
+    x2z_index = 2;
+    y2z_index = 1;
+    z2y_index = 0;
+  }
+  if (I3 == 0 || x2z_index == -1) return;
+
+  double induced_score = getInducedScore(I3, score[x2z_index].value);
+  auto& y2z = score[y2z_index];
+  auto& z2y = score[z2y_index];
+  if (induced_score <= 0 || std::fabs(y2z.value) >= induced_score) return;
+
+  rank = induced_score;  // successful induction
+  if (I3 > 0) {  // non-v-structure, induced_score is the tail score
+    y2z.value = -induced_score;  // tail Z [-]-* Y
+    if (propagation && !z2y.settled && z2y.value < -y2z.value)
+      z2y.value = -y2z.value;  // head Z --[>] Y
+  } else {  // I3 < 0, v-structure, induced_score is the head score
+    y2z.value = induced_score;  // head Z [<]-* Y
+    if (!latent && !z2y.settled && z2y.value > -y2z.value)
+      z2y.value = -y2z.value;  // tail Z <-[-] Y
   }
 }
 
 }  // anonymous namespace
 
-// Iteratively converge towards partially oriented graphs including possible
+// Iteratively converge towards partially directed graphs including possible
 // latent variables and Propagation/Non-Propagation rules.
 // Input triples list of unshielded Triple (X -- Z -- Y)
 // Input I3_list the 3-point information N * I'(X;Y;Z|{ui}) of each Triple
-// return vector<ProbaArray> Each ProbaArray is bound to a unshielded Triple
+// return vector<ProbaArray> Each ProbaArray is bound to an unshielded Triple
 vector<ProbaArray> getOriProbasList(const vector<Triple>& triples,
     const vector<double>& I3_list, const vector<int>& is_contextual,
     bool latent, bool degenerate, bool propagation, bool half_v_structure) {
-  int n_triples = triples.size();
-  // A score is a quantity almost proportional to abs(I3). All probabilities
-  // can be expressed in the form of 1 / (1 + exp(-score)), they suffer from
+  // A score is a quantity almost proportional to abs(I3). All probabilities can
+  // be expressed in the form of 1 / (1 + exp(-score)), and they suffer from
   // loss of numerical precision for high score due to the exponential term.
   // Since the mapping between probability and score is bijective, throughout
   // the orientation process, we will work with scores only.
   //     score   |--> probability
   // (-inf, inf) |-->   [0, 1]
-
-  // Each ProbaScore is initialized to {score 0, settled false}
+  int n_triples = triples.size();
+  // Each ScoreArray contains 4 ProbaScores, and is associated with an
+  // unshielded triple: ScoreArray[0, 1, 2, 3] <> X 0 -- 1 Z 2 -- 3 Y.
+  // Each ProbaScore{score, settled} is initialized to {0, false}.
   vector<ScoreArray> scores(n_triples);
-  vector<std::array<bool, 4>> settled(n_triples);
-  for (auto& s_array : settled)
-    s_array.fill(false);  // 0 score <-> 0.5 proba
-  // Set initial probability for triples involving contextual variables
+  // Rank is the highest absolute value of unsettled score for each triple.
+  vector<double> rank(n_triples, 0);
   for (int i = 0; i < n_triples; ++i) {
+    // Initialize scores of v-structure
+    if (I3_list[i] < 0) {
+      if (!degenerate) {
+        // Pr(X *-> Z) = Pr(Y *-> Z) = (1 + exp(I3)) / (1 + 3 * exp(I3))
+        // See Proposition 1.i of Verny et al., 2017 (Supplementary Text)
+        rank[i] = -I3_list[i] - log(2) + std::log1p(std::exp(I3_list[i]));
+      } else {
+        // larger than p without degenerate
+        rank[i] = -I3_list[i] + log(3 - 2 * std::exp(I3_list[i]));
+      }
+      scores[i][1].value = rank[i];  // Pr(X *-> Z)
+      scores[i][2].value = rank[i];  // Pr(Y *-> Z)
+      if (!latent) {
+        // (p, 1-p) <> (score, -score)
+        scores[i][0].value = -scores[i][1].value;
+        scores[i][3].value = -scores[i][2].value;
+      }
+    }
+    // Initialize scores of triples involving contextual variables
     int X = triples[i][0], Z = triples[i][1], Y = triples[i][2];
     if (is_contextual[X]) {  // X --* Z, X cannot be the child of Z
       scores[i][0] = ProbaScore{kScoreLowest, true};
@@ -158,55 +158,34 @@ vector<ProbaArray> getOriProbasList(const vector<Triple>& triples,
     if (is_contextual[Y]) {  // Z *-- Y, Y cannot be the child of Z
       scores[i][3] = ProbaScore{kScoreLowest, true};
     }
-  }
-  // Keep the highest absolute value of unsettled score for each triple.
-  vector<double> rank(n_triples, 0);
-  for (int i = 0; i < n_triples; i++) {
-    // Try to induce score with already established arrowhead
-    if (isHead(scores[i][1].value) || isHead(scores[i][2].value)) {
+    // Try to induce score with already (manually) settled arrowhead
+    if (isHead(scores[i][1].value) || isHead(scores[i][2].value))
       induceScore(latent, propagation, I3_list[i], scores[i], rank[i]);
-    } else if (I3_list[i] < 0) {
-      // Initialize scores of v-structure
-      if (!degenerate) {
-        // if I3_list < 0 (likely a v-structure),
-        // Pr(X *-> Z) = Pr(Y *-> Z) = (1 + exp(I3)) / (1 + 3 * exp(I3))
-        // See Proposition 1.i of Verny et al., 2017 (Supplementary Text)
-        rank[i] = -I3_list[i] - log(2) + std::log1p(std::exp(I3_list[i]));
-      } else {
-        // larger than p without degenerate
-        rank[i] = -I3_list[i] + log(3 - 2 * std::exp(I3_list[i]));
-      }
-      scores[i][1].value = rank[i];  // Pr(X *-> Z)
-      scores[i][2].value = rank[i];  // Pr(Y *-> Z)
-      if (!latent) {
-        // (p, 1-p) <-> (score, -score)
-        scores[i][0].value = -scores[i][1].value;
-        scores[i][3].value = -scores[i][2].value;
-      }
-    }
   }
 
   auto compareTriples = [&rank](int a, int b) { return rank[a] > rank[b]; };
-
+  // indices of triples
   vector<int> order(n_triples);
   std::iota(begin(order), end(order), 0);
   while (!order.empty()) {
     // Order triples in decreasing rank
     std::sort(begin(order), end(order), compareTriples);
-    int top_idx = order[0];
-    if (rank[top_idx] <= 0) break;  // top proba <= 0.5
+    int top = order[0];
+    if (rank[top] <= 0) break;  // top proba <= 0.5
     order.erase(begin(order));  // Remove the top triple from the list
 
-    const auto& top_triple = triples[top_idx];
-    auto& top_score = scores[top_idx];
+    const auto& top_triple = triples[top];
+    auto& top_score = scores[top];
 
     int X{-1}, Z{-1}, Y{-1};
-    // Correspond to ProbaArray[0-3]: X 0 -- 1 Z 2 -- 3 Y
+    // Correspond to ScoreArray[0-3]: X 0 -- 1 Z 2 -- 3 Y
     double z2x{0}, x2z{0}, y2z{0}, z2y{0};
     // Try updating final score on X 0 -- 1 Z
     if (!top_score[1].settled) {
-      if ((top_score[2].value < 0 && I3_list[top_idx] <= 0 &&
-              !half_v_structure)) {
+      // Conflict between I3 (<= 0, implying v-structure) and score[2] (< 0,
+      // implying non-v-structure), accept score[1] if half_v_structure is
+      // allowed, otherwise reset score[1] (and score[0] if unsettled).
+      if (top_score[2].value < 0 && I3_list[top] <= 0 && !half_v_structure) {
         top_score[1].value = 0;
         if (!top_score[0].settled) top_score[0].value = 0;
       } else {
@@ -218,8 +197,7 @@ vector<ProbaArray> getOriProbasList(const vector<Triple>& triples,
     }
     // Try updating final score on Z 2 -- 3 Y
     if (!top_score[2].settled) {
-      if (top_score[1].value < 0 && I3_list[top_idx] <= 0 &&
-          !half_v_structure) {
+      if (top_score[1].value < 0 && I3_list[top] <= 0 && !half_v_structure) {
         top_score[2].value = 0;
         if (!top_score[3].settled) top_score[3].value = 0;
       } else {
