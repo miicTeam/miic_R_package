@@ -204,56 +204,54 @@ vector<ProbaArray> getOriProbasList(const vector<Triple>& triples,
     if (X == -1 && Y == -1) continue;  // No score updated, goto next triple
     // Update scores of all triples in the list sharing edge with the top triple
     for (auto i : order) {
+      int w2z_index{-1}, z2w_index{-1};   // shared edge markers of triples[i]
+      double w2z_value{0}, z2w_value{0};  // final scores of the shared edge
       if (X != -1) {
-        int x2z_index{-1}, z2x_index{-1};  // shared edge markers
         if (triples[i][0] == X && triples[i][1] == Z) {
-          x2z_index = 1;
-          z2x_index = 0;
+          w2z_index = 1;
+          z2w_index = 0;
         } else if (triples[i][0] == Z && triples[i][1] == X) {
-          x2z_index = 0;
-          z2x_index = 1;
+          w2z_index = 0;
+          z2w_index = 1;
         } else if (triples[i][2] == X && triples[i][1] == Z) {
-          x2z_index = 2;
-          z2x_index = 3;
+          w2z_index = 2;
+          z2w_index = 3;
         } else if (triples[i][2] == Z && triples[i][1] == X) {
-          x2z_index = 3;
-          z2x_index = 2;
-        }
-        if (x2z_index != -1 && z2x_index != -1) {  // shared edge found
-          const bool inducible = isInducible(x2z.value, latent, propagation);
-          const bool remove_triple = updateScore(
-              x2z_index, z2x_index, x2z.value, z2x.value, inducible, scores[i]);
-          if (remove_triple)
-            i = kRemovalMark;
-          else
-            induceScore(latent, propagation, I3_list[i], scores[i], rank[i]);
+          w2z_index = 3;
+          z2w_index = 2;
         }
       }  // if (X != -1)
-      if (Y != -1 && i != kRemovalMark) {
-        int y2z_index{-1}, z2y_index{-1};  // shared edge markers
+      if (w2z_index != -1 && z2w_index != -1) {  // shared edge found
+        w2z_value = x2z.value;
+        z2w_value = z2x.value;
+      } else if (Y != -1) {
         if (triples[i][0] == Y && triples[i][1] == Z) {
-          y2z_index = 1;
-          z2y_index = 0;
+          w2z_index = 1;
+          z2w_index = 0;
         } else if (triples[i][0] == Z && triples[i][1] == Y) {
-          y2z_index = 0;
-          z2y_index = 1;
+          w2z_index = 0;
+          z2w_index = 1;
         } else if (triples[i][2] == Y && triples[i][1] == Z) {
-          y2z_index = 2;
-          z2y_index = 3;
+          w2z_index = 2;
+          z2w_index = 3;
         } else if (triples[i][2] == Z && triples[i][1] == Y) {
-          y2z_index = 3;
-          z2y_index = 2;
+          w2z_index = 3;
+          z2w_index = 2;
         }
-        if (y2z_index != -1 && z2y_index != -1) {  // shared edge found
-          const bool inducible = isInducible(y2z.value, latent, propagation);
-          const bool remove_triple = updateScore(
-              y2z_index, z2y_index, y2z.value, z2y.value, inducible, scores[i]);
-          if (remove_triple)
-            i = kRemovalMark;
-          else
-            induceScore(latent, propagation, I3_list[i], scores[i], rank[i]);
+        if (w2z_index != -1 && z2w_index != -1) {  // shared edge found
+          w2z_value = y2z.value;
+          z2w_value = z2y.value;
         }
       }  // if (Y != -1)
+      if (w2z_index != -1 && z2w_index != -1) {  // shared edge found
+        const bool inducible = isInducible(w2z_value, latent, propagation);
+        const bool remove_triple = updateScore(
+            w2z_index, z2w_index, w2z_value, z2w_value, inducible, scores[i]);
+        if (remove_triple)
+          i = kRemovalMark;
+        else
+          induceScore(latent, propagation, I3_list[i], scores[i], rank[i]);
+      }
     }  // for (auto i : order)
     order.erase(remove(begin(order), end(order), kRemovalMark), end(order));
   }
