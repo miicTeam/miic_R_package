@@ -174,41 +174,34 @@ vector<ProbaArray> getOriProbasList(const vector<Triple>& triples,
     if (rank[top] <= 0) break;  // top proba <= 0.5
     order.erase(begin(order));  // Remove the top triple from the list
 
-    const auto& top_triple = triples[top];
-    auto& top_score = scores[top];
-
     int X{-1}, Z{-1}, Y{-1};
-    // Correspond to ScoreArray[0-3]: X 0 -- 1 Z 2 -- 3 Y
-    double z2x{0}, x2z{0}, y2z{0}, z2y{0};
-    // Try updating final score on X 0 -- 1 Z
-    if (!top_score[1].settled) {
-      // Conflict between I3 (<= 0, implying v-structure) and score[2] (< 0,
-      // implying non-v-structure), accept score[1] if half_v_structure is
-      // allowed, otherwise reset score[1] (and score[0] if unsettled).
-      if (top_score[2].value < 0 && I3_list[top] <= 0 && !half_v_structure) {
-        top_score[1].value = 0;
-        if (!top_score[0].settled) top_score[0].value = 0;
+    ProbaScore& z2x = scores[top][0];
+    ProbaScore& x2z = scores[top][1];
+    ProbaScore& y2z = scores[top][2];
+    ProbaScore& z2y = scores[top][3];
+    // Try updating final score on X -- Z
+    if (!x2z.settled) {
+      // Conflict between I3 (<= 0, v-structure) and y2z (< 0, non-v-structure),
+      // reset x2z (and z2x if unsettled) if half_v_structure is not allowed.
+      if (y2z.value < 0 && I3_list[top] <= 0 && !half_v_structure) {
+        x2z.value = 0;
+        if (!z2x.settled) z2x.value = 0;
       } else {
-        X = top_triple[0];
-        Z = top_triple[1];
-        z2x = top_score[0].value;
-        x2z = top_score[1].value;
+        X = triples[top][0];
+        Z = triples[top][1];
       }
     }
-    // Try updating final score on Z 2 -- 3 Y
-    if (!top_score[2].settled) {
-      if (top_score[1].value < 0 && I3_list[top] <= 0 && !half_v_structure) {
-        top_score[2].value = 0;
-        if (!top_score[3].settled) top_score[3].value = 0;
+    // Try updating final score on Z -- Y
+    if (!y2z.settled) {
+      if (x2z.value < 0 && I3_list[top] <= 0 && !half_v_structure) {
+        y2z.value = 0;
+        if (!z2y.settled) z2y.value = 0;
       } else {
-        Z = top_triple[1];
-        Y = top_triple[2];
-        y2z = top_score[2].value;
-        z2y = top_score[3].value;
+        Z = triples[top][1];
+        Y = triples[top][2];
       }
     }
-    // No final score updated, goto next triple
-    if (X == -1 && Y == -1) continue;
+    if (X == -1 && Y == -1) continue;  // No score updated, goto next triple
     // Update scores of all triples in the list sharing edge with the top triple
     for (auto i : order) {
       if (X != -1) {
@@ -226,10 +219,10 @@ vector<ProbaArray> getOriProbasList(const vector<Triple>& triples,
           x2z_index = 3;
           z2x_index = 2;
         }
-        if (x2z_index != -1 && z2x_index != -1) {  // found shared edge
-          const bool inducible = isInducible(x2z, latent, propagation);
-          const bool remove_triple =
-              updateScore(x2z_index, z2x_index, x2z, z2x, inducible, scores[i]);
+        if (x2z_index != -1 && z2x_index != -1) {  // shared edge found
+          const bool inducible = isInducible(x2z.value, latent, propagation);
+          const bool remove_triple = updateScore(
+              x2z_index, z2x_index, x2z.value, z2x.value, inducible, scores[i]);
           if (remove_triple)
             i = kRemovalMark;
           else
@@ -251,10 +244,10 @@ vector<ProbaArray> getOriProbasList(const vector<Triple>& triples,
           y2z_index = 3;
           z2y_index = 2;
         }
-        if (y2z_index != -1 && z2y_index != -1) {  // found shared edge
-          const bool inducible = isInducible(y2z, latent, propagation);
-          const bool remove_triple =
-              updateScore(y2z_index, z2y_index, y2z, z2y, inducible, scores[i]);
+        if (y2z_index != -1 && z2y_index != -1) {  // shared edge found
+          const bool inducible = isInducible(y2z.value, latent, propagation);
+          const bool remove_triple = updateScore(
+              y2z_index, z2y_index, y2z.value, z2y.value, inducible, scores[i]);
           if (remove_triple)
             i = kRemovalMark;
           else
