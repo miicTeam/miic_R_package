@@ -65,13 +65,9 @@ checkLayout <- function(layoutFile) {
 
 checkStateOrder <- function(stateOrderFile, dataFile) {
   errCode <- "0"
-
   str <- unlist(paste(as.character(stateOrderFile), collapse = ""))
-  str_names <- unlist(strsplit(str, "\n"))[1]
   if (grepl("#", str) | grepl("&", str) | grepl("'", str)) {
     errCode <- "141"
-  } else {
-    rownames(stateOrderFile) <- stateOrderFile[, "var_names"]
   }
   return(errCode)
 }
@@ -79,14 +75,14 @@ checkStateOrder <- function(stateOrderFile, dataFile) {
 errorCodeToString <- function(error_code) {
   errorList1 <- list(
     "0" = "Warning:",
-    "1" = "Fatal error:"
+    "1" = "Error:"
   )
   errorList2 <- list(
     "0" = "Unknown Error",
     "1" = "input data frame",
     "2" = "trueEdge data frame",
     "3" = "layout data frame",
-    "4" = "category order data frame"
+    "4" = "state_order data frame"
   )
 
   errorList3 <- list(
