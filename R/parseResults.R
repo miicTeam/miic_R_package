@@ -316,10 +316,14 @@ compute_partial_correlation <- function(summary, observations, state_order) {
   for (j in 1:ncol(observations)) {
     col <- colnames(observations)[j]
     # row index in state_order if not null
-    row <- ifelse(is.null(state_order$var_names),
-        NULL, which(state_order$var_names == col))
-    order_string <- ifelse(is.null(state_order$levels_increasing_order),
-        NULL, state_order[row, "levels_increasing_order"])
+    row <- NULL
+    if (!is.null(state_order$var_names)) {
+      row <- which(state_order$var_names == col)
+    }
+    order_string <- NULL
+    if (!is.null(state_order$levels_increasing_order)) {
+      order_string <- state_order[row, "levels_increasing_order"]
+    }
     # If the variable is described in the state order file, transform to a
     # factor with the right category order.
     if (!is.null(order_string) && !is.na(order_string) &&
