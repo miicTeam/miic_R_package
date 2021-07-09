@@ -435,14 +435,22 @@ miic <- function(input_data,
   if (!is.null(state_order)) {
     err_code <- checkStateOrder(state_order, input_data)
     if (err_code != "0") {
-      print(errorCodeToString(err_code))
-      warning("state_order file will be ignored!")
+      warning(paste(errorCodeToString(err_code),
+          "state_order file will be ignored.", sep=", "), call.=FALSE)
       state_order <- NULL
     } else if (is.null(state_order$var_names)) {
       warning(paste("Named column var_names is required for state_order,",
-                    "state_order file will be ignored!"))
+                    "state_order file will be ignored."), call.=FALSE)
       state_order <- NULL
     } else {
+      mismatch <- is.na(match(state_order$var_names, colnames(input_data)))
+      if (any(mismatch)) {
+        var_str <- paste(state_order$var_names[mismatch], collapse=", ")
+        warning(paste("Variable(s)", var_str, "specified in state_order file",
+            "won't match any name in input_data, and will be ignored."),
+            call.=FALSE)
+        state_order <- state_order[!mismatch, ]
+      }
       for (row in 1:nrow(state_order)) {
         col <- as.character(state_order[row, "var_names"])
         if (!is.null(state_order$var_type)) {
@@ -461,16 +469,21 @@ miic <- function(input_data,
           if (!is.na(order_string)) {
             if (is_continuous[[col]] == TRUE) {
               warning(paste(col, "is considered as a continuous variable,",
-                  "the provided orders will be ignored.", call.=FALSE)
-              )
+                  "the provided orders will be ignored."), call.=FALSE)
             } else {
               orders <- unlist(strsplit(as.character(order_string), ","))
               values <- unique(input_data[[col]][!is.na(input_data[[col]])])
               absent <- is.na(match(values, orders))
               if (any(absent)) {
-                warning(paste(
-                    "Variable", col, "has value(s)",
-                    paste(values[absent], collapse=", "),
+                var_str <- ""
+                if (length(values[absent]) > 10) {
+                  # Only show the first 3 if the list is too long
+                  var_str <- paste(paste(values[absent][1:3], collapse=", "),
+                      "and", length(values[absent]) - 3, "more")
+                } else {
+                  var_str <- paste(values[absent], collapse=", ")
+                }
+                warning(paste("Variable", col, "has value(s)", var_str,
                     "that won't match the provided orders,",
                     "the provided orders will be ignored."), call.=FALSE)
               }
@@ -494,7 +507,7 @@ miic <- function(input_data,
             col,
             " only has ",
             unique_values,
-            " non-NA unique values. Is this a factor ?"
+            " non-NA unique values. Is this a factor?"
           )
         )
       }
@@ -523,7 +536,7 @@ miic <- function(input_data,
 
   err_code <- checkInput(input_data, "miic")
   if (err_code != "0") {
-    print(errorCodeToString(err_code))
+    warning(errorCodeToString(err_code), call.=FALSE)
   } else {
     if (verbose) {
       cat("\t# -> START reconstruction...\n")
@@ -559,8 +572,8 @@ miic <- function(input_data,
     if (!is.null(true_edges)) {
       err_code <- checkTrueEdges(true_edges)
       if (err_code != "0") {
-        print(errorCodeToString(err_code))
-        print("WARNING: True edges file will be ignored!")
+        warning(paste(errorCodeToString(err_code),
+            "true_edges file will be ignored.", sep=", "), call.=FALSE)
         true_edges <- NULL
       }
     }

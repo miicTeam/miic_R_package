@@ -6,20 +6,20 @@ checkInput <- function(dataFile, method) {
   str <- unlist(paste(as.character(dataFile), collapse = ""))
   str_names <- unlist(strsplit(str, "\n"))[1]
   if (grepl("#", str) | grepl("&", str) | grepl("'", str)) {
-    errCode <- "111"
+    errCode <- "11"
   } else {
     isCnt_test <- 0
 
     if (method == "miic" &
       length(unique(dataFile[1, ])) != ncol(dataFile)) {
-      errCode <- "117"
+      errCode <- "17"
     } else if (method == "miic" &
       isCnt_test > 0.1 * ncol(dataFile) &
       isContinuousArg == 0) {
-      errCode <- "118"
+      errCode <- "18"
     } else {
       if (method == "miic" & isCnt_test > 0 & isContinuousArg == 0) {
-        errCode <- "018"
+        errCode <- "18"
       }
     }
   }
@@ -30,10 +30,10 @@ checkTrueEdges <- function(edgesFile) {
   errCode <- "0"
   str <- unlist(paste(as.character(edgesFile), collapse = ""))
   if (grepl("#", str) | grepl("&", str) | grepl("'", str)) {
-    errCode <- "121"
+    errCode <- "21"
   } else {
     if (ncol(edgesFile) != 2 & ncol(edgesFile) != 3) {
-      errCode <- "023"
+      errCode <- "23"
     }
   }
   return(errCode)
@@ -44,18 +44,18 @@ checkLayout <- function(layoutFile) {
 
   str <- unlist(paste(as.character(layoutFile), collapse = ""))
   if (grepl("#", str) | grepl("&", str) | grepl("'", str)) {
-    errCode <- "131"
+    errCode <- "31"
   } else {
     if (ncol(layoutFile) != 2 & ncol(layoutFile) != 3) {
-      errCode <- "033"
+      errCode <- "33"
     } else {
       if (ncol(layoutFile) == 2) {
         if (!is.numeric(layoutFile[, 1]) | !is.numeric(layoutFile[, 2])) {
-          errCode <- "034"
+          errCode <- "34"
         }
       } else if (ncol(layoutFile) == 3) {
         if (!is.numeric(layoutFile[, 2]) | !is.numeric(layoutFile[, 3])) {
-          errCode <- "038"
+          errCode <- "38"
         }
       }
     }
@@ -67,17 +67,13 @@ checkStateOrder <- function(stateOrderFile, dataFile) {
   errCode <- "0"
   str <- unlist(paste(as.character(stateOrderFile), collapse = ""))
   if (grepl("#", str) | grepl("&", str) | grepl("'", str)) {
-    errCode <- "141"
+    errCode <- "41"
   }
   return(errCode)
 }
 
 errorCodeToString <- function(error_code) {
   errorList1 <- list(
-    "0" = "Warning:",
-    "1" = "Error:"
-  )
-  errorList2 <- list(
     "0" = "Unknown Error",
     "1" = "input data frame",
     "2" = "trueEdge data frame",
@@ -85,7 +81,7 @@ errorCodeToString <- function(error_code) {
     "4" = "state_order data frame"
   )
 
-  errorList3 <- list(
+  errorList2 <- list(
     "0" = "does not exist",
     "1" = paste(
       "is not readable, check the file format. Special characters ",
@@ -105,7 +101,6 @@ errorCodeToString <- function(error_code) {
   )
   error_string <- unlist(strsplit(error_code, ""))
   return(paste(errorList1[[error_string[1]]], errorList2[[error_string[2]]],
-    errorList3[[error_string[3]]],
     sep = " "
   ))
 }
