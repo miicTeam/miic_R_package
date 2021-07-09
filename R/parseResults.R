@@ -315,18 +315,18 @@ compute_partial_correlation <- function(summary, observations, state_order) {
 
   for (j in 1:ncol(observations)) {
     col <- colnames(observations)[j]
-    if (!is.null(state_order) &&
-      state_order[which(state_order$var_names==col), "var_type"] == 0 &&
-      "levels_increasing_order" %in% colnames(state_order) &&
-      !is.na(state_order[state_order$var_names == col, "levels_increasing_order"])) {
-      # If the variable is described in the state order file, transform to a
-      # factor with the right category order.
-      rownames(state_order) <- state_order$var_names
+    # row index in state_order if not null
+    row <- ifelse(is.null(state_order$var_names),
+        NULL, which(state_order$var_names == col))
+    order_string <- ifelse(is.null(state_order$levels_increasing_order),
+        NULL, state_order[row, "levels_increasing_order"])
+    # If the variable is described in the state order file, transform to a
+    # factor with the right category order.
+    if (!is.null(order_string) && !is.na(order_string) &&
+        (is.null(state_order$var_type) || state_order[row, "var_type"] == 0)) {
       # Convert ordered categorical features to integers
       observations[, col] <- factor(observations[, col])
-      ordered_levels <- as.character(
-        state_order[state_order$var_names == col, "levels_increasing_order"])
-      ordered_levels <- unlist(strsplit(ordered_levels, ","))
+      ordered_levels <- unlist(strsplit(as.character(order_string), ","))
       ordered_levels <- tryCatch(
         as.numeric(ordered_levels),
         warning = function(w) {return(ordered_levels)})
@@ -335,8 +335,8 @@ compute_partial_correlation <- function(summary, observations, state_order) {
       observations[, col] <- as.numeric(observations[, col])
     } else if (is.factor(observations[,col]) &&
       suppressWarnings(all(!is.na(as.numeric(levels(observations[,col])))))) {
-      # If the variable is not described but categorical and numerical, assume its
-      # order from its values.
+      # If the variable is not described but categorical and numerical, assume
+      # its order from its values.
       observations[, col] <- as.numeric(observations[, col])
     }
   }
