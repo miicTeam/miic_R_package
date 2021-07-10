@@ -447,9 +447,15 @@ miic <- function(input_data,
       if (any(mismatch)) {
         var_str <- paste(state_order$var_names[mismatch], collapse=", ")
         warning(paste("Variable(s)", var_str, "specified in state_order file",
-            "won't match any name in input_data, and will be ignored."),
+            "will not match any name in input_data, and will be ignored."),
             call.=FALSE)
         state_order <- state_order[!mismatch, ]
+      }
+      not_found <- is.na(match(colnames(input_data), state_order$var_names))
+      if (any(not_found)) {
+        var_str <- paste(colnames(input_data)[not_found], collapse=", ")
+        warning(paste("Variable(s)", var_str, "in input_data not found",
+            "in state_order file."), call.=FALSE)
       }
       for (row in 1:nrow(state_order)) {
         col <- as.character(state_order[row, "var_names"])
@@ -484,7 +490,7 @@ miic <- function(input_data,
                   var_str <- paste(values[absent], collapse=", ")
                 }
                 warning(paste("Variable", col, "has value(s)", var_str,
-                    "that won't match the provided orders,",
+                    "that will not match the provided orders,",
                     "the provided orders will be ignored."), call.=FALSE)
               }
             }
