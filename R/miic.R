@@ -112,9 +112,8 @@
 #' "levels_increasing_order" (optional) contains a single character string
 #' with all of the unique levels of the ordinal variable in increasing order,
 #' delimited by comma ','. It will be used during the post-processing to compute
-#' the sign of an edge using Spearman's rank correlation. If the variable is
-#' continuous or is categorical but not ordinal, this column may be left empty
-#' or contain NA instead.
+#' the sign of an edge using Spearman's rank correlation. If a variable is
+#' continuous or is categorical but not ordinal, this column should be NA.
 #'
 #' "is_contextual" (optional) contains a binary value that specifies if a
 #' variable is to be considered as a contextual variable (1) or not (0).
@@ -429,31 +428,74 @@ miic <- function(input_data,
     cat("START miic...\n")
   }
 
-  is_contextual <- NULL
+  is_contextual <- rep(0, ncol(input_data))
+  names(is_contextual) <- colnames(input_data)
   is_continuous <- sapply(input_data, is.numeric)
-  # Use the "state order" file to convert discrete numerical variables to factors
+  # Parse "state_order" file
   if (!is.null(state_order)) {
     err_code <- checkStateOrder(state_order, input_data)
     if (err_code != "0") {
-      print(errorCodeToString(err_code))
-      print("WARNING: Category order file will be ignored!")
+      warning(paste(errorCodeToString(err_code),
+          "state_order file will be ignored.", sep=", "), call.=FALSE)
       state_order <- NULL
-    }
-    set_contextual <- !is.null(state_order$is_contextual)
-    if (set_contextual) {
-      is_contextual <- rep(0, ncol(input_data))
-      names(is_contextual) <- colnames(input_data)
-    }
-
-    for (row in 1:nrow(state_order)) {
-      col <- as.character(state_order[row, "var_names"])
-      if (state_order[row, "var_type"] == 0) {
-        input_data[, col] <- factor(input_data[, col])
-        is_continuous[[col]] <- FALSE
+    } else if (is.null(state_order$var_names)) {
+      warning(paste("Named column var_names is required for state_order,",
+                    "state_order file will be ignored."), call.=FALSE)
+      state_order <- NULL
+    } else {
+      mismatch <- is.na(match(state_order$var_names, colnames(input_data)))
+      if (any(mismatch)) {
+        var_str <- paste(state_order$var_names[mismatch], collapse=", ")
+        warning(paste("Variable(s)", var_str, "specified in state_order file",
+            "will not match any name in input_data, and will be ignored."),
+            call.=FALSE)
+        state_order <- state_order[!mismatch, ]
       }
-      contextual <- state_order[row, "is_contextual"]
-      if (set_contextual && !is.na(contextual) && contextual == 1) {
-        is_contextual[[col]] <- 1
+      not_found <- is.na(match(colnames(input_data), state_order$var_names))
+      if (any(not_found)) {
+        var_str <- paste(colnames(input_data)[not_found], collapse=", ")
+        warning(paste("Variable(s)", var_str, "in input_data not found",
+            "in state_order file."), call.=FALSE)
+      }
+      for (row in 1:nrow(state_order)) {
+        col <- as.character(state_order[row, "var_names"])
+        if (!is.null(state_order$var_type)) {
+          if (state_order[row, "var_type"] == 0) {
+            input_data[, col] <- factor(input_data[, col])
+            is_continuous[[col]] <- FALSE
+          }
+        }
+        if (!is.null(state_order$is_contextual)) {
+          if (state_order[row, "is_contextual"] == 1) {
+            is_contextual[[col]] <- 1
+          }
+        }
+        if (!is.null(state_order$levels_increasing_order)) {
+          order_string <- state_order[row, "levels_increasing_order"]
+          if (!is.na(order_string)) {
+            if (is_continuous[[col]] == TRUE) {
+              warning(paste(col, "is considered as a continuous variable,",
+                  "the provided orders will be ignored."), call.=FALSE)
+            } else {
+              orders <- unlist(strsplit(as.character(order_string), ","))
+              values <- unique(input_data[[col]][!is.na(input_data[[col]])])
+              absent <- is.na(match(values, orders))
+              if (any(absent)) {
+                var_str <- ""
+                if (length(values[absent]) > 10) {
+                  # Only show the first 3 if the list is too long
+                  var_str <- paste(paste(values[absent][1:3], collapse=", "),
+                      "and", length(values[absent]) - 3, "more")
+                } else {
+                  var_str <- paste(values[absent], collapse=", ")
+                }
+                warning(paste("Variable", col, "has value(s)", var_str,
+                    "that will not match the provided orders,",
+                    "the provided orders will be ignored."), call.=FALSE)
+              }
+            }
+          }
+        }
       }
     }
   }
@@ -471,7 +513,7 @@ miic <- function(input_data,
             col,
             " only has ",
             unique_values,
-            " non-NA unique values. Is this a factor ?"
+            " non-NA unique values. Is this a factor?"
           )
         )
       }
@@ -484,7 +526,7 @@ miic <- function(input_data,
           " is treated as continuous but only has ",
           unique_values,
           " unique values."
-        )
+        ), call.=FALSE
       )
     }
     if ((!is_continuous[[col]]) &&
@@ -494,13 +536,13 @@ miic <- function(input_data,
         " is treated as discrete but has many levels (",
         unique_values,
         ")."
-      ))
+      ), call.=FALSE)
     }
   }
 
   err_code <- checkInput(input_data, "miic")
   if (err_code != "0") {
-    print(errorCodeToString(err_code))
+    warning(errorCodeToString(err_code), call.=FALSE)
   } else {
     if (verbose) {
       cat("\t# -> START reconstruction...\n")
@@ -536,8 +578,8 @@ miic <- function(input_data,
     if (!is.null(true_edges)) {
       err_code <- checkTrueEdges(true_edges)
       if (err_code != "0") {
-        print(errorCodeToString(err_code))
-        print("WARNING: True edges file will be ignored!")
+        warning(paste(errorCodeToString(err_code),
+            "true_edges file will be ignored.", sep=", "), call.=FALSE)
         true_edges <- NULL
       }
     }
