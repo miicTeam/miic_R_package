@@ -30,6 +30,7 @@ using namespace structure;
 using namespace utility;
 using std::log;
 using std::lround;
+constexpr double kPrecision = 1.e-10;
 
 // rux: number of levels of each (joint) variable [x, u, ux]
 // cplx 0: MDL, 1: NML
