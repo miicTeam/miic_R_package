@@ -9,6 +9,7 @@
 #include "structure.h"
 
 constexpr double kEpsilon = 1.e-5;
+constexpr double kPrecision = 1.e-10;
 constexpr int kMaxIter = 50;
 constexpr int kMaxIterOnU = 3;
 
@@ -553,9 +554,9 @@ InfoBlock computeIxyui(const TempGrid2d<int>& data,
     updateFactors(
         data_idx, cut, is_continuous, var_idx, 2, n_nodes, datafactors, r);
     copy(begin(r) + 2, end(r), begin(r_old) + 2);
-    for (int count = 0; (count < kMaxIterOnU); ++count) {
+    for (int count = 0; (count < kMaxIterOnU) && !reuse_y_u_cuts; ++count) {
       for (int l = 2; l < n_nodes; ++l) {
-        if (is_continuous[var_idx[l]] != 1) continue;
+        if (is_continuous[var_idx[l]] == 0) continue;
         // opt u, I(y;xu)
         setUyxJointFactors(datafactors, r_old, l, uyxfactors, ruyx);
         // init variables for the optimization run
@@ -617,9 +618,9 @@ InfoBlock computeIxyui(const TempGrid2d<int>& data,
     updateFactors(
         data_idx, cut, is_continuous, var_idx, 2, n_nodes, datafactors, r);
     copy(begin(r) + 2, end(r), begin(r_old) + 2);
-    for (int count = 0; (count < kMaxIterOnU); ++count) {
+    for (int count = 0; (count < kMaxIterOnU) && !reuse_x_u_cuts; ++count) {
       for (int l = 2; l < n_nodes; ++l) {
-        if (is_continuous[var_idx[l]] != 1) continue;
+        if (is_continuous[var_idx[l]] == 0) continue;
 
         setUyxJointFactors(datafactors, r_old, l, uyxfactors, ruyx);
         // init variables for the optimization run
@@ -682,9 +683,9 @@ InfoBlock computeIxyui(const TempGrid2d<int>& data,
     updateFactors(
         data_idx, cut, is_continuous, var_idx, 2, n_nodes, datafactors, r);
     copy(begin(r) + 2, end(r), begin(r_old) + 2);
-    for (int count = 0; count < kMaxIterOnU; ++count) {
+    for (int count = 0; (count < kMaxIterOnU) && !reuse_x_u_cuts; ++count) {
       for (int l = 2; l < n_nodes; ++l) {
-        if (is_continuous[var_idx[l]] == 0 || reuse_x_u_cuts) continue;
+        if (is_continuous[var_idx[l]] == 0) continue;
 
         setUyxJointFactors(datafactors, r_old, l, uyxfactors, ruyx);
         // init variables for the optimization run
@@ -731,9 +732,9 @@ InfoBlock computeIxyui(const TempGrid2d<int>& data,
     updateFactors(
         data_idx, cut, is_continuous, var_idx, 2, n_nodes, datafactors, r);
     copy(begin(r) + 2, end(r), begin(r_old) + 2);
-    for (int count = 0; count < kMaxIterOnU; ++count) {
+    for (int count = 0; (count < kMaxIterOnU) && !reuse_y_u_cuts; ++count) {
       for (int l = 2; l < n_nodes; ++l) {
-        if (is_continuous[var_idx[l]] == 0 || reuse_y_u_cuts) continue;
+        if (is_continuous[var_idx[l]] == 0) continue;
 
         setUyxJointFactors(datafactors, r_old, l, uyxfactors, ruyx);
         int r0 = ruyx[1];           // yu
@@ -778,8 +779,11 @@ InfoBlock computeIxyui(const TempGrid2d<int>& data,
     // Compute I(X;Y|U)
     double part_one = I_x_yu - I_x_u;
     double part_two = I_y_xu - I_y_u;
-    reuse_x_u_cuts = part_one < 0;
-    reuse_y_u_cuts = part_two < 0;
+    // Either sum may be negative when we can't find U bins on I(X;YU) (or 
+    //I(Y;XY)) that are as good as those found on I(X;U) (I(Y;U)). If that is
+    //the case, we reuse the better U bins for all terms for the next iteration.
+    reuse_x_u_cuts = part_one < kPrecision;
+    reuse_y_u_cuts = part_two < kPrecision;
 
     if(reuse_x_u_cuts || reuse_y_u_cuts) {
       continue;
