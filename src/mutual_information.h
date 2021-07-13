@@ -88,6 +88,7 @@ InfoBlock computeMI(const Cx& xfactors, const Cu& ufactors,
   }
 
   double Iux = n_eff * log(n_eff) + (Hu + Hx - Hux);
+  if(rux[0] == 1 || rux[1] == 1 || Iux < kPrecision) Iux = 0; // The summed Iux may not be 0 due to precision issues
 
   return InfoBlock{n_eff, Iux, sc};
 }
