@@ -262,6 +262,7 @@ struct CutPointsInfo {
   double I{0};
   double Ik{0};
   double I_equal_freq_max{0};
+  int n_iterations{0};
 
   CutPointsInfo() = default;
   CutPointsInfo(size_t n_rows, size_t n_cols) : cutpoints(n_rows, n_cols, -1) {}

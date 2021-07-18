@@ -72,14 +72,10 @@ List mydiscretizeMutual(List input_data, List arg_list) {
       environment.initbins, environment.maxbins, environment.cplx,
       environment.cache.cterm, cuts_ptr);
 
-  int niterations = 0;
+  int niterations = cuts_ptr->n_iterations;
   TempGrid2d<int> iterative_cuts(kStepMax * maxbins, 2);
   const auto& cuts = cuts_ptr->cutpoints;
   for (int l = 0; l < kStepMax; ++l) {
-    if (cuts(l, 0) == -1) {
-      niterations = l;
-      break;
-    }
     for (int k = 0; k < 2; ++k) {
       int i = 0;
       while (cuts(l, i + maxbins * k) < cuts(l, i + maxbins * k + 1)) {
