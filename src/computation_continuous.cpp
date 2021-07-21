@@ -446,7 +446,7 @@ InfoBlock computeIxy(const TempGrid2d<int>& data,
   }  // for step
 
   // I and Ik can always be 0 by choosing 1 bin on either X or Y.
-  if (Ikxy < 0 && is_continuous[var_idx[0]] && is_continuous[var_idx[1]]) {
+  if (Ikxy < 0) {
     Ixy = 0;
     Ikxy = 0;
   }
@@ -821,7 +821,7 @@ InfoBlock computeIxyui(const TempGrid2d<int>& data,
     Ikxy_ui = cond_Ik;
   }  // for step
   // I and Ik can always be 0 by choosing 1 bin on either X or Y.
-  if (Ikxy_ui < 0 && is_continuous[var_idx[0]] && is_continuous[var_idx[1]]) {
+  if (Ikxy_ui < 0) {
     Ixy_ui = 0;
     Ikxy_ui = 0;
   }

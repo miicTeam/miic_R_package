@@ -126,6 +126,11 @@ InfoBlock computeCondMutualInfoDiscrete(const TempGrid2d<int>& data,
 
   double Ixy_ui = Hux + Huy - Hu - Huyx;
   double kxy_ui = 0.5 * (logC_ux_y - logC_u_y + logC_uy_x - logC_u_x);
+  // I and k can always be 0 by choosing 1 bin on either X or Y.
+  if (Ixy_ui - kxy_ui < 0) {
+    Ixy_ui = 0;
+    kxy_ui = 0;
+  }
 
   return InfoBlock{N_total, Ixy_ui, kxy_ui};
 }
@@ -302,12 +307,28 @@ Info3PointBlock computeInfo3PointAndScoreDiscrete(const TempGrid2d<int>& data,
 
   double info_xy_ui = Hux + Huy - Hu - Huyx;
   double logC_xy_ui = 0.5 * (logC_ux_y - logC_u_y + logC_uy_x - logC_u_x);
+  if (info_xy_ui - logC_xy_ui < 0) {
+    info_xy_ui = 0;
+    logC_xy_ui = 0;
+  }
   double info_yz_ui = Huy + Hzu - Hu - Hzuy;
   double logC_yz_ui = 0.5 * (logC_zu_y - logC_u_y + logC_uy_z - logC_u_z);
+  if (info_yz_ui - logC_yz_ui < 0) {
+    info_yz_ui = 0;
+    logC_yz_ui = 0;
+  }
   double info_xz_ui = Hux + Hzu - Hu - Hzux;
   double logC_xz_ui = 0.5 * (logC_zu_x - logC_u_x + logC_ux_z - logC_u_z);
+  if (info_xz_ui - logC_xz_ui < 0) {
+    info_xz_ui = 0;
+    logC_xz_ui = 0;
+  }
   double info_xy_uiz = Hzux + Hzuy - Hzu - Hzuyx;
   double logC_xy_uiz = 0.5 * (logC_zux_y - logC_zu_y + logC_zuy_x - logC_zu_x);
+  if (info_xy_uiz - logC_xy_uiz < 0) {
+    info_xy_uiz = 0;
+    logC_xy_uiz = 0;
+  }
 
   double xz = (info_xz_ui - logC_xz_ui) - (info_xy_ui - logC_xy_ui);
   double yz  = (info_yz_ui - logC_yz_ui) - (info_xy_ui - logC_xy_ui);
