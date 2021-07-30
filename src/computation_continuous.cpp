@@ -784,16 +784,17 @@ InfoBlock computeIxyui(const TempGrid2d<int>& data,
     //I(Y;XY)) that are as good as those found on I(X;U) (I(Y;U)). If that is
     //the case, we reuse the better U bins for all terms for the next iteration.
     reuse_x_u_cuts = part_one < kPrecision || (reuse_x_u_cuts && (part_two < kPrecision));
-    reuse_y_u_cuts = part_two < kPrecision || (reuse_y_u_cuts && (part_one < kPrecision));;
+    reuse_y_u_cuts = part_two < kPrecision || (reuse_y_u_cuts && (part_one < kPrecision));
 
     if(reuse_x_u_cuts || reuse_y_u_cuts) {
-      if((r[0] == 1 || r[1] == 1) && (step != (iter_max-1))) {
+      bool one_bin = r[0] == 1 || r[1] == 1;
+      if(one_bin && (step != (iter_max-1))) {
         // Next iteration will have 0 information with no further optimization possible.
-        // Without reuse_cuts, the loop will stop when testing convergence as usual.
         iter_max = step+2;
         if (save_cuts) cuts_info->n_iterations = step+1;
       }
-      continue;
+      if(!one_bin) continue;
+      // With one bin, we can keep the result and check for convergence
     }
 
     double cond_I = 0.5 * (part_one + part_two);
