@@ -436,7 +436,7 @@ InfoBlock computeIxy(const TempGrid2d<int>& data,
       }
     }
 
-    if (save_cuts) cuts_info->n_iterations = step;
+    if (save_cuts) cuts_info->n_iterations = step+1;
     if (converged) break;
 
     Ixy = res_temp.I;
