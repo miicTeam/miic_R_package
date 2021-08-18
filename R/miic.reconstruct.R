@@ -16,7 +16,8 @@ miic.reconstruct <- function(input_data = NULL,
                              sample_weights = NULL,
                              test_mar = TRUE,
                              consistent = "no",
-                             max_iteration = NULL
+                             max_iteration = NULL,
+                             negative_info = FALSE
                              ) {
   n_samples <- nrow(input_data)
   n_nodes <- ncol(input_data)
@@ -69,6 +70,7 @@ miic.reconstruct <- function(input_data = NULL,
     "ori_proba_ratio" = ori_proba_ratio,
     "propagation" = propagation,
     "test_mar" = test_mar,
+    "negative_info" = negative_info,
     "max_bins" = min(50, n_samples),
     "var_names" = var_names,
     "verbose" = verbose
