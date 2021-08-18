@@ -313,7 +313,8 @@ InfoBlock computeIxy(const TempGrid2d<int>& data,
     const TempGrid2d<int>& data_idx, const TempVector<int>& is_continuous,
     const TempVector<int>& var_idx, const TempVector<int>& levels,
     const TempVector<double>& weights, bool flag_sample_weights, int initbins,
-    int maxbins, int cplx, std::shared_ptr<CtermCache> cache,
+    int maxbins, int cplx, bool negative_info,
+    std::shared_ptr<CtermCache> cache,
     std::shared_ptr<CutPointsInfo> cuts_info = nullptr) {
   TempAllocatorScope scope;
 
@@ -446,7 +447,7 @@ InfoBlock computeIxy(const TempGrid2d<int>& data,
   }  // for step
 
   // I and Ik can always be 0 by choosing 1 bin on either X or Y.
-  if (Ikxy < 0) {
+  if (!negative_info && Ikxy < 0) {
     Ixy = 0;
     Ikxy = 0;
   }
@@ -463,7 +464,8 @@ InfoBlock computeIxyui(const TempGrid2d<int>& data,
     const TempGrid2d<int>& data_idx, const TempVector<int>& is_continuous,
     const TempVector<int>& var_idx, const TempVector<int>& levels,
     const TempVector<double>& weights, bool flag_sample_weights, int initbins,
-    int maxbins, int cplx, std::shared_ptr<CtermCache> cache,
+    int maxbins, int cplx, bool negative_info,
+    std::shared_ptr<CtermCache> cache,
     std::shared_ptr<CutPointsInfo> cuts_info = nullptr) {
   TempAllocatorScope scope;
 
@@ -822,7 +824,7 @@ InfoBlock computeIxyui(const TempGrid2d<int>& data,
     Ikxy_ui = cond_Ik;
   }  // for step
   // I and Ik can always be 0 by choosing 1 bin on either X or Y.
-  if (Ikxy_ui < 0) {
+  if (!negative_info && Ikxy_ui < 0) {
     Ixy_ui = 0;
     Ikxy_ui = 0;
   }
@@ -840,16 +842,17 @@ InfoBlock computeCondMutualInfo(const TempGrid2d<int>& data,
     const TempGrid2d<int>& data_idx, const TempVector<int>& levels,
     const TempVector<int>& is_continuous, const TempVector<int>& var_idx,
     const TempVector<double>& sample_weights, bool flag_sample_weights,
-    int initbins, int maxbins, int cplx, std::shared_ptr<CtermCache> cache,
+    int initbins, int maxbins, int cplx, bool negative_info,
+    std::shared_ptr<CtermCache> cache,
     std::shared_ptr<CutPointsInfo> cuts_info) {
   if (data.n_rows() == 2) {
     return computeIxy(data, data_idx, is_continuous, var_idx, levels,
-        sample_weights, flag_sample_weights, initbins, maxbins, cplx, cache,
-        cuts_info);
+        sample_weights, flag_sample_weights, initbins, maxbins, cplx,
+        negative_info, cache, cuts_info);
   } else {
     return computeIxyui(data, data_idx, is_continuous, var_idx, levels,
-        sample_weights, flag_sample_weights, initbins, maxbins, cplx, cache,
-        cuts_info);
+        sample_weights, flag_sample_weights, initbins, maxbins, cplx,
+        negative_info, cache, cuts_info);
   }
 }
 
@@ -859,15 +862,16 @@ Info3PointBlock computeInfo3PointAndScore(const TempGrid2d<int>& data,
     const TempGrid2d<int>& data_idx, const TempVector<int>& levels,
     const TempVector<int>& is_continuous, const TempVector<int>& var_idx,
     const TempVector<double>& sample_weights, bool flag_sample_weights,
-    int initbins, int maxbins, int cplx, std::shared_ptr<CtermCache> cache) {
+    int initbins, int maxbins, int cplx, bool negative_info,
+    std::shared_ptr<CtermCache> cache) {
   TempAllocatorScope scope;
 
   int n_ui = data.n_rows() - 3;
   // Optimize variables for each MI estimation for the R score
   // I(x,y|u,z)
-  InfoBlock res_temp =
-      computeIxyui(data, data_idx, is_continuous, var_idx, levels,
-          sample_weights, flag_sample_weights, initbins, maxbins, cplx, cache);
+  InfoBlock res_temp = computeIxyui(data, data_idx, is_continuous, var_idx,
+      levels, sample_weights, flag_sample_weights, initbins, maxbins, cplx,
+      negative_info, cache);
   double I_xy_zu = res_temp.I;
   double Ik_xy_zu = res_temp.I - res_temp.k;
 
@@ -875,10 +879,12 @@ Info3PointBlock computeInfo3PointAndScore(const TempGrid2d<int>& data,
   // Do opt run on I(X;Y|U)
   if (n_ui > 0) {
     res_temp = computeIxyui(data, data_idx, is_continuous, var_idx_t, levels,
-        sample_weights, flag_sample_weights, initbins, maxbins, cplx, cache);
+        sample_weights, flag_sample_weights, initbins, maxbins, cplx,
+        negative_info, cache);
   } else {
     res_temp = computeIxy(data, data_idx, is_continuous, var_idx_t, levels,
-        sample_weights, flag_sample_weights, initbins, maxbins, cplx, cache);
+        sample_weights, flag_sample_weights, initbins, maxbins, cplx,
+        negative_info, cache);
   }
   double I_xy_u = res_temp.I;
   double Ik_xy_u = res_temp.I - res_temp.k;
@@ -887,10 +893,12 @@ Info3PointBlock computeInfo3PointAndScore(const TempGrid2d<int>& data,
   var_idx_t[1] = var_idx.back();  // Z
   if (n_ui > 0) {
     res_temp = computeIxyui(data, data_idx, is_continuous, var_idx_t, levels,
-        sample_weights, flag_sample_weights, initbins, maxbins, cplx, cache);
+        sample_weights, flag_sample_weights, initbins, maxbins, cplx,
+        negative_info, cache);
   } else {
     res_temp = computeIxy(data, data_idx, is_continuous, var_idx_t, levels,
-        sample_weights, flag_sample_weights, initbins, maxbins, cplx, cache);
+        sample_weights, flag_sample_weights, initbins, maxbins, cplx,
+        negative_info, cache);
   }
   double Ik_xz_u = res_temp.I - res_temp.k;
 
@@ -898,10 +906,12 @@ Info3PointBlock computeInfo3PointAndScore(const TempGrid2d<int>& data,
   var_idx_t[0] = var_idx[1];  // Y
   if (n_ui > 0) {
     res_temp = computeIxyui(data, data_idx, is_continuous, var_idx_t, levels,
-        sample_weights, flag_sample_weights, initbins, maxbins, cplx, cache);
+        sample_weights, flag_sample_weights, initbins, maxbins, cplx,
+        negative_info, cache);
   } else {
     res_temp = computeIxy(data, data_idx, is_continuous, var_idx_t, levels,
-        sample_weights, flag_sample_weights, initbins, maxbins, cplx, cache);
+        sample_weights, flag_sample_weights, initbins, maxbins, cplx,
+        negative_info, cache);
   }
   double Ik_yz_u = res_temp.I - res_temp.k;
 

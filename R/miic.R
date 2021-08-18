@@ -176,6 +176,19 @@
 #' When set greater than 1, n_threads parallel threads will be used for computation. Make sure
 #' your compiler is compatible with openmp if you wish to use multithreading.
 #'
+#' @param negative_info [a boolean value] For test purpose only. FALSE by
+#' default. If TRUE, negative shifted mutual information is allowed during the
+#' computation when mutual information is inferior to the complexity term. For
+#' small dateset with complicated structures, e.g., discrete variables with many
+#' levels, allowing for negative shifted mutual information may help identifying
+#' weak v-structures related to those discrete variables, as the negative
+#' three-point information in those cases will come from the difference between
+#' two negative shifted mutual information terms (expected to be negative due to
+#' the small sample size). However, under this setting, a v-structure (X -> Z <-
+#' Y) in the final graph does not necessarily imply that X is dependent on Y
+#' conditioning on Z, As a consequence, the interpretability of the final graph
+#' is hindered. In practice, it's advised to keep this parameter as FALSE.
+#'
 #' @return A \emph{miic-like} object that contains:
 #' \itemize{
 #'  \item{all.edges.summary:}{ a data frame with information about the relationship between
@@ -344,6 +357,7 @@ miic <- function(input_data,
                  consistent = c("no", "orientation", "skeleton"),
                  max_iteration = 100,
                  consensus_threshold = 0.8,
+                 negative_info = FALSE,
                  verbose = FALSE) {
   res <- NULL
 
@@ -566,7 +580,8 @@ miic <- function(input_data,
         sample_weights = sample_weights,
         test_mar = test_mar,
         consistent = consistent,
-        max_iteration = max_iteration
+        max_iteration = max_iteration,
+        negative_info = negative_info
       )
     if (res$interrupted) {
       stop("Interupted by user")

@@ -24,6 +24,7 @@ miic(
   consistent = c("no", "orientation", "skeleton"),
   max_iteration = 100,
   consensus_threshold = 0.8,
+  negative_info = FALSE,
   verbose = FALSE
 )
 }
@@ -48,9 +49,8 @@ variable is to be considered as discrete (0) or continuous (1).
 "levels_increasing_order" (optional) contains a single character string
 with all of the unique levels of the ordinal variable in increasing order,
 delimited by comma ','. It will be used during the post-processing to compute
-the sign of an edge using Spearman's rank correlation. If the variable is
-continuous or is categorical but not ordinal, this column may be left empty
-or contain NA instead.
+the sign of an edge using Spearman's rank correlation. If a variable is
+continuous or is categorical but not ordinal, this column should be NA.
 
 "is_contextual" (optional) contains a binary value that specifies if a
 variable is to be considered as a contextual variable (1) or not (0).
@@ -169,6 +169,19 @@ the proportion of non-zero status (0.6 in the example) is equal to or higher
 than [consensus_threshold]. (When set to connected, the orientation of the
 edge will be further determined by the average probability of orientation.)
 Set to 0.8 by default.}
+
+\item{negative_info}{[a boolean value] For test purpose only. FALSE by
+default. If TRUE, negative shifted mutual information is allowed during the
+computation when mutual information is inferior to the complexity term. For
+small dateset with complicated structures, e.g., discrete variables with many
+levels, allowing for negative shifted mutual information may help identifying
+weak v-structures related to those discrete variables, as the negative
+three-point information in those cases will come from the difference between
+two negative shifted mutual information terms (expected to be negative due to
+the small sample size). However, under this setting, a v-structure (X -> Z <-
+Y) in the final graph does not necessarily imply that X is dependent on Y
+conditioning on Z, As a consequence, the interpretability of the final graph
+is hindered. In practice, it's advised to keep this parameter as FALSE.}
 
 \item{verbose}{[a boolean value] If TRUE, debugging output is printed.}
 }

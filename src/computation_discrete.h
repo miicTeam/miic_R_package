@@ -12,12 +12,12 @@ structure::InfoBlock computeCondMutualInfoDiscrete(
     const structure::TempVector<int>& r_list,
     const structure::TempVector<int>& var_idx,
     const structure::TempVector<double>& weights, int cplx,
-    std::shared_ptr<CtermCache> cache);
+    bool negative_info, std::shared_ptr<CtermCache> cache);
 structure::Info3PointBlock computeInfo3PointAndScoreDiscrete(
     const structure::TempGrid2d<int>& data,
     const structure::TempVector<int>& r_list,
     const structure::TempVector<int>& var_idx,
-    const structure::TempVector<double>& weights, int cplx,
+    const structure::TempVector<double>& weights, int cplx, bool negative_info,
     std::shared_ptr<CtermCache> cache);
 
 }  // namespace computation
