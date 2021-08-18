@@ -119,6 +119,9 @@ void setEnvironmentFromR(const Rcpp::List& input_data,
   omp_set_num_threads(environment.n_threads);
 #endif
 
+  if (arg_list.containsElementNamed("negative_info"))
+    environment.negative_info = as<bool>(arg_list["negative_info"]);
+
   if (arg_list.containsElementNamed("verbose"))
     environment.verbose = as<bool>(arg_list["verbose"]);
 

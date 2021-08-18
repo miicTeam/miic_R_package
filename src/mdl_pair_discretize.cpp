@@ -70,7 +70,7 @@ List mydiscretizeMutual(List input_data, List arg_list) {
   computeCondMutualInfo(dataNumeric_red, dataNumericIdx_red, AllLevels_red,
       cnt_red, posArray_red, sample_weights_red, flag_sample_weights,
       environment.initbins, environment.maxbins, environment.cplx,
-      environment.cache.cterm, cuts_ptr);
+      environment.negative_info, environment.cache.cterm, cuts_ptr);
 
   int niterations = cuts_ptr->n_iterations;
   TempGrid2d<int> iterative_cuts(kStepMax * maxbins, 2);

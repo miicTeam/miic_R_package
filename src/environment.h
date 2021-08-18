@@ -68,6 +68,8 @@ struct Environment {
   bool degenerate = false;
   bool no_init_eta = false;
   bool half_v_structure = false;
+  // If true, allow for negative shifted mutual information
+  bool negative_info = false;
 
   int maxbins = 50;
   int initbins;

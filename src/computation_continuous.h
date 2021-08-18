@@ -17,7 +17,7 @@ structure::InfoBlock computeCondMutualInfo(
     const structure::TempVector<int>& var_idx,
     const structure::TempVector<double>& sample_weights,
     bool flag_sample_weights, int initbins, int maxbins, int cplx,
-    std::shared_ptr<CtermCache>,
+    bool negative_info, std::shared_ptr<CtermCache>,
     std::shared_ptr<structure::CutPointsInfo> = nullptr);
 
 structure::Info3PointBlock computeInfo3PointAndScore(
@@ -28,7 +28,7 @@ structure::Info3PointBlock computeInfo3PointAndScore(
     const structure::TempVector<int>& var_idx,
     const structure::TempVector<double>& sample_weights,
     bool flag_sample_weights, int initbins, int maxbins, int cplx,
-    std::shared_ptr<CtermCache> cache);
+    bool negative_info, std::shared_ptr<CtermCache> cache);
 
 }  // namespace computation
 }  // namespace miic

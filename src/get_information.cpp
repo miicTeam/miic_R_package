@@ -125,12 +125,13 @@ double getInfo3PointOrScore(Environment& environment, int X, int Y, int Z,
   if (std::all_of(begin(is_continuous_red), end(is_continuous_red),
           [](int x) { return x == 0; })) {
     res = computeInfo3PointAndScoreDiscrete(data_red, levels_red, var_idx_red,
-        weights_red, environment.cplx, environment.cache.cterm);
+        weights_red, environment.cplx, environment.negative_info,
+        environment.cache.cterm);
   } else {
     res = computeInfo3PointAndScore(data_red, data_idx_red, levels_red,
         is_continuous_red, var_idx_red, weights_red, flag_sample_weights,
         environment.initbins, environment.maxbins, environment.cplx,
-        environment.cache.cterm);
+        environment.negative_info, environment.cache.cterm);
   }
   double info = res.Ixyz_ui - res.kxyz_ui;  // I(x;y;z|u) - cplx I(x;y;z|u)
   double score = res.score;                 // R(X,Y;Z|ui)
@@ -205,12 +206,13 @@ InfoBlock getCondMutualInfo(int X, int Y, const vector<int>& ui_list,
   if (std::all_of(begin(is_continuous_red), end(is_continuous_red),
           [](int x) { return x == 0; })) {
     res = computeCondMutualInfoDiscrete(data_red, levels_red, var_idx_red,
-        weights_red, environment.cplx, environment.cache.cterm);
+        weights_red, environment.cplx, environment.negative_info,
+        environment.cache.cterm);
   } else {
     res = computeCondMutualInfo(data_red, data_idx_red, levels_red,
         is_continuous_red, var_idx_red, weights_red, flag_sample_weights,
         environment.initbins, environment.maxbins, environment.cplx,
-        environment.cache.cterm);
+        environment.negative_info, environment.cache.cterm);
   }
   if (std::fabs(res.I) < kPrecision) res.I = 0;
   if (std::fabs(res.k) < kPrecision) res.k = 0;
@@ -291,12 +293,13 @@ double getEntropy(Environment& environment, int Z, int X, int Y) {
             [](int x) { return x == 0; })) {
       res = computeCondMutualInfoDiscrete(part_data_red, part_levels_red,
           part_var_idx_red, weights_red, environment.cplx,
-          environment.cache.cterm);
+          environment.negative_info, environment.cache.cterm);
     } else {
       res = computeCondMutualInfo(part_data_red, part_data_idx_red,
-          part_levels_red, part_is_continuous_red, part_var_idx_red, weights_red,
-          flag_sample_weights, environment.initbins, environment.maxbins,
-          environment.cplx, environment.cache.cterm);
+          part_levels_red, part_is_continuous_red, part_var_idx_red,
+          weights_red, flag_sample_weights, environment.initbins,
+          environment.maxbins, environment.cplx, environment.negative_info,
+          environment.cache.cterm);
     }
     if (std::fabs(res.I) < kPrecision) res.I = 0;
     if (std::fabs(res.k) < kPrecision) res.k = 0;
