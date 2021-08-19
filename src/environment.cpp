@@ -31,24 +31,7 @@ Environment::Environment(int n_samples, int n_nodes, vector<int> vec_numeric,
   for (int i = 0; i < n_nodes; ++i) {
     has_na[i] = std::any_of(data_numeric.row_begin(i), data_numeric.row_end(i),
         [](int value) { return value == -1; });
-  }
-  for (int i = 0; i < n_nodes; ++i) {
-    for (int j = 0; j < n_nodes; ++j) {
-      if ((!is_continuous[i] && levels[i] == n_samples) ||
-          (!is_continuous[j] && levels[j] == n_samples)) {
-        // If a node is discrete with as many levels as there are samples, its
-        // information with other nodes is null.
-        edges(i, j).status = 0;
-        edges(i, j).status_prev = 0;
-        edges(i, j).proba_head = -1;
-      } else {
-        // Initialise all other edges.
-        edges(i, j).status = 1;
-        edges(i, j).status_prev = 1;
-      }
-    }
-  }
-  for (int i = 0; i < n_nodes; ++i) {
+
     edges(i, i).status = 0;
     edges(i, i).status_prev = 0;
     edges(i, i).proba_head = -1;
