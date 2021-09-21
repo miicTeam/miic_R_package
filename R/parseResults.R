@@ -56,11 +56,11 @@ summarizeResults <- function(observations = NULL, results = NULL,
   summary <- data.frame(
     x = character(n), y = character(n), type = character(n), ai = character(n),
     info = numeric(n), info_cond = numeric(n), cplx = numeric(n),
-    Nxy_ai = numeric(n), info_shifted = numeric(n), infOrt = numeric(n),
+    Nxy_ai = numeric(n), info_shifted = numeric(n), ort_inferred = numeric(n),
+    ort_truth = numeric(n), inference_correct = character(n),
     is_causal = rep(NA, n), consensus = numeric(n),
     is_causal_consensus = rep(NA, n), edge_stats = character(n),
-    trueOrt = numeric(n), isOrtOk = character(n), sign = character(n),
-    partial_correlation = numeric(n), proba = character(n),
+    sign = character(n), partial_correlation = numeric(n), proba = character(n),
     confidence = character(n), stringsAsFactors = FALSE
   )
   if(n == 0) return(summary)
@@ -89,8 +89,8 @@ summarizeResults <- function(observations = NULL, results = NULL,
       summary, edges, "x", "y", "confidence")
   summary$confidence[summary$confidence == -1] <- NA
 
-  # infOrt is the inferred edge orientation
-  summary$infOrt <- apply(summary, 1, function(row, adj_matrix) {
+  # ort_inferred is the inferred edge orientation
+  summary$ort_inferred <- apply(summary, 1, function(row, adj_matrix) {
     adj_matrix[row[1], row[2]]
   }, adj_matrix)
 
@@ -102,8 +102,8 @@ summarizeResults <- function(observations = NULL, results = NULL,
     summary$type <- apply(summary, 1, function(row, adj_matrix) {
       ifelse(adj_matrix[row[1], row[2]] == 0, "N", "P")
     }, adj_matrix)
-    summary$trueOrt <- NULL
-    summary$isOrtOk <- NULL
+    summary$ort_truth <- NULL
+    summary$inference_correct <- NULL
   } else {
     for (i in 1:nrow(summary)) {
       row <- summary[i, ]
@@ -135,10 +135,11 @@ summarizeResults <- function(observations = NULL, results = NULL,
       true_adj_matrix[true_edge[2], true_edge[1]] <- -2
     }
 
-    summary$trueOrt <- apply(summary, 1, function(row, true_adj_matrix) {
+    summary$ort_truth <- apply(summary, 1, function(row, true_adj_matrix) {
       true_adj_matrix[row[1], row[2]]
     }, true_adj_matrix)
-    summary$isOrtOk <- ifelse(summary$infOrt == summary$trueOrt, "Y", "N")
+    summary$inference_correct <- ifelse(
+        summary$ort_inferred == summary$ort_truth, "Y", "N")
   }
 
   # Sign and coefficient of partial correlation between x and y conditioned
@@ -193,7 +194,7 @@ summarizeResults <- function(observations = NULL, results = NULL,
       row <- summary[i, ]
       if (causality_deducible) {
         # Set initial values if deducible
-        if (row$infOrt != 0)
+        if (row$ort_inferred != 0)
           summary[i, ]$is_causal <- "N"
         if (row$consensus != 0)
           summary[i, ]$is_causal_consensus <- "N"
@@ -215,7 +216,7 @@ summarizeResults <- function(observations = NULL, results = NULL,
         summary[i, ]$consensus <- 2
         if (1 / ratio_y2x < ori_consensus_ratio && causality_deducible) {
           summary[i, ]$is_causal_consensus <- "Y"
-          if (row$infOrt == 2) {
+          if (row$ort_inferred == 2) {
             summary[i, ]$is_causal <- "Y"
           }
         }
@@ -224,7 +225,7 @@ summarizeResults <- function(observations = NULL, results = NULL,
         summary[i, ]$consensus <- -2
         if (1 / ratio_x2y < ori_consensus_ratio && causality_deducible) {
           summary[i, ]$is_causal_consensus <- "Y"
-          if (row$infOrt == -2) {
+          if (row$ort_inferred == -2) {
             summary[i, ]$is_causal <- "Y"
           }
         }
@@ -241,7 +242,7 @@ summarizeResults <- function(observations = NULL, results = NULL,
       # set is_causal by results$proba_adj_matrix
       for (i in 1:nrow(summary)) {
         row <- summary[i, ]
-        if (row$infOrt == 0) {
+        if (row$ort_inferred == 0) {
           next
         }
         summary[i, ]$is_causal <- "N"
@@ -253,12 +254,12 @@ summarizeResults <- function(observations = NULL, results = NULL,
         proba_y2x <- results$proba_adj_matrix[id_y, id_x]  # proba of x <-* y
         ratio_x2y <- (1 - proba_x2y) / proba_x2y
         ratio_y2x <- (1 - proba_y2x) / proba_y2x
-        if (row$infOrt == 2 &&
+        if (row$ort_inferred == 2 &&
             ratio_x2y < ori_consensus_ratio &&
             1 / ratio_y2x < ori_consensus_ratio) {
           summary[i, ]$is_causal <- "Y"
         }
-        if (row$infOrt == -2 &&
+        if (row$ort_inferred == -2 &&
             ratio_y2x < ori_consensus_ratio &&
             1 / ratio_x2y < ori_consensus_ratio) {
           summary[i, ]$is_causal <- "Y"
