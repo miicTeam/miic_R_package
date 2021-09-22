@@ -56,9 +56,10 @@ summarizeResults <- function(observations = NULL, results = NULL,
   summary <- data.frame(
     x = character(n), y = character(n), type = character(n), ai = character(n),
     info = numeric(n), info_cond = numeric(n), cplx = numeric(n),
-    Nxy_ai = numeric(n), info_shifted = numeric(n), infOrt = integer(n),
-    trueOrt = as.integer(rep(NA, n)), isOrtOk = as.logical(rep(NA, n)),
-    is_causal = as.logical(rep(NA, n)), consensus = as.integer(rep(NA, n)),
+    Nxy_ai = numeric(n), info_shifted = numeric(n), ort_inferred = integer(n),
+    ort_ground_truth = as.integer(rep(NA, n)),
+    is_inference_correct = as.logical(rep(NA, n)),
+    is_causal = as.logical(rep(NA, n)), ort_consensus = as.integer(rep(NA, n)),
     is_causal_consensus = as.logical(rep(NA, n)),
     edge_stats = as.character(rep(NA, n)), sign = character(n),
     partial_correlation = numeric(n), proba = character(n),
@@ -85,8 +86,8 @@ summarizeResults <- function(observations = NULL, results = NULL,
   # info_shifted is the difference between MI and cplx
   summary$info_shifted <- summary$info_cond - summary$cplx
 
-  # infOrt is the inferred edge orientation
-  summary$infOrt <- apply(summary, 1, function(row, adj_matrix) {
+  # ort_inferred is the inferred edge orientation
+  summary$ort_inferred <- apply(summary, 1, function(row, adj_matrix) {
     adj_matrix[row[1], row[2]]
   }, adj_matrix)
 
@@ -130,10 +131,11 @@ summarizeResults <- function(observations = NULL, results = NULL,
       true_adj_matrix[true_edge[2], true_edge[1]] <- -2
     }
 
-    summary$trueOrt <- apply(summary, 1, function(row, true_adj_matrix) {
-      true_adj_matrix[row[1], row[2]]
-    }, true_adj_matrix)
-    summary$isOrtOk <- ifelse(summary$infOrt == summary$trueOrt, "Y", "N")
+    summary$ort_ground_truth <- apply(summary, 1,
+        function(row, true_adj_matrix) { true_adj_matrix[row[1], row[2]] },
+        true_adj_matrix)
+    summary$is_inference_correct <- ifelse(
+        summary$ort_inferred == summary$ort_ground_truth, "Y", "N")
   }
 
   # Genuine causality is deducible only when latent variables are allowed and
@@ -154,20 +156,21 @@ summarizeResults <- function(observations = NULL, results = NULL,
       results$adj_matrices,
       simplify = FALSE
     )
-    summary$consensus = sapply(
+    # Decide if ort_consensus is 0 (edge removed) or 1 (edge retained)
+    summary$ort_consensus = sapply(
         edge_stats_table, get_consensus_status, consensus_threshold)
     summary$edge_stats = sapply(edge_stats_table, get_edge_stats_str)
-    # Set consensus edge status according to the average probabilities
+    # Set ort_consensus edge status according to the average probabilities
     for (i in 1:nrow(summary)) {
       row <- summary[i, ]
       if (causality_deducible) {
         # Set initial values if deducible
-        if (row$infOrt != 0)
+        if (row$ort_inferred != 0)
           summary[i, ]$is_causal <- "N"
-        if (row$consensus != 0)
+        if (row$ort_consensus != 0)
           summary[i, ]$is_causal_consensus <- "N"
       }
-      if (row$consensus == 0) next
+      if (row$ort_consensus == 0) next
 
       id_x <- match(row$x, var_names)
       id_y <- match(row$y, var_names)
@@ -178,27 +181,27 @@ summarizeResults <- function(observations = NULL, results = NULL,
       ratio_y2x <- (1 - proba_y2x) / proba_y2x
 
       if (ratio_x2y < ori_consensus_ratio && ratio_y2x < ori_consensus_ratio) {
-        summary[i, ]$consensus <- 6
+        summary[i, ]$ort_consensus <- 6
       } else if (ratio_x2y < ori_consensus_ratio &&
                  ratio_y2x >= ori_consensus_ratio) {
-        summary[i, ]$consensus <- 2
+        summary[i, ]$ort_consensus <- 2
         if (1 / ratio_y2x < ori_consensus_ratio && causality_deducible) {
           summary[i, ]$is_causal_consensus <- "Y"
-          if (row$infOrt == 2) {
+          if (row$ort_inferred == 2) {
             summary[i, ]$is_causal <- "Y"
           }
         }
       } else if (ratio_y2x < ori_consensus_ratio &&
                  ratio_x2y >= ori_consensus_ratio) {
-        summary[i, ]$consensus <- -2
+        summary[i, ]$ort_consensus <- -2
         if (1 / ratio_x2y < ori_consensus_ratio && causality_deducible) {
           summary[i, ]$is_causal_consensus <- "Y"
-          if (row$infOrt == -2) {
+          if (row$ort_inferred == -2) {
             summary[i, ]$is_causal <- "Y"
           }
         }
       } else {
-        summary[i, ]$consensus <- 1
+        summary[i, ]$ort_consensus <- 1
       }
     }
   } else if (causality_deducible) {
@@ -206,7 +209,7 @@ summarizeResults <- function(observations = NULL, results = NULL,
     # set is_causal by results$proba_adj_matrix
     for (i in 1:nrow(summary)) {
       row <- summary[i, ]
-      if (row$infOrt == 0) {
+      if (row$ort_inferred == 0) {
         next
       }
       summary[i, ]$is_causal <- "N"
@@ -218,12 +221,12 @@ summarizeResults <- function(observations = NULL, results = NULL,
       proba_y2x <- results$proba_adj_matrix[id_y, id_x]  # proba of x <-* y
       ratio_x2y <- (1 - proba_x2y) / proba_x2y
       ratio_y2x <- (1 - proba_y2x) / proba_y2x
-      if (row$infOrt == 2 &&
+      if (row$ort_inferred == 2 &&
           ratio_x2y < ori_consensus_ratio &&
           1 / ratio_y2x < ori_consensus_ratio) {
         summary[i, ]$is_causal <- "Y"
       }
-      if (row$infOrt == -2 &&
+      if (row$ort_inferred == -2 &&
           ratio_y2x < ori_consensus_ratio &&
           1 / ratio_x2y < ori_consensus_ratio) {
         summary[i, ]$is_causal <- "Y"

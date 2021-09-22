@@ -217,16 +217,16 @@
 #'  \item \emph{info_shifted:} value equal to \emph{info} - \emph{cplx}.
 #'  Used to decide whether the edge is removed (positive) or retained (zero,
 #'  possibly negative when the parameter \emph{negative_info} is set to TRUE).
-#'  \item \emph{infOrt:} the inferred orientation of the edge (\emph{x, y}).
+#'  \item \emph{ort_inferred:} the inferred orientation of edge (\emph{x, y}).
 #'  0: edge removed, 1: undirected, 2: directed from X to Y, -2: directed from Y
 #'  to X, 6: bidirected. When the \emph{consistent} option is turned on and
 #'  there is more than one graph in the consistent cycle, this is the inferred
 #'  ororientation of the edge in the last graph in the cycle.
-#'  \item \emph{trueOrt:} the orientation of the edge (\emph{x, y}) as specified
-#'  in the true_edges file (if provided).
-#'  \item \emph{isOrtOk:} TRUE: the inferred orientation agrees with the
-#'  provided ground truth, FALSE: the inferred orientation disagrees with the
-#'  provided ground truth.
+#'  \item \emph{ort_ground_truth:} the orientation of the edge (\emph{x, y}) as
+#'  specified in the true_edges file (if provided).
+#'  \item \emph{is_inference_correct:} TRUE: the inferred orientation agrees
+#'  with the provided ground truth, FALSE: the inferred orientation disagrees
+#'  with the provided ground truth.
 #'  \item \emph{is_causal:} boolean value indicating the causal nature of the
 #'  arrow tips of a directed edge, measured based on the probabilities given in
 #'  the column \emph{proba}.
@@ -236,15 +236,15 @@
 #'  probability is not extreme enough to be either head or tail. In this case,
 #'  the edge is undecided between a directed edge (implying causation) and a
 #'  bidirected edge (implying possible latent confounders).
-#'  \item \emph{consensus:} when the \emph{consistent} option is turned on and
-#'  there is more than one graph in the consistent cycle, the consensus of all
-#'  graphs in the cycle on the orientation of the edge (\emph{x, y}).
+#'  \item \emph{ort_consensus:} when the \emph{consistent} option is turned on
+#'  and there is more than one graph in the consistent cycle, the consensus of
+#'  all graphs in the cycle on the orientation of the edge (\emph{x, y}).
 #'  \item \emph{is_causal_consensus:} same as \emph{is_causal} but for
-#'  \emph{consensus}.
+#'  \emph{ort_consensus}.
 #'  \item \emph{edge_stats} when the \emph{consistent} option is turned on and
 #'  there is more than one graph in the consistent cycle, a histogram of all
-#'  \emph{infOrt} values present in the cycle for the edge (\emph{x, y}), in the
-#'  format [percentage(orientation)], separated by ";".
+#'  \emph{ort_inferred} values present in the cycle for the edge (\emph{x, y}),
+#'  in the format [percentage(orientation)], separated by ";".
 #'  \item \emph{sign:} the sign of the partial correlation between variables
 #'  \emph{x} and \emph{y}, conditioned on the contributing nodes \emph{ai}.
 #'  \item \emph{partial_correlation:} value of the partial correlation for the
