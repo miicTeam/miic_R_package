@@ -101,9 +101,10 @@ getIgraph <- function(miic.res) {
       if(summary[row, "ort_inferred"] == -2){
         summary[row, c("x","y")] = summary[row, c("y","x")]
         summary[row, "ort_inferred"] = 2
-        if(!is.na(summary[row, "proba"])){
-          summary[row, "proba"] = paste0(rev(
-            strsplit(summary[row, "proba"], ";")[[1]]), collapse=";")
+        if (!is.na(summary[row, "p_y2x"]) && !is.na(summary[row, "p_x2y"])) {
+          temp <- summary[row, "p_y2x"]
+          summary[row, "p_y2x"] <- summary[row, "p_x2y"]
+          summary[row, "p_x2y"] <- temp
         }
         if(!is.na(summary[row, "ort_ground_truth"])){
           summary[row, "ort_ground_truth"] = 2

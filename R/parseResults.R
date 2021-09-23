@@ -62,7 +62,7 @@ summarizeResults <- function(observations = NULL, results = NULL,
     is_causal = as.logical(rep(NA, n)), ort_consensus = as.integer(rep(NA, n)),
     is_causal_consensus = as.logical(rep(NA, n)),
     edge_stats = as.character(rep(NA, n)), sign = character(n),
-    partial_correlation = numeric(n), proba = character(n),
+    partial_correlation = numeric(n), p_y2x = numeric(n), p_x2y = numeric(n),
     confidence = as.numeric(rep(NA, n)), stringsAsFactors = FALSE
   )
   if(n == 0) return(summary)
@@ -241,20 +241,23 @@ summarizeResults <- function(observations = NULL, results = NULL,
   )
   summary$partial_correlation <- as.numeric(summary$partial_correlation)
 
-  # proba contains the orientation likelihoods as computed by miic (cf
-  # Affeldt & Isambert, UAI 2015 proceedings) : the probabilities of
-  # both orientations separated by a semi-colon.
+  # p_y2x, p_x2y contain the orientation likelihood ratios as computed by miic
+  # (cf Affeldt & Isambert, UAI 2015 proceedings). For an edge between x and y,
+  # p_y2x is the probability of an arrowhead from y to x, p_x2y is that of an
+  # arrowhead from x to y, both set to NA for removed edges.
   orientation_probabilities <- results$orientations.prob
-  summary$proba <- sapply(1:nrow(summary), function(i) {
-    row <- summary[i, ]
-    id_x <- match(row$x, var_names)
-    id_y <- match(row$y, var_names)
-    proba_adj <- results$proba_adj_matrix
-    if (!is.null(results$adj_matrices) && ncol(results$adj_matrices) > 1) {
-      proba_adj <- results$proba_adj_average
-    }
-    return(paste(proba_adj[id_y, id_x], proba_adj[id_x, id_y], sep = ";"))
+  proba_adj <- results$proba_adj_matrix
+  if (!is.null(results$adj_matrices) && ncol(results$adj_matrices) > 1) {
+    proba_adj <- results$proba_adj_average
+  }
+  probas_list <- apply(summary, 1, function(row) {
+    id_x <- match(row["x"], var_names)
+    id_y <- match(row["y"], var_names)
+    return(c(proba_adj[id_y, id_x], proba_adj[id_x, id_y]))
   })
+  probas_list[probas_list == -1] <- NA
+  summary$p_y2x <- probas_list[1,]
+  summary$p_x2y <- probas_list[2,]
 
   # confidence is the ratio of info_shifted between randomized and normal sample
   summary$confidence <- fill_summary_column(

@@ -226,7 +226,7 @@ A \emph{miic-like} object that contains:
  with the provided ground truth.
  \item \emph{is_causal:} boolean value indicating the causal nature of the
  arrow tips of a directed edge, measured based on the probabilities given in
- the column \emph{proba}.
+ the columns \emph{p_y2x} and \emph{p_x2y}.
  TRUE: both the head and the tail are set with high probability (threshold
  set by the parameter \emph{ori_proba_ratio}), implying a likely causation.
  FALSE: only the head is set with high probability, while the tail
@@ -246,9 +246,12 @@ A \emph{miic-like} object that contains:
  \emph{x} and \emph{y}, conditioned on the contributing nodes \emph{ai}.
  \item \emph{partial_correlation:} value of the partial correlation for the
  edge (\emph{x, y}) conditioned on the contributing nodes \emph{ai}.
- \item \emph{proba:} probabilities of the tips of the inferred orientation,
- derived from the three-point mutual information (cf Affeldt & Isambert,
- UAI 2015 proceedings) and noted as p(x->y);p(x<-y).
+ \item \emph{p_y2x:} probability of the arrowhead from \emph{y} to \emph{x}, of
+ the inferred orientation, derived from the three-point mutual information
+ (cf Affeldt & Isambert, UAI 2015 proceedings).
+ \item \emph{p_x2y:} probability of the arrowhead from \emph{x} to \emph{y}, of
+ the inferred orientation, derived from the three-point mutual information
+ (cf Affeldt & Isambert, UAI 2015 proceedings).
  \item \emph{confidence:} when the parameter \emph{n_shuffles} is positive,
  the ratio between the term \emph{exp(-info_shifted(x;y|ai))} of the original
  dataset and that of the randomized dataset (averaged over \emph{n_shuffles}
