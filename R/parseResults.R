@@ -135,7 +135,7 @@ summarizeResults <- function(observations = NULL, results = NULL,
         function(row, true_adj_matrix) { true_adj_matrix[row[1], row[2]] },
         true_adj_matrix)
     summary$is_inference_correct <- ifelse(
-        summary$ort_inferred == summary$ort_ground_truth, "Y", "N")
+        summary$ort_inferred == summary$ort_ground_truth, TRUE, FALSE)
   }
 
   # Genuine causality is deducible only when latent variables are allowed and
@@ -166,9 +166,9 @@ summarizeResults <- function(observations = NULL, results = NULL,
       if (causality_deducible) {
         # Set initial values if deducible
         if (row$ort_inferred != 0)
-          summary[i, ]$is_causal <- "N"
+          summary[i, ]$is_causal <- FALSE
         if (row$ort_consensus != 0)
-          summary[i, ]$is_causal_consensus <- "N"
+          summary[i, ]$is_causal_consensus <- FALSE
       }
       if (row$ort_consensus == 0) next
 
@@ -186,18 +186,18 @@ summarizeResults <- function(observations = NULL, results = NULL,
                  ratio_y2x >= ori_consensus_ratio) {
         summary[i, ]$ort_consensus <- 2
         if (1 / ratio_y2x < ori_consensus_ratio && causality_deducible) {
-          summary[i, ]$is_causal_consensus <- "Y"
+          summary[i, ]$is_causal_consensus <- TRUE
           if (row$ort_inferred == 2) {
-            summary[i, ]$is_causal <- "Y"
+            summary[i, ]$is_causal <- TRUE
           }
         }
       } else if (ratio_y2x < ori_consensus_ratio &&
                  ratio_x2y >= ori_consensus_ratio) {
         summary[i, ]$ort_consensus <- -2
         if (1 / ratio_x2y < ori_consensus_ratio && causality_deducible) {
-          summary[i, ]$is_causal_consensus <- "Y"
+          summary[i, ]$is_causal_consensus <- TRUE
           if (row$ort_inferred == -2) {
-            summary[i, ]$is_causal <- "Y"
+            summary[i, ]$is_causal <- TRUE
           }
         }
       } else {
@@ -212,7 +212,7 @@ summarizeResults <- function(observations = NULL, results = NULL,
       if (row$ort_inferred == 0) {
         next
       }
-      summary[i, ]$is_causal <- "N"
+      summary[i, ]$is_causal <- FALSE
 
       id_x <- match(row$x, var_names)
       id_y <- match(row$y, var_names)
@@ -224,12 +224,12 @@ summarizeResults <- function(observations = NULL, results = NULL,
       if (row$ort_inferred == 2 &&
           ratio_x2y < ori_consensus_ratio &&
           1 / ratio_y2x < ori_consensus_ratio) {
-        summary[i, ]$is_causal <- "Y"
+        summary[i, ]$is_causal <- TRUE
       }
       if (row$ort_inferred == -2 &&
           ratio_y2x < ori_consensus_ratio &&
           1 / ratio_x2y < ori_consensus_ratio) {
-        summary[i, ]$is_causal <- "Y"
+        summary[i, ]$is_causal <- TRUE
       }
     }
   }
