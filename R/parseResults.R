@@ -56,47 +56,19 @@ summarizeResults <- function(observations = NULL, results = NULL,
   summary <- data.frame(
     x = character(n), y = character(n), type = character(n), ai = character(n),
     info = numeric(n), info_cond = numeric(n), cplx = numeric(n),
-    Nxy_ai = numeric(n), info_shifted = numeric(n), infOrt = numeric(n),
-    trueOrt = numeric(n), isOrtOk = character(n), sign = character(n),
-    partial_correlation = numeric(n), is_causal = NA,
-    proba = character(n), confidence = character(n),
-    stringsAsFactors = FALSE
+    Nxy_ai = numeric(n), info_shifted = numeric(n), ort_inferred = integer(n),
+    ort_ground_truth = as.integer(rep(NA, n)),
+    is_inference_correct = as.logical(rep(NA, n)),
+    is_causal = as.logical(rep(NA, n)), ort_consensus = as.integer(rep(NA, n)),
+    is_causal_consensus = as.logical(rep(NA, n)),
+    edge_stats = as.character(rep(NA, n)), sign = character(n),
+    partial_correlation = numeric(n), p_y2x = numeric(n), p_x2y = numeric(n),
+    confidence = as.numeric(rep(NA, n)), stringsAsFactors = FALSE
   )
   if(n == 0) return(summary)
 
   # Edge ordering (A<-B or B->A) is given by lexicographical sort
   summary[,c('x','y')] = t(apply(as.data.frame(summarized_edges)[,c(1,2)], 1, function(row){sort(row)}))
-
-  # Edge 'type' correponds to the miic prediction : P(ositive) or N(egative)
-  # for respectively presence or absence of an edge, without considering
-  # orientation. If ground truth is known, edges are classified as True or
-  # False Positives/Negatives (TP, FP, TN, FN).
-  if (is.null(true_edges)) {
-    summary$type <- apply(summary, 1, function(row, adj_matrix) {
-      ifelse(adj_matrix[row[1], row[2]] == 0, "N", "P")
-    }, adj_matrix)
-  } else {
-    type <- character(n)
-    for (i in 1:nrow(summary)) {
-      row <- summary[i, ]
-      row_is_true_edge <- any(apply(
-        true_edges, 1,
-        function(true_edge, edge) {
-          all(true_edge %in% edge)
-        },
-        c(row$x, row$y)
-      ))
-      if (adj_matrix[row$x, row$y] != 0) {
-        # Inferred positive : either True Positive or False Positive
-        type[i] <- ifelse(row_is_true_edge, "TP", "FP")
-      }
-      else {
-        # Inferred negative : either True Negative or False Negative
-        type[i] <- ifelse(row_is_true_edge, "FN", "TN")
-      }
-    }
-    summary$type <- type
-  }
 
   # Ai is a list containing the conditioning nodes
   summary$ai <- fill_summary_column(summary, edges, "x", "y", "ai.vect")
@@ -114,20 +86,39 @@ summarizeResults <- function(observations = NULL, results = NULL,
   # info_shifted is the difference between MI and cplx
   summary$info_shifted <- summary$info_cond - summary$cplx
 
-  # confidence is the ratio of info_shifted between randomized and normal sample
-  summary$confidence <- fill_summary_column(
-      summary, edges, "x", "y", "confidence")
-  summary$confidence[summary$confidence == -1] <- NA
-
-  # infOrt is the inferred edge orientation
-  summary$infOrt <- apply(summary, 1, function(row, adj_matrix) {
+  # ort_inferred is the inferred edge orientation
+  summary$ort_inferred <- apply(summary, 1, function(row, adj_matrix) {
     adj_matrix[row[1], row[2]]
   }, adj_matrix)
 
-  # trueOrt is the true edge orientation (if known)
+  # Edge 'type' correponds to the miic prediction : P(ositive) or N(egative)
+  # for respectively presence or absence of an edge, without considering
+  # orientation. If ground truth is known, edges are classified as True or
+  # False Positives/Negatives (TP, FP, TN, FN).
   if (is.null(true_edges)) {
-    summary$trueOrt <- rep(NA, n)
+    summary$type <- apply(summary, 1, function(row, adj_matrix) {
+      ifelse(adj_matrix[row[1], row[2]] == 0, "N", "P")
+    }, adj_matrix)
   } else {
+    for (i in 1:nrow(summary)) {
+      row <- summary[i, ]
+      row_is_true_edge <- any(apply(
+        true_edges, 1,
+        function(true_edge, edge) {
+          all(true_edge %in% edge)
+        },
+        c(row$x, row$y)
+      ))
+      if (adj_matrix[row$x, row$y] != 0) {
+        # Inferred positive : either True Positive or False Positive
+        summary[i, ]$type <- ifelse(row_is_true_edge, "TP", "FP")
+      }
+      else {
+        # Inferred negative : either True Negative or False Negative
+        summary[i, ]$type <- ifelse(row_is_true_edge, "FN", "TN")
+      }
+    }
+
     true_adj_matrix <- matrix(0,
       ncol = dim(adj_matrix)[1],
       nrow = dim(adj_matrix)[1]
@@ -140,35 +131,12 @@ summarizeResults <- function(observations = NULL, results = NULL,
       true_adj_matrix[true_edge[2], true_edge[1]] <- -2
     }
 
-    summary$trueOrt <- apply(summary, 1, function(row, true_adj_matrix) {
-      true_adj_matrix[row[1], row[2]]
-    }, true_adj_matrix)
+    summary$ort_ground_truth <- apply(summary, 1,
+        function(row, true_adj_matrix) { true_adj_matrix[row[1], row[2]] },
+        true_adj_matrix)
+    summary$is_inference_correct <- ifelse(
+        summary$ort_inferred == summary$ort_ground_truth, TRUE, FALSE)
   }
-
-  # isOrtOk
-  summary$isOrtOk <- ifelse(summary$infOrt == summary$trueOrt, "Y", "N")
-
-  # Sign and coefficient of partial correlation between x and y conditioned
-  # on "ai"s.
-  summary[, c("sign", "partial_correlation")] <- compute_partial_correlation(
-    summary, observations, state_order
-  )
-  summary$partial_correlation <- as.numeric(summary$partial_correlation)
-
-  # proba contains the orientation likelihoods as computed by miic (cf
-  # Affeldt & Isambert, UAI 2015 proceedings) : the probabilities of
-  # both orientations separated by a semi-colon.
-  orientation_probabilities <- results$orientations.prob
-  summary$proba <- sapply(1:nrow(summary), function(i) {
-    row <- summary[i, ]
-    id_x <- match(row$x, var_names)
-    id_y <- match(row$y, var_names)
-    proba_adj <- results$proba_adj_matrix
-    if (!is.null(results$adj_matrices) && ncol(results$adj_matrices) > 1) {
-      proba_adj <- results$proba_adj_average
-    }
-    return(paste(proba_adj[id_y, id_x], proba_adj[id_x, id_y], sep = ";"))
-  })
 
   # Genuine causality is deducible only when latent variables are allowed and
   # propagation is not allowed
@@ -188,28 +156,21 @@ summarizeResults <- function(observations = NULL, results = NULL,
       results$adj_matrices,
       simplify = FALSE
     )
-    target <- which(names(summary) == "infOrt")[1]
-    summary <- cbind(
-      summary[, 1:target, drop = FALSE],
-      consensus = sapply(edge_stats_table,
-        get_consensus_status,
-        consensus_threshold
-      ),
-      edge_stats = sapply(edge_stats_table, get_edge_stats_str),
-      is_causal_consensus = NA,
-      summary[, (target + 1):length(summary), drop = FALSE]
-    )
-    # Set consensus edge status according to the average probabilities
+    # Decide if ort_consensus is 0 (edge removed) or 1 (edge retained)
+    summary$ort_consensus = sapply(
+        edge_stats_table, get_consensus_status, consensus_threshold)
+    summary$edge_stats = sapply(edge_stats_table, get_edge_stats_str)
+    # Set ort_consensus edge status according to the average probabilities
     for (i in 1:nrow(summary)) {
       row <- summary[i, ]
       if (causality_deducible) {
         # Set initial values if deducible
-        if (row$infOrt != 0)
-          summary[i, ]$is_causal <- "N"
-        if (row$consensus != 0)
-          summary[i, ]$is_causal_consensus <- "N"
+        if (row$ort_inferred != 0)
+          summary[i, ]$is_causal <- FALSE
+        if (row$ort_consensus != 0)
+          summary[i, ]$is_causal_consensus <- FALSE
       }
-      if (row$consensus == 0) next
+      if (row$ort_consensus == 0) next
 
       id_x <- match(row$x, var_names)
       id_y <- match(row$y, var_names)
@@ -220,27 +181,27 @@ summarizeResults <- function(observations = NULL, results = NULL,
       ratio_y2x <- (1 - proba_y2x) / proba_y2x
 
       if (ratio_x2y < ori_consensus_ratio && ratio_y2x < ori_consensus_ratio) {
-        summary[i, ]$consensus <- 6
+        summary[i, ]$ort_consensus <- 6
       } else if (ratio_x2y < ori_consensus_ratio &&
                  ratio_y2x >= ori_consensus_ratio) {
-        summary[i, ]$consensus <- 2
+        summary[i, ]$ort_consensus <- 2
         if (1 / ratio_y2x < ori_consensus_ratio && causality_deducible) {
-          summary[i, ]$is_causal_consensus <- "Y"
-          if (row$infOrt == 2) {
-            summary[i, ]$is_causal <- "Y"
+          summary[i, ]$is_causal_consensus <- TRUE
+          if (row$ort_inferred == 2) {
+            summary[i, ]$is_causal <- TRUE
           }
         }
       } else if (ratio_y2x < ori_consensus_ratio &&
                  ratio_x2y >= ori_consensus_ratio) {
-        summary[i, ]$consensus <- -2
+        summary[i, ]$ort_consensus <- -2
         if (1 / ratio_x2y < ori_consensus_ratio && causality_deducible) {
-          summary[i, ]$is_causal_consensus <- "Y"
-          if (row$infOrt == -2) {
-            summary[i, ]$is_causal <- "Y"
+          summary[i, ]$is_causal_consensus <- TRUE
+          if (row$ort_inferred == -2) {
+            summary[i, ]$is_causal <- TRUE
           }
         }
       } else {
-        summary[i, ]$consensus <- 1
+        summary[i, ]$ort_consensus <- 1
       }
     }
   } else if (causality_deducible) {
@@ -248,10 +209,10 @@ summarizeResults <- function(observations = NULL, results = NULL,
     # set is_causal by results$proba_adj_matrix
     for (i in 1:nrow(summary)) {
       row <- summary[i, ]
-      if (row$infOrt == 0) {
+      if (row$ort_inferred == 0) {
         next
       }
-      summary[i, ]$is_causal <- "N"
+      summary[i, ]$is_causal <- FALSE
 
       id_x <- match(row$x, var_names)
       id_y <- match(row$y, var_names)
@@ -260,18 +221,48 @@ summarizeResults <- function(observations = NULL, results = NULL,
       proba_y2x <- results$proba_adj_matrix[id_y, id_x]  # proba of x <-* y
       ratio_x2y <- (1 - proba_x2y) / proba_x2y
       ratio_y2x <- (1 - proba_y2x) / proba_y2x
-      if (row$infOrt == 2 &&
+      if (row$ort_inferred == 2 &&
           ratio_x2y < ori_consensus_ratio &&
           1 / ratio_y2x < ori_consensus_ratio) {
-        summary[i, ]$is_causal <- "Y"
+        summary[i, ]$is_causal <- TRUE
       }
-      if (row$infOrt == -2 &&
+      if (row$ort_inferred == -2 &&
           ratio_y2x < ori_consensus_ratio &&
           1 / ratio_x2y < ori_consensus_ratio) {
-        summary[i, ]$is_causal <- "Y"
+        summary[i, ]$is_causal <- TRUE
       }
     }
   }
+
+  # Sign and coefficient of partial correlation between x and y conditioned
+  # on "ai"s.
+  summary[, c("sign", "partial_correlation")] <- compute_partial_correlation(
+    summary, observations, state_order
+  )
+  summary$partial_correlation <- as.numeric(summary$partial_correlation)
+
+  # p_y2x, p_x2y contain the orientation likelihood ratios as computed by miic
+  # (cf Affeldt & Isambert, UAI 2015 proceedings). For an edge between x and y,
+  # p_y2x is the probability of an arrowhead from y to x, p_x2y is that of an
+  # arrowhead from x to y, both set to NA for removed edges.
+  orientation_probabilities <- results$orientations.prob
+  proba_adj <- results$proba_adj_matrix
+  if (!is.null(results$adj_matrices) && ncol(results$adj_matrices) > 1) {
+    proba_adj <- results$proba_adj_average
+  }
+  probas_list <- apply(summary, 1, function(row) {
+    id_x <- match(row["x"], var_names)
+    id_y <- match(row["y"], var_names)
+    return(c(proba_adj[id_y, id_x], proba_adj[id_x, id_y]))
+  })
+  probas_list[probas_list == -1] <- NA
+  summary$p_y2x <- probas_list[1,]
+  summary$p_x2y <- probas_list[2,]
+
+  # confidence is the ratio of info_shifted between randomized and normal sample
+  summary$confidence <- fill_summary_column(
+      summary, edges, "x", "y", "confidence")
+  summary$confidence[summary$confidence == -1] <- NA
 
   # Sort summary by log confidence and return it
   summary <- summary[order(summary$info_shifted, decreasing = TRUE), ]

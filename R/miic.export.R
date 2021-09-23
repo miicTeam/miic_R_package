@@ -98,15 +98,16 @@ getIgraph <- function(miic.res) {
   if (nrow(summary) > 0) {
     # Re-order summary so that all edges go from "x" to "y"
     for(row in 1:nrow(summary)){
-      if(summary[row, "infOrt"] == -2){
+      if(summary[row, "ort_inferred"] == -2){
         summary[row, c("x","y")] = summary[row, c("y","x")]
-        summary[row, "infOrt"] = 2
-        if(!is.na(summary[row, "proba"])){
-          summary[row, "proba"] = paste0(rev(
-            strsplit(summary[row, "proba"], ";")[[1]]), collapse=";")
+        summary[row, "ort_inferred"] = 2
+        if (!is.na(summary[row, "p_y2x"]) && !is.na(summary[row, "p_x2y"])) {
+          temp <- summary[row, "p_y2x"]
+          summary[row, "p_y2x"] <- summary[row, "p_x2y"]
+          summary[row, "p_x2y"] <- temp
         }
-        if(!is.na(summary[row, "trueOrt"])){
-          summary[row, "trueOrt"] = 2
+        if(!is.na(summary[row, "ort_ground_truth"])){
+          summary[row, "ort_ground_truth"] = 2
         }
       }
     }
@@ -128,9 +129,9 @@ getIgraph <- function(miic.res) {
   
   # Set correct orientations
   igraph::E(ig_graph)$arrow.mode = rep(0, igraph::gsize(ig_graph))
-  igraph::E(ig_graph)$arrow.mode[igraph::E(ig_graph)$infOrt == 2]  = 2
-  igraph::E(ig_graph)$arrow.mode[igraph::E(ig_graph)$infOrt == -2] = 1
-  igraph::E(ig_graph)$arrow.mode[igraph::E(ig_graph)$infOrt == 6]  = 3
+  igraph::E(ig_graph)$arrow.mode[igraph::E(ig_graph)$ort_inferred == 2]  = 2
+  igraph::E(ig_graph)$arrow.mode[igraph::E(ig_graph)$ort_inferred == -2] = 1
+  igraph::E(ig_graph)$arrow.mode[igraph::E(ig_graph)$ort_inferred == 6]  = 3
 
   # Set edges visuals
   min_width = 0.2
