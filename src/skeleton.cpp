@@ -201,10 +201,12 @@ bool searchForConditionalIndependence(Environment& environment) {
 
     // move top z from zi_vect to ui_vect
     top_info->ui_list.push_back(top_info->top_z);
+    top_info->contributions.push_back(top_info->top_contribution);
     top_info->zi_list.erase(remove(begin(top_info->zi_list),
                                 end(top_info->zi_list), top_info->top_z),
         end(top_info->zi_list));
     top_info->top_z = -1;
+    top_info->top_contribution = 0;
 
     auto res = getCondMutualInfo(X, Y, top_info->ui_list,
         environment.data_numeric, environment.data_numeric_idx, environment);

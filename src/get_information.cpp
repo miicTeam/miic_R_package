@@ -305,6 +305,7 @@ void searchForBestContributingNode(
     int Z = zi_list[i];
     auto block = getInfo3Point(environment, X, Y, Z, info->ui_list);
     double score = block.score;
+    double info3p = block.Ixyz_ui - block.kxyz_ui;
 #ifdef _OPENMP
 #pragma omp critical
 #endif
@@ -312,6 +313,7 @@ void searchForBestContributingNode(
     if (score > info->Rxyz_ui) {
       info->top_z = Z;
       info->Rxyz_ui = score;
+      info->top_contribution = info3p / (info->Ixy - info->kxy);
     } else if (info->top_z != -1 && fabs(score - info->Rxyz_ui) < kEpsScore) {
       double H_old = getEntropy(environment, info->top_z, X, Y);
       double H_new = getEntropy(environment, Z, X, Y);
@@ -319,6 +321,7 @@ void searchForBestContributingNode(
           (fabs(H_new - H_old) < kEpsScore && environment.noise_vec[0] > 0)) {
         info->top_z = Z;
         info->Rxyz_ui = score;
+        info->top_contribution = info3p / (info->Ixy - info->kxy);
       }
     }
 }

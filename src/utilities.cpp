@@ -244,6 +244,17 @@ string toNameString(const vector<Node>& nodes, const vector<int>& vec) {
   }
 }
 
+string toDoubleString(const vector<double>& vec) {
+  if (vec.empty()) return "NA";
+
+  std::stringstream ss;
+  std::transform(vec.begin(), vec.end() - 1,
+      std::ostream_iterator<string>(ss, ","),
+      [](double i) { return std::to_string(i); });
+  ss << std::to_string(vec.back());
+  return ss.str();
+}
+
 vector<vector<string>> getEdgesInfoTable(
     const Grid2d<Edge>& edges, const vector<Node>& nodes) {
   vector<EdgeID> edge_list;
@@ -256,8 +267,8 @@ vector<vector<string>> getEdgesInfoTable(
 
   vector<vector<string>> table;
   table.emplace_back(std::initializer_list<string>{"x", "y", "z.name",
-      "ai.vect", "zi.vect", "Ixy", "Ixy_ai", "cplx", "Rxyz_ai", "category",
-      "Nxy_ai", "confidence"});
+      "ai.vect", "contributions", "zi.vect", "Ixy", "Ixy_ai", "cplx", "Rxyz_ai",
+      "category", "Nxy_ai", "confidence"});
   for (const auto& edge : edge_list) {
     auto info = edge.getEdge().shared_info;
     double confidence = -1;
@@ -270,6 +281,7 @@ vector<vector<string>> getEdgesInfoTable(
         nodes[edge.Y].name,
         info->top_z == -1 ? "NA" : nodes[info->top_z].name,
         toNameString(nodes, info->ui_list),
+        toDoubleString(info->contributions),
         toNameString(nodes, info->zi_list),
         to_string(info->Ixy),
         to_string(info->Ixy_ui),

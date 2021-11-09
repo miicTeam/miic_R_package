@@ -55,10 +55,10 @@ summarizeResults <- function(observations = NULL, results = NULL,
   n <- nrow(summarized_edges)
   summary <- data.frame(
     x = character(n), y = character(n), type = character(n), ai = character(n),
-    info = numeric(n), info_cond = numeric(n), cplx = numeric(n),
-    Nxy_ai = numeric(n), info_shifted = numeric(n), infOrt = numeric(n),
-    trueOrt = numeric(n), isOrtOk = character(n), sign = character(n),
-    partial_correlation = numeric(n), is_causal = NA,
+    contributions = character(n), info = numeric(n), info_cond = numeric(n),
+    cplx = numeric(n), Nxy_ai = numeric(n), info_shifted = numeric(n),
+    infOrt = numeric(n), trueOrt = numeric(n), isOrtOk = character(n),
+    sign = character(n), partial_correlation = numeric(n), is_causal = NA,
     proba = character(n), confidence = character(n),
     stringsAsFactors = FALSE
   )
@@ -100,6 +100,12 @@ summarizeResults <- function(observations = NULL, results = NULL,
 
   # Ai is a list containing the conditioning nodes
   summary$ai <- fill_summary_column(summary, edges, "x", "y", "ai.vect")
+
+  # contributions of each ai to the conditional independence when added to the
+  # separating set, measured by C(ai) = I'(x;y;ai|{aj}) / I'(x;y), where {aj} is
+  # the separating set before adding ai.
+  summary$contributions <- fill_summary_column(
+      summary, edges, "x", "y", "contributions")
 
   # info and info_cond contain the (conditional) mutual information values
   summary$info <- fill_summary_column(summary, edges, "x", "y", "Ixy")

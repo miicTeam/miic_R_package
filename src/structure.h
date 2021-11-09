@@ -157,6 +157,9 @@ struct Info3PointBlock {
 struct EdgeSharedInfo {
   // {ui}: indices of separating nodes
   vector<int> ui_list;
+  // The contribution of each ui to the conditional independence, measured by
+  // I'(X;Y;ui|{uj}) / I'(X;Y)
+  vector<double> contributions;
   // {zi}: indices of candidate conditioning nodes
   vector<int> zi_list;
   // Best candidate separating node
@@ -164,6 +167,9 @@ struct EdgeSharedInfo {
   // Score of the best contributor, this is the exponential part of the full
   // score as defined in Verny et al., 2017 (Supplementary Text)
   double Rxyz_ui = 0;
+  // The contribution of top_z to the conditional independence, measured by
+  // I'(X;Y;top_z|{ui}) / I'(X;Y)
+  double top_contribution = 0;
   // Conditional mutual information
   double Ixy_ui = 0;
   // Complexity with conditioning
@@ -186,7 +192,9 @@ struct EdgeSharedInfo {
   void reset() {
     zi_list.clear();
     ui_list.clear();
+    contributions.clear();
     top_z = -1;
+    top_contribution = 0;
     Rxyz_ui = 0;
     Ixy_ui = Ixy;
     kxy_ui = kxy;
