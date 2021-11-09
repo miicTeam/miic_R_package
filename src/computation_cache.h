@@ -23,6 +23,7 @@ using std::set;
 using std::vector;
 using structure::Grid2d;
 using structure::InfoBlock;
+using structure::Info3PointBlock;
 
 class CtermCache {
  public:
@@ -84,32 +85,19 @@ struct MutualInfoKey {
   }
 };
 
-// value: Shifted 3-point information I(X;Y;Z|ui) - k(X;Y;Z|ui)
+// value: Info3PointBlock
+// 3-point information is permutation invariant with respect to {X, Y, Z}, but
+// shifted 3-point information is permutation invariant with respect to only {X,
+// Y} because of the complexity term.
 struct Info3PointKey {
-  set<int> xyz;
-  set<int> ui;
-
-  Info3PointKey(int X, int Y, int Z, const vector<int>& ui)
-      : xyz({X, Y, Z}), ui(begin(ui), end(ui)) {}
-
-  bool operator<(const Info3PointKey& other) const {
-    if (xyz == other.xyz) {
-      return ui < other.ui;
-    }
-    return xyz < other.xyz;
-  }
-};
-
-// value: Contributing score R(X,Y;Z|ui)
-struct ScoreKey {
   set<int> XY;
   int Z;
   set<int> ui;
 
-  ScoreKey(int X, int Y, int Z, const vector<int>& ui)
+  Info3PointKey(int X, int Y, int Z, const vector<int>& ui)
       : XY({X, Y}), Z(Z), ui(begin(ui), end(ui)) {}
 
-  bool operator<(const ScoreKey& other) const {
+  bool operator<(const Info3PointKey& other) const {
     if (XY == other.XY) {
       if (Z == other.Z) {
         return ui < other.ui;
@@ -121,9 +109,8 @@ struct ScoreKey {
 };
 
 using MutualInfoMap = std::map<MutualInfoKey, InfoBlock>;
-using Info3PointMap = std::map<Info3PointKey, double>;
-using ScoreMap = std::map<ScoreKey, double>;
-using EntropyMap = std::map<ScoreKey, double>;
+using Info3PointMap = std::map<Info3PointKey, Info3PointBlock>;
+using EntropyMap = std::map<Info3PointKey, double>;
 
 class InfoScoreCache {
  public:
@@ -142,49 +129,36 @@ class InfoScoreCache {
     mi_map_.insert({MutualInfoKey(X, Y, ui), std::move(block)});
   }
 
-  pair<double, bool> getInfo3Point(int X, int Y, int Z, const vector<int>& ui) {
+  pair<Info3PointBlock, bool> getInfo3Point(
+      int X, int Y, int Z, const vector<int>& ui) {
     auto it = i3_map_.find(Info3PointKey(X, Y, Z, ui));
     bool found = it != i3_map_.end();
-    return std::make_pair(found ? it->second : 0, found);
+    return std::make_pair(found ? it->second : Info3PointBlock(), found);
   }
 
-  void saveInfo3Point(int X, int Y, int Z, const vector<int>& ui, double I3) {
+  void saveInfo3Point(
+      int X, int Y, int Z, const vector<int>& ui, Info3PointBlock block) {
 #ifdef _OPENMP
 #pragma omp critical
 #endif
-    i3_map_.insert({Info3PointKey(X, Y, Z, ui), I3});
-  }
-
-  pair<double, bool> getScore(int X, int Y, int Z, const vector<int>& ui) {
-    auto it = score_map_.find(ScoreKey(X, Y, Z, ui));
-    bool found = it != score_map_.end();
-    return std::make_pair(
-        found ? it->second : std::numeric_limits<double>::lowest(), found);
-  }
-
-  void saveScore(int X, int Y, int Z, const vector<int>& ui, double score) {
-#ifdef _OPENMP
-#pragma omp critical
-#endif
-    score_map_.insert({ScoreKey(X, Y, Z, ui), score});
+    i3_map_.insert({Info3PointKey(X, Y, Z, ui), std::move(block)});
   }
 
   pair<double, bool> getEntropy(int X, int Y, int Z) {
-    auto it = entropy_map_.find(ScoreKey(X, Y, Z, vector<int>()));
+    auto it = entropy_map_.find(Info3PointKey(X, Y, Z, vector<int>()));
     bool found = it != entropy_map_.end();
     return std::make_pair(found ? it->second : 0, found);
   }
 
   void saveEntropy(int X, int Y, int Z, double H) {
     // Already in critical block
-    entropy_map_.insert({ScoreKey(X, Y, Z, vector<int>()), H});
+    entropy_map_.insert({Info3PointKey(X, Y, Z, vector<int>()), H});
   }
 
 
  private:
   MutualInfoMap mi_map_;
   Info3PointMap i3_map_;
-  ScoreMap score_map_;
   EntropyMap entropy_map_;
 };
 

@@ -25,28 +25,16 @@ using std::vector;
 constexpr double kPrecision = 1.e-10;
 constexpr double kEpsScore = 1.0e-12;
 
-// Return either (when bool get_info == true)
-//   shifted 3-point information I(X;Y;Z|ui) - k(X;Y;Z|ui),
-// or (when bool get_info == false)
-//   score of Z as a candidate separating node w.r.t. (X,Y|ui),
-// since the two quantities are both of type double and are always computed at
-// the same time, but are never required at the same time.
-double getInfo3PointOrScore(Environment& environment, int X, int Y, int Z,
-    const vector<int>& ui_list, bool get_info) {
+// Info3PointBlock{score, Ixyz_ui, kxyz_ui}
+Info3PointBlock getInfo3Point(
+    Environment& environment, int X, int Y, int Z, const vector<int>& ui_list) {
   TempAllocatorScope scope;
   auto& cache = environment.cache.info_score;
 
-  if (get_info) {
-    double info{0};
-    bool found{false};
-    std::tie(info, found) = cache->getInfo3Point(X, Y, Z, ui_list);
-    if (found) return info;
-  } else {
-    double score{std::numeric_limits<double>::lowest()};
-    bool found{false};
-    std::tie(score, found) = cache->getScore(X, Y, Z, ui_list);
-    if (found) return score;
-  }
+  Info3PointBlock block;
+  bool found{false};
+  std::tie(block, found) = cache->getInfo3Point(X, Y, Z, ui_list);
+  if (found) return block;
 
   bool any_na = environment.has_na[X] || environment.has_na[Y] ||
                 environment.has_na[Z] ||
@@ -63,14 +51,8 @@ double getInfo3PointOrScore(Environment& environment, int X, int Y, int Z,
         X, Y, Z, ui_list, environment.data_numeric, sample_is_not_NA, na_count);
 
   if (n_samples_non_na_z <= 2) {  // not sufficient statistics
-    if (get_info) {
-      cache->saveInfo3Point(X, Y, Z, ui_list, 0);
-      return 0;
-    } else {
-      double score = std::numeric_limits<double>::lowest();
-      cache->saveScore(X, Y, Z, ui_list, score);
-      return score;
-    }
+    cache->saveInfo3Point(X, Y, Z, ui_list, Info3PointBlock());
+    return Info3PointBlock();
   }
 
   int n_ui = ui_list.size();
@@ -111,40 +93,27 @@ double getInfo3PointOrScore(Environment& environment, int X, int Y, int Z,
     }
   }
   if (!ok) {
-    if (get_info) {
-      cache->saveInfo3Point(X, Y, Z, ui_list, 0);
-      return 0;
-    } else {
-      double score = std::numeric_limits<double>::lowest();
-      cache->saveScore(X, Y, Z, ui_list, score);
-      return score;
-    }
+    cache->saveInfo3Point(X, Y, Z, ui_list, Info3PointBlock());
+    return Info3PointBlock();
   }
 
-  Info3PointBlock res{0, 0, 0};
   if (std::all_of(begin(is_continuous_red), end(is_continuous_red),
           [](int x) { return x == 0; })) {
-    res = computeInfo3PointAndScoreDiscrete(data_red, levels_red, var_idx_red,
+    block = computeInfo3PointAndScoreDiscrete(data_red, levels_red, var_idx_red,
         weights_red, environment.cplx, environment.negative_info,
         environment.cache.cterm);
   } else {
-    res = computeInfo3PointAndScore(data_red, data_idx_red, levels_red,
+    block = computeInfo3PointAndScore(data_red, data_idx_red, levels_red,
         is_continuous_red, var_idx_red, weights_red, flag_sample_weights,
         environment.initbins, environment.maxbins, environment.cplx,
         environment.negative_info, environment.cache.cterm);
   }
-  double info = res.Ixyz_ui - res.kxyz_ui;  // I(x;y;z|u) - cplx I(x;y;z|u)
-  double score = res.score;                 // R(X,Y;Z|ui)
-  if (std::fabs(info) < kPrecision) info = 0;
-  if (std::fabs(score) < kPrecision) score = 0;
+  if (std::fabs(block.Ixyz_ui - block.kxyz_ui) < kPrecision)
+    block.Ixyz_ui = block.kxyz_ui;
+  if (std::fabs(block.score) < kPrecision) block.score = 0;
 
-  if (get_info) {
-    cache->saveInfo3Point(X, Y, Z, ui_list, info);
-    return info;
-  } else {
-    cache->saveScore(X, Y, Z, ui_list, score);
-    return score;
-  }
+  cache->saveInfo3Point(X, Y, Z, ui_list, block);
+  return block;
 }
 
 InfoBlock getCondMutualInfo(int X, int Y, const vector<int>& ui_list,
@@ -334,8 +303,8 @@ void searchForBestContributingNode(
 #endif
   for (int i = 0; i < n_zi; i++) {
     int Z = zi_list[i];
-    double score = getInfo3PointOrScore(
-        environment, X, Y, Z, info->ui_list, /* get_info = */ false);
+    auto block = getInfo3Point(environment, X, Y, Z, info->ui_list);
+    double score = block.score;
 #ifdef _OPENMP
 #pragma omp critical
 #endif

@@ -77,8 +77,8 @@ vector<vector<string>> orientationProbability(Environment& environment) {
     vector<int> ui_no_z(ui_list);
     ui_no_z.erase(remove(begin(ui_no_z), end(ui_no_z), Z), end(ui_no_z));
 
-    I3_list[i] = getInfo3PointOrScore(
-        environment, X, Y, Z, ui_no_z, /* get_info = */ true);
+    auto block = getInfo3Point(environment, X, Y, Z, ui_no_z);
+    I3_list[i] = block.Ixyz_ui - block.kxyz_ui;
   }
 
   // Compute the arrowhead probability of each edge endpoint

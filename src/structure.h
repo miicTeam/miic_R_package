@@ -2,6 +2,7 @@
 #define MIIC_STRUCTURE_H_
 
 #include <functional>  // std::reference_wrapper
+#include <limits>      // std::numeric_limits
 #include <memory>      // std::shared_ptr
 #include <string>
 #include <type_traits>
@@ -147,6 +148,8 @@ struct Info3PointBlock {
   double Ixyz_ui;
   double kxyz_ui;
 
+  constexpr Info3PointBlock()
+      : score(std::numeric_limits<double>::lowest()), Ixyz_ui(0), kxyz_ui(0) {}
   constexpr Info3PointBlock(double R, double I, double k)
       : score(R), Ixyz_ui(I), kxyz_ui(k) {}
 };
