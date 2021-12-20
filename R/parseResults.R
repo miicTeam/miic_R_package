@@ -55,12 +55,12 @@ summarizeResults <- function(observations = NULL, results = NULL,
   n <- nrow(summarized_edges)
   summary <- data.frame(
     x = character(n), y = character(n), type = character(n), ai = character(n),
-    contributions = character(n), info = numeric(n), info_cond = numeric(n),
-    cplx = numeric(n), Nxy_ai = numeric(n), info_shifted = numeric(n),
-    infOrt = numeric(n), trueOrt = numeric(n), isOrtOk = character(n),
-    sign = character(n), partial_correlation = numeric(n), is_causal = NA,
-    proba = character(n), confidence = character(n),
-    stringsAsFactors = FALSE
+    raw_contributions = character(n), contributions = character(n),
+    info = numeric(n), info_cond = numeric(n), cplx = numeric(n),
+    Nxy_ai = numeric(n), info_shifted = numeric(n), infOrt = numeric(n),
+    trueOrt = numeric(n), isOrtOk = character(n), sign = character(n),
+    partial_correlation = numeric(n), is_causal = NA, proba = character(n),
+    confidence = character(n), stringsAsFactors = FALSE
   )
   if(n == 0) return(summary)
 
@@ -101,9 +101,14 @@ summarizeResults <- function(observations = NULL, results = NULL,
   # Ai is a list containing the conditioning nodes
   summary$ai <- fill_summary_column(summary, edges, "x", "y", "ai.vect")
 
-  # contributions of each ai to the conditional independence when added to the
-  # separating set, measured by C(ai) = I'(x;y;ai|{aj}) / I'(x;y), where {aj} is
-  # the separating set before adding ai.
+  # Raw contributions of each ai to the conditional independence, measured by
+  # I'(x;y;ai|{aj}) / I'(x;y), where {aj} is the separating set before adding ai.
+  summary$raw_contributions <- fill_summary_column(
+      summary, edges, "x", "y", "raw_contributions")
+
+  # Contributions of each ai to the reduction of conditional mutual information
+  # measured by I'(x;y;ai|{aj}) / I'(x;y|{aj}), where {aj} is the separating set
+  # before adding ai.
   summary$contributions <- fill_summary_column(
       summary, edges, "x", "y", "contributions")
 

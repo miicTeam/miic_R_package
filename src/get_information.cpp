@@ -313,7 +313,8 @@ void searchForBestContributingNode(
     if (score > info->Rxyz_ui) {
       info->top_z = Z;
       info->Rxyz_ui = score;
-      info->top_contribution = info3p / (info->Ixy - info->kxy);
+      info->top_raw_contribution = info3p / (info->Ixy - info->kxy);
+      info->top_contribution = info3p / (block.Ixy_ui - block.kxy_ui);
     } else if (info->top_z != -1 && fabs(score - info->Rxyz_ui) < kEpsScore) {
       double H_old = getEntropy(environment, info->top_z, X, Y);
       double H_new = getEntropy(environment, Z, X, Y);
@@ -321,7 +322,8 @@ void searchForBestContributingNode(
           (fabs(H_new - H_old) < kEpsScore && environment.noise_vec[0] > 0)) {
         info->top_z = Z;
         info->Rxyz_ui = score;
-        info->top_contribution = info3p / (info->Ixy - info->kxy);
+        info->top_raw_contribution = info3p / (info->Ixy - info->kxy);
+        info->top_contribution = info3p / (block.Ixy_ui - block.kxy_ui);
       }
     }
 }
