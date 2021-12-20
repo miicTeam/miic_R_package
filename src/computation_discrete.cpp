@@ -340,7 +340,7 @@ Info3PointBlock computeInfo3PointAndScoreDiscrete(const TempGrid2d<int>& data,
 
   double Rscore = std::fmin(Ikxyz_ui, dpi);
 
-  return Info3PointBlock{Rscore, Ixyz_ui, kxyz_ui};
+  return Info3PointBlock{Rscore, Ixyz_ui, kxyz_ui, info_xy_ui, logC_xy_ui};
 }
 
 }  // namespace computation

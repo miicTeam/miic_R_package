@@ -147,18 +147,31 @@ struct Info3PointBlock {
   double score;
   double Ixyz_ui;
   double kxyz_ui;
+  // The two terms below are kept to facilitate the computation of contribution
+  // of each 3-point information in terms of reduction in mutual information.
+  // Ixyz_ui = Ixy_ui - Ixy_uiz
+  double Ixy_ui;
+  double kxy_ui;
 
   constexpr Info3PointBlock()
-      : score(std::numeric_limits<double>::lowest()), Ixyz_ui(0), kxyz_ui(0) {}
-  constexpr Info3PointBlock(double R, double I, double k)
-      : score(R), Ixyz_ui(I), kxyz_ui(k) {}
+      : score(std::numeric_limits<double>::lowest()),
+        Ixyz_ui(0),
+        kxyz_ui(0),
+        Ixy_ui(0),
+        kxy_ui(0) {}
+  constexpr Info3PointBlock(
+      double R, double I3, double k3, double I2, double k2)
+      : score(R), Ixyz_ui(I3), kxyz_ui(k3), Ixy_ui(I2), kxy_ui(k2) {}
 };
 
 struct EdgeSharedInfo {
   // {ui}: indices of separating nodes
   vector<int> ui_list;
-  // The contribution of each ui to the conditional independence, measured by
-  // I'(X;Y;ui|{uj}) / I'(X;Y)
+  // The raw contribution of each ui to the conditional independence, measured
+  // by I'(X;Y;ui|{uj}) / I'(X;Y)
+  vector<double> raw_contributions;
+  // The contribution of each ui to the reduction of conditional mutual
+  // information, measured by I'(X;Y;ui|{uj}) / I'(X;Y|{uj})
   vector<double> contributions;
   // {zi}: indices of candidate conditioning nodes
   vector<int> zi_list;
@@ -167,8 +180,11 @@ struct EdgeSharedInfo {
   // Score of the best contributor, this is the exponential part of the full
   // score as defined in Verny et al., 2017 (Supplementary Text)
   double Rxyz_ui = 0;
-  // The contribution of top_z to the conditional independence, measured by
+  // The raw contribution of top_z to the conditional independence, measured by
   // I'(X;Y;top_z|{ui}) / I'(X;Y)
+  double top_raw_contribution = 0;
+  // The contribution of top_z to the reduction of conditional mutual
+  // information, measured by I'(X;Y;top_z|{ui}) / I'(X;Y|{ui})
   double top_contribution = 0;
   // Conditional mutual information
   double Ixy_ui = 0;
@@ -192,8 +208,10 @@ struct EdgeSharedInfo {
   void reset() {
     zi_list.clear();
     ui_list.clear();
+    raw_contributions.clear();
     contributions.clear();
     top_z = -1;
+    top_raw_contribution = 0;
     top_contribution = 0;
     Rxyz_ui = 0;
     Ixy_ui = Ixy;
