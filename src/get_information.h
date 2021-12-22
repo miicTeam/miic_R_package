@@ -9,7 +9,8 @@ namespace computation {
 
 structure::InfoBlock getCondMutualInfo(int X, int Y,
     const std::vector<int>& ui_list, const structure::Grid2d<int>& data_numeric,
-    const structure::Grid2d<int>& data_numeric_idx, structure::Environment&);
+    const structure::Grid2d<int>& data_numeric_idx, structure::Environment&,
+    std::shared_ptr<structure::CutPointsInfo> = nullptr);
 structure::Info3PointBlock getInfo3Point(structure::Environment&, int X, int Y,
     int Z, const std::vector<int>& ui_list);
 void searchForBestContributingNode(

@@ -118,7 +118,7 @@ Info3PointBlock getInfo3Point(
 
 InfoBlock getCondMutualInfo(int X, int Y, const vector<int>& ui_list,
     const Grid2d<int>& data_numeric, const Grid2d<int>& data_numeric_idx,
-    Environment& environment) {
+    Environment& environment, std::shared_ptr<CutPointsInfo> cuts_info) {
   TempAllocatorScope scope;
   auto& cache = environment.cache.info_score;
 
@@ -181,7 +181,7 @@ InfoBlock getCondMutualInfo(int X, int Y, const vector<int>& ui_list,
     res = computeCondMutualInfo(data_red, data_idx_red, levels_red,
         is_continuous_red, var_idx_red, weights_red, flag_sample_weights,
         environment.initbins, environment.maxbins, environment.cplx,
-        environment.negative_info, environment.cache.cterm);
+        environment.negative_info, environment.cache.cterm, cuts_info);
   }
   if (std::fabs(res.I) < kPrecision) res.I = 0;
   if (std::fabs(res.k) < kPrecision) res.k = 0;
