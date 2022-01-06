@@ -9,6 +9,10 @@ mydiscretizeMutual <- function(input_data, arg_list) {
     .Call('_miic_mydiscretizeMutual', PACKAGE = 'miic', input_data, arg_list)
 }
 
+miicRGetInfo3Point <- function(input_data, arg_list) {
+    .Call('_miic_miicRGetInfo3Point', PACKAGE = 'miic', input_data, arg_list)
+}
+
 reconstruct <- function(input_data, arg_list) {
     .Call('_miic_reconstruct', PACKAGE = 'miic', input_data, arg_list)
 }

@@ -312,6 +312,206 @@ computeMutualInfo <- function(X, Y,
   return(result)
 }
 
+#' Compute (conditional) three-point information
+#' @description Three point information is defined based on mutual information.
+#' For discrete variables, the computation is based on the
+#' empirical frequency minus a complexity cost (computed as BIC or with the
+#' Normalized Maximum Likelihood). When continuous variables are present, each
+#' continuous variable is discretized where the partitioning is chosen by
+#' maximizing the mutual information minus the complexity cost.
+#'
+#' @details For variables \eqn{X}, \eqn{Y}, \eqn{Z} and a set of conditioning
+#' variables \eqn{U}, the conditional three point information is defined as
+#' \deqn{Ik(X;Y;Z|U) = Ik(X;Y|U) - Ik(X;Y|U,Z)}, where \eqn{Ik} is the
+#' regularized conditional mutual information.
+#' See \code{\link{computeMutualInfo}} for the definition of \eqn{Ik}.
+#'
+#' @references
+#' \itemize{
+#' \item Verny et al., \emph{PLoS Comp. Bio. 2017.}
+#'   https://doi.org/10.1371/journal.pcbi.1005662
+#' \item Cabeli et al., \emph{PLoS Comp. Bio. 2020.}
+#'   https://doi.org/10.1371/journal.pcbi.1007866
+#' \item Affeldt et al., \emph{Bioinformatics 2016}
+#' }
+#'
+#' @param X [a vector]
+#' A vector that contains the observational data of the first variable.
+#' @param Y [a vector]
+#' A vector that contains the observational data of the second variable.
+#' @param Z [a vector]
+#' A vector that contains the observational data of the third variable.
+#' @param df_conditioning [a data frame]
+#' The data frame of the observations of the set of conditioning variables
+#' \eqn{U}.
+#' @param maxbins [an integer]
+#' When the data contain continuous variables, the maximum number of bins
+#' allowed during the discretization. A smaller number makes the computation
+#' faster, a larger number allows finer discretization.
+#' @param cplx [a string]
+#' The complexity model:
+#' \itemize{
+#' \item["mdl"] Minimum description Length
+#' \item["nml"] Normalized Maximum Likelihood, less costly compared to "mdl" in
+#' the finite sample case and will allow for more bins.
+#' }
+#' @param n_eff [an integer]
+#' The number of effective samples. When there is significant autocorrelation in
+#' the samples you may want to specify a number of effective samples that is
+#' lower than the number of points in the distribution.
+#' @param sample_weights [a vector of floats]
+#' Individual weights for each sample, used for the same reason as the effective
+#' sample number but with individual precision.
+#' @param is_continuous [a vector of booleans]
+#' Specify if each variable is to be treated as continuous (TRUE) or discrete
+#' (FALSE), must be of length `ncol(df_conditioning) + 2`, in the order
+#' \eqn{X, Y, U1, U2, ...}. If not specified, factors and character vectors are
+#' considered as discrete, and numerical vectors as continuous.
+#'
+#' @return A list that contains :
+#' \itemize{
+#' \item I3: The estimation of (conditional) three-point information without the
+#' complexity cost.
+#' \item I3k: The estimation of (conditional) three-point information with the
+#' complexity cost (\eqn{I3k = I3 - cplx}).
+#' \item I2: For reference, the estimation of (conditional) mutual information
+#' \eqn{I(X;Y|U)} used in the estimation of \eqn{I3}.
+#' \item I2k: For reference, the estimation of regularized (conditional) mutual
+#' information \eqn{Ik(X;Y|U)} used in the estimation of \eqn{I3k}.
+#' }
+#' @export
+#' @useDynLib miic
+#' @importFrom stats density sd
+#'
+#' @examples
+#' library(miic)
+#' N <- 1000
+#' # Dependence, conditional independence : X <- Z -> Y
+#' Z <- runif(N)
+#' X <- Z * 2 + rnorm(N, sd = 0.2)
+#' Y <- Z * 2 + rnorm(N, sd = 0.2)
+#' res <- computeThreePointInfo(X, Y, Z)
+#' message("I(X;Y;Z) = ", res$I3)
+#' message("Ik(X;Y;Z) = ", res$I3k)
+#'
+#' \donttest{
+#' # Independence, conditional dependence : X -> Z <- Y
+#' X <- runif(N)
+#' Y <- runif(N)
+#' Z <- X + Y + rnorm(N, sd = 0.1)
+#' res <- computeThreePointInfo(X, Y, Z)
+#' message("I(X;Y;Z) = ", res$I3)
+#' message("Ik(X;Y;Z) = ", res$I3k)
+#' }
+#'
+computeThreePointInfo <- function(X, Y, Z,
+                              df_conditioning = NULL,
+                              maxbins = NULL,
+                              cplx = c("nml", "mdl"),
+                              n_eff = -1,
+                              sample_weights = NULL,
+                              is_continuous = NULL) {
+  cplx <- tryCatch(
+    {match.arg(cplx)},
+    error = function(e) {
+      if (grepl("object .* not found", e$message)) {
+        message(e, "")
+        return("")
+      }
+      return(toString(cplx))
+    }
+  )
+  cplx <- match.arg(cplx)
+
+  input_data = data.frame(X, Y, Z)
+  if (!is.null(df_conditioning)) {
+    input_data <- data.frame(input_data, df_conditioning)
+  }
+
+  if (!is.null(sample_weights) && length(sample_weights) != nrow(input_data)) {
+    stop(paste(
+      "Differing number of rows between `sample_weights` and input data:",
+      length(sample_weights),
+      length(X)
+    ))
+  }
+
+  complete_row <- stats::complete.cases(input_data)
+  n_rows_na <- sum(!complete_row)
+  if (n_rows_na > 0) {
+    input_data <- input_data[complete_row, ]
+    warning(paste0(
+      "Removed ", n_rows_na, " rows containing at least one NA value."
+    ))
+  }
+
+  n_samples <- nrow(input_data)
+  n_nodes <- ncol(input_data)
+
+  if (n_samples < 3) {
+    stop(paste0("Insufficient number of complete rows: ", nrow(input_data)))
+  }
+
+  if (is.null(is_continuous)) {
+    is_continuous <- sapply(input_data, is.numeric)
+  } else if (length(is_continuous) != n_nodes) {
+    stop(paste(
+      "Length of `is_continuous` does not match number of input variables:",
+      length(is_continuous),
+      n_nodes
+    ))
+  }
+
+  # Numeric factor matrix, level starts from 0
+  input_factor <- as.matrix(apply(input_data, 2,
+    function(x) (as.numeric(factor(x, levels = unique(x))) - 1))
+  )
+  max_level_list <- as.numeric(apply(input_factor, 2, max)) + 1
+  # Data list, numeric for continuous columns, -1 for discrete columns
+  input_double <- matrix(nrow = n_samples, ncol = n_nodes)
+  # Order list, order(column) for continuous columns (index starting from 0),
+  # -1 for discrete columns
+  input_order <- matrix(nrow = n_samples, ncol = n_nodes)
+  for (i in c(1: n_nodes)) {
+    if (is_continuous[i]) {
+      input_double[, i] <- as.numeric(input_data[, i])
+      input_order[, i] <- order(input_data[, i], na.last=NA) - 1
+    } else {
+      input_double[, i] <- rep_len(-1, n_samples)
+      input_order[, i] <- rep_len(-1, n_samples)
+    }
+  }
+
+  arg_list <- list(
+    "cplx" = cplx,
+    "is_continuous" = is_continuous,
+    "levels" = max_level_list,
+    "n_eff" = n_eff,
+    "n_nodes" = n_nodes,
+    "n_samples" = n_samples
+  )
+  # Continuous variables will be discretized during the computation
+  if (any(is_continuous)) {
+    initbins <- min(30, round(n_samples**(1 / 3)))
+    if (is.null(maxbins) || maxbins > n_samples || maxbins < initbins) {
+      maxbins <- min(n_samples, 5 * initbins, 50)
+    }
+    arg_list[["max_bins"]] <- maxbins
+  }
+  if (!is.null(sample_weights)) {
+    arg_list[["sample_weights"]] <- sample_weights[complete_row, ]
+  }
+  cpp_input <- list(
+    "factor" = as.vector(input_factor),
+    "double" = as.vector(input_double),
+    "order" = as.vector(input_order)
+  )
+  # Call cpp code
+  rescpp <- miicRGetInfo3Point(cpp_input, arg_list)
+
+  return(rescpp)
+}
+
 grid_plot <- function(X, Y, nameDist1, nameDist2) {
   plot_df <- data.frame(table(X, Y), stringAsFactors = TRUE)
   hist2d <- ggplot2::ggplot(plot_df, ggplot2::aes(x=X, y=Y)) +

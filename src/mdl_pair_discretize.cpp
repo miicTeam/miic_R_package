@@ -86,3 +86,36 @@ List mydiscretizeMutual(List input_data, List arg_list) {
   delete li_alloc_ptr;
   return result;
 }
+
+// [[Rcpp::export]]
+List miicRGetInfo3Point(List input_data, List arg_list) {
+  // Initialize Environment with mandatory inputs
+  Environment environment(as<int>(arg_list["n_samples"]),
+      as<int>(arg_list["n_nodes"]), as<vector<int>>(input_data["factor"]),
+      as<vector<int>>(input_data["order"]),
+      as<vector<int>>(arg_list["is_continuous"]),
+      as<vector<int>>(arg_list["levels"]));
+
+  // Set optional parameters
+  setEnvironmentFromR(input_data, arg_list, environment);
+  int maxbins = environment.maxbins;
+
+  size_t li_alloc_size = getLinearAllocatorSize(environment.n_samples,
+      environment.n_nodes, maxbins, environment.initbins,
+      environment.is_continuous, environment.levels);
+  li_alloc_ptr = new LinearAllocator(li_alloc_size);
+
+  vector<int> ui_list(environment.n_nodes - 3);
+  std::iota(begin(ui_list), end(ui_list), 3);
+
+  auto res = getInfo3Point(environment, 0, 1, 2, ui_list);
+
+  List result = List::create(
+      _["I3"]            = res.Ixyz_ui,
+      _["I3k"]           = res.Ixyz_ui - res.kxyz_ui,
+      _["I2"]            = res.Ixy_ui,
+      _["I2k"]           = res.Ixy_ui - res.kxy_ui);
+
+  delete li_alloc_ptr;
+  return result;
+}
