@@ -2,6 +2,7 @@
 
 S3method(plot,miic)
 export(computeMutualInfo)
+export(computeThreePointInfo)
 export(discretizeMDL)
 export(discretizeMutual)
 export(miic)
