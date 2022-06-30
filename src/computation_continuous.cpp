@@ -25,290 +25,548 @@ using namespace miic::utility;
 
 namespace {
 
-void resetCutPoints(const TempVector<int>& levels,
-    const TempVector<int>& is_continuous, const TempVector<int>& var_idx,
-    int var_begin, int var_end, int init_nbin, int n, TempGrid2d<int>& cut) {
-  for (int l = var_begin; l < var_end; ++l) {
-    if (is_continuous[var_idx[l]] != 1) continue;
-
-    int n_bins = min(init_nbin, levels[var_idx[l]]);
-    int lbin = n / n_bins;
-    if (lbin < 1) {
-      lbin = 1;
-      n_bins = n;
+//------------------------------------------------------------------------------
+// resetCutPoints
+//------------------------------------------------------------------------------
+// From the number of unique values of each variable and the number of samples,
+// determine for each continuous variable the length of the bin and the numbers
+// of bin. Then fix a cut every "length of bin"
+//
+// Inputs:
+// - levels: Vector, number of unique values for the variables
+// - is_continuous: Vector, flags (1=continuous, 0=discrete) for the variables
+// - vars_to_process: Vector of the variables indexes to be processed
+// - vars_to_process_begin: int, first index in vars_to_process to consider
+// - vars_to_process_end: int, last index in vars_to_process to consider
+// - init_nbin: int, number of bins by default
+// - n_samples: int, number of samples
+// Outputs:
+// - cuts: Grid (nb variables to process x nb max cuts), the cuts
+//------------------------------------------------------------------------------
+void resetCutPoints (const TempVector<int>& levels,
+                     const TempVector<int>& is_continuous,
+                     const TempVector<int>& vars_to_process,
+                     int vars_to_process_begin,
+                     int vars_to_process_end,
+                     int init_nbin, int n_samples,
+                     TempGrid2d<int>& cuts) {
+  for (int vars_to_process_idx = vars_to_process_begin;
+       vars_to_process_idx < vars_to_process_end;
+       ++vars_to_process_idx) {
+    if (is_continuous[vars_to_process[vars_to_process_idx]] != 1)
+      continue;
+    //
+    // Determine the length of a bin and the number of bins
+    //
+    int n_bins = min (init_nbin, levels[vars_to_process[vars_to_process_idx]]);
+    int length_bin = n_samples / n_bins;
+    if (length_bin < 1) {
+      length_bin = 1;
+      n_bins = n_samples;
     }
-    for (int j = 0; j < n_bins - 1; ++j) {
-      cut(l, j) = j * lbin + lbin - 1;
-    }
-    cut(l, n_bins - 1) = n - 1;
-    for (size_t j = n_bins; j < cut.n_cols(); ++j) {
-      cut(l, j) = 0;
-    }
+    //
+    // Reset cuts: fix a cut every length_bin until n_bins, then add the
+    // conventional last cut (= nb samples) and set the remaining positions to 0
+    //
+    for (int bin_idx = 0; bin_idx < n_bins - 1; ++bin_idx)
+      cuts(vars_to_process_idx, bin_idx) = bin_idx * length_bin + length_bin - 1;
+    cuts(vars_to_process_idx, n_bins - 1) = n_samples - 1;
+    for (size_t bin_idx = n_bins; bin_idx < cuts.n_cols(); ++bin_idx)
+      cuts(vars_to_process_idx, bin_idx) = 0;
   }
 }
 
-// update datafactors of a variable from the cut positions vector <cut>
-void updateFactors(const TempGrid2d<int>& data_idx, const TempGrid2d<int>& cut,
-    const TempVector<int>& is_continuous, const TempVector<int>& var_idx,
-    int var_begin, int var_end, TempGrid2d<int>& factors, TempVector<int>& r) {
-  int n_samples = data_idx.n_cols();
-  for (int l = var_begin; l < var_end; ++l) {
-    if (is_continuous[var_idx[l]] != 1) continue;
-
+//------------------------------------------------------------------------------
+// updateFactors
+//------------------------------------------------------------------------------
+// Transform data into factors using the cuts supplied in parameters.
+// i.e.: for the variable values [0,2,8,4,5,3] with cuts positions at [2,5],
+// the computed factors will be [0,0,1,1,1,0].
+// Note that when some values are repeated, the updateFactors will not strictly
+// respect the cuts positions to ensure that a value is not be associated with
+// different factors.
+// i.e.: [0,2,8,3,5,3] with cuts positions at [2,5] will not be transformed
+// into [0,0,1,0,1,1] as the value 3 would be transformed into 0 and 1.
+// updateFactors will not apply the cut as long as it encounters the same value.
+// So in this example, the factors will be [0,0,1,0,1,0].
+//
+// Inputs:
+// - data: Grid (variables x samples), the input data (ranked)
+// - data_ordered: Grid (variables x samples), the indexes in data of ordered values
+// - cuts: Grid (nb variables to process x nb max cuts), the cuts to applied-
+// - is_continuous: Vector, flags (1=continuous, 0=discrete) for each variable
+// - vars_to_process: Vector of the variables indexes to be processed
+// - vars_to_process_begin: int, first index in vars_to_process to consider
+// - vars_to_process_end: int, last index in vars_to_process to consider
+// Outputs:
+// - factors: Grid (nb variables to process x samples), the data transformed into factors
+// - cuts_levels: Vector, number of factors (unique values) in each cut
+//------------------------------------------------------------------------------
+void updateFactors (const TempGrid2d<int>& data,
+                    const TempGrid2d<int>& data_ordered,
+                    const TempGrid2d<int>& cuts,
+                    const TempVector<int>& is_continuous,
+                    const TempVector<int>& vars_to_process,
+                    int vars_to_process_begin,
+                    int vars_to_process_end,
+                    TempGrid2d<int>& factors,
+                    TempVector<int>& cuts_levels) {
+  int n_samples = data_ordered.n_cols();
+  for (int vars_to_process_idx = vars_to_process_begin;
+       vars_to_process_idx < vars_to_process_end;
+       ++vars_to_process_idx) {
+    int data_var_idx = vars_to_process[vars_to_process_idx];
+    if (is_continuous[data_var_idx] != 1)
+      continue;
+    //
+    // For continuous variables, iterate over the samples values in an ordered way.
+    // Affect all the values till the cut position to the value of 'level', then
+    // increase the 'level' and proceed in the same way to the next cut position
+    //
     int level = 0;
-    for (int j = 0; j < n_samples; ++j) {
-      if (j > cut(l, level)) ++level;
-      int index = data_idx(var_idx[l], j);
-      factors(l, index) = level;
+    for (int data_ordered_sample_idx = 0;
+         data_ordered_sample_idx < n_samples;
+         ++data_ordered_sample_idx) {
+      int data_sample_idx = data_ordered (data_var_idx, data_ordered_sample_idx);
+      if (data_ordered_sample_idx > cuts(vars_to_process_idx, level)) {
+        //
+        // When we reach a cut position, look if the sample value has changed,
+        // if not, affect all the equal values to the current level
+        // When a different value is encountered, increase the level
+        //
+        int data_sample_prec_idx = data_ordered (data_var_idx, data_ordered_sample_idx-1);
+        int value_prec = data (data_var_idx, data_sample_prec_idx);
+        int value_iter = data (data_var_idx, data_sample_idx);
+        while (value_prec == value_iter) {
+          factors (vars_to_process_idx, data_sample_idx) = level;
+          ++data_ordered_sample_idx;
+          if (data_ordered_sample_idx >= n_samples)
+            break;
+          data_sample_idx = data_ordered (data_var_idx, data_ordered_sample_idx);
+          value_iter = data (data_var_idx, data_sample_idx);
+        }
+        if (data_ordered_sample_idx >= n_samples)
+          break;
+        ++level;
+      }
+      factors (vars_to_process_idx, data_sample_idx) = level;
     }
-    r[l] = level + 1;
+    cuts_levels[vars_to_process_idx] = level + 1;
   }
-  return;
 }
 
-// INPUT:
-// memory_cuts: vector length n with recorded recursvely best cuts,
-// possible values 0...n :
-// 0->stops (one bins); -k -> stops (two bin ([0 k-1][k ..];
-// k->continute [.. k-1][k ...])
-// OUTPUT:
-// r : number cuts
-// cut: vector with cuts point-> [0 cut[0]][cut[0]+1 cut[1]]...[cut[r-2]
-// cut[r-1]]
+//------------------------------------------------------------------------------
+// reconstructCutCoarse
+//------------------------------------------------------------------------------
+// Use the results of optimizeCutPoints to establish the cut points list:
+// examines the cuts_idx vector starting from its end and follows the chain of
+// the best cuts. For each cut, store the data row index coming from cuts_pos.
+//
+// inputs:
+// - cuts_idx: Vector, recorded best cuts, possible values 0...size(cuts_idx).
+//   Forms a chain with the best cuts indexes starting from the last position:
+//   * only 0s -> stops (one bin)
+//   * -k encountered -> stops (two bins ([0 k-1][k ..])
+//   * k  encountered -> cut found [.. k-1][k ...]) and continue
+// - cuts_pos: Vector, data row index for each cut
+// - n_samples: int, number of samples
+// output:
+// - cuts_ret: Vector, cut points positions (row indexes) returned:
+//   [0, cut_pos_a, cut_pos_b, ..., nb samples-1]
+//------------------------------------------------------------------------------
 template <typename Ccut, typename = IsIntContainer<Ccut>>
-void reconstructCutCoarse(const TempVector<int>& memory_cuts_idx,
-    const TempVector<int>& memory_cuts_pos, int n_samples, Ccut& cut) {
-  if (memory_cuts_idx.back() == 0) {
-    cut[0] = n_samples - 1;
+void reconstructCutCoarse (const TempVector<int>& cuts_idx,
+                           const TempVector<int>& cuts_pos,
+                           int n_samples,
+                           Ccut& cuts_ret) {
+  if (cuts_idx.back() == 0) {
+    //
+    // only 0s -> stops (one bin)
+    //
+    cuts_ret[0] = n_samples - 1;
     return;
   }
-
-  int ncuts{0};
-  int l{memory_cuts_idx.back()};
-  while (l > 0) {
+  //
+  // Determine the number of cuts by following the chain of cuts
+  // starting from the end
+  //
+  int ncuts = 0;
+  int pop_cut = cuts_idx.back();
+  while (pop_cut > 0) {
     ++ncuts;
-    l = memory_cuts_idx[l - 1];
+    pop_cut = cuts_idx[pop_cut - 1];
   }
-  if (l < 0) ncuts++;
-
-  cut[ncuts] = n_samples - 1;  // conventional last cut
-  l = ncuts - 1;
-  cut[l] = memory_cuts_pos.back();  // truly last cut
-  --l;
-  int s = memory_cuts_idx.back();
-  while (s > 0 && l >= 0) {
-    cut[l] = memory_cuts_pos[s - 1];
-    s = memory_cuts_idx[s - 1];
-    --l;
+  if (pop_cut < 0)
+    ncuts++;
+  //
+  // Construct the optimum cuts list by following the chain of cuts
+  // starting from the end
+  //
+  cuts_ret[ncuts] = n_samples - 1;  // conventional last cut
+  int cut_idx = ncuts - 1;
+  cuts_ret[cut_idx] = cuts_pos.back();  // truly last cut
+  --cut_idx;
+  pop_cut = cuts_idx.back();
+  while (pop_cut > 0 && cut_idx >= 0) {
+    cuts_ret[cut_idx] = cuts_pos[pop_cut - 1];
+    pop_cut = cuts_idx[pop_cut - 1];
+    --cut_idx;
   }
 }
 
-// Given factors of target variable and joint variable, find a set
-// of cut points for target variable <f_target> by maximizing mutual information
-// max_cuts{ I(target|aux) }
+//------------------------------------------------------------------------------
+// optimizeCutPoints
+//------------------------------------------------------------------------------
+// Given factors of the target and joint variables, find a set of cut points for
+// the target variable by maximizing mutual information over the possible cuts:
 //
-// The optimizing variable is defined by <data_idx> and <data>.
-// data_idx[i] is the [i]th smallest value of the optimized variable,
-// <data> contains the ranks.
+// Principle:
+// coarse <- max (nb_vals_X // maxbin (maxbin=min(50,nb_samples)), 1)
+// nb cuts max <-  nb_vals_X // coarse
+// for each large bin in bins [ {0}, {0+1}, {0+1+2}, ... , {0+1+2+…+nb cuts max} ]
+//   compute info of the large bin
+//	 for each possible cut of the large bin
+//	 	 compute info of the large_bin with the cut:
+//	 	 {0,...,cut} {cut,...,end of large bin}
+//		 if better info is found, memorize the cut
+// unstack the cuts found starting from the end to get optimal cuts list
 //
-// <r> is the number of unique values of each factor.
+// Inputs:
+// - data_ranked_target: Grid (n samples x 1 col), ranks of the target variable
+//   (coming directly from a ranking on the input dataset, not discretized)
+// - data_ordered_target: Grid (n samples x 1 col), indexes of ordered values
+//   for the target variable. data_ordered_target[i] is the [i]th smallest value
+//   i.e.: [0,0,3,4,1] is represented as [0,1,4,2,3] (representing the following
+//   matches: 0->0, 1->0, 4->1, 2->3 and 3->4, giving the ordered values: 0,0,1,3,4).
+// - data_factors_joint: Vector (n samples), discretized values of the joint
+//   variable
+// - data_factors_target: Vector (n samples), discretized values of the target
+//   variable starting with one single bin
+// - nb_factors_joint: int, number of factors (= unique values = levels) of the
+//   discretized joint variable
+// - nb_factors_target: int, number of factors (= unique values = levels) of the
+//   discretized target variable
+// - nb_factors_joint_for_cplx: int, number of factors (= unique values = levels)
+//   of the discretized joint variable used for complexity. It is the product
+//   of number of unique observed levels of all variables except the variable
+//   being optimized.
+// - nb_factors_target_prev: int, number of factors (= unique values = levels)
+//   of the discretized target variable at the previous iteration.
+//   Used for the complexity term
+// - nb_uniq_vals_target: int, number of unique values in the non discretized
+//   target variable (number of unique values after filtering on NAs)
+// - weights: Vector (n samples), unique weights for each sample to account for
+//   effective N != N, only used if the flag_weights is set to true.
+// - flag_weights: bool, set to true if we use weights, false otherwise
+// - maxbins: int, maximum number of bins allowed. It controls the resolution
+//   of possible cut points. For example, 50 maximum cut points on a 1000
+//   samples vector results in possible cut points every 1000/50 = 20 positions.
+//   This speeds up significantly the dynamic programming at the cost of finding
+//   approximated solutions.
+// - cache: shared pointer, cache area storing previous calculations
+// - cplx: int, is the choice of complexity : 0 for simple MDL (product of
+//   all observed values) and 1 for NML with stochastic complexity and a
+//   combinatorial term with the previous number of levels.
 //
-// <sc> is the stochastic complexity used for the simple MDL cost.
-// Its value is 0.5 * number_of_other_levels where number of other levels is the
-// product of number of unique observed levels of all variables except the
-// variable being optimized.
-//
-// <sc_levels> and <r1_prev> are respectively the number of levels of
-// the other variable in the mutual information term and the number of levels of
-// the otpimized variable in the previous iteration.
-//
-// <n_nr> is the number of non repeated values.
-//
-// <cut> is the vector containing cutpoints for discretizing the optimized
-// variables. Modified at the end wih the optimal solution.
-//
-// <maxbins> is the maximum number of bins allowed. It controls the resolution
-// of possible cutpoints : For example, 50 maximum cutpoints on a 1000 samples
-// vector results in possible cutpoints every 1000/50 = 20 positions. This
-// speeds up significantly the dynamic programming at the cost of finding
-// approximated solutions.
-//
-// <cplx> is the choice of complexity : 0 for simple MDL (product of all
-// observed values, see <sc>) and 1 for NML with stochastic complexity and a
-// combinatorial term with the previous number of levels.
-//
-// <weights> are unique weights for each sample to account for effective
-// N != N, if the <flag_efN> is set to true.
-//
-// Example: Discretize continuous variable X by maximizing Ik(X;Y).
-//   <data>: Ranks of X without discretization
-//   <data_idx>: Order of <data>, data[data_idx[0]] is the minimal value of X
-//   <factors0>: Discret(e)ized variable Y
-//   <factors1>: vector<int>(n_samples, 0) (X with one single bin)
-//   <sc_levels1>: Number of levels of discret(e)ized variable Y
-//   <r1_prev>: Number of levels of discretized X in the previous iteration,
-//              used for complexity term
-//   <cut>: Output, cut points for X
-template <typename Cf0, typename Cf1, typename Ccut,
-    typename =
-        void_t<IsIntContainer<Cf0>, IsIntContainer<Cf1>, IsIntContainer<Ccut>>>
-void optimizeCutPoints(const TempGrid2d<int>::ConstRow& data,
-    const TempGrid2d<int>::ConstRow& data_idx, const Cf0& factors0,
-    const Cf1& factors1, int r0, int r1, int sc_levels1, int r1_prev, int n_nr,
-    const TempVector<double>& weights, bool flag_weights, int maxbins,
-    std::shared_ptr<CtermCache> cache, int cplx, Ccut&& cut) {
+// Inputs / outputs:
+// - cuts_target: Vector, contains the cut points for discretezing the
+//   target variables. Modified at the end with the optimal solution.
+//------------------------------------------------------------------------------
+template <typename Cf0, typename Cf1, typename Ccut, typename =
+    void_t<IsIntContainer<Cf0>, IsIntContainer<Cf1>, IsIntContainer<Ccut>>>
+void optimizeCutPoints (const TempGrid2d<int>::ConstRow& data_ranked_target,
+                        const TempGrid2d<int>::ConstRow& data_ordered_target,
+                        const Cf0& data_factors_joint,
+                        const Cf1& data_factors_target,
+                        int nb_factors_joint,
+                        int nb_factors_target,
+                        int nb_factors_joint_for_cplx,
+                        int nb_factors_target_prev,
+                        int nb_uniq_vals_target,
+                        const TempVector<double>& weights,
+                        bool flag_weights,
+                        int maxbins,
+                        std::shared_ptr<CtermCache> cache,
+                        int cplx,
+                        Ccut&& cuts_target) {
   TempAllocatorScope scope;
+  // Coarse graining, minimum length of a bin
+  int coarse = std::max (ceil (1.0 * nb_uniq_vals_target / maxbins), 1.0);
+  // Maximal number of possible cut points on the target
+  int n_cuts_max = ceil (1.0 * nb_uniq_vals_target / coarse);
+  int n_samples = data_ranked_target.size();
+  //
+  // For each bin, places "coarse" unique values (unique values from data_ranked)
+  // in each bin and counts the number of occurrences of each factor.
+  // These counts for each unitary bin, will be used later to compute the
+  // entropy on combinations of bins
+  // i.e.:
+  // data_ranked_target    [0, 0, 0, 0, 0, 1, 2, 3, 0, 1, 2, 0]
+  // data_ordered_target   [0, 1, 2, 3, 4, 8,11, 5, 9, 6,10, 7]
+  // target discretized    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] (first optimization, 1 bin)
+  // assuming other var    [0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3] discretized on 2 bin
+  // discretized other var [0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1]
+  // data_factors_joint    [0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1]
+  // now using coarse of 1 and max_bins = 4, we will iterate over sample
+  // in an ordered way and the coarse_counts_joint will be:
+  //   columns 0 1 (the factors, 0 or 1 possible from data_factors_joint)
+  // rows   0: 4 3 (4 factors target=0 and joint=0, 3 factors target=0 and joint=1)
+  // (bins) 1: 2 0 (new bin as target ranked value goes from 0 to 1 and coarse=1,
+  //                then 2 factors target=0 and joint=0, 0 factors target=0 and joint=1)
+  //        2: 0 2 (new bin as target ranked value goes from 1 to 2 and coarse=1,
+  //                then 0 factors target=0 and joint=0, 2 factors target=0 and joint=1)
+  //        3: 0 1 (new bin as target ranked value goes from 2 to 3 and coarse=1,
+  //                then 0 factors target=0 and joint=0, 1 factors target=0 and joint=1)
+  //
+  // The sample_idx_breaks_per_cut will contains: [7, 9, 11, 12]
+  // The cum_weights_per_bin, if "flag_weights" is true would contain:
+  // [weights sum for samples [0->6], weights sum for samples[0->8],
+  //  weights sum for samples [0->10], weights sum all samples[0->11] ]
+  //
+  TempVector<int> sample_idx_breaks_per_cut (n_cuts_max);
+  TempVector<double> cum_weights_per_bin (n_cuts_max, 0);
+  TempGrid2d<int> coarse_counts_target (n_cuts_max, nb_factors_target, 0);
+  TempGrid2d<int> coarse_counts_joint (n_cuts_max, nb_factors_joint, 0);
 
-  // coarse graining step, minimum length of a bin
-  int coarse = std::max(ceil(1.0 * n_nr / maxbins), 1.0);
-  // maximal number of possible cut points
-  int n_cuts_max = ceil(1.0 * n_nr / coarse);
-  int n_samples = data.size();
+  for (int bin_idx = 0, sample_idx = 0; bin_idx < n_cuts_max; ++bin_idx) {
+    if (flag_weights && bin_idx > 0)
+      cum_weights_per_bin[bin_idx] = cum_weights_per_bin[bin_idx - 1];
 
-  // entropy in kj interval
-  TempGrid2d<int> coarse_counts_target(n_cuts_max, r1, 0);
-  TempGrid2d<int> coarse_counts_joint(n_cuts_max, r0, 0);
+    int count_vals_uniq = 0;  // iterator on not repeated values
+    while (count_vals_uniq < coarse && sample_idx < n_samples) {
+      int data_factor_idx = data_ordered_target[sample_idx];
+      int factor_target = data_factors_target[data_factor_idx];
+      int factor_joint = data_factors_joint[data_factor_idx];
+      ++coarse_counts_target (bin_idx, factor_target);
+      ++coarse_counts_joint (bin_idx, factor_joint);
 
-  TempVector<int> n_values(n_cuts_max);
-  TempVector<double> sum_weights(n_cuts_max);
-  for (int i = 0, it_j = 0; i < n_cuts_max; ++i) {
-    if (flag_weights && i > 0) sum_weights[i] = sum_weights[i - 1];
-
-    int ir{0};  // iterator on not repeated values
-    while (ir < coarse && it_j < n_samples) {
-      int level_target = factors1[data_idx[it_j]];
-      int level_joint = factors0[data_idx[it_j]];
-      ++coarse_counts_target(i, level_target);
-      ++coarse_counts_joint(i, level_joint);
-
-      if (flag_weights) sum_weights[i] += weights[it_j];
-      if (it_j + 1 < n_samples) {  // check no repetition
-        ir += data[data_idx[it_j + 1]] != data[data_idx[it_j]];
-      }
-      ++it_j;
-    }
-    n_values[i] = it_j;
-  }
-
-  // Keep the result of each iteration
-  TempVector<double> I(n_cuts_max);
-  TempVector<double> Ik(n_cuts_max);
-  // indexes of the cuts (1..n_cuts_max)
-  TempVector<int> memory_cuts_idx(n_cuts_max);
-  // positions of the cuts (1..n_samples)
-  TempVector<int> memory_cuts_pos(n_cuts_max);
-
-  TempVector<int> counts_0(r0);
-  TempVector<int> counts_1(r1);
-
-  double k_mdl = 0.5 * (sc_levels1 - 1) * r1;
-  for (int j = 0; j < n_cuts_max; ++j) {
-    int it_j = n_values[j];
-    double ef_nj = sum_weights[j];
-    double eff_n_factors = ef_nj / it_j;
-    std::transform(begin(counts_0), end(counts_0),
-        coarse_counts_joint.row_begin(j), begin(counts_0), std::plus<int>());
-    std::transform(begin(counts_1), end(counts_1),
-        coarse_counts_target.row_begin(j), begin(counts_1), std::plus<int>());
-
-    double Hk_j_joint{0}, H_j_joint{0};
-    for (int level = 0; level < r0; level++) {
-      int weighted_count = flag_weights
-                               ? int(eff_n_factors * counts_0[level] + 0.5)
-                               : counts_0[level];
-      Hk_j_joint += cache->getH(weighted_count);
-    }
-    H_j_joint = Hk_j_joint;
-
-    double Hk_j_target{0}, H_j_target{0};
-    for (int level = 0; level < r1; level++) {
-      int weighted_count = flag_weights
-                               ? int(eff_n_factors * counts_1[level] + 0.5)
-                               : counts_1[level];
-      Hk_j_target -= cache->getH(weighted_count);
-      H_j_target -= cache->getH(weighted_count);
-
-      if (cplx == 0 && counts_1[level] > 0)
-        Hk_j_target -= k_mdl * cache->getLog(n_samples);
-      else if (cplx == 1)
-        Hk_j_target -= cache->getLogC(weighted_count, sc_levels1);
-    }
-
-    I[j] = H_j_joint + H_j_target;
-    Ik[j] = Hk_j_joint + Hk_j_target;
-
-    TempAllocatorScope scope;
-    // copy
-    TempVector<int> counts_k_0(counts_0);
-    TempVector<int> counts_k_1(counts_1);
-    // Before trying to create bins : solution is one single bin from 0 to j.
-    memory_cuts_idx[j] = 0;
-    memory_cuts_pos[j] = 0;
-    // moving k iterator on possible cuts
-    for (int k = 0; k < j; ++k) {
-      int it_k = n_values[k];
       if (flag_weights)
-        eff_n_factors = (sum_weights[j] - sum_weights[k]) / (it_j - it_k);
+        cum_weights_per_bin[bin_idx] += weights[sample_idx];
+      if (   (sample_idx + 1 < n_samples)
+          && (data_ranked_target[data_ordered_target[sample_idx]] !=
+              data_ranked_target[data_ordered_target[sample_idx + 1]]) )
+        ++count_vals_uniq;
+      ++sample_idx;
+    }
+    sample_idx_breaks_per_cut[bin_idx] = sample_idx;
+  }
+  //
+  // To find the optimum cuts, we will iterate over an "accumulation" of bins
+  // starting from the 1st bin, then {1st+2nd} bin, then {1st+2nd+3rd} bin,
+  // ... until we consider all the bins.
+  // Inside the loop, starting from the {1st+2nd} iteration, the function will
+  // test if the cut between the 1st | 2nd bins is valuable then,
+  // on the next iteration {1st+2nd+3rd} bin, cuts between 1st | {2nd+3rd} bins
+  // and {1st=2nd} | 3rd bins will be tested and so on.
+  //
+  // Keep the result of each iteration
+  TempVector<double> I (n_cuts_max);
+  TempVector<double> Ik (n_cuts_max);
+  // Chain of indexes of the cuts (1..n_cuts_max) used to reconstruct the
+  // best cuts sequence starting from the end
+  TempVector<int> memory_cuts_idx (n_cuts_max);
+  // Positions of the cuts (1..n_samples)
+  TempVector<int> memory_cuts_pos (n_cuts_max);
+  // Store the counts for 1st bin, {1st+2nd} bin, {1st+2nd+3rd} bin, ...
+  TempVector<int> cum_counts_target (nb_factors_target);
+  TempVector<int> cum_counts_joint (nb_factors_joint);
+  //
+  // Stochastic complexity used for the simple MDL cost.
+  // Its value is 0.5 * number_of_other_levels where number of other levels is
+  // the product of number of unique observed levels of all variables except
+  // the variable being optimized.
+  //
+  double k_mdl = 0.5 * (nb_factors_joint_for_cplx - 1) * nb_factors_target;
 
-      std::transform(begin(counts_k_1), end(counts_k_1),
-          coarse_counts_target.row_begin(k), begin(counts_k_1),
-          std::minus<int>());
-      std::transform(begin(counts_k_0), end(counts_k_0),
-          coarse_counts_joint.row_begin(k), begin(counts_k_0),
-          std::minus<int>());
+  for (int cum_bin_idx = 0; cum_bin_idx < n_cuts_max; ++cum_bin_idx) {
+    // Compute info from the first bin to the "cum_bin_idx" bin
+    // (a sort of cumulative info for bins {0}, {0+1}, {0+1+2}, ...)
+    //
+    int max_sample_idx_of_cum_bin = sample_idx_breaks_per_cut[cum_bin_idx];
+    double weight_per_sample = cum_weights_per_bin[cum_bin_idx] / max_sample_idx_of_cum_bin;
+    //
+    // Compute the cumulative number of samples until the bin "cum_bin_idx"
+    // for the target and discretized joint variables. It is cumulative as
+    // it reuses the previous values of cum_counts_target at each iteration
+    //
+    std::transform (begin (cum_counts_target), end (cum_counts_target),
+        coarse_counts_target.row_begin (cum_bin_idx), begin (cum_counts_target),
+        std::plus<int>());
+    std::transform (begin (cum_counts_joint), end (cum_counts_joint),
+        coarse_counts_joint.row_begin (cum_bin_idx), begin (cum_counts_joint),
+        std::plus<int>());
+    //
+    // Compute joint entropy
+    //
+    double Hk_cum_bin_joint = 0, H_cum_bin_joint = 0;
+    for (int level = 0; level < nb_factors_joint; level++) {
+      int weighted_count = flag_weights
+                               ? int(weight_per_sample * cum_counts_joint[level] + 0.5)
+                               : cum_counts_joint[level];
+      Hk_cum_bin_joint += cache->getH(weighted_count);
+    }
+    H_cum_bin_joint = Hk_cum_bin_joint;
+    //
+    // Compute target entropy
+    //
+    double Hk_cum_bin_target = 0, H_cum_bin_target = 0;
+    for (int level = 0; level < nb_factors_target; level++) {
+      int weighted_count = flag_weights
+                               ? int(weight_per_sample * cum_counts_target[level] + 0.5)
+                               : cum_counts_target[level];
+      Hk_cum_bin_target -= cache->getH(weighted_count);
+      H_cum_bin_target -= cache->getH(weighted_count);
 
-      double Hk_k_joint{0}, H_k_joint{0};
-      for (int level = 0; level < r0; level++) {
+      if (cplx == 0 && cum_counts_target[level] > 0)
+        Hk_cum_bin_target -= k_mdl * cache->getLog(n_samples);
+      else if (cplx == 1)
+        Hk_cum_bin_target -= cache->getLogC(weighted_count, nb_factors_joint_for_cplx);
+    }
+    //
+    // Compute mutual info
+    //
+    I[cum_bin_idx] = H_cum_bin_joint + H_cum_bin_target;
+    Ik[cum_bin_idx] = Hk_cum_bin_joint + Hk_cum_bin_target;
+    //
+    // Evaluate mutual information for partitions of the bins:
+    //
+    // i.e.: if cum_bin_idx = 2, we just computed the total entropy and
+    // information of the group of bins {0+1+2}, and in previous iterations,
+    // we computed the best information for bins {0}, {0+1} and {1}. Here,
+    // we will determine if introducing a cut after index 0 or 1 is valuable.
+    // So we will evaluate if {0} | {1+2} or {0+1} | [2} contains more
+    // information than {0+1+2}. As we already computed the best information of
+    // bins {0} and {0+1}, we just need to compute entropy and information of
+    // the bins {1+2} and {2}.
+    //
+    TempAllocatorScope scope;
+    TempVector<int> cut_counts_joint (cum_counts_joint);    // copy
+    TempVector<int> cut_counts_target (cum_counts_target);  // copy
+    //
+    // Initialize the cuts index and positions. Before trying to find cuts,
+    // solution is one single bin from 0 to cum_bin_idx.
+    //
+    memory_cuts_idx[cum_bin_idx] = 0;
+    memory_cuts_pos[cum_bin_idx] = 0;
+    //
+    // Move cut_idx iterator on possible cuts
+    //
+    for (int cut_idx = 0; cut_idx < cum_bin_idx; ++cut_idx) {
+      int max_sample_idx_of_cut = sample_idx_breaks_per_cut[cut_idx];
+      if (flag_weights)
+        weight_per_sample = (cum_weights_per_bin[cum_bin_idx]
+                        - cum_weights_per_bin[cut_idx])
+                        / (max_sample_idx_of_cum_bin - max_sample_idx_of_cut);
+      //
+      // Compute the sum of the number of samples from the bin "cut_idx"
+      // to the bin "cum_bin_idx" for the target variable. It uses a
+      // substraction as we start from the cumulative sum and remove
+      // the first bin(s)
+      //
+      std::transform(begin(cut_counts_target), end(cut_counts_target),
+          coarse_counts_target.row_begin(cut_idx), begin(cut_counts_target),
+          std::minus<int>());
+      std::transform(begin(cut_counts_joint), end(cut_counts_joint),
+          coarse_counts_joint.row_begin(cut_idx), begin(cut_counts_joint),
+          std::minus<int>());
+      //
+      // Compute the entropy for a bin from cut_idx to cum_bin_idx
+      // i.e. : if cum_bin_idx = 3, we evaluated above the information of
+      // the large bin {0,1,2,3}. Now, we test the cuts, so if cut_idx = 0,
+      // we need to evaluate the information of {0}+{1,2,3}. Information of {0}
+      // has already been computed in a previous iteration. So here, we
+      // compute the information of the remaining part {1,2,3}
+      //
+      double Hk_cut_to_cum_joint = 0, H_cut_to_cum_joint = 0;
+      for (int level = 0; level < nb_factors_joint; level++) {
         int weighted_count = flag_weights
-                                 ? int(eff_n_factors * counts_k_0[level] + 0.5)
-                                 : counts_k_0[level];
-        Hk_k_joint += cache->getH(weighted_count);
+                                 ? int(weight_per_sample * cut_counts_joint[level] + 0.5)
+                                 : cut_counts_joint[level];
+        Hk_cut_to_cum_joint += cache->getH(weighted_count);
       }
-      H_k_joint = Hk_k_joint;
+      H_cut_to_cum_joint = Hk_cut_to_cum_joint;
 
-      double Hk_k_target{0}, H_k_target{0};
-      for (int level = 0; level < r1; level++) {
+      double Hk_cut_to_cum_target = 0, H_cut_to_cum_target = 0;
+      for (int level = 0; level < nb_factors_target; level++) {
         int weighted_count = flag_weights
-                                 ? int(eff_n_factors * counts_k_1[level] + 0.5)
-                                 : counts_k_1[level];
-        Hk_k_target -= cache->getH(weighted_count);
-        H_k_target -= cache->getH(weighted_count);
+                                 ? int(weight_per_sample * cut_counts_target[level] + 0.5)
+                                 : cut_counts_target[level];
+        Hk_cut_to_cum_target -= cache->getH(weighted_count);
+        H_cut_to_cum_target -= cache->getH(weighted_count);
 
-        if (cplx == 0 && counts_k_1[level] > 0)
-          Hk_k_target -= k_mdl * cache->getLog(n_samples);
+        if (cplx == 0 && cut_counts_target[level] > 0)
+          Hk_cut_to_cum_target -= k_mdl * cache->getLog(n_samples);
         else if (cplx == 1)
-          Hk_k_target -= cache->getLogC(weighted_count, sc_levels1);
+          Hk_cut_to_cum_target -= cache->getLogC(weighted_count, nb_factors_joint_for_cplx);
       }
-      // The information value for a bin fom idx k to j
-      double I_kj = H_k_joint + H_k_target;
-      double Ik_kj = Hk_k_joint + Hk_k_target;
+      //
+      // Compute the information value for a bin from cut_idx to cum_bin_idx
+      //
+      double I_cut_to_cum_bin = H_cut_to_cum_joint + H_cut_to_cum_target;
+      double Ik_cut_to_cum_bin = Hk_cut_to_cum_joint + Hk_cut_to_cum_target;
       if (cplx == 1) {
         // Combinatorial approximation
-        Ik_kj -=
-            cache->getLogChoose(n_cuts_max - 1, r1_prev - 1) / (r1_prev - 1);
+        Ik_cut_to_cum_bin -= cache->getLogChoose (n_cuts_max - 1,
+                                         nb_factors_target_prev - 1)
+                                         / (nb_factors_target_prev - 1);
       }
-
-      double Ik_newbin = Ik[k] + Ik_kj;  // [0.. cuts.. k-1] + [k j]
-      if ((Ik_newbin - Ik[j]) > kEpsilon) {
-        I[j] = I[k] + I_kj;  // max info in the interval [0 j]
-        Ik[j] = Ik_newbin;   // max info in the interval [0 j]
-        if (memory_cuts_idx[k + 1] == 0) {
-          memory_cuts_idx[j] = -k - 1;  // index  of the (last) optimal cut
-        } else {
-          memory_cuts_idx[j] = k + 1;  // index  of the (last) optimal cut
-        }
-        memory_cuts_pos[j] = it_k - 1;  // position  of the (last) optimal cut
+      //
+      // Compute the total information value if a cut is introduced:
+      //   Ik ( [0 -> (possible other cuts) -> cut_idx] ) (computed in a previous iteration)
+      // + Ik ( [cut_idx+1 -> cum_bin_idx] )              (computed just above)
+      //
+      double Ik_cum_bin_with_cut = Ik[cut_idx] + Ik_cut_to_cum_bin;
+      if ( (Ik_cum_bin_with_cut - Ik[cum_bin_idx]) > kEpsilon ) {
+        //
+        // Better information found, we store the new information value
+        // for the interval [0 cum_bin_idx] and memorize the cut
+        //
+        I[cum_bin_idx] = I[cut_idx] + I_cut_to_cum_bin;
+        Ik[cum_bin_idx] = Ik_cum_bin_with_cut;
+        //
+        // Index and position of the (last) optimal cut
+        //
+        if (memory_cuts_idx[cut_idx + 1] == 0)
+          memory_cuts_idx[cum_bin_idx] = -cut_idx - 1;
+        else
+          memory_cuts_idx[cum_bin_idx] = cut_idx + 1;
+        memory_cuts_pos[cum_bin_idx] = max_sample_idx_of_cut - 1;
       }
-    }  // inner loop on k
-  }    // outer loop on j
-  reconstructCutCoarse(memory_cuts_idx, memory_cuts_pos, n_samples, cut);
+    }  // inner loop on cut_idx
+  }    // outer loop on cum_bin_idx
+  reconstructCutCoarse (memory_cuts_idx, memory_cuts_pos, n_samples, cuts_target);
 }
 
+//------------------------------------------------------------------------------
+// computeIxy
+//------------------------------------------------------------------------------
 // Initialize Ik(x,y) with equal bin discretization
 // Repeat
 //   optimize on x Ik(x,y): Hx - Hxy - kmdl
 //   optimize on y Ik(x,y): Hy - Hxy - kmdl
 // Until convergence
+//------------------------------------------------------------------------------
+// Inputs:
+// - data: grid2d<int> (2 + nb_ui rows * nb_samples_not_NAs cols),
+//   ranked data with NA filtered out
+// - data_idx: grid2d<int> (2 + nb_ui rows * nb_samples_not_NAs cols),
+//   order of values in data
+// - is_continuous: vector<int>  (0=discrete, 1=continuous)
+//   is_continuous[0] corresponds to x, and is_continuous[1] to y
+// - var_idx: vector<int>, indexes of variables to process in data rows
+//   var_idx[0] corresponds to x, and var_idx[1] to y
+// - levels: Vector, number of unique values for each variable
+// - weights: Vector, samples weight
+// - flag_sample_weights: 1 if weights are used, 0 otherelse
+// - initbins: number of bins to start with, initialized with
+//   min (30, cubic root of nb samples rounded to nearest int)
+// - maxbins: maximum number of bins (initialized with the number of samples)
+// - cplx: int, 0 or 1
+// - negative_info: bool
+// - cache: point to shared cache
+// Outputs:
+// - cuts_info:
+//------------------------------------------------------------------------------
 InfoBlock computeIxy(const TempGrid2d<int>& data,
     const TempGrid2d<int>& data_idx, const TempVector<int>& is_continuous,
     const TempVector<int>& var_idx, const TempVector<int>& levels,
@@ -350,7 +608,8 @@ InfoBlock computeIxy(const TempGrid2d<int>& data,
     // Initialize cut, datafactors and r
     resetCutPoints(
         levels, is_continuous, var_idx, 0, 2, test_n_bins, n_samples, cut);
-    updateFactors(data_idx, cut, is_continuous, var_idx, 0, 2, datafactors, r);
+    updateFactors (data, data_idx, cut, is_continuous,
+                   var_idx, 0, 2, datafactors, r);
 
     TempAllocatorScope scope;
     rxy = setJointFactors(datafactors, r, TempVector<int>{0, 1}, xy_factors);
@@ -371,7 +630,8 @@ InfoBlock computeIxy(const TempGrid2d<int>& data,
   // Initialize cut, datafactors and r
   resetCutPoints(
       levels, is_continuous, var_idx, 0, 2, best_initbins, n_samples, cut);
-  updateFactors(data_idx, cut, is_continuous, var_idx, 0, 2, datafactors, r);
+  updateFactors (data, data_idx, cut, is_continuous,
+                 var_idx, 0, 2, datafactors, r);
 
   // Run dynamic optimization with the best initial conditions.
   int iter_max = save_cuts ? cuts_info->cutpoints.n_rows() : kMaxIter;
@@ -398,7 +658,8 @@ InfoBlock computeIxy(const TempGrid2d<int>& data,
           levels[var_idx[1]], weights, flag_sample_weights, maxbins, cache,
           cplx, cut.getRow(1));
     }
-    updateFactors(data_idx, cut, is_continuous, var_idx, 0, 2, datafactors, r);
+    updateFactors (data, data_idx, cut, is_continuous,
+                   var_idx, 0, 2, datafactors, r);
 
     if (save_cuts) {
       auto& cp = cuts_info->cutpoints;
@@ -508,8 +769,8 @@ InfoBlock computeIxyui(const TempGrid2d<int>& data,
     // Initialize factors, cut and r
     resetCutPoints(levels, is_continuous, var_idx, 0, n_nodes, test_n_bins,
         n_samples, cut);
-    updateFactors(
-        data_idx, cut, is_continuous, var_idx, 0, n_nodes, datafactors, r);
+    updateFactors (data, data_idx, cut, is_continuous,
+                   var_idx, 0, n_nodes, datafactors, r);
 
     setUyxJointFactors(datafactors, r, -1, uyxfactors, ruyx);
     r_temp.assign({r[1], ruyx[2], ruyx[3]});
@@ -530,7 +791,8 @@ InfoBlock computeIxyui(const TempGrid2d<int>& data,
   // Initialize X and Y cuts with best_initbins
   resetCutPoints(
       levels, is_continuous, var_idx, 0, 2, best_initbins, n_samples, cut);
-  updateFactors(data_idx, cut, is_continuous, var_idx, 0, 2, datafactors, r);
+  updateFactors (data, data_idx, cut, is_continuous,
+                 var_idx, 0, 2, datafactors, r);
   TempVector<int> r_old(r);  // n_levels in the previous iteration
 
   bool reuse_x_u_cuts = false;
@@ -554,8 +816,8 @@ InfoBlock computeIxyui(const TempGrid2d<int>& data,
           levels, is_continuous, var_idx, 2, n_nodes, u_initbins,
           n_samples, cut);
     }
-    updateFactors(
-        data_idx, cut, is_continuous, var_idx, 2, n_nodes, datafactors, r);
+    updateFactors (data, data_idx, cut, is_continuous,
+                   var_idx, 2, n_nodes, datafactors, r);
     copy(begin(r) + 2, end(r), begin(r_old) + 2);
     for (int count = 0; (count < kMaxIterOnU) && !reuse_y_u_cuts; ++count) {
       for (int l = 2; l < n_nodes; ++l) {
@@ -574,8 +836,8 @@ InfoBlock computeIxyui(const TempGrid2d<int>& data,
             levels[var_idx[l]], weights, flag_sample_weights, maxbins, cache,
             cplx, cut.getRow(l));
       }  // for all Uis
-      updateFactors(
-          data_idx, cut, is_continuous, var_idx, 2, n_nodes, datafactors, r);
+      updateFactors (data, data_idx, cut, is_continuous,
+                     var_idx, 2, n_nodes, datafactors, r);
       copy(begin(r) + 2, end(r), begin(r_old) + 2);
 
       if (n_ui == 1) break;
@@ -609,7 +871,7 @@ InfoBlock computeIxyui(const TempGrid2d<int>& data,
 
     // optimize I(x;yu) over y and u
     // Either reset cutpoints or re-use I(x;u) cutpoints
-    if(reuse_x_u_cuts){ 
+    if(reuse_x_u_cuts){
       for(int l = 2; l < n_nodes; ++l){
         copy(cut_x_u.row_begin(l), cut_x_u.row_end(l), cut.row_begin(l));
       }
@@ -618,8 +880,8 @@ InfoBlock computeIxyui(const TempGrid2d<int>& data,
           levels, is_continuous, var_idx, 2, n_nodes, u_initbins,
           n_samples, cut);
     }
-    updateFactors(
-        data_idx, cut, is_continuous, var_idx, 2, n_nodes, datafactors, r);
+    updateFactors (data, data_idx, cut, is_continuous,
+                   var_idx, 2, n_nodes, datafactors, r);
     copy(begin(r) + 2, end(r), begin(r_old) + 2);
     for (int count = 0; (count < kMaxIterOnU) && !reuse_x_u_cuts; ++count) {
       for (int l = 2; l < n_nodes; ++l) {
@@ -638,8 +900,8 @@ InfoBlock computeIxyui(const TempGrid2d<int>& data,
             levels[var_idx[l]], weights, flag_sample_weights, maxbins, cache,
             cplx, cut.getRow(l));
       }  // for all Uis
-      updateFactors(
-          data_idx, cut, is_continuous, var_idx, 2, n_nodes, datafactors, r);
+      updateFactors (data, data_idx, cut, is_continuous,
+                     var_idx, 2, n_nodes, datafactors, r);
       copy(begin(r) + 2, end(r), begin(r_old) + 2);
 
       if (n_ui == 1) break;
@@ -674,7 +936,7 @@ InfoBlock computeIxyui(const TempGrid2d<int>& data,
 
     // optimize I(x;u) over u
     // Either reset cutpoints or re-use I(y;u) cutpoints
-    if(reuse_x_u_cuts){ 
+    if(reuse_x_u_cuts){
       for(int l = 2; l < n_nodes; ++l){
         copy(cut_x_u.row_begin(l), cut_x_u.row_end(l), cut.row_begin(l));
       }
@@ -683,8 +945,8 @@ InfoBlock computeIxyui(const TempGrid2d<int>& data,
           levels, is_continuous, var_idx, 2, n_nodes, u_initbins,
           n_samples, cut);
     }
-    updateFactors(
-        data_idx, cut, is_continuous, var_idx, 2, n_nodes, datafactors, r);
+    updateFactors (data, data_idx, cut, is_continuous,
+                   var_idx, 2, n_nodes, datafactors, r);
     copy(begin(r) + 2, end(r), begin(r_old) + 2);
     for (int count = 0; (count < kMaxIterOnU) && !reuse_x_u_cuts; ++count) {
       for (int l = 2; l < n_nodes; ++l) {
@@ -703,8 +965,8 @@ InfoBlock computeIxyui(const TempGrid2d<int>& data,
             levels[var_idx[l]], weights, flag_sample_weights, maxbins, cache,
             cplx, cut.getRow(l));
       }  // for all Uis
-      updateFactors(
-          data_idx, cut, is_continuous, var_idx, 2, n_nodes, datafactors, r);
+      updateFactors (data, data_idx, cut, is_continuous,
+                     var_idx, 2, n_nodes, datafactors, r);
       copy(begin(r) + 2, end(r), begin(r_old) + 2);
 
       if (n_ui == 1) break;
@@ -732,8 +994,8 @@ InfoBlock computeIxyui(const TempGrid2d<int>& data,
           levels, is_continuous, var_idx, 2, n_nodes, u_initbins,
           n_samples, cut);
     }
-    updateFactors(
-        data_idx, cut, is_continuous, var_idx, 2, n_nodes, datafactors, r);
+    updateFactors (data, data_idx, cut, is_continuous,
+                   var_idx, 2, n_nodes, datafactors, r);
     copy(begin(r) + 2, end(r), begin(r_old) + 2);
     for (int count = 0; (count < kMaxIterOnU) && !reuse_y_u_cuts; ++count) {
       for (int l = 2; l < n_nodes; ++l) {
@@ -751,8 +1013,8 @@ InfoBlock computeIxyui(const TempGrid2d<int>& data,
             levels[var_idx[l]], weights, flag_sample_weights, maxbins, cache,
             cplx, cut.getRow(l));
       }  // for all Uis
-      updateFactors(
-          data_idx, cut, is_continuous, var_idx, 2, n_nodes, datafactors, r);
+      updateFactors (data, data_idx, cut, is_continuous,
+                     var_idx, 2, n_nodes, datafactors, r);
       copy(begin(r) + 2, end(r), begin(r_old) + 2);
 
       if (n_ui == 1) break;
@@ -770,7 +1032,8 @@ InfoBlock computeIxyui(const TempGrid2d<int>& data,
     double Ik_y_u = res_temp.I - res_temp.k;
 
     // End of iteration: update X and Y cuts
-    updateFactors(data_idx, cut, is_continuous, var_idx, 0, 2, datafactors, r);
+    updateFactors (data, data_idx, cut, is_continuous,
+                   var_idx, 0, 2, datafactors, r);
     copy(begin(r), end(r), begin(r_old));
 
     if (save_cuts) {
@@ -782,7 +1045,7 @@ InfoBlock computeIxyui(const TempGrid2d<int>& data,
     // Compute I(X;Y|U)
     double part_one = I_x_yu - I_x_u;
     double part_two = I_y_xu - I_y_u;
-    // Either sum may be negative when we can't find U bins on I(X;YU) (or 
+    // Either sum may be negative when we can't find U bins on I(X;YU) (or
     //I(Y;XY)) that are as good as those found on I(X;U) (I(Y;U)). If that is
     //the case, we reuse the better U bins for all terms for the next iteration.
     reuse_x_u_cuts = part_one < kPrecision || (reuse_x_u_cuts && (part_two < kPrecision));
