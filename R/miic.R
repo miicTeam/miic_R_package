@@ -43,7 +43,7 @@
 #' @param black_box [a data frame]
 #' An optional E*2 data frame containing E pairs of variables that will be considered
 #' as independent during the network reconstruction. In practice, these edges will not
-#' be included in the skeleton initialization and cannot be part of the final result. 
+#' be included in the skeleton initialization and cannot be part of the final result.
 #' Variable names must correspond to the \emph{input_data} data frame.
 #'
 #' @param n_eff [a positive integer]
@@ -359,6 +359,7 @@ miic <- function(input_data,
                  consensus_threshold = 0.8,
                  negative_info = FALSE,
                  verbose = FALSE) {
+  # This branch is only to rerun R chechs on master
   res <- NULL
 
   if (is.null(input_data)) {
