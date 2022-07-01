@@ -8,10 +8,6 @@
 #ifndef MIIC_LINEAR_ALLOCATOR_H
 #define MIIC_LINEAR_ALLOCATOR_H
 
-#ifdef _OPENMP
-#include <omp.h>
-#endif
-
 #include <cassert>
 #include <cstdlib>  // std::malloc, std::free, std::size_t
 #include <memory>   // std::unique_ptr
@@ -64,10 +60,7 @@ class LinearAllocator {
   size_t m_free_space_;
 };
 
-extern LinearAllocator* li_alloc_ptr;
-#ifdef _OPENMP
-#pragma omp threadprivate(li_alloc_ptr)
-#endif
+extern thread_local std::unique_ptr<LinearAllocator> li_alloc_ptr;
 
 template <typename T>
 struct TempStdAllocator {

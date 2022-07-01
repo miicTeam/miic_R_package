@@ -37,7 +37,7 @@ List mydiscretizeMutual(List input_data, List arg_list) {
   size_t li_alloc_size = getLinearAllocatorSize(environment.n_samples,
       environment.n_nodes, maxbins, environment.initbins,
       environment.is_continuous, environment.levels);
-  li_alloc_ptr = new LinearAllocator(li_alloc_size);
+  li_alloc_ptr = std::make_unique<LinearAllocator>(li_alloc_size);
 
   vector<int> ui_list(environment.n_nodes - 2);
   std::iota(begin(ui_list), end(ui_list), 2);
@@ -116,6 +116,5 @@ List miicRGetInfo3Point(List input_data, List arg_list) {
       _["I2"]            = res.Ixy_ui,
       _["I2k"]           = res.Ixy_ui - res.kxy_ui);
 
-  delete li_alloc_ptr;
   return result;
 }

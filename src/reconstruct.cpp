@@ -45,7 +45,7 @@ List reconstruct(List input_data, List arg_list) {
 #ifdef _OPENMP
 #pragma omp parallel  // each thread has its own instance of li_alloc_ptr
 #endif
-  li_alloc_ptr = new LinearAllocator(li_alloc_size);
+  li_alloc_ptr = std::make_unique<LinearAllocator>(li_alloc_size);
 
   // Start reconstruction
   auto lap_start = getLapStartTime();
@@ -133,6 +133,5 @@ List reconstruct(List input_data, List arg_list) {
         cycle_tracker.getProbaAdjMatrices(size), "proba_adj_matrices");
     result.push_back(is_consistent, "is_consistent");
   }
-  delete li_alloc_ptr;
   return result;
 }
