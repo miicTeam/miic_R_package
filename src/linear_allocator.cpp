@@ -20,7 +20,7 @@ void* align(size_t alignment, size_t size, void*& ptr, size_t& space) {
   return r;
 }
 
-LinearAllocator* li_alloc_ptr = nullptr;
+thread_local std::unique_ptr<LinearAllocator> li_alloc_ptr;
 }  // namespace detail
 }  // namespace utility
 }  // namespace miic
