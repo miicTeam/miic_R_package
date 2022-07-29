@@ -43,7 +43,7 @@
 #' @param black_box [a data frame]
 #' An optional E*2 data frame containing E pairs of variables that will be considered
 #' as independent during the network reconstruction. In practice, these edges will not
-#' be included in the skeleton initialization and cannot be part of the final result. 
+#' be included in the skeleton initialization and cannot be part of the final result.
 #' Variable names must correspond to the \emph{input_data} data frame.
 #'
 #' @param n_eff [a positive integer]
@@ -629,6 +629,8 @@ miic <- function(input_data,
 #' The graph object returned by \code{\link{miic}}.
 #' @param method A string representing the plotting method. Default to "igraph".
 #' Currently only "igraph" is supported.
+#' @param pcor_palette Optional. The color palette used to represent the partial
+#' correlations (the color of the edges). See \code{\link{miic.export}} for details.
 #' @param \dots Additional plotting parameters. See the corresponding plot function
 #' for the complete list.
 #' For igraph, see \code{\link[igraph]{igraph.plotting}}.
@@ -639,13 +641,14 @@ miic <- function(input_data,
 #' \code{\link{getIgraph}} for igraph export,
 #' \code{\link[igraph]{igraph.plotting}}
 #'
-plot.miic = function(x, method = 'igraph', ...) {
+plot.miic = function(x, method = 'igraph', pcor_palette = NULL, ...) {
   if (class(x) != "miic"){
     stop("Not a miic object.")
   }
   if (method == 'igraph'){
     if (base::requireNamespace("igraph", quietly = TRUE)) {
-      igraph::plot.igraph(miic.export(x, 'igraph'), ...)
+      igraph_obj = miic.export (x, 'igraph', pcor_palette = pcor_palette)
+      igraph::plot.igraph (igraph_obj, ...)
     } else {
       stop("Package 'igraph' is required.")
     }

@@ -4,7 +4,7 @@
 \alias{plot.miic}
 \title{Basic plot function of a miic network inference result}
 \usage{
-\method{plot}{miic}(x, method = "igraph", ...)
+\method{plot}{miic}(x, method = "igraph", pcor_palette = NULL, ...)
 }
 \arguments{
 \item{x}{[a miic graph object]
@@ -12,6 +12,9 @@ The graph object returned by \code{\link{miic}}.}
 
 \item{method}{A string representing the plotting method. Default to "igraph".
 Currently only "igraph" is supported.}
+
+\item{pcor_palette}{Optional. The color palette used to represent the partial
+correlations (the color of the edges). See \code{\link{miic.export}} for details.}
 
 \item{\dots}{Additional plotting parameters. See the corresponding plot function
 for the complete list.
