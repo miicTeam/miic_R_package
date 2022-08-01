@@ -64,7 +64,7 @@ computing performance after the run.}
 \item{black_box}{[a data frame]
 An optional E*2 data frame containing E pairs of variables that will be considered
 as independent during the network reconstruction. In practice, these edges will not
-be included in the skeleton initialization and cannot be part of the final result. 
+be included in the skeleton initialization and cannot be part of the final result.
 Variable names must correspond to the \emph{input_data} data frame.}
 
 \item{n_threads}{[a positive integer]

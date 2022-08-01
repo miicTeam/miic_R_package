@@ -4,7 +4,7 @@
 \alias{miic.export}
 \title{Export miic result to different plotting methods}
 \usage{
-miic.export(miic.res, method = NULL)
+miic.export(miic.res, method = NULL, pcor_palette = NULL)
 }
 \arguments{
 \item{miic.res}{[a miic graph object]
@@ -12,6 +12,11 @@ The graph object returned by the miic execution.}
 
 \item{method}{A string representing the plotting method.
 Currently only "igraph" is supported.}
+
+\item{pcor_palette}{The color palette used to represent the partial correlations
+(the color of the edges). The palette must be able to handle 201 shades
+to cover the correlation range from -100 to +100. The default palette is
+grDevices::colorRampPalette(c("blue", "darkgrey", "red").}
 }
 \value{
 A graph object adapted to the method.

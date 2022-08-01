@@ -10,6 +10,10 @@
 #' The graph object returned by the miic execution.
 #' @param method A string representing the plotting method.
 #' Currently only "igraph" is supported.
+#' @param pcor_palette The color palette used to represent the partial correlations
+#' (the color of the edges). The palette must be able to handle 201 shades
+#' to cover the correlation range from -100 to +100. The default palette is
+#' grDevices::colorRampPalette(c("blue", "darkgrey", "red").
 #'
 #' @export
 #'
@@ -46,7 +50,7 @@
 #' }
 #'
 
-miic.export <- function(miic.res, method = NULL) {
+miic.export <- function(miic.res, method = NULL, pcor_palette = NULL) {
   if (is.null(miic.res$all.edges.summary)) {
     stop("The inferred network does not exist")
   }
@@ -54,7 +58,7 @@ miic.export <- function(miic.res, method = NULL) {
     stop("Plotting method is required")
   }
   if (method == "igraph") {
-    return(getIgraph(miic.res))
+    return(getIgraph(miic.res, pcor_palette = pcor_palette))
   } else {
     stop("Method not supported")
   }
@@ -76,6 +80,10 @@ miic.export <- function(miic.res, method = NULL) {
 #'
 #' @param miic.res [a miic graph object]
 #' The graph object returned by the miic execution.
+#' @param pcor_palette The color palette used to represent the partial correlations
+#' (the color of the edges). The palette must be able to handle 201 shades
+#' to cover the correlation range from -100 to +100. The default palette is
+#' grDevices::colorRampPalette(c("blue", "darkgrey", "red").
 #'
 #' @return An igraph graph object.
 #'
@@ -86,7 +94,7 @@ miic.export <- function(miic.res, method = NULL) {
 #'
 #'
 
-getIgraph <- function(miic.res) {
+getIgraph <- function(miic.res, pcor_palette = NULL) {
   if (is.null(miic.res$all.edges.summary)) {
     stop("The inferred network does not exist.")
   }
@@ -111,7 +119,7 @@ getIgraph <- function(miic.res) {
       }
     }
   }
-  
+
   # Create igraph object from summary
   ig_graph = igraph::graph_from_data_frame(summary,
                                            vertices=colnames(miic.res$adj_matrix))
@@ -125,7 +133,7 @@ getIgraph <- function(miic.res) {
     # When no edge, returns immediately the graph, do not define edges visuals
     return (ig_graph)
   }
-  
+
   # Set correct orientations
   igraph::E(ig_graph)$arrow.mode = rep(0, igraph::gsize(ig_graph))
   igraph::E(ig_graph)$arrow.mode[igraph::E(ig_graph)$infOrt == 2]  = 2
@@ -139,16 +147,18 @@ getIgraph <- function(miic.res) {
          min_width)
   igraph::E(ig_graph)$arrow.size <- scales::rescale(igraph::E(ig_graph)$width, to=c(0.2,1))
 
-  # Negative pcors are blue, null is dark grey and positive are red
+  # By default, negative pcors are blue, null is dark grey and positive are red
+  if ( is.null(pcor_palette) )
+    pcor_palette = grDevices::colorRampPalette(c("blue", "darkgrey", "red"))
+
   igraph::E(ig_graph)$color <- "darkgray"
-  pcor_palette = grDevices::colorRampPalette(c("blue", "darkgrey", "red"))
   edge_colors_indices = sapply(
     igraph::E(ig_graph)$partial_correlation,
     function(pcor) {
-      ifelse(is.na(pcor), 100, abs(round(pcor * 100)) + 100 * (pcor > 0))
+      ifelse (is.na (pcor), 101, round (pcor * 100) + 101)
     }
   )
-  igraph::E(ig_graph)$color <- pcor_palette(200)[edge_colors_indices]
+  igraph::E(ig_graph)$color <- pcor_palette(201)[edge_colors_indices]
 
   return(ig_graph)
 }
