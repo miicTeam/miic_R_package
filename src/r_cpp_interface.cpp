@@ -84,6 +84,28 @@ void setEnvironmentFromR(const Rcpp::List& input_data,
   } else {
     environment.is_contextual.resize(n_nodes, 0);
   }
+  //
+  // Variables considered as consequence only
+  //
+  if (arg_list.containsElementNamed("is_consequence")) {
+    environment.is_consequence = as<vector<int>>(arg_list["is_consequence"]);
+  } else {
+    environment.is_consequence.resize(n_nodes, 0);
+  }
+  environment.any_consequence = std::any_of (environment.is_consequence.begin(),
+    environment.is_consequence.end(), [](bool v) { return v; });
+  //
+  // Remove edges between consequence variables
+  //
+  if (environment.any_consequence) {
+    for (int i = 0; i < n_nodes; i++)
+      for (int j = 0; j < n_nodes; j++)
+        if (environment.is_consequence[i] && environment.is_consequence[j]) {
+          environment.edges(i, j).status = 0;
+          environment.edges(i, j).status_init = 0;
+          environment.edges(i, j).status_prev = 0;
+        }
+  }
 
   if (arg_list.containsElementNamed("sample_weights"))
     environment.sample_weights = as<vector<double>>(arg_list["sample_weights"]);

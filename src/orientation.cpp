@@ -42,6 +42,60 @@ void updateAdj(Environment& env, int x, int y, double y2x, double x2y) {
     env.edges(y, x).status = 2;
 }
 
+//-----------------------------------------------------------------------------
+// completeOrientationUsingConsequence
+//-----------------------------------------------------------------------------
+// Description: Complete the orientations using the consequence information
+// for edges that were not previously oriented
+//
+// Detail: completeOrientationUsingConsequence will look in the list of connected
+// edges the ones that have not been oriented using the unshielded triples and
+// have at least one variable tagged as consequence.
+// Edges matching these criteria will be oriented using consequence information:
+// from the non consequence variable to the consequence variable
+//
+// Params:
+// - Environment&: the environment structure
+// - std::vector<Triple>& : list of unshielded triples
+//--------------------------------------------------------------------------------
+void completeOrientationUsingConsequence (Environment& environment,
+                                   const std::vector<Triple>& triples) {
+  const auto& edge_list = environment.connected_list;
+  for (auto iter0 = begin(edge_list); iter0 != end(edge_list); ++iter0) {
+    int posX = iter0->X, posY = iter0->Y;
+    //
+    // If the edge has no variable tagged as consequence, nothing to do
+    //
+    if ( (!environment.is_consequence[posX]) &&
+         (!environment.is_consequence[posY]) )
+      continue;
+    //
+    // If edge is in triple, head/tail probas have already been computed
+    // and applied in adjacency matrix
+    //
+    bool is_in_triple = false;
+    for (unsigned int i = 0; i < triples.size() ; i++)
+      if (   ( (triples[i][0] == posX) && (triples[i][1] == posY) )
+          || ( (triples[i][0] == posY) && (triples[i][1] == posX) )
+          || ( (triples[i][1] == posX) && (triples[i][2] == posY) )
+          || ( (triples[i][1] == posY) && (triples[i][2] == posX) ) ) {
+        is_in_triple = true;
+        break;
+      }
+    if (is_in_triple)
+      continue;
+    //
+    // The edge is not in open triples, has a consequence variable
+    // => we need to orient it using the consequence information
+    // edge orientation is other var -> consequence only var
+    //
+    if (environment.is_consequence[posY])
+      updateAdj(environment, posX, posY, 0, 1);
+    else
+      updateAdj(environment, posX, posY, 1, 0);
+  }
+}
+
 }  // anonymous namespace
 
 vector<vector<string>> orientationProbability(Environment& environment) {
@@ -63,8 +117,11 @@ vector<vector<string>> orientationProbability(Environment& environment) {
         triples.emplace_back(Triple{posX, posY, posY1});
     }
   }
-  if (triples.empty())
+  if (triples.empty()) {
+    if (environment.any_consequence)
+      completeOrientationUsingConsequence (environment, triples);
     return vector<vector<string>>();
+  }
 
   // Compute the 3-point mutual info (N * I'(X;Y;Z|{ui})) for each triple
   vector<double> I3_list(triples.size());
@@ -82,8 +139,8 @@ vector<vector<string>> orientationProbability(Environment& environment) {
   }
 
   // Compute the arrowhead probability of each edge endpoint
-  vector<ProbaArray> probas_list =
-      getOriProbasList(triples, I3_list, environment.is_contextual,
+  vector<ProbaArray> probas_list = getOriProbasList(triples, I3_list,
+          environment.is_contextual, environment.is_consequence,
           environment.latent_orientation, environment.degenerate,
           environment.propagation, environment.half_v_structure);
   // update probas_list for possible inconsistencies
@@ -125,6 +182,13 @@ vector<vector<string>> orientationProbability(Environment& environment) {
     updateAdj(environment, triple[0], triple[1], probas[0], probas[1]);
     updateAdj(environment, triple[1], triple[2], probas[2], probas[3]);
   }
+  //
+  // If we have consequence variables, we look if we can orient some extra
+  // edges not part of an open triple by using the consequence information
+  //
+  if (environment.any_consequence)
+    completeOrientationUsingConsequence (environment, triples);
+
   // Write output
   vector<vector<string>> orientations{{"source1", "p1", "p2", "target", "p3",
       "p4", "source2", "NI3", "Conflict"}};

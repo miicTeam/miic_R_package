@@ -16,6 +16,7 @@ namespace {
 
 constexpr int kRemovalMark = -1;
 constexpr double kScoreLowest = std::numeric_limits<double>::lowest();
+constexpr double kScoreMax = std::numeric_limits<double>::max();
 
 bool isHead(double score) { return score > 0; }  // proba > 0.5
 bool isTail(double score) { return score < 0; }  // proba < 0.5
@@ -112,7 +113,8 @@ void induceScore(
 // return vector<ProbaArray> Each ProbaArray is bound to an unshielded Triple
 vector<ProbaArray> getOriProbasList(const vector<Triple>& triples,
     const vector<double>& I3_list, const vector<int>& is_contextual,
-    bool latent, bool degenerate, bool propagation, bool half_v_structure) {
+    const vector<int>& is_consequence, bool latent, bool degenerate,
+    bool propagation, bool half_v_structure) {
   // A score is a quantity almost proportional to abs(I3). All probabilities can
   // be expressed in the form of 1 / (1 + exp(-score)), and they suffer from
   // loss of numerical precision for high score due to the exponential term.
@@ -158,6 +160,28 @@ vector<ProbaArray> getOriProbasList(const vector<Triple>& triples,
     if (is_contextual[Y]) {  // Z *-- Y, Y cannot be the child of Z
       scores[i][3] = ProbaScore{kScoreLowest, true};
     }
+    //
+    // Initialize scores of triples involving consequence variables
+    //
+    if (is_consequence[X]) {  // X <-* Z, X cannot be the parent of Z
+      scores[i][0] = ProbaScore{kScoreMax, true};
+      if (!latent)
+        scores[i][1] = ProbaScore{kScoreLowest, true};
+    }
+    if (is_consequence[Y]) {  // Z *-> Y, Y cannot be the parent of Z
+      scores[i][3] = ProbaScore{kScoreMax, true};
+      if (!latent)
+        scores[i][2] = ProbaScore{kScoreLowest, true};
+    }
+    if (is_consequence[Z]) {  // X *-> Z <-* Y, Z cannot be the parent of X or Y
+      scores[i][1] = ProbaScore{kScoreMax, true};
+      scores[i][2] = ProbaScore{kScoreMax, true};
+      if (!latent) {
+        scores[i][0] = ProbaScore{kScoreLowest, true};
+        scores[i][3] = ProbaScore{kScoreLowest, true};
+      }
+    }
+
     // Try to induce score with already (manually) settled arrowhead
     if (isHead(scores[i][1].value) || isHead(scores[i][2].value))
       induceScore(latent, propagation, I3_list[i], scores[i], rank[i]);
