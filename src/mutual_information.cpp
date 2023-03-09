@@ -2,6 +2,7 @@
 
 #include <algorithm>  // std::copy
 #include <numeric>    // std::iota
+#include <Rcpp.h>     // Rcpp::stop
 
 namespace miic {
 namespace computation {
@@ -120,13 +121,15 @@ int fillHashList(const structure::TempGrid2d<int>& data,
     return r0 * r_list[u1];
   }
   utility::TempAllocatorScope scope;
-
-  structure::TempVector<int> r_joint_list(n_ui);
+  structure::TempVector<int> r_joint_list(r_list.size(), 0);
   int n_levels_product{1};
   for (const auto u : ui_list) {
     r_joint_list[u] = n_levels_product;
     n_levels_product *= r_list[u];
+    if (n_levels_product < 0)
+      Rcpp::stop ("Maximum number of levels for joint factors exceeded.\nPlease raise an issue on the MIIC github.\n");
   }
+
   for (int i = 0; i < n_samples; ++i) {
     for (const auto u : ui_list)
       hash_list[i] += data(u, i) * r_joint_list[u];

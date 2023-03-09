@@ -621,8 +621,12 @@ bool filterNA(int X, int Y, int Z, const vector<int>& ui_list,
   return flag_sample_weights;
 }
 
+//------------------------------------------------------------------------------
 // Calculate maximal required memory in bytes for linear allocator
-// DO NOT MODIFY unless you know what you are doing
+//------------------------------------------------------------------------------
+// This function MUST be updated according to the TempString, TempVector or
+// TempGrid2d used
+//------------------------------------------------------------------------------
 size_t getLinearAllocatorSize(int n_samples, int n_nodes, int maxbins,
     int initbins, const vector<int>& is_continuous, const vector<int>& levels) {
   using std::max;
@@ -634,31 +638,110 @@ size_t getLinearAllocatorSize(int n_samples, int n_nodes, int maxbins,
     if (!is_continuous[i] && levels[i] > max_level) max_level = levels[i];
   }
   int max_all = max(max_level, n_samples);
-  size_t m_order = s_int * (9 * n_samples + 2 * n_nodes);
-  size_t m_discrete =
-      s_int * (2 * n_samples + 2 * n_nodes) +
-      max(s_int * (n_samples + n_nodes + (4 + max_level) * max_level +
-                      s_double * max_level),
-          m_order);
-  size_t m_discretize = s_int * (3 * maxbins + (maxbins * 2 + 4) * max_all) +
-                        s_double * 3 * maxbins;
-  size_t m_set_factors = s_int * (3 * n_samples + 1 * n_nodes + 2) + m_order;
-  size_t m_mutual_info = s_double * 3 * max_all;
-  size_t m_continuous = s_double * 2 * /*STEPMAX*/ 50;
-  m_continuous +=
-      s_int * ((n_samples + 3 + maxbins) * n_nodes + 4 * n_samples + 7);
+  //
+  // For part of getDataOrder after 1st TempAllocatorScope + fillHashList
+  // NB: getDataOrder part before 1st TempAllocatorScope seems to be in
+  // m_discrete or m_set_factors
+  //
+  size_t m_order = s_int * (
+    + n_nodes         // getDataOrder: TempVector<int> temp_var_idx ; temp_var_idx.reserve(n_vars)
+    + n_samples       // getDataOrder: TempVector<int> temp_hash_list(n_samples, 0)
+    + n_nodes         // fillHashList: TempVector<int> r_joint_list(r_list.size(), 0);
+    + 8 * n_samples); // getDataOrder: TempVector<int> counts(r_joint) with r_joint <= 8 * n_samples
+  //
+  // ?
+  //
+  size_t m_discrete_unmatch = s_int * (n_samples + n_nodes + (4 + max_level) * max_level +
+                      s_double * max_level);
+  //
+  // computeCondMutualInfoDiscrete
+  //
+  size_t m_discrete = s_int * (
+      n_nodes   // computeCondMutualInfoDiscrete: TempVector<int> ui_list(begin(var_idx) + 2, end(var_idx));
+    + n_samples // getDataOrder: TempVector<int> order(n_samples)
+    + n_samples // getDataOrder: TempVector<int> new_order(order)
+    + n_nodes)  // computeCondMutualInfoDiscrete: TempVector<int> hash_u(n_samples, 0)
+    + max (m_discrete_unmatch, m_order);
+  //
+  // For optimizeCutPoints function
+  //
+  size_t m_discretize = s_int * (
+      maxbins             // sample_idx_breaks_per_cut (n_cuts_max)
+    + maxbins * max_all   // coarse_counts_target (n_cuts_max, nb_factors_target, 0)
+    + maxbins * max_all   // coarse_counts_joint (n_cuts_max, nb_factors_joint, 0)
+    + maxbins             // memory_cuts_idx (n_cuts_max)
+    + maxbins             // memory_cuts_pos (n_cuts_max)
+    + max_all             // cum_counts_target (nb_factors_target)
+    + max_all             // cum_counts_joint (nb_factors_joint)
+    + max_all             // cut_counts_joint (cum_counts_joint)    // copy
+    + max_all)            // cut_counts_target (cum_counts_target)  // copy
+    + s_double * maxbins  // cum_weights_per_bin (n_cuts_max, 0);
+    + s_double * maxbins  // I (n_cuts_max);
+    + s_double * maxbins; // Ik (n_cuts_max);
+  //
+  // setUyxJointFactors, setJointFactors and part of getDataOrder
+  //
+  size_t m_set_factors = s_int * (
+    + n_nodes    // setUyxJointFactors: TempVector<int> ui_list; ui_list.reserve(n_ui)
+    + n_samples  // setJointFactors: TempVector<int> hash_u(n_samples, 0);
+    + n_nodes    // previously missing ? fillHashList: TempVector<int> r_joint_list(r_list.size(), 0);
+    // setJointFactors TempVector<int> counts(level_product) is not counted
+    // likely because the alternative condition calling getDataOrder includes a
+    // bigger or egal structure TempVector<int> counts(r_joint) stored in m_order
+    + n_samples  // getDataOrder: TempVector<int> order(n_samples)
+    + n_samples  // getDataOrder: TempVector<int> new_order(order)
+    + 2)         // setUyxJointFactors: TempVector<int> var_idx{1, 0};
+    + m_order;
+  //
+  // For computeMI function
+  //
+  size_t m_mutual_info = s_double * max_all  // TempVector<double> nx(rux[0])
+                       + s_double * max_all  // TempVector<double> nu(rux[1])
+                       + s_double * max_all; // TempVector<double> nux(rux[2])
+  //
+  // For computeInfo3PointAndScore and computeIxyui function:
+  //
+  size_t m_continuous = s_int * (
+    + n_nodes             // possibly computeInfo3PointAndScore:
+                          // TempVector<int> var_idx_t(begin(var_idx), begin(var_idx) + n_ui + 2);
+    + n_samples * n_nodes // computeIxyui: TempGrid2d<int> datafactors (n_nodes, n_samples)
+    + maxbins * n_nodes   // computeIxyui: TempGrid2d<int> cut (n_nodes, maxbins)
+    + maxbins * n_nodes   // computeIxyui: TempGrid2d<int> cut_y_u (n_nodes, maxbins)
+    + maxbins * n_nodes   // computeIxyui: TempGrid2d<int> cut_x_u (n_nodes, maxbins);
+    + n_nodes             // computeIxyui: TempVector<int> r (n_nodes)
+    + n_nodes             // computeIxyui: TempVector<int> r_old (r)
+    + 4 * n_samples       // computeIxyui: TempGrid2d<int> uyxfactors (4, n_samples)
+    + 4                   // computeIxyui: TempVector<int> ruyx (4)
+    + 3)                  // computeIxyui: TempVector<int> r_temp (3)
+    + s_double * 50       // computeIxyui: TempVector<double> I_list  (iter_max), NB: 50=STEPMAX
+    + s_double * 50;      // computeIxyui: TempVector<double> Ik_list (iter_max)
+
   m_continuous += max(max(m_discretize, m_set_factors), m_mutual_info);
+
   size_t m_computation = m_discrete;
   if (!all_discrete) m_computation = max(m_discrete, m_continuous);
-  size_t m_get_info =
-      s_int * (2 * n_samples + 3 * n_nodes + 2 * n_samples * n_nodes) +
-      s_double * n_samples;
+  //
+  // For getCondMutualInfo function:
+  //
+  size_t m_get_info = s_int * (
+      n_samples             // TempVector<int> sample_is_not_NA (environment.n_samples, 1)
+    + n_samples             // TempVector<int> na_count (environment.n_samples, 0)
+    + n_samples * n_nodes   // TempGrid2d<int> data_red (n_ui + 2, n_samples_non_na)
+    + n_samples * n_nodes   // TempGrid2d<int> data_idx_red (n_ui + 2, n_samples_non_na)
+    + n_nodes               // TempVector<int> levels_red (n_ui + 2)
+    + n_nodes               // TempVector<int> is_continuous_red (n_ui + 2)
+    + n_nodes)              // TempVector<int> var_idx_red (n_ui + 2)
+    + s_double * n_samples; // TempVector<double> weights_red (n_samples_non_na)
+  //
+  // Likely for compute_k_nearest_distance and compute_kl_divergence
+  //
   size_t m_utility = s_int * max(max_level * max_level, n_nodes);
   m_utility = max(m_utility,
       s_int * (4 * n_samples + 2 * max_level + 2) + s_double * n_samples);
+
   size_t m_max = m_get_info + max(m_utility, m_computation);
   return 4096 + m_max;  // Some extra space for fragmentation
 }
-
 }  // namespace utility
 }  // namespace miic
+
