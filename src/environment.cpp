@@ -32,6 +32,7 @@ Environment::Environment(int n_samples, int n_nodes, vector<int> vec_numeric,
     has_na[i] = std::any_of(data_numeric.row_begin(i), data_numeric.row_end(i),
         [](int value) { return value == -1; });
 
+    edges(i, i).status_init = 0;
     edges(i, i).status = 0;
     edges(i, i).status_prev = 0;
     edges(i, i).proba_head = -1;
@@ -42,9 +43,11 @@ void Environment::readBlackbox(const Grid2d<int>& node_list) {
   int n_pairs = node_list.n_rows();
   for (int i = 0; i < n_pairs; ++i) {
     const auto pair = node_list.getConstRow(i);
+    edges(pair[0], pair[1]).status_init = 0;
     edges(pair[0], pair[1]).status = 0;
     edges(pair[0], pair[1]).status_prev = 0;
     edges(pair[0], pair[1]).proba_head = -1;
+    edges(pair[1], pair[0]).status_init = 0;
     edges(pair[1], pair[0]).status = 0;
     edges(pair[1], pair[0]).status_prev = 0;
     edges(pair[1], pair[0]).proba_head = -1;
