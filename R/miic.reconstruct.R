@@ -1,5 +1,6 @@
 miic.reconstruct <- function(input_data = NULL,
                              is_contextual = NULL,
+                             is_consequence = NULL,
                              is_continuous = NULL,
                              black_box = NULL,
                              n_threads = 1,
@@ -87,6 +88,9 @@ miic.reconstruct <- function(input_data = NULL,
   }
   if (!is.null(is_contextual)) {
     arg_list[["is_contextual"]] <- is_contextual
+  }
+  if (!is.null(is_consequence)) {
+    arg_list[["is_consequence"]] <- is_consequence
   }
 
   cpp_input <- list("factor" = input_factor, "double" = input_double,

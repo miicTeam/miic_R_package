@@ -285,6 +285,14 @@ void searchForBestContributingNode(
     Environment& environment, int X, int Y, bool parallel) {
   auto info = environment.edges(X, Y).shared_info;
   auto& zi_list = info->zi_list;
+  if (environment.any_consequence) {
+    auto consequence_illegal_Z = [&environment](int Z) {
+      return (environment.is_consequence[Z]);
+    };
+    // remove Zi that are consequence
+    zi_list.erase(
+        remove_if(begin(zi_list), end(zi_list), consequence_illegal_Z), end(zi_list));
+  }
   if (!environment.latent) {
     auto is_isolated = [&environment, X, Y](int Z) {
       return !environment.edges(X, Z).status && !environment.edges(Y, Z).status;

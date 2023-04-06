@@ -23,6 +23,10 @@ struct Environment {
   Grid2d<int> data_numeric_idx;
 
   vector<int> is_contextual;
+  // Identify if any node is marked as consequence
+  bool any_consequence = false;
+  // For each node, contains 0 = not a consequence node or 1 = consequence node
+  vector<int> is_consequence;
   vector<int> is_continuous;
   vector<int> levels;
   vector<int> has_na;

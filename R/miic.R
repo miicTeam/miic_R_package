@@ -120,6 +120,11 @@
 #' Contextual variables cannot be the child node of any other variable (cannot
 #' have edge with arrowhead pointing to them).
 #'
+#' "is_consequence" (optional) contains a binary value that specifies if a
+#' variable is to be considered as a consequence variable (1) or not (0).
+#' Consequence variables cannot be the parent node of any other variable
+#' and cannot be used as contributors.
+#'
 #' @param true_edges [a data frame]
 #' An optional E*2 data frame containing the E edges of the true graph for
 #' computing performance after the run.
@@ -444,6 +449,7 @@ miic <- function(input_data,
 
   is_contextual <- rep(0, ncol(input_data))
   names(is_contextual) <- colnames(input_data)
+  is_consequence <- is_contextual
   is_continuous <- sapply(input_data, is.numeric)
   # Parse "state_order" file
   if (!is.null(state_order)) {
@@ -484,6 +490,11 @@ miic <- function(input_data,
             is_contextual[[col]] <- 1
           }
         }
+        if (!is.null(state_order$is_consequence)) {
+          if (state_order[row, "is_consequence"] == 1) {
+            is_consequence[[col]] <- 1
+          }
+        }
         if (!is.null(state_order$levels_increasing_order)) {
           order_string <- state_order[row, "levels_increasing_order"]
           if (!is.na(order_string)) {
@@ -513,6 +524,17 @@ miic <- function(input_data,
       }
     }
   }
+  #
+  # Check that no var is both contextual and consequence
+  #
+  contextual_and_consequence = is_contextual + is_consequence
+  contextual_and_consequence = which (contextual_and_consequence >= 2)
+  if (length (contextual_and_consequence >= 0) ) {
+    vars_in_errors = names(is_consequence)[contextual_and_consequence]
+    stop (paste0 ("A variable can not be contextual and consequence",
+        " (variables ", paste0 (vars_in_errors, collapse=", "), ")"))
+  }
+
   # Check the number of unique values of continuous and discrete variables
   for (col in colnames(input_data)) {
     unique_values <- length(unique(input_data[[col]][!is.na(input_data[[col]])]))
@@ -576,6 +598,7 @@ miic <- function(input_data,
         conf_threshold = conf_threshold,
         verbose = verbose,
         is_contextual = is_contextual,
+        is_consequence = is_consequence,
         is_continuous = is_continuous,
         sample_weights = sample_weights,
         test_mar = test_mar,
