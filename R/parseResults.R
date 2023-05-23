@@ -59,11 +59,14 @@ summarizeResults <- function(observations = NULL, results = NULL,
     info = numeric(n), info_cond = numeric(n), cplx = numeric(n),
     Nxy_ai = numeric(n), info_shifted = numeric(n), infOrt = numeric(n),
     trueOrt = numeric(n), isOrtOk = character(n), sign = character(n),
-    partial_correlation = numeric(n), is_causal = NA, proba = character(n),
+    partial_correlation = numeric(n), is_causal = character(n), proba = character(n),
     confidence = character(n), stringsAsFactors = FALSE
   )
   if(n == 0) return(summary)
 
+  #Initialize is_causal column as NA
+  summary$is_causal = NA
+  
   # Edge ordering (A<-B or B->A) is given by lexicographical sort
   summary[,c('x','y')] = t(apply(as.data.frame(summarized_edges)[,c(1,2)], 1, function(row){sort(row)}))
 
