@@ -1,3 +1,13 @@
+fromStringToNumberArrowType <- function(val) {
+  ret <- 0
+  if (val == "arrow") {
+    ret <- 6
+  } else if (val == "TRUE") {
+    ret <- 15
+  }
+  return(ret)
+}
+
 #' GraphML converting function for miic graph
 #'
 #' @description Convert miic graph to [GraphML format](http://graphml.graphdrawing.org/).
