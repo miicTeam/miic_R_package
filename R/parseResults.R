@@ -66,11 +66,11 @@ summarizeResults <- function(observations = NULL, results = NULL,
 
   #Initialize is_causal column as NA
   summary$is_causal = NA
-  
+
   # Edge ordering (A<-B or B->A) is given by lexicographical sort
   summary[,c('x','y')] = t(apply(as.data.frame(summarized_edges)[,c(1,2)], 1, function(row){sort(row)}))
 
-  # Edge 'type' correponds to the miic prediction : P(ositive) or N(egative)
+  # Edge 'type' corresponds to the miic prediction : P(ositive) or N(egative)
   # for respectively presence or absence of an edge, without considering
   # orientation. If ground truth is known, edges are classified as True or
   # False Positives/Negatives (TP, FP, TN, FN).
@@ -429,7 +429,7 @@ get_consensus_status <- function(stats_table, consensus_threshold) {
   if (length(stats_table) < 1)
     return(NA)
   freq_no_edge <- unname(stats_table["0"])
-  # "0" doesn't exist or the percentageof non-"0" is above the threshold
+  # "0" doesn't exist or the percentage of non-"0" is above the threshold
   if (is.na(freq_no_edge) || freq_no_edge < 1 - consensus_threshold)
     return(1)
   return(0)

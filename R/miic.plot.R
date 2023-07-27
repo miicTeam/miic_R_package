@@ -162,3 +162,43 @@ getIgraph <- function(miic.res, pcor_palette = NULL) {
 
   return(ig_graph)
 }
+
+#' Basic plot function of a miic network inference result
+#'
+#' @description This function calls \code{\link{miic.export}} to build a
+#' plottable object from the result returned by \code{\link{miic}} and plot it.
+#'
+#' @details See the documentation of \code{\link{miic.export}} for further
+#' details.
+#'
+#' @param x [a miic graph object]
+#' The graph object returned by \code{\link{miic}}.
+#' @param method A string representing the plotting method. Default to "igraph".
+#' Currently only "igraph" is supported.
+#' @param pcor_palette Optional. The color palette used to represent the partial
+#' correlations (the color of the edges). See \code{\link{miic.export}} for details.
+#' @param \dots Additional plotting parameters. See the corresponding plot function
+#' for the complete list.
+#' For igraph, see \code{\link[igraph]{igraph.plotting}}.
+#'
+#' @export
+#'
+#' @seealso \code{\link{miic.export}} for generic exports,
+#' \code{\link{getIgraph}} for igraph export,
+#' \code{\link[igraph]{igraph.plotting}}
+#'
+plot.miic = function(x, method = 'igraph', pcor_palette = NULL, ...) {
+  if (class(x) != "miic"){
+    stop("Not a miic object.")
+  }
+  if (method == 'igraph'){
+    if (base::requireNamespace("igraph", quietly = TRUE)) {
+      igraph_obj = miic.export (x, 'igraph', pcor_palette = pcor_palette)
+      igraph::plot.igraph (igraph_obj, ...)
+    } else {
+      stop("Package 'igraph' is required.")
+    }
+  } else {
+    stop("Method not supported. See ?miic.export for supported methods.")
+  }
+}
