@@ -5,7 +5,7 @@
 \title{Export temporal miic (tmiic) result to different plotting methods}
 \usage{
 tmiic.export(
-  tmiic.res,
+  tmiic_res,
   display = "compact",
   show_self_loops = TRUE,
   method = "igraph",
@@ -13,8 +13,8 @@ tmiic.export(
 )
 }
 \arguments{
-\item{tmiic.res}{[a tmiic graph object]
-The graph object returned by the \code{\link{miic}} execution in temporal mode.}
+\item{tmiic_res}{[a tmiic object]
+The object returned by the \code{\link{miic}} execution in temporal mode.}
 
 \item{display}{[a string]. Optional, default value "compact".
 Possible values are \emph{"raw"}, \emph{"lagged"}, \emph{"compact"},
@@ -33,7 +33,7 @@ Possible values are \emph{"raw"}, \emph{"lagged"}, \emph{"compact"},
   i.e.: X_lag1->Y_lag0, X_lag2<-Y_lag0 become respectively X->Y lag=1,
   X<-Y lag=2.
 \item When \emph{display} = \emph{"combine"}, prior to the export,
-  a preprocessing will be applied to kept only one edge
+  a pre-processing will be applied to kept only one edge
   per couple of nodes. The info_shifted will be the highest one
   of the summarized edges whilst the lag and orientation of the
   summarized edge will be an aggregation.\cr
@@ -41,14 +41,14 @@ Possible values are \emph{"raw"}, \emph{"lagged"}, \emph{"compact"},
   the info_shifted of X_lag2->Y_lag0 if info_shifted of
   X_lag2->Y_lag0 > X_lag0<-Y_lag1.
 \item When \emph{display} = \emph{"unique"}, prior to the export,
-  a preprocessing will be applied to kept only the edges having the
+  a pre-processing will be applied to kept only the edges having the
   highest info_shifted for a couple of nodes.
   If several edges between the sames nodes have the same
   info_shifted, then the edge kept is the one with the minimum lag.\cr
   i.e.: X_lag1->Y_lag0, X_lag0<-Y_lag2 with info_shifted of
   X_lag1->Y_lag0 > X_lag0<-Y_lag2 become X->Y lag=1.
 \item When \emph{display} = \emph{"drop"}, prior to the export,
-  a preprocessing will be applied to kept only the edges having the
+  a pre-processing will be applied to kept only the edges having the
   highest info_shifted for a couple of nodes.
   If several edges between the sames nodes have the same
   info_shifted, then the edge kept is the one with the minimum lag.\cr
@@ -76,28 +76,24 @@ This function creates an object built from the result returned
 by \code{\link{miic}} executed in temporal mode that is ready to be fed to
 different plotting methods.
 }
-\details{
-See the details of specific function for each method.
-For igraph, see \code{\link{tmiic.getIgraph}}.
-}
 \examples{
 \donttest{
 library(miic)
 data(covidCases)
 # execute MIIC (reconstruct graph in temporal mode)
-tmiic.res <- miic(input_data = covidCases, tau = 2, movavg = 14)
+tmiic_res <- miic(input_data = covidCases, mode = "TS", n_layers = 3, delta_t = 1, movavg = 14)
 
 # Plot default compact temporal network Using igraph
 if(require(igraph)) {
-g = tmiic.export(tmiic.res, method="igraph")
+g = tmiic.export(tmiic_res, method="igraph")
 plot(g) # Default visualisation, calls igraph::plot.igraph()
 
 # Plot raw temporal network Using igraph
-g = tmiic.export(tmiic.res, display="raw", method="igraph")
+g = tmiic.export(tmiic_res, display="raw", method="igraph")
 plot(g) # Default visualisation, calls igraph::plot.igraph()
 
 # Plot full temporal network Using igraph
-g = tmiic.export(tmiic.res, display="lagged", method="igraph")
+g = tmiic.export(tmiic_res, display="lagged", method="igraph")
 plot(g) # Default visualisation, calls igraph::plot.igraph()
 
 # Specifying layout (see ?igraph::layout_)
@@ -112,11 +108,8 @@ plot(g, vertex.shape="none", edge.color="gray85", vertex.label.color="gray10")
 # igraph::plot.igraph() is not optimal when the graph contains
 # multiple edges between the same nodes.
 # So the recommend way to plot a compact graph is to use tmiic plotting:
-plot(tmiic.res)
+plot(tmiic_res)
 }
 
 }
-}
-\seealso{
-\code{\link{tmiic.getIgraph}} for details on the igraph exported object.
 }

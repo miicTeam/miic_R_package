@@ -63,12 +63,12 @@ List reconstruct(List input_data, List arg_list) {
   bool is_consistent{false};
   do {
     if (environment.consistent != 0) {
-      // In temporal mode, duplicate temporarily edges over history for the
-      // consistency assessment
-      if (environment.tau_max >= 1)
+      // In temporal stationary mode, duplicate temporarily edges over history
+      // for the consistency assessment
+      if (environment.mode == 1)
         tmiic::repeatEdgesOverHistory (environment);
       bcc.analyse();
-      if (environment.tau_max >= 1)
+      if (environment.mode == 1)
         tmiic::dropPastEdges (environment);
     }
     // Store current status in status_prev and revert to the structure at the
@@ -108,14 +108,14 @@ List reconstruct(List input_data, List arg_list) {
       lap_start = getLapStartTime();
       Rcout << "Search for edge directions...\n";
       //
-      // In temporal mode, when latent variable discovery is activated,
+      // In temporal stationary mode, when latent variable discovery is activated,
       // we temporarily duplicate edges over history assuming stationarity to
-      // increase the number of possible unshielded triples for orientation
+      // correctly identify the possible unshielded triples for orientation
       //
-      if ( (environment.tau_max >= 1) && (environment.latent_orientation) )
+      if ( (environment.mode == 1) && (environment.latent_orientation) )
         tmiic::repeatEdgesOverHistory (environment);
       orientations = orientationProbability(environment);
-      if ( (environment.tau_max >= 1) && (environment.latent_orientation) )
+      if ( (environment.mode == 1) && (environment.latent_orientation) )
           tmiic::dropPastEdges (environment);
       environment.exec_time.ori += getLapInterval(lap_start);
     }

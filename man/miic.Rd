@@ -24,10 +24,12 @@ miic(
   consistent = "no",
   max_iteration = 100,
   consensus_threshold = 0.8,
-  tau = -1,
-  delta_tau = 1,
-  movavg = -1,
+  mode = "S",
+  n_layers = NULL,
+  delta_t = NULL,
+  movavg = NULL,
   keep_max_data = FALSE,
+  max_nodes = 50,
   negative_info = FALSE,
   verbose = FALSE
 )
@@ -41,8 +43,8 @@ values for all the observed variables. The column names correspond to the
 names of the observed variables. Numeric columns will be treated as continuous
 values, factors and character as categorical.
 
-In temporal mode (when any \emph{tau} >= 1), the expected dataframe layout
-is variables as columns and timeseries/timesteps as rows.
+In temporal mode, the expected dataframe layout is variables as columns
+and timeseries/timesteps as rows.
 The timestep information must be supplied in the first column and,
 for each timeseries, be consecutive (increment of 1) and in ascending order.
 Multiple trajectories can be provided, miic will consider that a new trajectory
@@ -72,19 +74,16 @@ have edge with arrowhead pointing to them).
 "is_consequence" (optional) contains a binary value that specifies if a
 variable is to be considered as a consequence variable (1) or not (0).
 Consequence variables cannot be the parent node of any other variable
-and cannot be used as contributors.}
+and cannot be used as contributors.
 
-"tau" (optional) contains an integer value that specifies the number of
+"n_layers" (optional) contains an integer value that specifies the number of
 layers to be considered for the variable.\cr
-Note that if "tau" column is present in the \emph{state_order} and valid
-(at least one tau is >= 1), it will induce the switch from regular to
-temporal mode.\cr
-Note also that the tau values presents in the state_oder will overwrite the
-function parameter.
+Note that if a "n_layers" column is present in the \emph{state_order},
+its values will overwrite the function parameter.
 
-"delta_tau" (optional) contains an integer value that specifies the number
+"delta_t" (optional) contains an integer value that specifies the number
 of timesteps between each layer for the variable.
-Note that if "delta_tau" column is present in the  \emph{state_order},
+Note that if a "delta_t" column is present in the \emph{state_order},
 its values will overwrite the function parameter.
 
 "movavg" (optional) contains an integer value that specifies the size of
@@ -211,50 +210,45 @@ than [consensus_threshold]. (When set to connected, the orientation of the
 edge will be further determined by the average probability of orientation.)
 Set to 0.8 by default.}
 
-\item{tau}{[an int > 0 or a list of int] Optional, -1 by default.\cr
-Tau(s) define(s) the number of layers that will be considered for the
-variables. The layers will be distant of \emph{delta_tau} timesteps.\cr
-\itemize{
-\item When an integer is supplied, it must be strictly positive and all the
-      variables will be lagged using this value as the number of layers.
-\item When a list is supplied, the size of the list must match the number of
-      variables and each variable (so excluding the timesteps column)
-      will be lagged by the corresponding number of layers.
-      Variables associated with a \emph{tau} values < 1  will not be lagged.
-}
-If supplied and valid (at least one tau is >= 1), the \emph{tau} parameter
-induces the switch from regular to temporal mode.}
+\item{mode}{[a string] Optional, "S" by default, possible values are
+"S": Standard (IID samples) or "TS": Temporal Stationary. When temporal mode
+is activated, the time information must be provided in the first column of
+the dataset.}
 
-\item{delta_tau}{[an integer or a list of int] Optional, 1 by default.\cr
-Used only in temporal mode. the delta_tau(s) define(s) the number of timesteps
+\item{n_layers}{[an integer] Optional, NULL by default, must >= 2 if supplied.\cr
+Used only in temporal mode, \emph{n_layers} defines the number of layers
+that will be considered for the variables. The layers will be distant of
+\emph{delta_t} timesteps.\cr
+If not supplied, the number of layers is estimated from the dynamic of the
+dataset and the maximum number of nodes \emph{max_nodes} allowed in the
+final lagged graph.}
+
+\item{delta_t}{[an integer] Optional, NULL by default, must >= 1 if supplied.\cr
+Used only in temporal mode. \emph{delta_t} defines the number of timesteps
 between each layer.\cr
-i.e.: on 1000 timesteps with  \emph{tau} = 2 and \emph{delta_tau} = 7,
+i.e.: on 1000 timesteps with  \emph{n_layers} = 3 and \emph{delta_t} = 7,
 the timesteps kept for the samples conversion will be 1, 8, 15
 for the first sample, the next sample will use 2, 9, 16 and so on.\cr
-\itemize{
-\item When an integer is supplied (integer > 0). All the variables will be
-      lagged using this value as the number of timesteps between layers.
-\item When a list is supplied, the size of the list must match the number of
-      variables (so excluding the timesteps column) and each variable will
-      be lagged with corresponding \emph{delta_tau} timesteps between layers.
-      If a variable is not lagged ( \emph{tau} < 1), the \emph{delta_tau}
-      is ignored.
-}}
+If not supplied, the number of timesteps between layers is estimated
+from the dynamic of the dataset and the number of layers.}
 
-\item{movavg}{[an integer or a list of int] Optional, -1 by default.\cr
+\item{movavg}{[an integer] Optional, NULL by default, must be >= 2 if supplied\cr
 Used only in temporal mode.\cr
-\itemize{
-\item When an integer is supplied (integer > 1), a moving average
-      operation is applied to all integer and numeric variables.
-\item When a list is supplied, the size of the list must match the number of
-      variables. A moving average will be applied to each variable having
-      a movavg value greater than 1
-}}
+When an integer is supplied (integer >= 2), a moving average
+operation is applied to all integer and numeric variables that are not
+contextual variables.}
 
-\item{keep_max_data}{[a boolean value] Optional, FALSE by default.\cr
+\item{keep_max_data}{[a boolean] Optional, FALSE by default.\cr
 Used only in temporal mode. If TRUE, rows where some NAs have been
-introduced during the lagging will be kept whilst they will be dropped
-if FALSE.}
+introduced during the moving averages and lagging will be kept
+whilst they will be dropped if FALSE.}
+
+\item{max_nodes}{[an integer] Optional, 50 by default.\cr
+Used only in temporal mode and if the \emph{n_layers} or \emph{delta_t}
+parameters are not supplied. \emph{max_nodes} is used as the maximum number
+of nodes in the final graph to compute \emph{n_layers} and/or \emph{delta_t}.
+The default is 50 to produce quick runs and can be increased up to 200
+or 300 on recent computers to produce more precise results.}
 
 \item{negative_info}{[a boolean value] For test purpose only. FALSE by
 default. If TRUE, negative shifted mutual information is allowed during the
@@ -369,6 +363,11 @@ reconstruction.
  \item {true_edges:} present only if the true edges have been supplied,
 the true edges, checked and corrected if necessary, used for the network
 evaluation.
+
+ \item {tmiic:} present only in temporal mode.
+ Named list containing the full list of edges completed by stationarity,
+ the lagged state order and, if a black box or true edges have been supplied,
+ the lagged versions of these inputs.
 }
 }
 \description{
@@ -384,8 +383,8 @@ indirect paths, and assesses edge-specific confidences from randomization of
 available data. The remaining edges are then oriented based on the signature
 of causality in observational data.
 
-In temporal mode (when any \emph{tau} >= 1), miic reorganizes the dataset
-using the \emph{tau} and \emph{delta_tau} parameters to transform the timesteps
+In temporal mode, miic reorganizes the dataset
+using the \emph{n_layers} and \emph{delta_t} parameters to transform the timesteps
 into lagged samples. As starting point, a lagged graph is created with
 only edges having at least one node laying on the last timestep.
 Then, miic standard algorithm is applied to remove dispensable edges.
@@ -466,7 +465,7 @@ miic.write.network.cytoscape(g = miic.res, file = file.path(tempdir(), "temp"))
 # EXAMPLE COVID CASES (timeseries demo)
 data(covidCases)
 # execute MIIC (reconstruct graph in temporal mode)
-tmiic.res <- miic(input_data = covidCases, tau = 2, movavg = 14)
+tmiic.res <- miic(input_data = covidCases, mode = "TS", n_layers = 3, delta_t = 1, movavg = 14)
 
 # to plot the default graph (compact)
 if(require(igraph)) {

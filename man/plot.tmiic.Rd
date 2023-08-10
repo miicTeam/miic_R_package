@@ -120,27 +120,26 @@ library(miic)
 #' # EXAMPLE COVID CASES (timeseries demo)
 data(covidCases)
 # execute MIIC (reconstruct graph in temporal mode)
-tmiic.res <- miic(input_data = covidCases, tau = 2, movavg = 14)
+tmiic_res <- miic(input_data = covidCases, mode = "TS", n_layers = 3, delta_t = 1, movavg = 14)
 
 # to plot the default compact graph
 if(require(igraph)) {
-  plot(tmiic.res)
+  plot(tmiic_res)
 }
 
 # to plot the raw temporal network Using igraph
 if(require(igraph)) {
-  plot(tmiic.res, display="raw")
+  plot(tmiic_res, display="raw")
 }
 
 # to plot the full temporal network Using igraph
 if(require(igraph)) {
-  plot(tmiic.res, display="lagged")
+  plot(tmiic_res, display="lagged")
 }
 
 }
 }
 \seealso{
 \code{\link{tmiic.export}} for generic exports,
-\code{\link{tmiic.getIgraph}} for igraph export,
 \code{\link[igraph]{igraph.plotting}}
 }

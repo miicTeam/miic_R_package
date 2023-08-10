@@ -301,7 +301,7 @@ void searchForBestContributingNode(
     zi_list.erase(
         remove_if(begin(zi_list), end(zi_list), is_isolated), end(zi_list));
   }
-  if (environment.tau_max >= 1) {
+  if (environment.temporal) {
     auto contextually_illegal_Z = [&environment, X, Y](int Z) {
       return (environment.is_contextual[X] &&
               (environment.nodes_class[Y] == environment.nodes_class[Z])) ||

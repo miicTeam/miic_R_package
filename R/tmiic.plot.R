@@ -1,9 +1,9 @@
-#*****************************************************************************
+#*******************************************************************************
 # Filename   : tmiic.plot.R                     Creation date: 24 march 2020
 #
 # Description: Plotting for temporal miic (tmiic)
 #
-# Author     : Franck SIMON (fsimon.informaticien@wanadoo.fr)
+# Author     : Franck SIMON
 #
 # Changes history:
 # - 24 march 2020 : initial version
@@ -16,22 +16,22 @@
 # - 06 oct 2020 : addition of "lagged" graph (edges duplicated over history)
 # - 10 fev 2021 : plotting modified to manage contextual variables
 # - 01 aug 2022 : fix color of edges with negative correlation
-#*****************************************************************************
+# - 10 aug 2023 : review plotting using parameters returned after miic
+#                 reconstruction. tmiic_getIgraph is no more exported
+#                 (same as getIgraph)
+#*******************************************************************************
 
-#-----------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 # tmiic.export
-#-----------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 #' Export temporal miic (tmiic) result to different plotting methods
 #'
 #' @description This function creates an object built from the result returned
 #' by \code{\link{miic}} executed in temporal mode that is ready to be fed to
 #' different plotting methods.
 #'
-#' @details See the details of specific function for each method.
-#' For igraph, see \code{\link{tmiic.getIgraph}}.
-#'
-#' @param tmiic.res [a tmiic graph object]
-#' The graph object returned by the \code{\link{miic}} execution in temporal mode.
+#' @param tmiic_res [a tmiic object]
+#' The object returned by the \code{\link{miic}} execution in temporal mode.
 #'
 #' @param display [a string]. Optional, default value "compact".
 #' Possible values are \emph{"raw"}, \emph{"lagged"}, \emph{"compact"},
@@ -50,7 +50,7 @@
 #'   i.e.: X_lag1->Y_lag0, X_lag2<-Y_lag0 become respectively X->Y lag=1,
 #'   X<-Y lag=2.
 #' \item When \emph{display} = \emph{"combine"}, prior to the export,
-#'   a preprocessing will be applied to kept only one edge
+#'   a pre-processing will be applied to kept only one edge
 #'   per couple of nodes. The info_shifted will be the highest one
 #'   of the summarized edges whilst the lag and orientation of the
 #'   summarized edge will be an aggregation.\cr
@@ -58,14 +58,14 @@
 #'   the info_shifted of X_lag2->Y_lag0 if info_shifted of
 #'   X_lag2->Y_lag0 > X_lag0<-Y_lag1.
 #' \item When \emph{display} = \emph{"unique"}, prior to the export,
-#'   a preprocessing will be applied to kept only the edges having the
+#'   a pre-processing will be applied to kept only the edges having the
 #'   highest info_shifted for a couple of nodes.
 #'   If several edges between the sames nodes have the same
 #'   info_shifted, then the edge kept is the one with the minimum lag.\cr
 #'   i.e.: X_lag1->Y_lag0, X_lag0<-Y_lag2 with info_shifted of
 #'   X_lag1->Y_lag0 > X_lag0<-Y_lag2 become X->Y lag=1.
 #' \item When \emph{display} = \emph{"drop"}, prior to the export,
-#'   a preprocessing will be applied to kept only the edges having the
+#'   a pre-processing will be applied to kept only the edges having the
 #'   highest info_shifted for a couple of nodes.
 #'   If several edges between the sames nodes have the same
 #'   info_shifted, then the edge kept is the one with the minimum lag.\cr
@@ -89,27 +89,24 @@
 #'
 #' @export
 #'
-#' @seealso
-#' \code{\link{tmiic.getIgraph}} for details on the igraph exported object.
-#'
 #' @examples
 #' \donttest{
 #' library(miic)
 #' data(covidCases)
 #' # execute MIIC (reconstruct graph in temporal mode)
-#' tmiic.res <- miic(input_data = covidCases, tau = 2, movavg = 14)
+#' tmiic_res <- miic(input_data = covidCases, mode = "TS", n_layers = 3, delta_t = 1, movavg = 14)
 #'
 #' # Plot default compact temporal network Using igraph
 #' if(require(igraph)) {
-#' g = tmiic.export(tmiic.res, method="igraph")
+#' g = tmiic.export(tmiic_res, method="igraph")
 #' plot(g) # Default visualisation, calls igraph::plot.igraph()
 #'
 #' # Plot raw temporal network Using igraph
-#' g = tmiic.export(tmiic.res, display="raw", method="igraph")
+#' g = tmiic.export(tmiic_res, display="raw", method="igraph")
 #' plot(g) # Default visualisation, calls igraph::plot.igraph()
 #'
 #' # Plot full temporal network Using igraph
-#' g = tmiic.export(tmiic.res, display="lagged", method="igraph")
+#' g = tmiic.export(tmiic_res, display="lagged", method="igraph")
 #' plot(g) # Default visualisation, calls igraph::plot.igraph()
 #'
 #' # Specifying layout (see ?igraph::layout_)
@@ -124,195 +121,171 @@
 #' # igraph::plot.igraph() is not optimal when the graph contains
 #' # multiple edges between the same nodes.
 #' # So the recommend way to plot a compact graph is to use tmiic plotting:
-#' plot(tmiic.res)
+#' plot(tmiic_res)
 #' }
 #'
 #' }
-#-----------------------------------------------------------------------------
-tmiic.export <- function (tmiic.res, display="compact",
-                          show_self_loops=TRUE, method="igraph",
-                          pcor_palette=NULL) {
-  if (is.null(tmiic.res$all.edges.summary)) {
+#-------------------------------------------------------------------------------
+tmiic.export <- function (tmiic_res, display="compact", show_self_loops=TRUE,
+                          method="igraph", pcor_palette=NULL)
+  {
+  if (is.null(tmiic_res$all.edges.summary))
     stop("Error: The inferred network does not exist")
-  }
-  if (is.null(method)) {
+  if (is.null(method))
     stop("Error: Plotting method is required")
-  }
-  if (method != "igraph") {
+  if (method != "igraph")
     stop("Error: Method not supported")
-  }
-  return(tmiic.getIgraph(tmiic.res, display=display,
+  return(tmiic_getIgraph(tmiic_res, display=display,
                          show_self_loops=show_self_loops,
                          pcor_palette=pcor_palette))
-}
+  }
 
-#-----------------------------------------------------------------------------
-# tmiic.getIgraph
-#-----------------------------------------------------------------------------
-#' Igraph plotting function for tmiic (temporal mode of miic)
-#'
-#' @description This functions returns an igraph object built from the result
-#' returned by:
-#' \code{\link{miic}} executed in temporal temporal mode.
-#' \code{\link{tmiic.flatten_network}}
-#'
-#' @details
-#' Edges attributes are passed to the igraph graph and can be accessed with
-#' e.g. \code{E(g)$partial_correlation}. See \code{\link{miic}} for more
-#' details on edge parameters. By default, edges are colored according to the
-#' partial correlation between two nodes conditioned on the conditioning set
-#' (negative is blue, null is gray and positive is red) and their width is
-#' based on the conditional mutual information minus the complexity cost.
-#'
-#' @param tmiic.res [a tmiic graph object]
-#' The graph object returned by the \code{\link{miic}} execution in temporal mode
-#'
-#' @param display [a string]. Optional, default value "compact".
-#' Possible values are \emph{"raw"}, \emph{"lagged"}, \emph{"compact"},
-#' \emph{"combine"}, \emph{"unique"}, \emph{"drop"}:
-#' \itemize{
-#' \item When \emph{display} = \emph{"raw"}, the function will
-#'   use the tmiic graph object as it, leading to the return of a lagged
-#'   graph.
-#' \item When \emph{display} = \emph{"lagged"}, the function will
-#'   repeat the edges over history assuming stationarity and return a lagged
-#'   graph.
-#' \item When \emph{display} = \emph{"compact"}, the default, nodes
-#'   and edges are converted into a flattened version to produce a compact
-#'   view of the temporal network whilst still presenting all the information.\cr
-#'   i.e.: X_lag1->Y_lag0, X_lag0<-Y_lag2 become respectively X->Y lag=1,
-#'   X<-Y lag=2.
-#' \item When \emph{display} = \emph{"combine"},
-#'   a preprocessing will be applied to kept only one edge
-#'   per couple of nodes. The info_shifted will be the highest one
-#'   of the summarized edges whilst the lag and orientation of the
-#'   summarized edge will be an aggregation.\cr
-#'   i.e.: X_lag2->Y_lag0, X_lag0<-Y_lag1 will become X<->Y lag=1,2 with
-#'   the info_shifted of X_lag2->Y_lag0 if info_shifted of
-#'   X_lag2->Y_lag0 > X_lag0<-Y_lag1.
-#' \item When \emph{display} = \emph{"unique"},
-#'   a preprocessing will be applied to kept only the edges having the
-#'   highest info_shifted for a couple of nodes.
-#'   If several edges between the sames nodes have the same
-#'   info_shifted, then the edge kept is the one with the minimum lag.\cr
-#'   i.e.: X_lag1->Y_lag0, X_lag0<-Y_lag2 with info_shifted of
-#'   X_lag1->Y_lag0 > X_lag0<-Y_lag2 become X->Y lag=1.
-#' \item When \emph{display} = \emph{"drop"}, prior to the plotting,
-#'   a preprocessing will be applied to kept only the edges having the
-#'   highest info_shifted for a couple of nodes.
-#'   If several edges between the sames nodes have the same
-#'   info_shifted, then the edge kept is the one with the minimum lag.\cr
-#'   i.e. :  X_lag1->Y_lag0, X_lag0<-Y_lag2 with info_shifted of
-#'   X_lag1->Y_lag0 > X_lag0<-Y_lag2 become X->Y.
-#'   The lag information is dropped during the preprocessing.
-#' }
-#'
-#' @param show_self_loops [a boolean] Optional, TRUE by default.
-#' When TRUE, the edges like X_lag0-X_lag1 are included in the iGraph object.
-#' When FALSE, only edges having different nodes are present in the iGraph
-#' object.
-#'
-#' @param pcor_palette Optional. The color palette used to represent the partial
-#' correlations (the color of the edges). See \code{\link{getIgraph}} for details.
-#'
-#' @return An igraph graph object.
-#'
-#' @export
-#'
-#' @seealso
-#' \code{\link{miic}} for details on edge parameters in the returned object,
-#' \code{\link[igraph]{igraph.plotting}} for the detailed description of the
-#' plotting parameters and \code{\link[igraph]{layout}} for different layouts.
-#-----------------------------------------------------------------------------
-tmiic.getIgraph <- function (tmiic.res, display="compact",
-                             show_self_loops=TRUE, pcor_palette=NULL){
-  if (class(tmiic.res) != "tmiic") {
+#-------------------------------------------------------------------------------
+# tmiic_getIgraph
+#-------------------------------------------------------------------------------
+# Igraph plotting function for tmiic (temporal mode of miic)
+#
+# This functions returns an igraph object built from the result of the miic
+# execution in temporal mode
+#
+# Edges attributes are passed to the igraph graph and can be accessed with
+# e.g. E(g)$partial_correlation. See miic() for more details on edge parameters.
+# By default, edges are colored according to the partial correlation between
+# two nodes conditioned on the conditioning set (negative is blue,
+# null is gray and positive is red) and their width is based on the
+# conditional mutual information minus the complexity cost.
+#
+# params:
+# - tmiic_res: a tmiic object, returned by the miic execution in temporal mode
+#
+# - display: string. Optional, default value "compact".
+#   Possible values are "raw", "lagged", "compact", "combine", "unique", "drop":
+#   * "raw": the function will use the tmiic graph object as it,
+#     leading to the return of a lagged graph.
+#   * "lagged", the function will use the repeated the edges over history
+#     assuming stationarity and return a lagged graph.
+#   * "compact", the default, nodes and edges are converted into a flattened
+#     version to produce a compact view of the temporal network
+#     whilst still presenting all the information.
+#     i.e.: X_lag1->Y_lag0, X_lag0<-Y_lag2 become respectively X->Y lag=1,
+#     X<-Y lag=2.
+#   * "combine", a pre-processing will be applied to kept only one edge
+#      per couple of nodes. The info_shifted will be the highest one
+#      of the summarized edges whilst the lag and orientation of the
+#      summarized edge will be an aggregation.
+#      i.e.: X_lag2->Y_lag0, X_lag0<-Y_lag1 will become X<->Y lag=1,2 with
+#      the info_shifted of X_lag2->Y_lag0 if info_shifted of
+#      X_lag2->Y_lag0 > X_lag0<-Y_lag1.
+#    * "unique", a pre-processing will be applied to kept only the edges
+#      having the highest info_shifted for a couple of nodes.
+#      If several edges between the sames nodes have the same
+#      info_shifted, then the edge kept is the one with the minimum lag.
+#      i.e.: X_lag1->Y_lag0, X_lag0<-Y_lag2 with info_shifted of
+#      X_lag1->Y_lag0 > X_lag0<-Y_lag2 become X->Y lag=1.
+#    * "drop"}, prior to the plotting, a pre-processing will be applied
+#      to kept only the edges having the highest info_shifted for a couple
+#      of nodes.
+#      If several edges between the sames nodes have the same
+#      info_shifted, then the edge kept is the one with the minimum lag.
+#      i.e. :  X_lag1->Y_lag0, X_lag0<-Y_lag2 with info_shifted of
+#      X_lag1->Y_lag0 > X_lag0<-Y_lag2 become X->Y.
+#      The lag information is dropped during the preprocessing.
+#
+# - show_self_loops: boolean, optional, TRUE by default.
+#   When TRUE, the edges like X_lag0-X_lag1 are included in the iGraph object.
+#   When FALSE, only edges having different nodes are present in the iGraph
+#   object.
+#
+# - pcor_palette: optional. The color palette used to represent the partial
+#   correlations (the color of the edges). See getIgraph for details.
+#
+# returns: an igraph graph object.
+#-------------------------------------------------------------------------------
+tmiic_getIgraph <- function (tmiic_res, display="compact",
+                             show_self_loops=TRUE, pcor_palette=NULL)
+  {
+  if (class(tmiic_res) != "tmiic")
     stop("Error: Not a tmiic object.")
-  }
 
-  if (display == "lagged") {
-    tmiic.res <- tmiic.repeat_edges_over_history(tmiic.res)
-  }
-  else {
-    if (display != "raw")
-      tmiic.res <- tmiic.flatten_network(tmiic.res, flatten_mode=display,
-                                       keep_edges_on_same_node=show_self_loops)
-  }
-  if ( ! tmiic.res$tmiic_specific[["graph_type"]] %in% c("raw", "lagged") ) {
-    list_nodes <- tmiic.res$tmiic_specific[["nodes_not_lagged"]]
-    tmiic.res$adj_matrix <- matrix(NA, nrow=0, ncol=length (list_nodes))
-    colnames(tmiic.res$adj_matrix) <- list_nodes
-  }
-  graph <- getIgraph(tmiic.res, pcor_palette=pcor_palette)
+  if (display == "lagged")
+    tmiic_res$all.edges.summary = tmiic_res$tmiic$all.edges.stationarity
+  else if (display != "raw")
+    tmiic_res <- tmiic_flatten_network (tmiic_res, flatten_mode=display,
+                                  keep_edges_on_same_node=show_self_loops)
 
-  if ( tmiic.res$tmiic_specific[["graph_type"]] %in% c("raw", "lagged") ) {
+  graph <- getIgraph (tmiic_res, pcor_palette=pcor_palette)
+
+  if (display %in% c("raw", "lagged") )
+    {
     igraph::V(graph)$label.dist = 1
     igraph::V(graph)$label.degree = pi/2
     igraph::E(graph)$curved = TRUE
-  }
-  else {
+    }
+  else
+    {
     igraph::E(graph)$curved = FALSE
-    if ( "lag" %in% colnames(tmiic.res$all.edges.summary) )
-      igraph::E(graph)$label <- tmiic.res$all.edges.summary$lag
-  }
+    if ( "lag" %in% colnames(tmiic_res$all.edges.summary) )
+      igraph::E(graph)$label <- tmiic_res$all.edges.summary$lag
+    }
   return(graph)
-}
+  }
 
-#-----------------------------------------------------------------------------
-# tmiic.prepareEdgesForPlotting
-#-----------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
+# tmiic_prepare_edges_for_plotting
+#-------------------------------------------------------------------------------
 # Prepare the edges for plotting
 #
-# @description This function firstly filters the edges in the summary to keep
+# This function firstly filters the edges in the summary to keep
 # only the ones detected by miic and adds to every edge an id constructed
 # using the couple of nodes ordered alphabetically ("node1" < "node2")
 #
-# @param  [a tmiic graph object] The graph object returned by the miic
-# execution in temporal mode, eventually flattened
+# params: the tmiic object returned by the miic execution in temporal mode,
+# eventually flattened
 #
-# @return tmiic.res [a tmiic object] The modified tmiic object
+# @return tmiic_res [a tmiic object] The modified tmiic object
 #-----------------------------------------------------------------------------
-tmiic.prepareEdgesForPlotting <- function (tmiic.res) {
-  df_edges <- tmiic.res$all.edges.summary[tmiic.res$all.edges.summary$type %in% c('P', 'TP', 'FP'), ]
-  if (nrow(df_edges) <= 0) {
+tmiic_prepare_edges_for_plotting <- function (tmiic_res)
+  {
+  df_edges <- tmiic_res$all.edges.summary[tmiic_res$all.edges.summary$type %in% c('P', 'TP', 'FP'), ]
+  if (nrow(df_edges) <= 0)
     df_edges$xy = character(0)
-  }
-  else {
-    #
+  else
+    {
     # Ensure all edges have an id xy where x < y
     #
     df_edges$xy = NULL
-    for (edge_idx in 1:nrow(df_edges)) {
+    for (edge_idx in 1:nrow(df_edges))
+      {
       one_edge <- df_edges[edge_idx,]
       if (one_edge$x < one_edge$y)
         df_edges[edge_idx, "xy"] <- paste (one_edge$x, "-", one_edge$y, sep="")
       else
         df_edges[edge_idx, "xy"] <- paste (one_edge$y, "-", one_edge$x, sep="")
-    }
+      }
     #
     # Order the edges so that all orientations goes from x to y
     #
-    for(row in 1:nrow(df_edges)){
-      if(df_edges[row, "infOrt"] == -2){
+    for(row in 1:nrow(df_edges))
+      {
+      if(df_edges[row, "infOrt"] == -2)
+        {
         df_edges[row, c("x","y")] = df_edges[row, c("y","x")]
         df_edges[row, "infOrt"] = 2
-        if(!is.na(df_edges[row, "proba"])){
+        if(!is.na(df_edges[row, "proba"]))
           df_edges[row, "proba"] = paste0(rev(
             strsplit(df_edges[row, "proba"], ";")[[1]]), collapse=";")
-        }
-        if(!is.na(df_edges[row, "trueOrt"])){
+        if(!is.na(df_edges[row, "trueOrt"]))
           df_edges[row, "trueOrt"] = 2
         }
       }
     }
+  tmiic_res$all.edges.summary <- df_edges
+  return (tmiic_res)
   }
-  tmiic.res$all.edges.summary <- df_edges
-  return (tmiic.res)
-}
 
-#-----------------------------------------------------------------------------
-# tmiic.getMultipleEdgesForPlotting
-#-----------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
+# tmiic_get_multiple_edges_for_plotting
+#-------------------------------------------------------------------------------
 # Look for mutiple edges (that needs specific plotting)
 #
 # @description This function identifies the couple of nodes having mutiples
@@ -323,27 +296,29 @@ tmiic.prepareEdgesForPlotting <- function (tmiic.res) {
 # flattened (if the tmiic object is not flattened, the function does nothing)
 #
 # @return df_mult [a dataframe] The dataframe containing the multiple edges
-#-----------------------------------------------------------------------------
-tmiic.getMultipleEdgesForPlotting <- function (tmiic.res) {
-  df_mult <- tmiic.res$all.edges.summary
+#-------------------------------------------------------------------------------
+tmiic_get_multiple_edges_for_plotting <- function (tmiic_res)
+  {
+  df_mult <- tmiic_res$all.edges.summary
   if (nrow(df_mult) <= 0)
     df_mult$count <- numeric(0)
-  else {
+  else
+    {
     df_mult$count <- 1
     df_mult <- stats::aggregate(data.frame(count = df_mult$count),
                                 by = list(xy = df_mult$xy), sum)
-  }
+    }
   df_mult <- df_mult[df_mult$count > 1,]
   return (df_mult)
-}
+  }
 
-#-----------------------------------------------------------------------------
-# tmiic.computeRowLayoutGreedyBase
-#-----------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
+# tmiic_compute_row_layout_greedy_base
+#-------------------------------------------------------------------------------
 # Internal function to compute an optimized raw layout used to construct
-# a pseudo grid layout for the display of raw and lagged graphs
+# a grid layout for the display of raw and lagged graphs
 #
-# @description The function starts by choosing two nodes: the node with the
+# The function starts by choosing two nodes: the node with the
 # maximum degree and the one sharing the most of edges with the first.
 # Then, the other nodes are placed recurvely using these two nodes.
 # If some nodes are still not positioned after  the recursion,
@@ -356,8 +331,8 @@ tmiic.getMultipleEdgesForPlotting <- function (tmiic.res) {
 #
 # @return [a list] The list of nodes ordered to avoid crossing edges when
 # the network is displayed as raw or lagged graphs
-#-----------------------------------------------------------------------------
-tmiic.computeRowLayoutGreedyBase <- function (list_nodes, df_edges)
+#-------------------------------------------------------------------------------
+tmiic_compute_row_layout_greedy_base <- function (list_nodes, df_edges)
   {
   if (length (list_nodes) <= 0)
     return ( list() )
@@ -403,7 +378,7 @@ tmiic.computeRowLayoutGreedyBase <- function (list_nodes, df_edges)
   #
   # Compute recursively the positions of nodes in regard of the two selected
   #
-  ret <- tmiic.tmiic.computeRowLayoutGreedyRecurs (node_chosen, other_node,
+  ret <- tmiic_compute_row_layout_greedy_recurs (node_chosen, other_node,
                                       df_nodes$nodes, df_nodes, df_edges)
   #
   # If some nodes are still not positioned, do separate graph(s) beside
@@ -419,37 +394,38 @@ tmiic.computeRowLayoutGreedyBase <- function (list_nodes, df_edges)
     #
     # Construct a separate layout with remaining edges
     #
-    ret_next <- tmiic.computeRowLayoutGreedyBase (ret$nodes_no_care, df_edges)
+    ret_next <- tmiic_compute_row_layout_greedy_base (ret$nodes_no_care, df_edges)
     ret$nodes_positioned <- c(ret$nodes_positioned, ret_next$nodes_positioned)
     ret$nodes_no_care <- ret_next$nodes_no_care
     }
   return (ret)
   }
 
-#-----------------------------------------------------------------------------
-# tmiic.tmiic.computeRowLayoutGreedyRecurs
-#-----------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
+# tmiic_compute_row_layout_greedy_recurs
+#-------------------------------------------------------------------------------
 # Internal recursive function to compute an optimized raw layout used to
-# construct a pseudo grid layout for the display of raw and lagged graphs
+# construct a grid layout for the display of raw and lagged graphs
 #
-# @description The function starts by using two nodes as separators:
+#  The function starts by using two nodes as separators:
 # the other nodes are placed in sets depending on how they are placed
 # regarding the two separators: left, center and rigth. These sets are
 # processed in a recursive way until becoming empty, then the backtrack
 # generates the lit of nodes representing the raw layout with minimal
 # crossing
 #
-# @param node_left [a string] The left separator node
-# @param node_right [a string] The right separator node
-# @param list_nodes_to_affect[a list] The list is nodes to be postioned
-# @param df_nodes [a dataframe] The list of nodes with columns nodes and degree
-# @param df_edges [a dataframe] The list of edges with columns x, y containing
-# the nodes and count columns (>1 when edge exists with multiple lags between
-# the two nodes)
+# params:
+# - node_left: string, the left separator node
+# - node_right; string, the right separator node
+# - list_nodes_to_affect: list, the list is nodes to be positioned
+# - df_nodes: dataframe, the list of nodes with columns nodes and degree
+# - df_edges: dataframe, the list of edges with columns x, y containing
+#   the nodes and count columns (>1 when edge exists with multiple lags between
+#   the two nodes)
 #
-# @return [a list] The list of nodes ordered to avoid crossing edges
-#-----------------------------------------------------------------------------
-tmiic.tmiic.computeRowLayoutGreedyRecurs <- function (node_left, node_right,
+# returns: list, the list of nodes ordered to avoid crossing edges
+#-------------------------------------------------------------------------------
+tmiic_compute_row_layout_greedy_recurs <- function (node_left, node_right,
                                     list_nodes_to_affect, df_nodes, df_edges)
   {
   #
@@ -527,7 +503,7 @@ tmiic.tmiic.computeRowLayoutGreedyRecurs <- function (node_left, node_right,
   if (length(nodes_left) > 0)
     {
     new_node_sep <- find_node_max_degre (nodes_left, df_nodes)
-    ret <- tmiic.tmiic.computeRowLayoutGreedyRecurs (new_node_sep, node_left,
+    ret <- tmiic_compute_row_layout_greedy_recurs (new_node_sep, node_left,
                                           append (nodes_left, nodes_no_care),
                                           df_nodes, df_edges)
     nodes_positioned_left  <- ret$nodes_positioned
@@ -537,13 +513,13 @@ tmiic.tmiic.computeRowLayoutGreedyRecurs <- function (node_left, node_right,
   if (length(nodes_center) > 0)
     {
     new_node_sep <- find_node_max_degre (nodes_center, df_nodes)
-    ret <- tmiic.tmiic.computeRowLayoutGreedyRecurs (node_left, new_node_sep,
+    ret <- tmiic_compute_row_layout_greedy_recurs (node_left, new_node_sep,
                                         append (nodes_center, nodes_no_care),
                                         df_nodes, df_edges)
     nodes_positioned_center_left <- ret$nodes_positioned
     df_nodes <- df_nodes[ (!df_nodes$nodes %in% nodes_positioned_center_left), ]
 
-    ret <- tmiic.tmiic.computeRowLayoutGreedyRecurs (new_node_sep, node_right,
+    ret <- tmiic_compute_row_layout_greedy_recurs (new_node_sep, node_right,
                                                      ret$nodes_no_care,
                                                      df_nodes, df_edges)
     nodes_positioned_center_right  <- ret$nodes_positioned
@@ -553,7 +529,7 @@ tmiic.tmiic.computeRowLayoutGreedyRecurs <- function (node_left, node_right,
   if (length(nodes_right) > 0)
     {
     new_node_sep <- find_node_max_degre (nodes_right, df_nodes)
-    ret <- tmiic.tmiic.computeRowLayoutGreedyRecurs (node_right, new_node_sep,
+    ret <- tmiic_compute_row_layout_greedy_recurs (node_right, new_node_sep,
                                           append (nodes_right, nodes_no_care),
                                           df_nodes, df_edges)
     nodes_positioned_right <- ret$nodes_positioned
@@ -569,32 +545,30 @@ tmiic.tmiic.computeRowLayoutGreedyRecurs <- function (node_left, node_right,
   return (ret)
   }
 
-#-----------------------------------------------------------------------------
-# tmiic.computeRowLayoutGreedy
-#-----------------------------------------------------------------------------
-# Internal function to compute an optimized pseudo grid layout for the display
+#-------------------------------------------------------------------------------
+# tmiic_compute_row_layout_greedy
+#-------------------------------------------------------------------------------
+# Internal function to compute an optimized grid layout for the display
 # of raw and lagged graphs
 #
-# @description
 # The function counts edges per couple of nodes whatever their lags are and
-# exclude self loop. Then it call tmiic.computeRowLayoutGreedyBase
+# exclude self loop. Then it call tmiic_compute_row_layout_greedy_base
 # with the nodes having at least one edge to compute a layer 0 layout.
 # The layout is completed with nodes without edges to produce the final
 # layer 0 layout.
 #
-# @param  tmiic.res [a tmiic graph object] The graph object returned by the
-# miic execution in temporal mode, "raw" graph_type
+# param:  tmiic_res, the object returned by the miic execution in temporal mode
 #
-# @return [a list] The position along an axis for each node
-#-----------------------------------------------------------------------------
-tmiic.computeRowLayoutGreedy <- function (tmiic.res)
+# returns: a list, the position along an axis for each node
+#-------------------------------------------------------------------------------
+tmiic_compute_row_layout_greedy <- function (tmiic_res)
   {
-  list_nodes_not_lagged <- tmiic.res$tmiic_specific[["nodes_not_lagged"]]
+  list_nodes_not_lagged <- tmiic_res$state_order$var_names
   #
   # Filter out self edges, count and summarize edges regardless their lags
   #
-  tmiic.flat <- miic:::tmiic.flatten_network(tmiic.res)
-  df_edges <- tmiic.flat$all.edges.summary
+  tmiic_flat <- tmiic_flatten_network (tmiic_res)
+  df_edges <- tmiic_flat$all.edges.summary
   df_edges <- df_edges[(df_edges$x != df_edges$y),]
   for (edge_idx in 1:nrow(df_edges))
     {
@@ -617,7 +591,7 @@ tmiic.computeRowLayoutGreedy <- function (tmiic.res)
   #
   # Compute layer 0 layout (without nodes not part of an edges)
   #
-  ret_recurs <- miic:::tmiic.computeRowLayoutGreedyBase (list_nodes_with_edge, df_edges)
+  ret_recurs <- tmiic_compute_row_layout_greedy_base (list_nodes_with_edge, df_edges)
   layout_unique_nodes = unique (ret_recurs$nodes_positioned)
 
   layout_row <- list()
@@ -636,26 +610,25 @@ tmiic.computeRowLayoutGreedy <- function (tmiic.res)
   return ( unlist (layout_row) )
   }
 
-#-----------------------------------------------------------------------------
-# tmiic.computeRowLayoutLayers
-#-----------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
+# tmiic_compute_row_layout_layers
+#-------------------------------------------------------------------------------
 # Internal function to precompute a layout suited for the display of raw and
 # lagged graphs
 #
-# @description This function computes the layout so that the less layers
+# This function computes the layout so that the less layers
 # has a node, the more to the exteriors it will be placed.
 #
-# @param  tmiic.res [a tmiic graph object] The graph object returned by the
-# miic execution in temporal mode ("raw" graph_type)
+# param: tmiic_res, a tmiic object returned by the execution of miic
+# in temporal mode ("raw" graph_type)
 #
-# @return [a list] The position along an axis for each node
-#-----------------------------------------------------------------------------
-tmiic.computeRowLayoutLayers <- function (tmiic.res)
+# returns: a list, the position along an axis for each node
+#-------------------------------------------------------------------------------
+tmiic_compute_row_layout_layers <- function (tmiic_res)
   {
-  n_nodes_not_lagged <- length(tmiic.res$tmiic_specific[["nodes_not_lagged"]])
-  list_taus <- tmiic.res$tmiic_specific[["tau"]]
-  list_taus [which (list_taus < 0)] <- 0
-  tau_max <- max (list_taus)
+  n_nodes_not_lagged <- nrow(tmiic_res$state_order)
+  list_n_layers_back <- tmiic_res$state_order$n_layers - 1
+  n_layers_back_max <- max (list_n_layers_back)
   #
   # Precompute the rows on the grid, putting nodes with the less lags
   # on the exteriors while the nodes having the most lags are in the center
@@ -663,57 +636,60 @@ tmiic.computeRowLayoutLayers <- function (tmiic.res)
   list_pos_of_nodes <- list()
   idx_top <- 1
   idx_end <- n_nodes_not_lagged
-  for (tau_ix in 0:tau_max) {
-    list_nodes_idx_for_tau <- which(list_taus == tau_ix)
-    if (length (list_nodes_idx_for_tau) > 0) {
-      nb_top <- (length (list_nodes_idx_for_tau) + 1) %/% 2
-      nb_end <- length (list_nodes_idx_for_tau) - nb_top
+  for (n_layers_back_idx in 0:n_layers_back_max)
+    {
+    list_nodes_idx_for_layer <- which(list_n_layers_back == n_layers_back_idx)
+    if (length (list_nodes_idx_for_layer) > 0) {
+      nb_top <- (length (list_nodes_idx_for_layer) + 1) %/% 2
+      nb_end <- length (list_nodes_idx_for_layer) - nb_top
       i <- 1
-      while (nb_top > 0) {
-        node_idx <- list_nodes_idx_for_tau[[i]]
+      while (nb_top > 0)
+        {
+        node_idx <- list_nodes_idx_for_layer[[i]]
         list_pos_of_nodes[[node_idx]] <- idx_top
         idx_top <- idx_top + 1
         i <- i + 1
         nb_top <- nb_top - 1
-      }
-      if (nb_end > 0) {
-        i <- length(list_nodes_idx_for_tau)
-        while (nb_end > 0) {
-          node_idx <- list_nodes_idx_for_tau[[i]]
+        }
+      if (nb_end > 0)
+        {
+        i <- length(list_nodes_idx_for_layer)
+        while (nb_end > 0)
+          {
+          node_idx <- list_nodes_idx_for_layer[[i]]
           list_pos_of_nodes[[node_idx]] <- idx_end
           idx_end <- idx_end - 1
           i <- i - 1
           nb_end <- nb_end - 1
+          }
         }
       }
     }
-  }
   return (unlist (list_pos_of_nodes) )
   }
 
-#-----------------------------------------------------------------------------
-# tmiic.computeRowLayoutSugiyama
-#-----------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
+# tmiic_compute_row_layout_sugiyama
+#-------------------------------------------------------------------------------
 # Internal function to precompute a layout suited for the display of raw and
 # lagged graphs
-#
-# @description This function computes the layout using Sugiyama algorihtm to
+# This function computes the layout using Sugiyama algorihtm to
 # minimize crossing edges
 #
-# @param  tmiic.res [a tmiic graph object] The graph object returned by the
-# miic execution in temporal mode ("raw" graph_type)
+# param: tmiic_res, a tmiic objectreturned by the execution of miic
+# in temporal mode ("raw" graph_type)
 #
-# @return [a list] The position along an axis for each node
-#-----------------------------------------------------------------------------
-tmiic.computeRowLayoutSugiyama <- function (tmiic.res)
+# returns: a list, the position along an axis for each node
+#-------------------------------------------------------------------------------
+tmiic_compute_row_layout_sugiyama <- function (tmiic_res)
   {
-  list_nodes_not_lagged <- tmiic.res$tmiic_specific[["nodes_not_lagged"]]
+  list_nodes_not_lagged <- tmiic_res$state_order$var_names
   n_nodes_not_lagged <- length(list_nodes_not_lagged)
   #
   # Filter out self edges, count and summarize edges regardless their lags
   #
-  tmiic.flat <- miic:::tmiic.flatten_network(tmiic.res)
-  df_edges <- tmiic.flat$all.edges.summary
+  tmiic_flat <- tmiic_flatten_network(tmiic_res)
+  df_edges <- tmiic_flat$all.edges.summary
   df_edges <- df_edges[(df_edges$x != df_edges$y),]
   for (edge_idx in 1:nrow(df_edges))
     {
@@ -737,48 +713,43 @@ tmiic.computeRowLayoutSugiyama <- function (tmiic.res)
   return (list_pos_of_nodes)
   }
 
-#-----------------------------------------------------------------------------
-# tmiic.computeGridLayout
-#-----------------------------------------------------------------------------
-# Internal function to compute a pseudo grid layout to display raw and lagged
+#-------------------------------------------------------------------------------
+# tmiic_compute_grid_layout
+#-------------------------------------------------------------------------------
+# Internal function to compute a grid layout to display raw and lagged
 # graphs
 #
-# @description Depending on the algorithm parameter, a layer 0 layout will
-# be produced and be expanded over time.
+# params:
+# - tmiic_res, a tmiic object returned by the miic's execution in temporal mode.
 #
-# @param  tmiic.res [a tmiic graph object]
-# The graph object returned by the miic execution in temporal mode.
-# The tmiic object can be used as it ("raw" graph_type) or modified into a
-# "lagged" graph by calling tmiic.repeat_edges_over_history.
+# - display: string. optional, default value "raw".
+#   Possible values are "raw" and "lagged".
 #
-# @param display [a string]. Optional, default value "raw".
-# Possible values are "raw" and "lagged".
+# - positioning: string, optional, default:"greedy".
+#   The method used to position nodes.
+#   Possible values are "none", "alphabetical", "layers",
+#   "greedy" and "sugiyama":
+#   * When positioning = "none":
+#     The nodes are positioned as they appear in the miic result
+#   * When positioning = "alphabetical":
+#     The nodes are positioned alphabetically in ascending order
+#   * When positioning = "layers":
+#     The nodes with the less lags wil be placed on the exteriors
+#     while the nodes having the most lags are in the center
+#   * When positioning = "greedy":
+#     A greedy algorithm will be used to placed the nodes in a way minimizing
+#     the crossing edges
+#   * When positioning = "sugiyama":
+#     The sugiyama algorithm will be used to placed the nodes in a way
+#     minimizing the crossing edges
 #
-# @param  positioning [a string] Optional, default:"greedy".
-# The method used to position nodes.
-# Possible values are "none", "alphabetical", "layers",
-# "greedy" and "sugiyama":
-# When positioning = "none":
-# - The nodes are positioned as they appear in the miic result
-# When positioning = "alphabetical":
-# - The nodes are positioned alphabetically in ascending order
-# When positioning = "layers":
-# - The nodes with the less lags wil be placed on the exteriors
-#   while the nodes having the most lags are in the center
-# When positioning = "greedy":
-# - A greedy algorithm will be used to placed the nodes in a way minimizing
-#   the crossing edges
-# When positioning = "sugiyama":
-# - The sugiyama algorithm will be used to placed the nodes in a way
-#   minimizing the crossing edges
+# - orientation: character, optional, default:"L".
+#   The orientation of the draw.
+#   Possible values are landscape:"L" or portrait: "P".
 #
-# @param  orientation [a character] Optional, default:"L".
-# The orientation of the draw.
-# Possible values are landscape:"L" or portrait: "P".
-#
-# @return layout [a matrix] The layout to use for drawing
-#-----------------------------------------------------------------------------
-tmiic.computeGridLayout <- function (tmiic.res, display="raw",
+# returns: a matrix, the layout to use for drawing
+#-------------------------------------------------------------------------------
+tmiic_compute_grid_layout <- function (tmiic_res, display="raw",
                                      positioning="greedy", orientation="L")
   {
   if (! display %in% c("raw", "lagged") )
@@ -788,8 +759,8 @@ tmiic.computeGridLayout <- function (tmiic.res, display="raw",
   if (! orientation %in% c("L", "P") )
     stop ("Error: Invalid orientation parameter")
 
-  nodes_not_lagged <- tmiic.res$tmiic_specific[["nodes_not_lagged"]]
-  n_nodes_not_lagged <- length(nodes_not_lagged)
+  nodes_not_lagged <- tmiic_res$state_order$var_names
+  n_nodes_not_lagged <- length (nodes_not_lagged)
   #
   # Precompute the layer 0 layout
   #
@@ -805,23 +776,18 @@ tmiic.computeGridLayout <- function (tmiic.res, display="raw",
     list_pos_of_nodes <- unlist (list_pos_of_nodes)
     }
   if (positioning == "layers")
-    list_pos_of_nodes <- tmiic.computeRowLayoutLayers (tmiic.res)
+    list_pos_of_nodes <- tmiic_compute_row_layout_layers (tmiic_res)
   if (positioning == "greedy")
-    list_pos_of_nodes <- tmiic.computeRowLayoutGreedy (tmiic.res)
+    list_pos_of_nodes <- tmiic_compute_row_layout_greedy (tmiic_res)
   if (positioning == "sugiyama")
-    list_pos_of_nodes <- tmiic.computeRowLayoutSugiyama (tmiic.res)
+    list_pos_of_nodes <- tmiic_compute_row_layout_sugiyama (tmiic_res)
   if ( is.null (list_pos_of_nodes) )
     stop ("Error: Layout can not be infered")
   #
   # As contextual nodes are placed in an extra column/row when display is "raw",
   # here we update the nodes positions to maintain a "nice" display
   #
-  is_contextual <- tmiic.res$tmiic_specific[["is_contextual"]]
-  if (is.null(is_contextual))
-    is_contextual <- rep (0, n_nodes_not_lagged)
-  else
-    is_contextual <- is_contextual[1:n_nodes_not_lagged]
-
+  is_contextual <- tmiic_res$state_order$is_contextual
   if ( (display == "raw") & (sum(is_contextual) > 0) )
     {
     list_pos_upd <- list_pos_of_nodes
@@ -866,11 +832,10 @@ tmiic.computeGridLayout <- function (tmiic.res, display="raw",
   #
   # Place contextual and lag0 nodes
   #
-  list_taus <- tmiic.res$tmiic_specific[["tau"]]
-  list_taus [which (list_taus < 0)] <- 0
-  tau_max <- max (list_taus)
-  list_delta_taus <- tmiic.res$tmiic_specific[["delta_tau"]]
-  max_lags <- max (list_taus * list_delta_taus)
+  list_n_layers_back <- tmiic_res$state_order$n_layers - 1
+  n_layers_back_max <- max (list_n_layers_back)
+  list_delta_t <- tmiic_res$state_order$delta_t
+  max_lags <- max (list_n_layers_back * list_delta_t)
 
   df_layout <- data.frame ( col=integer(), row=integer() )
   for (i in 1:n_nodes_not_lagged)
@@ -878,7 +843,7 @@ tmiic.computeGridLayout <- function (tmiic.res, display="raw",
     if (is_contextual[[i]])
       {
       if (display == "raw")
-        col_display <- max_lags + (max_lags / max(list_taus))
+        col_display <- max_lags + (max_lags / max(list_n_layers_back))
       else
         col_display <- 0
       }
@@ -887,13 +852,13 @@ tmiic.computeGridLayout <- function (tmiic.res, display="raw",
     df_layout [i,] <- c(col_display, list_pos_of_nodes[[i]])
     }
   #
-  # Place each lagged node using its lag (tau * delta_tau)
+  # Place each lagged node using its lag (layer_back * delta_t)
   #
-  for (tau_idx in 1:tau_max)
+  for (n_layers_back_idx in 1:n_layers_back_max)
     for (node_idx in 1:n_nodes_not_lagged)
-      if (tau_idx <= list_taus[[node_idx]])
+      if (n_layers_back_idx <= list_n_layers_back[[node_idx]])
         {
-        col_display <- max_lags - tau_idx * list_delta_taus[[node_idx]]
+        col_display <- max_lags - n_layers_back_idx * list_delta_t[[node_idx]]
         df_layout [nrow(df_layout)+1,] <- c (col_display,
                                              list_pos_of_nodes[[node_idx]])
         }
@@ -913,10 +878,9 @@ tmiic.computeGridLayout <- function (tmiic.res, display="raw",
   return (layout)
   }
 
-
-#-----------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 # plot.tmiic
-#-----------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 #' Basic plot function of a tmiic network inference result
 #'
 #' @description This function calls \code{\link{tmiic.export}} to build a
@@ -1017,7 +981,6 @@ tmiic.computeGridLayout <- function (tmiic.res, display="raw",
 #' @export
 #'
 #' @seealso \code{\link{tmiic.export}} for generic exports,
-#' \code{\link{tmiic.getIgraph}} for igraph export,
 #' \code{\link[igraph]{igraph.plotting}}
 #'
 #' @examples
@@ -1027,29 +990,29 @@ tmiic.computeGridLayout <- function (tmiic.res, display="raw",
 #' #' # EXAMPLE COVID CASES (timeseries demo)
 #' data(covidCases)
 #' # execute MIIC (reconstruct graph in temporal mode)
-#' tmiic.res <- miic(input_data = covidCases, tau = 2, movavg = 14)
+#' tmiic_res <- miic(input_data = covidCases, mode = "TS", n_layers = 3, delta_t = 1, movavg = 14)
 #'
 #' # to plot the default compact graph
 #' if(require(igraph)) {
-#'   plot(tmiic.res)
+#'   plot(tmiic_res)
 #' }
 #'
 #' # to plot the raw temporal network Using igraph
 #' if(require(igraph)) {
-#'   plot(tmiic.res, display="raw")
+#'   plot(tmiic_res, display="raw")
 #' }
 #'
 #' # to plot the full temporal network Using igraph
 #' if(require(igraph)) {
-#'   plot(tmiic.res, display="lagged")
+#'   plot(tmiic_res, display="lagged")
 #' }
 #'
 #' }
-#-----------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 plot.tmiic = function(x, display="compact", show_self_loops=TRUE,
                       positioning_for_grid="greedy", orientation_for_grid="L",
-                      method = 'igraph', pcor_palette=NULL, ...) {
-
+                      method = 'igraph', pcor_palette=NULL, ...)
+  {
   if (class(x) != "tmiic")
     stop("Error: Not a tmiic object.")
   if (method != 'igraph')
@@ -1066,39 +1029,42 @@ plot.tmiic = function(x, display="compact", show_self_loops=TRUE,
   if ( ! ( "layout" %in% names(list(...)) ) )
     {
     if (display %in% c("raw", "lagged") )
-      local_layout <- tmiic.computeGridLayout (x, display=display,
+      local_layout <- tmiic_compute_grid_layout (x, display=display,
                                   positioning=positioning_for_grid,
                                   orientation=orientation_for_grid)
     else
       local_layout <- igraph::layout_with_kk
     }
   #
-  # Prepare data for the required display
+  # Export the graph to a graphical object
   #
-  if ( (display == "lagged") & (x$tmiic_specific[["graph_type"]] == "raw") )
-    x <- tmiic.repeat_edges_over_history (x)
-  if ( (! display %in% c("raw", "lagged") ) & (x$tmiic_specific[["graph_type"]] == "raw") )
-    x <- tmiic.flatten_network(x, flatten_mode=display,
-                               keep_edges_on_same_node=show_self_loops)
-
-  x <- tmiic.prepareEdgesForPlotting(x)
-
+  graph <- tmiic.export (x, display=display, method=method,
+                         pcor_palette=pcor_palette)
+  #
+  # When we have multiple edges between a couple of nodes or multiple self loops
+  # we need to tune the plotting to plot more nicely these edges
+  # => identify multiple edges
+  #
   df_mult <- data.frame(count=integer(), stringsAsFactors = FALSE)
-  if (x$tmiic_specific[["graph_type"]] == "compact")
-    df_mult <- tmiic.getMultipleEdgesForPlotting(x)
-  #
-  # Export the graph to a graphical object and plot
-  #
-  graph <- tmiic.export (x, display="raw", method=method, pcor_palette=pcor_palette)
-  if (nrow (df_mult) <= 0) {
+  if (! display %in% c("raw", "lagged") )
+    {
+    x <- tmiic_flatten_network(x, flatten_mode=display,
+                               keep_edges_on_same_node=show_self_loops)
+    x <- tmiic_prepare_edges_for_plotting(x)
+    df_mult <- tmiic_get_multiple_edges_for_plotting(x)
+    }
+
+  if (nrow (df_mult) <= 0)
+    {
     # No multiple edges between the same nodes, we draw in one go
     #
     if ( is.null (local_layout) )
       igraph::plot.igraph (graph, ...)
     else
       igraph::plot.igraph (graph, layout=local_layout, ...)
-  }
-  else {
+    }
+  else
+    {
     # Multiple edges between the same nodes exist, draw iteratively
     #
     df_edges <- x$all.edges.summary
@@ -1109,13 +1075,15 @@ plot.tmiic = function(x, display="compact", show_self_loops=TRUE,
     # The multiple edges will be drawn with invisible color "#FF000000"
     # and with no labels
     #
-    for ( edge_idx in 1:nrow(df_edges) ) {
+    for ( edge_idx in 1:nrow(df_edges) )
+      {
       one_edge <- df_edges[edge_idx,]
-      if (one_edge$xy %in% df_mult$xy) {
+      if (one_edge$xy %in% df_mult$xy)
+        {
         edges_colors_iter[[edge_idx]] <- "#FF000000"
         edges_labels_iter[[edge_idx]] <- NA
+        }
       }
-    }
     if ( is.null (local_layout) )
       igraph::plot.igraph (graph,
                            edge.color=edges_colors_iter,
@@ -1127,39 +1095,42 @@ plot.tmiic = function(x, display="compact", show_self_loops=TRUE,
     #
     # Draw each group of multiple edges
     #
-    for ( mult_idx in 1:nrow(df_mult) ) {
+    for ( mult_idx in 1:nrow(df_mult) )
+      {
       one_mult <- df_mult[mult_idx,]
       nodes_of_mult <- strsplit (one_mult$xy, "-")[[1]]
-      if (nodes_of_mult[[1]] == nodes_of_mult[[2]]) {
-        #
+      if (nodes_of_mult[[1]] == nodes_of_mult[[2]])
+        {
         # for self loop, we will go over 2*pi around the node
         #
         step_pos <- 0
         step_inc <- (2 * pi) / one_mult$count
-      }
-      else {
-        #
+        }
+      else
+        {
         # otherelse, we will curve edges from -0.5 to +0.5
         #
-        if (one_mult$count > 4) {
-          #
+        if (one_mult$count > 4)
+          {
           # if more than 4 edges, curve more
           #
           step_pos <- -1
           step_inc <- 2.0 / (one_mult$count - 1)
-        }
-        else {
+          }
+        else
+          {
           step_pos <- -0.5
           step_inc <- 1.0 / (one_mult$count - 1)
+          }
         }
-      }
       #
       # Draw multiple edges one by one
       # To avoid addition of colors when using transparent color for nodes
       # set the nodes color to NA for the following draws
       #
       list_to_draw = which(df_edges[, "xy"] == one_mult$xy)
-      for (idx_to_draw in 1:length(list_to_draw) ) {
+      for (idx_to_draw in 1:length(list_to_draw) )
+        {
         edge_to_draw = list_to_draw[[idx_to_draw]]
         #
         # We hide all edges except one
@@ -1169,7 +1140,8 @@ plot.tmiic = function(x, display="compact", show_self_loops=TRUE,
         edges_colors_iter[[edge_to_draw]] <- igraph::E(graph)[[edge_to_draw]]$color
         edges_labels_iter[[edge_to_draw]] <- igraph::E(graph)[[edge_to_draw]]$label
 
-        if (nodes_of_mult[[1]] == nodes_of_mult[[2]]) {
+        if (nodes_of_mult[[1]] == nodes_of_mult[[2]])
+          {
           if ( is.null (local_layout) )
             igraph::plot.igraph (graph, add=TRUE,
                                  vertex.color=NA,
@@ -1182,9 +1154,11 @@ plot.tmiic = function(x, display="compact", show_self_loops=TRUE,
                                  edge.color=edges_colors_iter,
                                  edge.label=edges_labels_iter,
                                  edge.loop.angle=step_pos, ...)
-        }
-        else {
-          if (df_edges[edge_to_draw,]$x < df_edges[edge_to_draw,]$y) {
+          }
+        else
+          {
+          if (df_edges[edge_to_draw,]$x < df_edges[edge_to_draw,]$y)
+            {
             if ( is.null (local_layout) )
               igraph::plot.igraph (graph, add=TRUE,
                                    vertex.color=NA,
@@ -1197,8 +1171,9 @@ plot.tmiic = function(x, display="compact", show_self_loops=TRUE,
                                    edge.color=edges_colors_iter,
                                    edge.label=edges_labels_iter,
                                    edge.curved=step_pos, ...)
-          }
-          else { # y > x we need to curve the edge on the opposite way
+            }
+          else  # y > x we need to curve the edge on the opposite way
+            {
             if ( is.null (local_layout) )
               igraph::plot.igraph (graph, add=TRUE,
                                    vertex.color=NA,
@@ -1211,15 +1186,14 @@ plot.tmiic = function(x, display="compact", show_self_loops=TRUE,
                                    edge.color=edges_colors_iter,
                                    edge.label=edges_labels_iter,
                                    edge.curved=-step_pos, ...)
+            }
           }
-        }
         #
         # Update position for next edge
         #
         step_pos <- step_pos + step_inc
+        }
       }
     }
   }
-}
-
 

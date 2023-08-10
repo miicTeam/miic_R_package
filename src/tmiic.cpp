@@ -1,7 +1,7 @@
 //*****************************************************************************
-// Filename   : tmiic.cpp                   Namespace: tmiic                                   
+// Filename   : tmiic.cpp                   Namespace: tmiic
 //
-// Author     : Franck SIMON                Creation date: 07 may 2020 
+// Author     : Franck SIMON                Creation date: 07 may 2020
 //
 // Description: Store functions for temporal mode of miic (tmiic)
 //
@@ -34,7 +34,7 @@ using namespace miic::utility;
 //-----------------------------------------------------------------------------
 // Description: in temporal mode, find the past lagged counterparts of an edge
 // assuming stationarity
-// 
+//
 // Params:
 // - Environment&: the environment structure
 // - int: edge's first node index
@@ -42,10 +42,10 @@ using namespace miic::utility;
 // Return:
 // - std::vector< std::pair<int>, <int> > : list of lagged edges
 //--------------------------------------------------------------------------------
-std::vector< std::pair<int, int> > getListLaggedEdges 
+std::vector< std::pair<int, int> > getListLaggedEdges
   (Environment& environment, int node1_pos, int node2_pos) {
-  std::vector< std::pair<int, int> > list_ret; 
-  if (  (node1_pos >= environment.n_nodes_not_lagged) 
+  std::vector< std::pair<int, int> > list_ret;
+  if (  (node1_pos >= environment.n_nodes_not_lagged)
      && (node2_pos >= environment.n_nodes_not_lagged) )
     //
     // The edge is duplicated, this function deals only with the original ones
@@ -56,14 +56,14 @@ std::vector< std::pair<int, int> > getListLaggedEdges
   //
   int sav_lag = environment.nodes_lags[node1_pos] - environment.nodes_lags[node2_pos];
   bool same_lag_needed = true;
-  if (   (node1_pos < environment.n_nodes_not_lagged) 
-      && (environment.list_taus[node1_pos] <= 0) )
+  if (   (node1_pos < environment.n_nodes_not_lagged)
+      && (environment.list_n_layers[node1_pos] <= 1) )
     same_lag_needed = false;
-  else if (  (node2_pos < environment.n_nodes_not_lagged) 
-          && (environment.list_taus[node2_pos] <= 0) )
+  else if (  (node2_pos < environment.n_nodes_not_lagged)
+          && (environment.list_n_layers[node2_pos] <= 1) )
     same_lag_needed = false;
   //
-  // Look for the same edge lagged over all layers of history 
+  // Look for the same edge lagged over all layers of history
   //
   while (true) {
     //
@@ -85,7 +85,7 @@ std::vector< std::pair<int, int> > getListLaggedEdges
         if (sav_lag < new_lag) {
           int node2_shift = environment.nodes_shifts[node2_pos];
           if (node2_shift <= 0) {
-            same_lag_impossible = true;            
+            same_lag_impossible = true;
             break;
           }
           node2_pos += node2_shift;
@@ -93,7 +93,7 @@ std::vector< std::pair<int, int> > getListLaggedEdges
         else { // sav_lag > new_lag
           int node1_shift = environment.nodes_shifts[node1_pos];
           if (node1_shift <= 0) {
-            same_lag_impossible = true;            
+            same_lag_impossible = true;
             break;
           }
           node1_pos += node1_shift;
@@ -120,7 +120,7 @@ std::vector< std::pair<int, int> > getListLaggedEdges
 // discovery is enabled, we duplicate the edges over the history, assuming
 // stationarity, to improve the consistency assessment and the orientations
 //
-// Params: 
+// Params:
 // - Environment&: the environment structure
 //-----------------------------------------------------------------------------
 void repeatEdgesOverHistory (Environment& environment) {
@@ -152,7 +152,7 @@ void repeatEdgesOverHistory (Environment& environment) {
       //
       // Add the nodes into connected_list
       //
-      environment.connected_list.emplace_back (it_lagged.first, it_lagged.second, 
+      environment.connected_list.emplace_back (it_lagged.first, it_lagged.second,
                                 environment.edges (it_lagged.first, it_lagged.second) );
     }
   }
@@ -161,25 +161,25 @@ void repeatEdgesOverHistory (Environment& environment) {
 //-----------------------------------------------------------------------------
 // completeOrientationUsingTime
 //-----------------------------------------------------------------------------
-// Description: Complete the orientations with the orientation of temporal  
-// edges that were not previously oriented 
+// Description: Complete the orientations with the orientation of temporal
+// edges that were not previously oriented
 //
 // Detail: completeOrientationUsingTime will look in the list of connected
-// edges the ones that have not been oriented using the unshielded triples, 
-// are lagged, have a node on the layer 0. 
+// edges the ones that have not been oriented using the unshielded triples,
+// are lagged, have a node on the layer 0.
 // Edges matching these criteria will be oriented using time from the oldest
 // node to the newest.
-// 
+//
 // N.B.: Edges not having a node on the layer 0 are edges "past only" and are a
 // consequence of duplicating edges over history to maximize the number of
-// unshielded triples, There is no interest to orient "past only" edges 
-// using time as they will be removed at the end of the orientation step. 
+// unshielded triples, There is no interest to orient "past only" edges
+// using time as they will be removed at the end of the orientation step.
 //
 // Params:
 // - Environment&: the environment structure
 // - std::vector<Triple>& : list of unshielded triples
 //--------------------------------------------------------------------------------
-void completeOrientationUsingTime (Environment& environment, 
+void completeOrientationUsingTime (Environment& environment,
                                    const std::vector<Triple>& triples) {
   const auto& edge_list = environment.connected_list;
   for (auto iter0 = begin(edge_list); iter0 != end(edge_list); ++iter0) {
@@ -187,7 +187,7 @@ void completeOrientationUsingTime (Environment& environment,
     //
     // If edges has no node on the layer 0, it is a duplicated one => skip it
     //
-    if ( ! (  (posX < environment.n_nodes_not_lagged) 
+    if ( ! (  (posX < environment.n_nodes_not_lagged)
            || (posY < environment.n_nodes_not_lagged) ) )
       continue;
     //
@@ -212,7 +212,7 @@ void completeOrientationUsingTime (Environment& environment,
       continue;
     //
     // The edge was not in open triples, has a node on layer 0, and is not
-    // contemporaneous => we can and need to orient it using time 
+    // contemporaneous => we can and need to orient it using time
     // As time goes from past to present: edge orientation is max lag -> min lag
     //
     if (environment.nodes_lags[posX] > environment.nodes_lags[posY])
@@ -225,14 +225,14 @@ void completeOrientationUsingTime (Environment& environment,
 //-----------------------------------------------------------------------------
 // dropPastEdges
 //-----------------------------------------------------------------------------
-// Description: 
+// Description:
 // Drop past edges (the edges having no node of the final timestep)
 //
 // Detail: for consistency assessment or orientation step with latent variable
 // discovery is enabled, we duplicated edges over history. Here, we ensure that
-// the edges are restored to their state prior before duplication. 
+// the edges are restored to their state prior before duplication.
 //
-// Params: 
+// Params:
 // - Environment&: the environment structure
 //--------------------------------------------------------------------------------
 void dropPastEdges (Environment& environment) {
@@ -240,29 +240,29 @@ void dropPastEdges (Environment& environment) {
   // We iterate over computed edges to find edges previously duplicated using stationary.
   // All the edges duplicated are disconnected and removed from environment.connected_list
   //
-  auto it = begin(environment.connected_list); 
+  auto it = begin(environment.connected_list);
   while ( it != end(environment.connected_list) ) {
-    // 
+    //
     // When the two nodes are not on the layer 0, the edge is removed
-    //    
-    if (  (it->X >= environment.n_nodes_not_lagged) 
+    //
+    if (  (it->X >= environment.n_nodes_not_lagged)
        && (it->Y >= environment.n_nodes_not_lagged) )
       it = environment.connected_list.erase (it);
-    // 
-    // When one of the nodes is not lagged (i.e. contextual) 
+    //
+    // When one of the nodes is not lagged (i.e. contextual)
     // and the other not on the layer 0, the edge is removed
-    //    
+    //
     else if (  (it->X < environment.n_nodes_not_lagged)
-            && (environment.list_taus[it->X] <= 0)
+            && (environment.list_n_layers[it->X] <= 1)
             && (it->Y >= environment.n_nodes_not_lagged) )
       it = environment.connected_list.erase (it);
     else if (  (it->Y < environment.n_nodes_not_lagged)
-            && (environment.list_taus[it->Y] <= 0)
+            && (environment.list_n_layers[it->Y] <= 1)
             && (it->X >= environment.n_nodes_not_lagged) )
       it = environment.connected_list.erase (it);
     else
       it++;
-  }  
+  }
   //
   // We remove from the edges all those having pos > n_nodes_not_lagged
   //
@@ -274,9 +274,9 @@ void dropPastEdges (Environment& environment) {
       environment.edges(node1_pos,node2_pos).proba_head = -1;
     }
   //
-  // In addition, remove lagged edges added on non lagged variable (i.e.:contextual) 
+  // In addition, remove lagged edges added on non lagged variable (i.e.:contextual)
   //
-  for (int i = 0; i < environment.n_nodes_not_lagged; i++) 
+  for (int i = 0; i < environment.n_nodes_not_lagged; i++)
     if (environment.is_contextual[i])
       for (int j = environment.n_nodes_not_lagged; j < environment.n_nodes; j++) {
         environment.edges(i, j).status = 0;
