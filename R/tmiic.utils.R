@@ -641,6 +641,40 @@ tmiic_check_after_lagging <- function (lagged_data, lagged_so)
   }
 
 #-------------------------------------------------------------------------------
+# tmiic_check_other_df_after_lagging
+#-------------------------------------------------------------------------------
+# Check the optional dataframe true edges or black box after lagging
+#
+# Params :
+# - var_names: a list, the list of llaged variables names
+# - lagged_df: a dataframe, the lagged true edges or black box
+# - df_name: the dataframe name, "true edges" or "black box"
+# Returns:
+# - a dataframe: the lagged dataframe, eventually modified
+#-------------------------------------------------------------------------------
+tmiic_check_other_df_after_lagging <- function (var_names, lagged_df, df_name)
+  {
+  all_varnames_in_df = unique (c (lagged_df[,1], lagged_df[,1]) )
+  vars_absent = ( ! (all_varnames_in_df %in% var_names) )
+  if (any (vars_absent))
+    {
+    if (sum (vars_absent) == 1)
+      miic_warning (df_name, "the variable ", all_varnames_in_df[vars_absent],
+                    " is not present in the lagged data.",
+                    " Row(s) with this variable will be ignored.")
+    else
+      miic_warning (df_name, "several variables (",
+                    list_to_str (all_varnames_in_df[vars_absent], n_max=10),
+                    ") are not present in the lagged data.",
+                    " Row(s) with these variables will be ignored.")
+    }
+  rows_ok = ( (lagged_df[,1] %in% var_names)
+            & (lagged_df[,2] %in% var_names) )
+  lagged_df = lagged_df[rows_ok, ]
+  return (lagged_df)
+  }
+
+#-------------------------------------------------------------------------------
 # tmiic_extract_trajectories
 #-------------------------------------------------------------------------------
 # Extract the trajectories from a dataframe and return them in a list

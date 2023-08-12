@@ -557,7 +557,11 @@ miic <- function(input_data,
     non_lagged_black_box = black_box
     state_order = tmiic_lag_state_order (non_lagged_state_order)
     true_edges = tmiic_lag_other_df (non_lagged_state_order, true_edges)
+    true_edges = tmiic_check_other_df_after_lagging (state_order$var_names,
+                                                     true_edges, "true edges")
     black_box = tmiic_lag_other_df (non_lagged_state_order, black_box)
+    black_box = tmiic_check_other_df_after_lagging (state_order$var_names,
+                                                     black_box, "black box")
     list_ts = tmiic_lag_input_data (list_ts, state_order,
                                     keep_max_data=params$keep_max_data)
     input_data = tmiic_group_trajectories (list_ts)
