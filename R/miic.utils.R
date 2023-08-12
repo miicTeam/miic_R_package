@@ -10,7 +10,8 @@ MIIC_VALID_CONSISTENT <- c ("no", "orientation", "skeleton")
 MIIC_CONTINUOUS_TRESHOLD <- 5
 
 STATE_ORDER_STANDARD_VALID_COLUMS <- c ("var_names", "var_type",
-    "levels_increasing_order", "is_contextual", "is_consequence")
+    "levels_increasing_order", "is_contextual", "is_consequence",
+    "group", "group_color")
 STATE_ORDER_TEMPORAL_VALID_COLUMNS = c (STATE_ORDER_STANDARD_VALID_COLUMS,
                                         "n_layers", "delta_t", "movavg")
 
@@ -684,7 +685,15 @@ check_other_df <- function (input_data, state_order, df, df_name, mode)
       " must be a dataframe. The ", df_name, " will be ignored.")
     return (NULL)
     }
-
+  #
+  # Factors lead to wrong test results
+  #
+  factor_cols <- which (unlist (lapply (df, is.factor) ) )
+  for (i in factor_cols)
+    df[,i] <- as.character (df[,i])
+  #
+  # Check number of cols
+  #
   if (mode %in% MIIC_TEMPORAL_MODES)
     {
     input_data = input_data[,2:ncol(input_data)]

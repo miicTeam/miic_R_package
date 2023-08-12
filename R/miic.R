@@ -642,16 +642,16 @@ miic <- function(input_data,
     {
     class(res) <- "tmiic"
     #
-    # var_type_specified was used when re-evaluating discrete vs continuous
-    # after lagging to see if we need to try to respect user choices or not.
-    # As it is not a valid entry for a the state_order param, we clean it.
+    # clean state_order structure to remove extra columns used internally
     #
-    non_lagged_state_order$var_type_specified = NULL
+    non_lagged_state_order = non_lagged_state_order[,
+      colnames(non_lagged_state_order) %in% STATE_ORDER_TEMPORAL_VALID_COLUMNS]
     res$state_order = non_lagged_state_order
     res$black_box = non_lagged_black_box
     res$true_edges = non_lagged_true_edges
 
-    state_order$var_type_specified = NULL
+    state_order = state_order[,
+        colnames(state_order) %in% STATE_ORDER_TEMPORAL_VALID_COLUMNS]
     edges_dup_stat = tmiic_repeat_edges_over_history (res)
     res$tmiic <- list (lagged_state_order = state_order,
                        lagged_black_box = black_box,
