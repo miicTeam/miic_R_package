@@ -570,15 +570,20 @@ tmiic_compute_row_layout_greedy <- function (tmiic_res)
   tmiic_flat <- tmiic_flatten_network (tmiic_res)
   df_edges <- tmiic_flat$all.edges.summary
   df_edges <- df_edges[(df_edges$x != df_edges$y),]
-  for (edge_idx in 1:nrow(df_edges))
+  if (nrow (df_edges) == 0)
+    df_edges$count <- integer()
+  else
     {
-    one_edge <- df_edges[edge_idx,]
-    if (one_edge$x >= one_edge$y)
-      df_edges[edge_idx, c("x","y")] <- c(one_edge$y, one_edge$x)
-    }
-  df_edges$count <- 1
-  df_edges <- stats::aggregate(data.frame(count = df_edges$count),
+    for (edge_idx in 1:nrow(df_edges))
+      {
+      one_edge <- df_edges[edge_idx,]
+      if (one_edge$x >= one_edge$y)
+        df_edges[edge_idx, c("x","y")] <- c(one_edge$y, one_edge$x)
+      }
+    df_edges$count <- 1
+    df_edges <- stats::aggregate(data.frame(count = df_edges$count),
                                   by = list(x=df_edges$x, y=df_edges$y), sum)
+    }
   #
   # Find nodes not part of an edges or at least part of one edge
   #
@@ -691,15 +696,20 @@ tmiic_compute_row_layout_sugiyama <- function (tmiic_res)
   tmiic_flat <- tmiic_flatten_network(tmiic_res)
   df_edges <- tmiic_flat$all.edges.summary
   df_edges <- df_edges[(df_edges$x != df_edges$y),]
-  for (edge_idx in 1:nrow(df_edges))
+  if (nrow(df_edges) == 0)
+    df_edges$count <- integer()
+  else
     {
-    one_edge <- df_edges[edge_idx,]
-    if (one_edge$x > one_edge$y)
-      df_edges[edge_idx, c("x","y")] <- c(one_edge$y, one_edge$x)
-    }
-  df_edges$count <- 1
-  df_edges <- stats::aggregate(data.frame(count = df_edges$count),
+    for (edge_idx in 1:nrow(df_edges))
+      {
+      one_edge <- df_edges[edge_idx,]
+      if (one_edge$x > one_edge$y)
+        df_edges[edge_idx, c("x","y")] <- c(one_edge$y, one_edge$x)
+      }
+    df_edges$count <- 1
+    df_edges <- stats::aggregate(data.frame(count = df_edges$count),
                                   by = list(x=df_edges$x, y=df_edges$y), sum)
+    }
   #
   # Create a dummy graph and apply Sugiyama algotrithm to get the layout
   #
