@@ -201,7 +201,8 @@ vector<vector<string>> orientationProbability(Environment& environment) {
       int node2_pos = (it->first).second;
       std::vector< std::pair<int, int> > list_lagged = tmiic::getListLaggedEdges
         (environment, node1_pos, node2_pos);
-      for (auto const& it_lagged : list_lagged) {
+      for (auto const& it_lagged : list_lagged)
+        {
         auto proba_lagged_it = proba_map.find (it_lagged);
         if ( proba_lagged_it != proba_map.end() )
           {
@@ -225,14 +226,14 @@ vector<vector<string>> orientationProbability(Environment& environment) {
             {
             it->second = proba_lag;
             if (str_warn.length() > 0)
-              str_warn += "         -> Probability updated to=" + std::to_string (it->second);
+              str_warn += "         -> Probability updated to=" + std::to_string (it->second) + "\n";
             }
           else
             {
             if (str_warn.length() > 0)
-              str_warn += "         -> Initial probability kept (no update)";
+              str_warn += "         -> Initial probability kept (no update)\n";
             }
-          if (str_warn.length() > 0)
+          if ( (environment.verbose) && (str_warn.length() > 0) )
             Rcpp::warning (str_warn);
           }
         }
