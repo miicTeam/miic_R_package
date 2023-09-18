@@ -7,17 +7,20 @@ miic.reconstruct <- function(input_data = NULL,
                              n_eff = -1,
                              cplx = "nml",
                              eta = 1,
-                             latent = "no",
+                             latent = "orientation",
                              n_shuffles = 0,
                              orientation = TRUE,
                              ori_proba_ratio = 1,
-                             propagation = TRUE,
+                             propagation = FALSE,
                              conf_threshold = 0,
                              verbose = FALSE,
                              sample_weights = NULL,
                              test_mar = TRUE,
                              consistent = "no",
                              max_iteration = NULL,
+                             mode = "S",
+                             n_layers = NULL,
+                             delta_t = NULL,
                              negative_info = FALSE
                              ) {
   n_samples <- nrow(input_data)
@@ -71,6 +74,7 @@ miic.reconstruct <- function(input_data = NULL,
     "ori_proba_ratio" = ori_proba_ratio,
     "propagation" = propagation,
     "test_mar" = test_mar,
+    "mode" = mode,
     "negative_info" = negative_info,
     "max_bins" = min(50, n_samples),
     "var_names" = var_names,
@@ -83,23 +87,23 @@ miic.reconstruct <- function(input_data = NULL,
     black_box[] <- black_box[stats::complete.cases(black_box),]
     arg_list[["black_box"]] <- as.vector(as.matrix(t(black_box)))
   }
-  if (!is.null(sample_weights)) {
+  if (!is.null(sample_weights))
     arg_list[["sample_weights"]] <- sample_weights
-  }
-  if (!is.null(is_contextual)) {
+  if (!is.null(is_contextual))
     arg_list[["is_contextual"]] <- is_contextual
-  }
-  if (!is.null(is_consequence)) {
+  if (!is.null(is_consequence))
     arg_list[["is_consequence"]] <- is_consequence
-  }
+  if (!is.null(n_layers))
+    arg_list[["n_layers"]] <- n_layers
+  if (!is.null(delta_t))
+    arg_list[["delta_t"]] <- delta_t
 
   cpp_input <- list("factor" = input_factor, "double" = input_double,
                     "order" = input_order)
   # Call C++ function
   res <- reconstruct(cpp_input, arg_list)
-  if (res$interrupted) {
+  if (res$interrupted)
     return(list(interrupted = TRUE))
-  }
 
   # R-formalize returned object
   # table of edges infomation
@@ -130,10 +134,9 @@ miic.reconstruct <- function(input_data = NULL,
   rownames(res$proba_adj_matrix) <- var_names
 
   # adj_matrices (when consistent parameter is turned on)
-  if (length(res$adj_matrices) > 0) {
+  if (length(res$adj_matrices) > 0)
     res$adj_matrices <- matrix(unlist(res$adj_matrices),
                                ncol = length(res$adj_matrices))
-  }
 
   # proba_adj_matrices (when consistent parameter is turned on)
   if (length(res$proba_adj_matrices) > 0) {

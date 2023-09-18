@@ -24,6 +24,12 @@ miic(
   consistent = "no",
   max_iteration = 100,
   consensus_threshold = 0.8,
+  mode = "S",
+  n_layers = NULL,
+  delta_t = NULL,
+  movavg = NULL,
+  keep_max_data = FALSE,
+  max_nodes = 50,
   negative_info = FALSE,
   verbose = FALSE
 )
@@ -31,10 +37,18 @@ miic(
 \arguments{
 \item{input_data}{[a data frame]
 A n*d data frame (n samples, d variables) that contains the observational data.
-Each column corresponds to one variable and each row is a sample that gives the
+
+In regular mode, each column corresponds to one variable and each row is a sample that gives the
 values for all the observed variables. The column names correspond to the
 names of the observed variables. Numeric columns will be treated as continuous
-values, factors and character as categorical.}
+values, factors and character as categorical.
+
+In temporal mode, the expected dataframe layout is variables as columns
+and timeseries/timesteps as rows.
+The timestep information must be supplied in the first column and,
+for each timeseries, be consecutive (increment of 1) and in ascending order.
+Multiple trajectories can be provided, miic will consider that a new trajectory
+starts each time a smaller timestep than the one of the previous row is encountered.}
 
 \item{state_order}{[a data frame] An optional data frame providing extra
 information for variables. It must have d rows where d is the number of input
@@ -60,7 +74,22 @@ have edge with arrowhead pointing to them).
 "is_consequence" (optional) contains a binary value that specifies if a
 variable is to be considered as a consequence variable (1) or not (0).
 Consequence variables cannot be the parent node of any other variable
-and cannot be used as contributors.}
+and cannot be used as contributors.
+
+"n_layers" (optional) contains an integer value that specifies the number of
+layers to be considered for the variable.\cr
+Note that if a "n_layers" column is present in the \emph{state_order},
+its values will overwrite the function parameter.
+
+"delta_t" (optional) contains an integer value that specifies the number
+of timesteps between each layer for the variable.
+Note that if a "delta_t" column is present in the \emph{state_order},
+its values will overwrite the function parameter.
+
+"movavg" (optional) contains an integer value that specifies the size of
+the moving average window to be applied to the variable.
+Note that if "movavg" column is present in the \emph{state_order},
+its values will overwrite the function parameter.}
 
 \item{true_edges}{[a data frame]
 An optional E*2 data frame containing the E edges of the true graph for
@@ -122,8 +151,8 @@ the adjacency matrix and in the network edges.summary and by a bi-directed edge
 in the (partially) oriented graph.}
 
 \item{n_eff}{[a positive integer]
-The n samples given in the \emph{input_data} data frame are expected
-to be independent. In case of correlated samples such as in time series or
+In regular mode, the n samples given in the \emph{input_data} data frame are
+expected to be independent. In case of correlated samples such as in
 Monte Carlo sampling approaches, the effective number of independent samples
 \emph{n_eff} can be estimated using the decay of the autocorrelation function
 (Verny \emph{et al.}, PLoS Comp. Bio. 2017). This \emph{effective} number \emph{n_eff}
@@ -180,6 +209,46 @@ the proportion of non-zero status (0.6 in the example) is equal to or higher
 than [consensus_threshold]. (When set to connected, the orientation of the
 edge will be further determined by the average probability of orientation.)
 Set to 0.8 by default.}
+
+\item{mode}{[a string] Optional, "S" by default, possible values are
+"S": Standard (IID samples) or "TS": Temporal Stationary. When temporal mode
+is activated, the time information must be provided in the first column of
+the dataset.}
+
+\item{n_layers}{[an integer] Optional, NULL by default, must >= 2 if supplied.\cr
+Used only in temporal mode, \emph{n_layers} defines the number of layers
+that will be considered for the variables. The layers will be distant of
+\emph{delta_t} timesteps.\cr
+If not supplied, the number of layers is estimated from the dynamic of the
+dataset and the maximum number of nodes \emph{max_nodes} allowed in the
+final lagged graph.}
+
+\item{delta_t}{[an integer] Optional, NULL by default, must >= 1 if supplied.\cr
+Used only in temporal mode. \emph{delta_t} defines the number of timesteps
+between each layer.\cr
+i.e.: on 1000 timesteps with  \emph{n_layers} = 3 and \emph{delta_t} = 7,
+the timesteps kept for the samples conversion will be 1, 8, 15
+for the first sample, the next sample will use 2, 9, 16 and so on.\cr
+If not supplied, the number of timesteps between layers is estimated
+from the dynamic of the dataset and the number of layers.}
+
+\item{movavg}{[an integer] Optional, NULL by default, must be >= 2 if supplied\cr
+Used only in temporal mode.\cr
+When an integer is supplied (integer >= 2), a moving average
+operation is applied to all integer and numeric variables that are not
+contextual variables.}
+
+\item{keep_max_data}{[a boolean] Optional, FALSE by default.\cr
+Used only in temporal mode. If TRUE, rows where some NAs have been
+introduced during the moving averages and lagging will be kept
+whilst they will be dropped if FALSE.}
+
+\item{max_nodes}{[an integer] Optional, 50 by default.\cr
+Used only in temporal mode and if the \emph{n_layers} or \emph{delta_t}
+parameters are not supplied. \emph{max_nodes} is used as the maximum number
+of nodes in the final graph to compute \emph{n_layers} and/or \emph{delta_t}.
+The default is 50 to produce quick runs and can be increased up to 200
+or 300 on recent computers to produce more precise results.}
 
 \item{negative_info}{[a boolean value] For test purpose only. FALSE by
 default. If TRUE, negative shifted mutual information is allowed during the
@@ -294,6 +363,11 @@ reconstruction.
  \item {true_edges:} present only if the true edges have been supplied,
 the true edges, checked and corrected if necessary, used for the network
 evaluation.
+
+ \item {tmiic:} present only in temporal mode.
+ Named list containing the full list of edges completed by stationarity,
+ the lagged state order and, if a black box or true edges have been supplied,
+ the lagged versions of these inputs.
 }
 }
 \description{
@@ -303,11 +377,19 @@ from indirect effects amongst correlated variables, including cause-effect
 relationships and the effect of unobserved latent causes.
 }
 \details{
-Starting from a complete graph, the method iteratively removes
+In regular mode, starting from a complete graph, the method iteratively removes
 dispensable edges, by uncovering significant information contributions from
 indirect paths, and assesses edge-specific confidences from randomization of
 available data. The remaining edges are then oriented based on the signature
 of causality in observational data.
+
+In temporal mode, miic reorganizes the dataset
+using the \emph{n_layers} and \emph{delta_t} parameters to transform the timesteps
+into lagged samples. As starting point, a lagged graph is created with
+only edges having at least one node laying on the last timestep.
+Then, miic standard algorithm is applied to remove dispensable edges.
+The remaining edges are then oriented by using the temporality and the
+signature of causality in observational data.
 
 The method relies on an information theoretic based (conditional) independence
 test which is described in (Verny \emph{et al.}, PLoS Comp. Bio. 2017),
@@ -379,6 +461,27 @@ if(require(igraph)) {
 # write graph to graphml format. Note that to correctly visualize
 # the network we created the miic style for Cytoscape (http://www.cytoscape.org/).
 miic.write.network.cytoscape(g = miic.res, file = file.path(tempdir(), "temp"))
+
+# EXAMPLE COVID CASES (timeseries demo)
+data(covidCases)
+# execute MIIC (reconstruct graph in temporal mode)
+tmiic.res <- miic(input_data = covidCases, mode = "TS", n_layers = 3, delta_t = 1, movavg = 14)
+
+# to plot the default graph (compact)
+if(require(igraph)) {
+ plot(tmiic.res)
+}
+
+# to plot the raw temporal network Using igraph
+if(require(igraph)) {
+  plot(tmiic.res, display="raw")
+}
+
+# to plot the full temporal network Using igraph
+if(require(igraph)) {
+  plot(tmiic.res, display="lagged")
+}
+
 }
 
 }

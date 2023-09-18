@@ -31,7 +31,8 @@ using ScoreArray = std::array<ProbaScore, 4>;
 std::vector<ProbaArray> getOriProbasList(const std::vector<Triple>&,
     const std::vector<double>& I3_list, const std::vector<int>& is_contextual,
     const std::vector<int>& is_consequence, bool latent, bool degenerate,
-    bool propagation, bool half_v_structure);
+    bool propagation, bool half_v_structure,
+    bool temporal, const std::vector<int>& nodes_lags);
 }  // namespace reconstruction
 }  // namespace miic
 
