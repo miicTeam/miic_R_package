@@ -179,7 +179,7 @@ void setEnvironmentFromR(const Rcpp::List& input_data,
     // For contextual variables, we consider them as very old,
     // so they are never the consequence of another variable
     //
-    for (int ctx_idx = 0; ctx_idx < environment.is_contextual.size();  ++ctx_idx)
+    for (size_t ctx_idx = 0; ctx_idx < environment.is_contextual.size();  ++ctx_idx)
       if (environment.is_contextual[ctx_idx])
         environment.nodes_lags[ctx_idx] = INT_MAX;
     //
