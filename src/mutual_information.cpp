@@ -126,8 +126,9 @@ int fillHashList(const structure::TempGrid2d<int>& data,
   for (const auto u : ui_list) {
     r_joint_list[u] = n_levels_product;
     n_levels_product *= r_list[u];
-    if (n_levels_product < 0)
-      Rcpp::stop ("Maximum number of levels for joint factors exceeded.\nPlease raise an issue on the MIIC github.\n");
+    // FRS 4 jan 2024: remove fix to limit number of joint factors
+    // if (n_levels_product < 0)
+    //   Rcpp::stop ("Maximum number of levels for joint factors exceeded.\nPlease raise an issue on the MIIC github.\n");
   }
 
   for (int i = 0; i < n_samples; ++i) {

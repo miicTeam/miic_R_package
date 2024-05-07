@@ -770,11 +770,13 @@ InfoBlock computeIxyui(const TempGrid2d<int>& data,
   }
   int n_test_max = min(min(initbins, 20), n_levels_min);
 
-  if (std::pow (n_test_max-1, n_ui) >= INT_MAX) {
-    n_test_max = std::pow (INT_MAX, 1.0 / n_ui) + 1;
-    Rcpp::Rcout << "Note: Initial number of bins has been limited to "
-      << n_test_max-1 << " for " << n_ui << " contributors to avoid overflow\n";
-  }
+  // FRS 4 jan 2024: remove fix to limit number of joint factors
+  // if (std::pow (n_test_max-1, n_ui) >= INT_MAX)
+  //   {
+  //   n_test_max = std::pow (INT_MAX, 1.0 / n_ui) + 1;
+  //   Rcpp::Rcout << "Note: Initial number of bins has been limited to "
+  //     << n_test_max-1 << " for " << n_ui << " contributors to avoid overflow\n";
+  //   }
   TempVector<int> r_temp(3);
   InfoBlock res_temp;
   for (int test_n_bins = 2; test_n_bins < n_test_max; ++test_n_bins) {
