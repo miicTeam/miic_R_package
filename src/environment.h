@@ -2,9 +2,11 @@
 #define MIIC_ENVIRONMENT_H_
 
 #include <vector>
+#include <string>
 
 #include "computation_cache.h"
 #include "structure.h"
+#include "layers.h"
 
 namespace miic {
 namespace structure {
@@ -77,7 +79,6 @@ struct Environment {
   vector<double> noise_vec;
 
   double log_eta = 0;
-  bool is_k23 = true;
   bool degenerate = false;
   bool no_init_eta = false;
   bool half_v_structure = false;
@@ -90,7 +91,10 @@ struct Environment {
   ExecutionTime exec_time;
   int n_threads = 1;
   CompCache cache;
-
+  bool verbose = false;
+  //
+  // Temporal stationaray mode
+  //
   // Max number of layers (temporal mode only)
   int layer_max = -1;
   // Number of layers for each variable (temporal mode only)
@@ -105,9 +109,16 @@ struct Environment {
   // Store nodes index shift, giving for each node the same lagged node
   // in the next layer (temporal mode only)
   vector<int> nodes_shifts;
-
-  bool verbose = false;
-
+  //
+  // Multi-layers mode
+  //
+  bool is_layered = false;
+  // vector<Layer> layers;
+  vector<int> nodes_layers;
+  vector<Layer> layers;
+  //
+  // Constructors
+  //
   Environment(int n_samples, int n_nodes, vector<int> vec_numeric,
       vector<int> vec_index, vector<int> is_continuous_, vector<int> levels_);
   Environment() = default;

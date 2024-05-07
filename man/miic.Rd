@@ -24,13 +24,18 @@ miic(
   consistent = "no",
   max_iteration = 100,
   consensus_threshold = 0.8,
+  negative_info = FALSE,
   mode = "S",
   n_layers = NULL,
   delta_t = NULL,
   movavg = NULL,
   keep_max_data = FALSE,
   max_nodes = 50,
-  negative_info = FALSE,
+  var_interest = NULL,
+  var_interest_condition = NULL,
+  window_position = "start",
+  layers = NULL,
+  nodes_layers = NULL,
   verbose = FALSE
 )
 }
@@ -210,6 +215,19 @@ than [consensus_threshold]. (When set to connected, the orientation of the
 edge will be further determined by the average probability of orientation.)
 Set to 0.8 by default.}
 
+\item{negative_info}{[a boolean value] For test purpose only. FALSE by
+default. If TRUE, negative shifted mutual information is allowed during the
+computation when mutual information is inferior to the complexity term. For
+small dateset with complicated structures, e.g., discrete variables with many
+levels, allowing for negative shifted mutual information may help identifying
+weak v-structures related to those discrete variables, as the negative
+three-point information in those cases will come from the difference between
+two negative shifted mutual information terms (expected to be negative due to
+the small sample size). However, under this setting, a v-structure (X -> Z <-
+Y) in the final graph does not necessarily imply that X is dependent on Y
+conditioning on Z, As a consequence, the interpretability of the final graph
+is hindered. In practice, it's advised to keep this parameter as FALSE.}
+
 \item{mode}{[a string] Optional, "S" by default, possible values are
 "S": Standard (IID samples) or "TS": Temporal Stationary. When temporal mode
 is activated, the time information must be provided in the first column of
@@ -249,19 +267,6 @@ parameters are not supplied. \emph{max_nodes} is used as the maximum number
 of nodes in the final graph to compute \emph{n_layers} and/or \emph{delta_t}.
 The default is 50 to produce quick runs and can be increased up to 200
 or 300 on recent computers to produce more precise results.}
-
-\item{negative_info}{[a boolean value] For test purpose only. FALSE by
-default. If TRUE, negative shifted mutual information is allowed during the
-computation when mutual information is inferior to the complexity term. For
-small dateset with complicated structures, e.g., discrete variables with many
-levels, allowing for negative shifted mutual information may help identifying
-weak v-structures related to those discrete variables, as the negative
-three-point information in those cases will come from the difference between
-two negative shifted mutual information terms (expected to be negative due to
-the small sample size). However, under this setting, a v-structure (X -> Z <-
-Y) in the final graph does not necessarily imply that X is dependent on Y
-conditioning on Z, As a consequence, the interpretability of the final graph
-is hindered. In practice, it's advised to keep this parameter as FALSE.}
 
 \item{verbose}{[a boolean value] If TRUE, debugging output is printed.}
 }

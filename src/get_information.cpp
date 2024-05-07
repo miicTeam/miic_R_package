@@ -14,6 +14,7 @@
 #include "computation_discrete.h"
 #include "structure.h"
 #include "utilities.h"
+#include "layers.h"
 
 namespace miic {
 namespace computation {
@@ -285,6 +286,26 @@ void searchForBestContributingNode(
     Environment& environment, int X, int Y, bool parallel) {
   auto info = environment.edges(X, Y).shared_info;
   auto& zi_list = info->zi_list;
+  if (environment.is_layered)
+    {
+    Rcpp::Rcout << "\nzi_list before excluded contrib for edge " << X << "-" << Y;
+    for (size_t i = 0; i < zi_list.size(); ++i)
+      Rcpp::Rcout << " " << zi_list[i];
+    Rcpp::Rcout << "\n";
+    auto is_excluded_Z = [&environment, X, Y](int Z) {
+      return ( ! Layer::is_valid_contributor (
+          environment.layers[environment.nodes_layers[X]],
+          environment.layers[environment.nodes_layers[Y]],
+          environment.layers[environment.nodes_layers[Z]]) );
+      };
+    zi_list.erase(
+        remove_if(begin(zi_list), end(zi_list), is_excluded_Z), end(zi_list));
+    Rcpp::Rcout << "zi_list afer excluded contrib for edge " << X << "-" << Y;
+    for (size_t i = 0; i < zi_list.size(); ++i)
+      Rcpp::Rcout << " " << zi_list[i];
+    Rcpp::Rcout << "\n";
+    }
+
   if (environment.any_consequence) {
     auto consequence_illegal_Z = [&environment](int Z) {
       return (environment.is_consequence[Z]);
