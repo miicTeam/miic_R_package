@@ -92,6 +92,8 @@ struct Environment {
   CompCache cache;
 
   // Max number of layers (temporal mode only)
+  // Even if not recommended, the number of layers can be different for each
+  // variables, layer_max is the maximum number of layers for all variables
   int layer_max = -1;
   // Number of layers for each variable (temporal mode only)
   vector<int> list_n_layers;
@@ -103,7 +105,9 @@ struct Environment {
   // of another variable
   vector<int> nodes_lags;
   // Store nodes index shift, giving for each node the same lagged node
-  // in the next layer (temporal mode only)
+  // (i.e.: variables: x_lag0, ctr_var, y_lag0, x_lag1, y_lag1
+  //  => nodes_shifts:   3   ,    0   ,   2   ,   0   ,   0)
+  // (temporal mode only)
   vector<int> nodes_shifts;
 
   bool verbose = false;

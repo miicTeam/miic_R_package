@@ -63,7 +63,21 @@ void updateAdj(Environment& env, int x, int y, double y2x, double x2y) {
 // - std::vector<Triple>& : list of unshielded triples
 //--------------------------------------------------------------------------------
 void completeOrientationUsingConsequence (Environment& environment,
-                                   const std::vector<Triple>& triples) {
+                                   const std::vector<Triple>& triples)
+  {
+  // Tail probability to use for edges with one node as consequence differs
+  // if latent variables are authorized or not:
+  // - 0 if no latent var, we are sure that the not consequence node is the cause
+  // - 0.5 with latent var as we can not be sure that the not consequence node
+  //   is the cause
+  //
+  double tail_proba = 0;
+  if (environment.latent_orientation)
+    tail_proba = 0.5;
+  //
+  // Loop over edges to find edges that were not considered when orienting with
+  // open triples but can be oriented using consequence nodes
+  //
   const auto& edge_list = environment.connected_list;
   for (auto iter0 = begin(edge_list); iter0 != end(edge_list); ++iter0) {
     int posX = iter0->X, posY = iter0->Y;
@@ -94,9 +108,9 @@ void completeOrientationUsingConsequence (Environment& environment,
     // edge orientation is other var -> consequence only var
     //
     if (environment.is_consequence[posY])
-      updateAdj(environment, posX, posY, 0, 1);
+      updateAdj(environment, posX, posY, tail_proba, 1);
     else
-      updateAdj(environment, posX, posY, 1, 0);
+      updateAdj(environment, posX, posY, 1, tail_proba);
   }
 }
 

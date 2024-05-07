@@ -165,8 +165,8 @@ void repeatEdgesOverHistory (Environment& environment) {
 // edges that were not previously oriented
 //
 // Detail: completeOrientationUsingTime will look in the list of connected
-// edges the ones that have not been oriented using the unshielded triples,
-// are lagged, have a node on the layer 0.
+// edges for the ones that have not been oriented using the unshielded triples,
+// that are lagged and have a node on the layer 0.
 // Edges matching these criteria will be oriented using time from the oldest
 // node to the newest.
 //
@@ -180,7 +180,20 @@ void repeatEdgesOverHistory (Environment& environment) {
 // - std::vector<Triple>& : list of unshielded triples
 //--------------------------------------------------------------------------------
 void completeOrientationUsingTime (Environment& environment,
-                                   const std::vector<Triple>& triples) {
+                                   const std::vector<Triple>& triples)
+  {
+  // Tail probability to use for lagged edges differs if latent variables are
+  // authorized or not:
+  // - 0 if no latent var, we are sure that the oldest node is the cause
+  // - 0.5 with latent var as we can not be sure that the oldest node is the cause
+  //
+  double tail_proba = 0;
+  if (environment.latent_orientation)
+    tail_proba = 0.5;
+  //
+  // Loop over edges to find edges that were not considered when orienting with
+  // open triples but can be oriented using time
+  //
   const auto& edge_list = environment.connected_list;
   for (auto iter0 = begin(edge_list); iter0 != end(edge_list); ++iter0) {
     int posX = iter0->X, posY = iter0->Y;
@@ -216,9 +229,9 @@ void completeOrientationUsingTime (Environment& environment,
     // As time goes from past to present: edge orientation is max lag -> min lag
     //
     if (environment.nodes_lags[posX] > environment.nodes_lags[posY])
-      miic::reconstruction::updateAdj(environment, posX, posY, 0, 1);
+      miic::reconstruction::updateAdj(environment, posX, posY, tail_proba, 1);
     else
-      miic::reconstruction::updateAdj(environment, posX, posY, 1, 0);
+      miic::reconstruction::updateAdj(environment, posX, posY, 1, tail_proba);
   }
 }
 
