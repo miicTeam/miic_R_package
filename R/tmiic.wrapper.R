@@ -206,7 +206,8 @@ tmiic_lag_input_data <- function (list_ts, state_order, keep_max_data=FALSE)
         }
       }
     names(list_tmp) = state_order$var_names
-    df <- as.data.frame (do.call (cbind, list_tmp) )
+    # df <- as.data.frame (do.call (cbind, list_tmp) )
+    df <- data.frame (list_tmp)
     if (!keep_max_data)
       df = df [(tau_max+1):nrow(df),]
     #
