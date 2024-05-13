@@ -782,25 +782,18 @@ tmiic_movavg_onecol = function (x, w)
   {
   low_shift = (w-1) %/% 2
   high_shift = (w-1) - low_shift
-  ret = x
   ret = rep(-1, length(x))
   ret[1:low_shift] = NA_real_
-  # print (head (ret))
 
   start_idx = low_shift+1
   end_idx = length(x) - high_shift
-  i = start_idx + 1
-  i = start_idx
   for (i in start_idx:end_idx)
     {
     idx_low = i - low_shift
     idx_high = i + high_shift
-    ret[i] <- mean (x[idx_low:idx_high], na.action=na.omit)
+    ret[i] <- mean (x[idx_low:idx_high], na.rm=TRUE)
     }
-  # print (head (ret))
-  # print (tail (ret))
   ret[(end_idx+1):length(ret)] = NA_real_
-  # print (tail (ret))
   return (ret)
   }
 
@@ -1031,8 +1024,8 @@ tmiic_estimate_dynamic <- function (list_ts, state_order, max_nodes=50,
       {
       if (nrow (list_ts[[ts_idx]]) == 1)
         next
-      acf_res = acf (list_ts[[ts_idx]][,(var_idx)], na.action=na.pass,
-                     lag.max=length_to_test-1, plot=F)
+      acf_res = stats::acf (list_ts[[ts_idx]][,(var_idx)],
+        na.action=stats::na.pass, lag.max=length_to_test-1, plot=F)
       if ( all (is.na(acf_res$acf) ) )
         next
       acf_vanish = which (acf_res$acf[,1,1] < 0.05)
@@ -1200,11 +1193,11 @@ tmiic_estimate_dynamic <- function (list_ts, state_order, max_nodes=50,
 #' @param input_data [a data frame]
 #' A data frame that contains the observational data.\cr
 #' The expected dataframe layout is variables as columns and
-#' timeseries/timesteps as rows.
-#' The timestep information must be supplied in the first column and,
-#' for each timeseries, be consecutive (increment of 1) and in ascending order.
+#' time series/time steps as rows.
+#' The time step information must be supplied in the first column and,
+#' for each time series, be consecutive (increment of 1) and in ascending order.
 #' Multiple trajectories can be provided, the function will consider that a
-#' new trajectory starts each time a smaller timestep than the one of the
+#' new trajectory starts each time a smaller time step than the one of the
 #' previous row is encountered.
 #'
 #' @param state_order [a data frame] An optional data frame providing extra
@@ -1247,10 +1240,10 @@ tmiic_estimate_dynamic <- function (list_ts, state_order, max_nodes=50,
 #' @param verbose_level [an integer value in the range [0,2], 1 by default]
 #' The level of verbosity: 0 = no display, 1 = summary display, 2 = full display.
 #'
-#' @return A list that contains:
+#' @return A named list with two items:
 #' \itemize{
-#'  \item{n_layers:}{the number of layers}
-#'  \item{delta_t:}{the number of time steps between the layers}
+#'  \item{\emph{n_layers}: the number of layers}
+#'  \item{\emph{delta_t}: the number of time steps between the layers}
 #' }
 #'
 #' @export

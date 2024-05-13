@@ -302,73 +302,74 @@ is hindered. In practice, it's advised to keep this parameter as FALSE.}
 \value{
 A \emph{miic-like} object that contains:
 \itemize{
- \item{all.edges.summary:}{ a data frame with information about the relationship between
+ \item{\emph{all.edges.summary:} a data frame with information about the relationship between
  each pair of variables
  \itemize{
- \item \emph{x:} X node
- \item \emph{y:} Y node
- \item \emph{type:} contains 'N' if the edge has
+ \item{ \emph{x:} X node}
+ \item{ \emph{y:} Y node}
+ \item{ \emph{type:} contains 'N' if the edge has
  been removed or 'P' for retained edges. If a true edges file is given,
  'P' becomes 'TP' (True Positive) or 'FP' (False Positive), while
- 'N' becomes 'TN' (True Negative) or 'FN' (False Negative).
- \item \emph{ai:} the contributing nodes found by the method which participate in
- the mutual information between \emph{x} and \emph{y}, and possibly separate them.
- \item \emph{info:} provides the pairwise mutual information times \emph{Nxyi} for
- the pair (\emph{x}, \emph{y}).
- \item \emph{info_cond:} provides the conditional mutual information times \emph{Nxy_ai} for
+ 'N' becomes 'TN' (True Negative) or 'FN' (False Negative).}
+ \item{ \emph{ai:} the contributing nodes found by the method which participate in
+ the mutual information between \emph{x} and \emph{y}, and possibly separate them.}
+ \item{ \emph{info:} provides the pairwise mutual information times \emph{Nxyi} for
+ the pair (\emph{x}, \emph{y}).}
+ \item{ \emph{info_cond:} provides the conditional mutual information times \emph{Nxy_ai} for
  the pair (\emph{x}, \emph{y}) when conditioned on the collected nodes \emph{ai}. It is
- equal to the \emph{info} column when \emph{ai} is an empty set.
- \item \emph{cplx:} gives the computed complexity between the (\emph{x}, \emph{y})
+ equal to the \emph{info} column when \emph{ai} is an empty set.}
+ \item{ \emph{cplx:} gives the computed complexity between the (\emph{x}, \emph{y})
  variables taking into account the contributing nodes \emph{ai}. Edges that have
  have more conditional information \emph{info_cond} than \emph{cplx} are retained in the
- final graph.
- \item \emph{Nxy_ai:} gives the number of complete samples on which the information and
+ final graph.}
+ \item{ \emph{Nxy_ai:} gives the number of complete samples on which the information and
  the  complexity have been computed. If the input dataset has no missing value, the
  number of samples is the same for all pairs and corresponds to the total
- number of samples.
- \item \emph{info_shifted:} represents the \emph{info} - \emph{cplx} value.
- It is a way to quantify the strength of the edge (\emph{x}, \emph{y}).
- \item \emph{confidenceRatio:} this column is present if the confidence cut
+ number of samples.}
+ \item{ \emph{info_shifted:} represents the \emph{info} - \emph{cplx} value.
+ It is a way to quantify the strength of the edge (\emph{x}, \emph{y}).}
+ \item{ \emph{confidenceRatio:} this column is present if the confidence cut
  is > 0 and it represents the ratio between the probability to reject
  the edge (\emph{x}, \emph{y}) in the dataset versus the mean probability
- to do the same in multiple (user defined) number of randomized datasets.
- \item \emph{infOrt:} the orientation of the edge (\emph{x}, \emph{y}). It is
+ to do the same in multiple (user defined) number of randomized datasets.}
+ \item{ \emph{infOrt:} the orientation of the edge (\emph{x}, \emph{y}). It is
  the same value as in the adjacency matrix at row \emph{x} and column \emph{y} : 1 for
- unoriented, 2 for an edge from X to Y, -2 from Y to X and 6 for bidirectional.
- \item \emph{trueOrt:} the orientation of the edge (\emph{x}, \emph{y}) present
- in the true edges file if provided.
- \item \emph{isOrtOk:} information about the consistency of the inferred graph’s
+ unoriented, 2 for an edge from X to Y, -2 from Y to X and 6 for bidirectional.}
+ \item{ \emph{trueOrt:} the orientation of the edge (\emph{x}, \emph{y}) present
+ in the true edges file if provided.}
+ \item{ \emph{isOrtOk:} information about the consistency of the inferred graph’s
  orientations with a reference graph is given (i.e. if true edges file is provided).
  Y: the orientation is consistent; N: the orientation is not consistent with
- the PAG (Partial Ancestor Graph) derived from the given true graph.
- \item \emph{sign:} the sign of the partial correlation between variables
- \emph{x} and \emph{y}, conditioned on the contributing nodes \emph{ai}.
- \item \emph{partial_correlation:} value of the partial correlation for the
- edge (\emph{x}, \emph{y}) conditioned on the contributing nodes \emph{ai}.
- \item \emph{isCausal:} details about the nature of the arrow tip for a directed
+ the PAG (Partial Ancestor Graph) derived from the given true graph.}
+ \item{ \emph{sign:} the sign of the partial correlation between variables
+ \emph{x} and \emph{y}, conditioned on the contributing nodes \emph{ai}.}
+ \item{ \emph{partial_correlation:} value of the partial correlation for the
+ edge (\emph{x}, \emph{y}) conditioned on the contributing nodes \emph{ai}.}
+ \item{ \emph{isCausal:} details about the nature of the arrow tip for a directed
  edge. A directed edge in a causal graph does not necessarily imply causation but it
  does imply that the cause-effect relationship is not the other way around. An arrow-tip
  which is itself downstream of another directed edge suggests stronger causal sense and is
- marked by a 'Y', or 'N' otherwise.
- \item \emph{proba:} probabilities for the inferred orientation, derived from the three-point
- mutual information (cf Affeldt & Isambert, UAI 2015 proceedings) and noted as p(x->y);p(x<-y).
+ marked by a 'Y', or 'N' otherwise.}
+ \item{ \emph{proba:} probabilities for the inferred orientation, derived from the three-point
+ mutual information (cf Affeldt & Isambert, UAI 2015 proceedings) and noted as p(x->y);p(x<-y).}
  }
  }
 
- \item{orientations.prob:} {this data frame lists the orientation probabilities of the two edges of all unshielded triples
- of the reconstructed network with the structure: node1 -- mid-node -- node2:}
+ \item{\emph{orientations.prob:} this data frame lists the orientation probabilities of the two edges of all unshielded triples
+ of the reconstructed network with the structure: node1 -- mid-node -- node2:
  \itemize{
- \item node1: node at the end of the unshielded triplet
- \item p1: probability of the arrowhead node1 <- mid-node
- \item p2: probability of the arrowhead node1 -> mid-node
- \item mid-node: node at the center of the unshielded triplet
- \item p3: probability of the arrowhead mid-node <- node2
- \item p4: probability of the arrowhead mid-node -> node2
- \item node2: node at the end of the unshielded triplet
- \item NI3: 3 point (conditional) mutual information * N
+ \item{ \emph{node1:} node at the end of the unshielded triplet}
+ \item{ \emph{p1:} probability of the arrowhead node1 <- mid-node}
+ \item{ \emph{p2:} probability of the arrowhead node1 -> mid-node}
+ \item{ \emph{mid-node:} node at the center of the unshielded triplet}
+ \item{ \emph{p3:} probability of the arrowhead mid-node <- node2}
+ \item{ \emph{p4:} probability of the arrowhead mid-node -> node2}
+ \item{ \emph{node2:} node at the end of the unshielded triplet}
+ \item{ \emph{NI3:} 3 point (conditional) mutual information * N}
+ }
  }
 
- \item {adj_matrix:} the adjacency matrix is a square matrix used to represent
+ \item {\emph{adj_matrix:} the adjacency matrix is a square matrix used to represent
  the inferred graph. The entries of the matrix indicate whether pairs of
  vertices are adjacent or not in the graph. The matrix can be read as a
  (row, column) set of couples where the row represents the source node and
@@ -376,32 +377,33 @@ A \emph{miic-like} object that contains:
  (including directed, undirected and bidirected edges), we will have a
  different digit for each case:
  \itemize{
- \item 1: (\emph{x}, \emph{y}) edge is undirected
- \item 2: (\emph{x}, \emph{y}) edge is directed as \emph{x} -> \emph{y}
- \item -2: (\emph{x}, \emph{y}) edge is directed as \emph{x} <- \emph{y}
- \item 6: (\emph{x}, \emph{y}) edge is bidirected
+ \item{ 1: (\emph{x}, \emph{y}) edge is undirected}
+ \item{ 2: (\emph{x}, \emph{y}) edge is directed as \emph{x} -> \emph{y} }
+ \item{ -2: (\emph{x}, \emph{y}) edge is directed as \emph{x} <- \emph{y} }
+ \item{ 6: (\emph{x}, \emph{y}) edge is bidirected}
+ }
  }
 
- \item {params:} the list of parameters used for the network reconstruction.
+ \item {\emph{params:} the list of parameters used for the network reconstruction.
  The parameters not supplied are initialized to their default values.
- Otherwise, the parameters are checked and corrected if necessary.
+ Otherwise, the parameters are checked and corrected if necessary.}
 
- \item {state_order:} the state order used for the network reconstruction.
+ \item {\emph{state_order:} the state order used for the network reconstruction.
  If no state order is supplied, it is generated by using default values.
- Otherwise, it is the state order checked and corrected if necessary.
+ Otherwise, it is the state order checked and corrected if necessary.}
 
- \item {black_box:} present only if a black box has been supplied:
+ \item {\emph{black_box:} present only if a black box has been supplied:
 the black box, checked and corrected if necessary, used for the network
-reconstruction.
+reconstruction.}
 
- \item {true_edges:} present only if the true edges have been supplied,
+ \item {\emph{true_edges:} present only if the true edges have been supplied,
 the true edges, checked and corrected if necessary, used for the network
-evaluation.
+evaluation.}
 
- \item {tmiic:} present only in temporal mode.
+ \item {\emph{tmiic:} present only in temporal mode.
  Named list containing the full list of edges completed by stationarity,
  the lagged state order and, if a black box or true edges have been supplied,
- the lagged versions of these inputs.
+ the lagged versions of these inputs.}
 }
 }
 \description{
@@ -423,7 +425,8 @@ As starting point, a lagged graph is created with only edges having at
 least one node laying on the last time step.
 Then, miic standard algorithm is applied to remove dispensable edges.
 The remaining edges are then oriented by using the temporality and the
-signature of causality in observational data.
+signature of causality in observational data. The use of temporal mode
+is exposed in Simon \emph{et al.}, eLife reviewed preprint 2024.
 
 The method relies on an information theoretic based (conditional) independence
 test which is described in (Verny \emph{et al.}, PLoS Comp. Bio. 2017),
@@ -521,9 +524,11 @@ if(require(igraph)) {
 }
 \references{
 \itemize{
-\item Verny et al., \emph{PLoS Comp. Bio. 2017.}  https://doi.org/10.1371/journal.pcbi.1005662
-\item Cabeli et al., \emph{PLoS Comp. Bio. 2020.}  https://doi.org/10.1371/journal.pcbi.1007866
-\item Li et al., \emph{NeurIPS 2019} http://papers.nips.cc/paper/9573-constraint-based-causal-structure-learning-with-consistent-separating-sets.pdf
+\item{Simon et al., \emph{eLife reviewed preprint}  https://www.biorxiv.org/content/10.1101/2024.02.06.579177v1.abstract }
+\item{Ribeiro-Dantas et al., \emph{iScience 2024}  https://arxiv.org/abs/2303.06423 }
+\item{Cabeli et al., \emph{PLoS Comp. Bio. 2020.}  https://doi.org/10.1371/journal.pcbi.1007866 }
+\item{Li et al., \emph{NeurIPS 2019} http://papers.nips.cc/paper/9573-constraint-based-causal-structure-learning-with-consistent-separating-sets.pdf }
+\item{Verny et al., \emph{PLoS Comp. Bio. 2017.}  https://doi.org/10.1371/journal.pcbi.1005662 }
 }
 }
 \seealso{

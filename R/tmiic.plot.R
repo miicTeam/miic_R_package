@@ -204,9 +204,6 @@ tmiic.export <- function (tmiic_res, display="compact", show_self_loops=TRUE,
 tmiic_getIgraph <- function (tmiic_res, display="compact",
                              show_self_loops=TRUE, pcor_palette=NULL)
   {
-  if (class(tmiic_res) != "tmiic")
-    stop("Error: Not a tmiic object.")
-
   if (display == "lagged")
     tmiic_res$all.edges.summary = tmiic_res$tmiic$all.edges.stationarity
   else if (display != "raw")
@@ -1023,8 +1020,6 @@ plot.tmiic = function(x, display="compact", show_self_loops=TRUE,
                       positioning_for_grid="greedy", orientation_for_grid="L",
                       method = 'igraph', pcor_palette=NULL, ...)
   {
-  if (class(x) != "tmiic")
-    stop("Error: Not a tmiic object.")
   if (method != 'igraph')
     stop("Error: Method not supported. See ?tmiic.export for supported methods.")
   if ( !base::requireNamespace("igraph", quietly = TRUE) )

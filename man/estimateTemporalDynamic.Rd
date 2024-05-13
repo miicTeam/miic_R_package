@@ -16,11 +16,11 @@ estimateTemporalDynamic(
 \item{input_data}{[a data frame]
 A data frame that contains the observational data.\cr
 The expected dataframe layout is variables as columns and
-timeseries/timesteps as rows.
-The timestep information must be supplied in the first column and,
-for each timeseries, be consecutive (increment of 1) and in ascending order.
+time series/time steps as rows.
+The time step information must be supplied in the first column and,
+for each time series, be consecutive (increment of 1) and in ascending order.
 Multiple trajectories can be provided, the function will consider that a
-new trajectory starts each time a smaller timestep than the one of the
+new trajectory starts each time a smaller time step than the one of the
 previous row is encountered.}
 
 \item{state_order}{[a data frame] An optional data frame providing extra
@@ -64,10 +64,10 @@ input data).}
 The level of verbosity: 0 = no display, 1 = summary display, 2 = full display.}
 }
 \value{
-A list that contains:
+A named list with two items:
 \itemize{
- \item{n_layers:}{the number of layers}
- \item{delta_t:}{the number of time steps between the layers}
+ \item{\emph{n_layers}: the number of layers}
+ \item{\emph{delta_t}: the number of time steps between the layers}
 }
 }
 \description{

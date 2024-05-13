@@ -55,11 +55,11 @@ ggplot2 and gridExtra).}
 \value{
 A list that contains :
 \itemize{
-\item{two vectors containing the cutpoints for each variable : \emph{cutpoints1} corresponds to /emph{myDist1}, /emph{cutpoints2} corresponds to /emph{myDist2}.}
+\item{two vectors containing the cutpoints for each variable : \emph{cutpoints1} corresponds to \emph{myDist1}, \emph{cutpoints2} corresponds to \emph{myDist2}.}
 \item{\emph{niterations} is the number of iterations performed before convergence of the (C)MI estimation.}
 \item{\emph{iterationN}, lists contatining the cutpoint vectors for each iteration.}
 \item{\emph{info} and \emph{infok}, the estimated (C)MI value and (C)MI minus the complexity cost.}
-\item{if $emph{plot} == TRUE, a plot object (requires ggplot2 and gridExtra).}
+\item{if \emph{plot} == TRUE, a plot object (requires ggplot2 and gridExtra).}
 }
 }
 \description{
