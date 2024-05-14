@@ -1,27 +1,27 @@
 #*******************************************************************************
-# Filename   : tmiic.wrapper.R                   Creation date: 24 march 2020
+# Filename   : tmiic.wrapper.R                    Creation date: 24 march 2020
 #
 # Description: Data transformation of time series for miic
 #
 # Author     : Franck SIMON
 #
 # Changes history:
-# - 24 march 2020 : initial version
-# - 04 june 2020 : add tmiic_flatten_network
-# - 15 june 2020 : add delta_tau and moving average
-# - 27 july 2020 : rewrite of tmiic.lag_inputs to allow variable
-#                  number of timesteps between timeseries
-# - 06 oct  2020 : add tmiic_repeat_edges_over_history to duplicate the edges
-#                  over history
-# - 07 jan  2021 : replace tmiic.transform_data_for_miic by tmiic.lag_inputs:
-#                  allow different tau, delta_tau or movavg per variable
-#                  add support for contextual variables (not lagged)
-#                  transfer input data lagging into C++ function
-#                  lag state_order, true_edges and black_box
-# - 10 fev  2021 : add support in flattening and repeat of edges over history
-#                  of different tau, delta_tau per variable
-# - 09 aout 2023 : lag the inputs in the R part,
-#                  change tau, delta_tau parameters into n__layers and delta_t
+# - 24 mar 2020 : initial version
+# - 04 jun 2020 : add tmiic_flatten_network
+# - 15 jun 2020 : add delta_tau and moving average
+# - 27 jul 2020 : rewrite of tmiic.lag_inputs to allow variable
+#                 number of time steps between time series
+# - 06 oct 2020 : add tmiic_repeat_edges_over_history to duplicate the edges
+#                 over history
+# - 07 jan2021 : replace tmiic.transform_data_for_miic by tmiic.lag_inputs:
+#                 allow different tau, delta_tau or movavg per variable
+#                 add support for contextual variables (not lagged)
+#                 transfer input data lagging into C++ function
+#                 lag state_order, true_edges and black_box
+# - 10 fev 2021 : add support in flattening and repeat of edges over history
+#                 of different tau, delta_tau per variable
+# - 09 aou 2023 : lag the inputs in the R part,
+#                 change tau, delta_tau parameters into n_layers and delta_t
 #*******************************************************************************
 
 #-------------------------------------------------------------------------------
@@ -127,35 +127,35 @@ tmiic_lag_other_df <- function (state_order, df)
 # i.e. with n_layers=3 and delta_t.=3 : var1, var2 =>
 # var1_lag0, var2_lag0, var1_lag3, var2_lag3, var1_lag6, var2_lag6.
 #
-# Every timestep (until number of timesteps - (n_layers  - 1) * delta_t.)
+# Every time step (until number of time steps - (n_layers  - 1) * delta_t.)
 # is converted into a sample in the lagged data.
 #
 # Exemple with n_layers=3 and delta_t.=3:
 #
-# Timestep Var & value    Var & value  => Sample  Var & value   Var & value
-#   t-6    Var1_val(t-6) Var2_val(t-6) =>   i    Var1_lag6_val Var2_lag6_val
-#   t-3    Var1_val(t-3) Var2_val(t-3) =>   i    Var1_lag3_val Var2_lag3_val
-#    t      Var1_val(t)   Var2_val(t)  =>   i    Var1_lag0_val Var2_lag0_val
+# Time step Var & value    Var & value  => Sample  Var & value   Var & value
+#   t-6     Var1_val(t-6) Var2_val(t-6) =>   i    Var1_lag6_val Var2_lag6_val
+#   t-3     Var1_val(t-3) Var2_val(t-3) =>   i    Var1_lag3_val Var2_lag3_val
+#    t       Var1_val(t)   Var2_val(t)  =>   i    Var1_lag0_val Var2_lag0_val
 #
-#   t-7    Var1_val(t-7) Var2_val(t-7) =>   i'   Var1_lag6_val Var2_lag6_val
-#   t-4    Var1_val(t-4) Var2_val(t-4) =>   i'   Var1_lag3_val Var2_lag3_val
-#   t-1    Var1_val(t-1) Var2_val(t-1) =>   i'   Var1_lag0_val Var2_lag0_val
+#   t-7     Var1_val(t-7) Var2_val(t-7) =>   i'   Var1_lag6_val Var2_lag6_val
+#   t-4     Var1_val(t-4) Var2_val(t-4) =>   i'   Var1_lag3_val Var2_lag3_val
+#   t-1     Var1_val(t-1) Var2_val(t-1) =>   i'   Var1_lag0_val Var2_lag0_val
 #
-#   t-8    Var1_val(t-8) Var2_val(t-8) =>   i"   Var1_lag6_val Var2_lag6_val
-#   t-5    Var1_val(t-5) Var2_val(t-5) =>   i"   Var1_lag3_val Var2_lag3_val
-#   t-2    Var1_val(t-2) Var2_val(t-2) =>   i"   Var1_lag0_val Var2_lag0_val
+#   t-8     Var1_val(t-8) Var2_val(t-8) =>   i"   Var1_lag6_val Var2_lag6_val
+#   t-5     Var1_val(t-5) Var2_val(t-5) =>   i"   Var1_lag3_val Var2_lag3_val
+#   t-2     Var1_val(t-2) Var2_val(t-2) =>   i"   Var1_lag0_val Var2_lag0_val
 #
-#   ...    ............. ............. => ...... ............. ............
+#   ...     ............. ............. => ...... ............. ............
 #
-# until number of timesteps - (n_layers - 1) * delta_t is reached.
-# The same process is applied to all input timeseries.
+# until number of time steps - (n_layers - 1) * delta_t is reached.
+# The same process is applied to all input time series.
 #
 # Note that the lagging can be different for each input variable
 # if different values of n_layers or delta_t are supplied and some
 # variables can be not lagged at all like contextual ones.
 #
 # inputs:
-# - list_ts: the list of timeseries
+# - list_ts: the list of time series
 # - state_order: a dataframe, the lagged state order returned by
 #   tmiic_lag_state_order
 # - keep_max_data: boolean flag, optional, FALSE by default

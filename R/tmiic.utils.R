@@ -1,5 +1,5 @@
-#*****************************************************************************
-# Filename   : tmiic.utils.R                   Creation date: 11 may 2023
+#*******************************************************************************
+# Filename   : tmiic.utils.R                         Creation date: 10 may 2023
 #
 # Description: Utility functions for temporal MIIC
 #
@@ -7,7 +7,7 @@
 #
 # Changes history:
 # - 10 may  2023 : initial version
-#*****************************************************************************
+#*******************************************************************************
 
 #-------------------------------------------------------------------------------
 # tmiic_check_state_order_part1
@@ -678,26 +678,26 @@ tmiic_check_other_df_after_lagging <- function (var_names, lagged_df, df_name)
 # tmiic_extract_trajectories
 #-------------------------------------------------------------------------------
 # Extract the trajectories from a dataframe and return them in a list
-# - input_data: a dataframe with the timesteps in the 1st column
-#   A new trajectory is identified when timestep < previous timestep
+# - input_data: a dataframe with the time steps in the 1st column
+#   A new trajectory is identified when time step < previous time step
 # - check: optional, default=T. Emit warnings when:
-#   * there is a gap between 2 consecutive timesteps
-#   * the timestep value is not incremented  between 2 consecutive rows
-#   * the 1st timesteps of a trajectory is not 1
+#   * there is a gap between 2 consecutive time steps
+#   * the time step value is not incremented  between 2 consecutive rows
+#   * the 1st time step of a trajectory is not 1
 # Returns:
 # - a list: the list of trajectories
-#   Note the the timestep information in each trajectory is renumbered from 1
-#   to number of timesteps of the trajectory (so no gap, no unchanged timestep)
+#   Note the the time step information in each trajectory is renumbered from 1
+#   to number of time steps of the trajectory (so no gap, no unchanged time step)
 #-------------------------------------------------------------------------------
 tmiic_extract_trajectories <- function (input_data, check=T)
   {
   timesteps = input_data[, 1]
   if ( any ( is.na (timesteps) ) )
-    miic_error ("trajectories check", "the timestep column (column 1) contains NA(s)")
+    miic_error ("trajectories check", "the time step column (column 1) contains NA(s)")
   if ( ! all (is.numeric (timesteps)) )
-    miic_error ("trajectories check", "the timestep column (column 1) is not integer")
+    miic_error ("trajectories check", "the time step column (column 1) is not integer")
   if ( ! all (round (timesteps, 0) == timesteps) )
-    miic_error ("trajectories check", "the timestep column (column 1) is not integer")
+    miic_error ("trajectories check", "the time step column (column 1) is not integer")
   timesteps = as.integer(timesteps)
   timesteps_next = c (timesteps[2:length(timesteps)], 0)
   breaks = which (timesteps_next < timesteps)
@@ -715,21 +715,21 @@ tmiic_extract_trajectories <- function (input_data, check=T)
     {
     no_inc = which (timesteps_next == timesteps)
     if (length (no_inc) > 0)
-      miic_warning ("check trajectories", "timestep value unchanged at ",
+      miic_warning ("check trajectories", "time step value unchanged at ",
                     length (no_inc), " position(s)")
     gaps = which (timesteps_next > timesteps + 1)
     if (length (gaps) > 0)
-      miic_warning ("check trajectories", "gap in timestep values at ",
+      miic_warning ("check trajectories", "gap in time step values at ",
                     length (gaps), " position(s)")
     wrong_starts = which ( unlist (lapply (list_ts,
                       FUN=function (x) { return (x[1,1] != 1) } ) ) )
     if (length (wrong_starts) > 0)
       miic_warning ("check trajectories", length (wrong_starts),
-        " trajectorie(s) don't start with 1 as first timestep value")
+        " trajectorie(s) don't start with 1 as first time step value")
     max_nb_ts = max (unlist (lapply (list_ts, FUN=nrow) ) )
     if (max_nb_ts == 1)
       miic_error ("trajectories check",
-                  "all trajectories have only 1 timestep.")
+                  "all trajectories have only 1 time step.")
     }
   for ( i in 1:length (list_ts) )
     list_ts[[i]][,1] = 1:nrow (list_ts[[i]])
@@ -741,7 +741,7 @@ tmiic_extract_trajectories <- function (input_data, check=T)
 #-------------------------------------------------------------------------------
 # Merge a list of trajectories into a dataframe
 # - list_ts: the list of trajectories
-# - drop_timestep: boolean, FALSE by default. Drop the timestep information
+# - drop_timestep: boolean, FALSE by default. Drop the time step information
 #   (the 1st column) in the returned dataframe
 # Returns:
 # - a dataframe: dataframe with all the trajectories
@@ -802,11 +802,11 @@ tmiic_movavg_onecol = function (x, w)
 #-------------------------------------------------------------------------------
 # Apply moving averages on data
 # - list_ts: a list of dataframe, each item representing a trajectory.
-#   Each dataframe must contain the timestep information in the 1st column
+#   Each dataframe must contain the time step information in the 1st column
 #   and the variables in the other columns.
 # - movavg: the list of moving average to be applied, optional, NULL by defaut.
 #   The length of the movavg list is the number of columns of the dataframes - 1
-#   (because the 1st column in dataframes is the timestep).
+#   (because the 1st column in dataframes is the time step).
 #   When the movavg item value is >= 2, a moving average using this value as
 #   window size is applied on the corresponding column:
 #   movavg item 1 is applied data column 2, moavg item 2 to data column 3, ...
@@ -954,10 +954,10 @@ tmiic_ajust_window_for_nb_samples <- function (list_ts, n_layers, delta_t,
 #-------------------------------------------------------------------------------
 # tmiic_estimate_dynamic
 #-------------------------------------------------------------------------------
-# Estimate tau (the number of total timesteps back to cover the dynamic,
+# Estimate tau (the number of total time steps back to cover the dynamic,
 # the number of layers and delta t parameters from the data
 # - list_ts: list of dataframe, each item representing a trajectory.
-#   Each dataframe must contain the timestep information in the 1st column
+#   Each dataframe must contain the time step information in the 1st column
 #   and the variables in the other columns.
 # - state_order: the state_order dataframe. This state_order is expected
 #   having being checked by the temporal check functions of inputs.
@@ -996,13 +996,13 @@ tmiic_estimate_dynamic <- function (list_ts, state_order, max_nodes=50,
   n_vars_ctx = sum (state_order$is_contextual)
   n_vars_lag = n_vars_tot - n_vars_ctx
   #
-  # Remove timestep, contextual and discrete variables
+  # Remove time step, contextual and discrete variables
   #
   for (ts_idx in 1:n_ts)
     {
     if (nrow (list_ts[[ts_idx]]) == 1)
       miic_warning ("Dynamic estimation", "trajectory ", ts_idx,
-                    " with only 1 timestep is ignored for dynamic estimation")
+                    " with only 1 time step is ignored for dynamic estimation")
     list_ts[[ts_idx]] = list_ts[[ts_idx]][, c(F, ( (!state_order$is_contextual)
                                                  & (state_order$var_type) ) )]
     }
@@ -1169,7 +1169,7 @@ tmiic_estimate_dynamic <- function (list_ts, state_order, max_nodes=50,
       miic_msg ("- For a final graph with a target of ", max_nodes,
         " nodes having ", n_vars_lag, " lagged variables",
         ifelse (n_vars_ctx > 0, paste0 ("\n  and ", n_vars_ctx, " contextual variables"), ""),
-        ":\n  ", n_layers,  " layers spaced by ", delta_t, " timesteps",
+        ":\n  ", n_layers,  " layers spaced by ", delta_t, " time steps",
         ", dynamic covered goes over t, t-", delta_t,
         ifelse (n_layers > 3, ", ...", ""),
         ifelse (n_layers > 2, paste0 (", t-", tau), "") )

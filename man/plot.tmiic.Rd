@@ -2,7 +2,7 @@
 % Please edit documentation in R/tmiic.plot.R
 \name{plot.tmiic}
 \alias{plot.tmiic}
-\title{Basic plot function of a tmiic network inference result}
+\title{Basic plot function of a temporal miic (tmiic) network inference result}
 \usage{
 \method{plot}{tmiic}(
   x,
@@ -117,7 +117,7 @@ details.
 \donttest{
 library(miic)
 
-#' # EXAMPLE COVID CASES (timeseries demo)
+#' # EXAMPLE COVID CASES (time series demo)
 data(covidCases)
 # execute MIIC (reconstruct graph in temporal mode)
 tmiic_res <- miic(input_data = covidCases, mode = "TS", n_layers = 3, delta_t = 1, movavg = 14)

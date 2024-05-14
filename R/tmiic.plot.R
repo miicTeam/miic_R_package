@@ -1,17 +1,15 @@
 #*******************************************************************************
-# Filename   : tmiic.plot.R                     Creation date: 24 march 2020
+# Filename   : tmiic.plot.R                        Creation date: 24 march 2020
 #
 # Description: Plotting for temporal miic (tmiic)
 #
 # Author     : Franck SIMON
 #
 # Changes history:
-# - 24 march 2020 : initial version
-# - 11 may 2020   : modification to handle condensed networks
-# - 11 june 2020 : initial version
+# - 24 mar 2020 : initial version
 #   The plot function is a rewrite from miic.plot.R and gmPlot.lib.R.
-#   + add capabiliy to plot multiple edges between the same nodes
-# - 11 sept 2020 : rewrite to be aligned with 1.5.0 miic plotting
+#   + add capability to plot multiple edges between the same nodes
+# - 11 sep 2020 : rewrite to be aligned with 1.5.3 miic plotting
 # - 05 oct 2020 : include the flattening as a parameter
 # - 06 oct 2020 : addition of "lagged" graph (edges duplicated over history)
 # - 10 fev 2021 : plotting modified to manage contextual variables
@@ -888,7 +886,7 @@ tmiic_compute_grid_layout <- function (tmiic_res, display="raw",
 #-------------------------------------------------------------------------------
 # plot.tmiic
 #-------------------------------------------------------------------------------
-#' Basic plot function of a tmiic network inference result
+#' Basic plot function of a temporal miic (tmiic) network inference result
 #'
 #' @description This function calls \code{\link{tmiic.export}} to build a
 #' plottable object from the result returned by \code{\link{miic}} in
@@ -994,7 +992,7 @@ tmiic_compute_grid_layout <- function (tmiic_res, display="raw",
 #' \donttest{
 #' library(miic)
 #'
-#' #' # EXAMPLE COVID CASES (timeseries demo)
+#' #' # EXAMPLE COVID CASES (time series demo)
 #' data(covidCases)
 #' # execute MIIC (reconstruct graph in temporal mode)
 #' tmiic_res <- miic(input_data = covidCases, mode = "TS", n_layers = 3, delta_t = 1, movavg = 14)

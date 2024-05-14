@@ -55,7 +55,9 @@ ggplot2 and gridExtra).}
 \value{
 A list that contains :
 \itemize{
-\item{two vectors containing the cutpoints for each variable : \emph{cutpoints1} corresponds to \emph{myDist1}, \emph{cutpoints2} corresponds to \emph{myDist2}.}
+\item{two vectors containing the cutpoints for each variable :
+\emph{cutpoints1} corresponds to \emph{X},
+\emph{cutpoints2} corresponds to \emph{Y}.}
 \item{\emph{niterations} is the number of iterations performed before convergence of the (C)MI estimation.}
 \item{\emph{iterationN}, lists contatining the cutpoint vectors for each iteration.}
 \item{\emph{info} and \emph{infok}, the estimated (C)MI value and (C)MI minus the complexity cost.}
@@ -64,7 +66,7 @@ A list that contains :
 }
 \description{
 This function chooses cutpoints in the input distributions by maximizing the mutual
-information minus a complexity cost (computed as BIC or with the Normalized Maximum Likelihood ). The
+information minus a complexity cost (computed as BIC or with the Normalized Maximum Likelihood). The
 (conditional) mutual information computed on the optimized discretized distributions effectively approaches
 the mutual information computed on the original continuous variables.
 }

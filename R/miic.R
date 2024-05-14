@@ -44,7 +44,8 @@
 #' \item{Verny et al., \emph{PLoS Comp. Bio. 2017.}  https://doi.org/10.1371/journal.pcbi.1005662 }
 #' }
 #'
-#' @param input_data [a data frame]
+#' @param input_data [a data frame, required]
+#'
 #' A n*d data frame (n samples, d variables) that contains the observational data.
 #'
 #' In standard mode, each column corresponds to one variable and each row is a
@@ -52,37 +53,40 @@
 #' The column names correspond to the names of the observed variables.
 #' Numeric columns with at least 5 distinct values will be treated as continuous
 #' by default whilst numeric columns with less than 5 distinct values, factors
-#' and character will be considered as categorical.
+#' and characters will be considered as categorical.
 #'
 #' In temporal mode, the expected data frame layout is variables as columns
 #' and time series/time steps as rows.
 #' The time step information must be supplied in the first column and,
-#' for each time series, be consecutive (increment of 1) and in ascending order.
+#' for each time series, be consecutive and in ascending order (increment of 1).
 #' Multiple trajectories can be provided, miic will consider that a new trajectory
 #' starts each time a smaller time step than the one of the previous row is encountered.
 #'
-#' @param state_order [a data frame] An optional data frame providing extra
-#' information for variables. It must have d rows where d is the number of input
-#' variables, and the following structure (named columns):
+#' @param state_order [a data frame, optional, NULL by default]
 #'
-#' "var_names" (required) contains the name of each variable as specified
-#' by colnames(input_data).
+#' A data frame providing extra information for variables. It must have d rows
+#' where d is the number of input variables and the following structure
+#' (named columns):
 #'
-#' "var_type" (optional) contains a binary value that specifies if each
+#' \emph{"var_names"} (required) contains the name of each variable as specified
+#' by colnames(input_data). In temporal mode, the time steps column should
+#' not be mentioned in the variables list.
+#'
+#' \emph{"var_type"} (optional) contains a binary value that specifies if each
 #' variable is to be considered as discrete (0) or continuous (1).
 #'
-#' "levels_increasing_order" (optional) contains a single character string
+#' \emph{"levels_increasing_order"} (optional) contains a single character string
 #' with all of the unique levels of the ordinal variable in increasing order,
 #' delimited by comma ','. It will be used during the post-processing to compute
 #' the sign of an edge using Spearman's rank correlation. If a variable is
 #' continuous or is categorical but not ordinal, this column should be NA.
 #'
-#' "is_contextual" (optional) contains a binary value that specifies if a
+#' \emph{"is_contextual"} (optional) contains a binary value that specifies if a
 #' variable is to be considered as a contextual variable (1) or not (0).
 #' Contextual variables cannot be the child node of any other variable (cannot
 #' have edge with arrowhead pointing to them).
 #'
-#' "is_consequence" (optional) contains a binary value that specifies if a
+#' \emph{"is_consequence"} (optional) contains a binary value that specifies if a
 #' variable is to be considered as a consequence variable (1) or not (0).
 #' Edges between consequence variables are ignored, consequence variables
 #' cannot be the parent node of any other variable and cannot be used as
@@ -91,23 +95,24 @@
 #'
 #' Several other columns are possible in temporal mode:
 #'
-#' "n_layers" (optional) contains an integer value that specifies the number of
-#' layers to be considered for the variable.\cr
-#' Note that if a "n_layers" column is present in the \emph{state_order},
+#' \emph{"n_layers"} (optional) contains an integer value that specifies the
+#' number of layers to be considered for the variable.
+#' Note that if a \emph{"n_layers"} column is present in the \emph{state_order},
 #' its values will overwrite the function parameter.
 #'
-#' "delta_t" (optional) contains an integer value that specifies the number
+#' \emph{"delta_t"} (optional) contains an integer value that specifies the number
 #' of time steps between each layer for the variable.
-#' Note that if a "delta_t" column is present in the \emph{state_order},
+#' Note that if a \emph{"delta_t"} column is present in the \emph{state_order},
 #' its values will overwrite the function parameter.
 #'
-#' "movavg" (optional) contains an integer value that specifies the size of
+#' \emph{"movavg"} (optional) contains an integer value that specifies the size of
 #' the moving average window to be applied to the variable.
-#' Note that if "movavg" column is present in the \emph{state_order},
+#' Note that if \emph{"movavg"} column is present in the \emph{state_order},
 #' its values will overwrite the function parameter.
 #'
-#' @param true_edges [a data frame]
-#' An optional data frame containing the edges of the true graph for
+#' @param true_edges [a data frame, optional, NULL by default]
+#'
+#' A data frame containing the edges of the true graph for
 #' computing performance after the run.\cr
 #' In standard mode, the expected layout is a two columns data frame, each row
 #' representing a true edge with in each column, the variable names.
@@ -115,7 +120,7 @@
 #' In temporal mode, the expected layout is a three columns data frame,
 #' with the first two columns being variable names and the third the lag.
 #' Variables names must exist in the \emph{input_data} data frame and the lag
-#' must be valid in the time unfolded graph. i.e.: a row var1, var2, 3 is valid
+#' must be valid in the time unfolded graph. e.g. a row var1, var2, 3 is valid
 #' with \emph{n_layers} = 4 + \emph{delta_t} = 1 or
 #' \emph{n_layers} = 2 + \emph{delta_t} = 3
 #' but not for \emph{n_layers} = 2 + \emph{delta_t} = 2 as there is no matching
@@ -124,8 +129,9 @@
 #' for contextual variables that are not lagged, the expected value in the
 #' third column for the time lag is NA.
 #'
-#' @param black_box [a data frame]
-#' An optional data frame containing pairs of variables that will be considered
+#' @param black_box [a data frame, optional, NULL by default]
+#'
+#' A data frame containing pairs of variables that will be considered
 #' as independent during the network reconstruction. In practice, these edges
 #' will not be included in the skeleton initialization and cannot be part of
 #' the final result.\cr
@@ -135,7 +141,7 @@
 #' In temporal mode, the expected layout is a three columns data frame,
 #' with the first two columns being variable names and the third the lag.
 #' Variables names must exist in the \emph{input_data} data frame and the lag
-#' must be valid in the time unfolded graph. i.e.: a row var1, var2, 3 is valid
+#' must be valid in the time unfolded graph. e.g. a row var1, var2, 3 is valid
 #' with \emph{n_layers} = 4 + \emph{delta_t} = 1 or
 #' \emph{n_layers} = 2 + \emph{delta_t} = 3
 #' but not for \emph{n_layers} = 2 + \emph{delta_t} = 2 as there is no matching
@@ -144,169 +150,214 @@
 #' for contextual variables that are not lagged, the expected value in the
 #' third column for the time lag is NA.
 #'
-#' @param n_threads [a positive integer]
+#' @param n_threads [a positive integer, optional, 1 by default]
+#'
 #' When set greater than 1, n_threads parallel threads will be used for computation. Make sure
 #' your compiler is compatible with openmp if you wish to use multithreading.
 #'
-#' @param cplx [a string; \emph{c("nml", "mdl")}]
-#' In practice, the finite size of the input
-#' dataset requires that the 2-point and 3-point information measures should be
-#' \emph{shifted} by a \emph{complexity} term. The finite size corrections can be
-#' based on the Minimal Description Length (MDL) criterion (set the option with "mdl").
-#' In practice, the MDL complexity criterion tends to underestimate the relevance of
-#' edges connecting variables with many different categories, leading to the removal of
-#' false negative edges. To avoid such biases with finite datasets, the (universal)
-#' Normalized Maximum Likelihood (NML) criterion can be used (set the option with "nml").
-#' The default is "nml" (see Affeldt \emph{et al.}, UAI 2015).
+#' @param cplx [a string, optional, "nml" by default, possible values:
+#' "nml", "mdl"]
 #'
-#' @param orientation [a boolean value]
-#' The miic network skeleton can be partially directed
-#' by orienting and propagating edge directions, based on the sign and magnitude
-#' of the conditional 3-point information of unshielded triples. The propagation
-#' procedure relyes on probabilities; for more details, see Verny \emph{et al.}, PLoS Comp. Bio. 2017).
-#' If set to FALSE the orientation step is not performed.
+#' In practice, the finite size of the input  dataset requires that
+#' the 2-point and 3-point information measures should be \emph{shifted}
+#' by a \emph{complexity} term. The finite size corrections can be based on
+#' the Minimal Description Length (MDL) criterion.
+#' However, the MDL complexity criterion tends to underestimate the
+#' relevance of edges connecting variables with many different categories,
+#' leading to the removal of false negative edges. To avoid such biases
+#' with finite datasets, the (universal) Normalized Maximum Likelihood (NML)
+#' criterion can be used (see Affeldt \emph{et al.}, UAI 2015).
 #'
-#' @param ori_proba_ratio [a floating point between 0 and 1] The threshold when
-#' deducing the type of an edge tip (head/tail) from the probability of
-#' orientation. For a given edge tip, denote by p the probability of it being a
-#' head, the orientation is accepted if (1 - p) / p < ori_proba_ratio. 0 means
-#' reject all orientations, 1 means accept all orientations.
+#' @param orientation [a boolean value, optional, TRUE by default]
 #'
-#' @param ori_consensus_ratio [a floating point between 0 and 1] The threshold
-#' when deducing the type of an consensus edge tip (head/tail) from the average
-#' probability of orientation. For a given edge tip, denote by p the probability
-#' of it being a head, the orientation is accepted if (1 - p) / p <
-#' ori_consensus_ratio. 0 means reject all orientations, 1 means accept all
-#' orientations.
+#' The miic network skeleton can be partially directed by orienting
+#' edge directions, based on the sign and magnitude of the conditional
+#' 3-point information of unshielded triples and, in temporal mode, using time.
+#' If set to FALSE, the orientation step is not performed.
 #'
-#' @param propagation [a boolean value]
+#' @param ori_proba_ratio [a floating point between 0 and 1, optional,
+#' 1 by default]
+#'
+#' The threshold when deducing the type of an edge tip (head/tail)
+#' from the probability of orientation.
+#' For a given edge tip, denote by p the probability of it being a head,
+#' the orientation is accepted if (1 - p) / p < \emph{ori_proba_ratio}.
+#' 0 means reject all orientations, 1 means accept all orientations.
+#'
+#' @param ori_consensus_ratio [a floating point between 0 and 1, optional,
+#' NULL by default]
+#'
+#' The threshold when deducing the type of an consensus edge tip (head/tail)
+#' from the average probability of orientation.
+#' For a given edge tip, denote by p the probability of it being a head,
+#' the orientation is accepted if (1 - p) / p < \emph{ori_consensus_ratio}.
+#' 0 means reject all orientations, 1 means accept all orientations.
+#' If not supplied, the \emph{ori_consensus_ratio} will be initialized with
+#' the \emph{ori_proba_ratio} value.
+#'
+#' @param propagation [a boolean value, optional, FALSE by default]
+#'
 #' If set to FALSE, the skeleton is partially oriented with only the
 #' v-structure orientations. Otherwise, the v-structure orientations are
 #' propagated to downstream undirected edges in unshielded triples following
-#' the orientation method
+#' the propagation procedure, relying on probabilities (for more details,
+#' see Verny \emph{et al.}, PLoS Comp. Bio. 2017).
 #'
-#' @param latent [a string; \emph{c("orientation", "no", "yes")}]
-#' When set to "yes", the network reconstruction is taking into account hidden (latent)
-#' variables. When set to "orientation", latent variables are not considered during the skeleton
-#' reconstruction but allows bi-directed edges during the orientation. Dependence
-#' between two observed variables due to a latent variable is indicated with a '6' in
-#' the adjacency matrix and in the network edges.summary and by a bi-directed edge
-#' in the (partially) oriented graph.
+#' @param latent [a string, optional, "orientation" by default, possible
+#' values: "orientation", "no", "yes"]
 #'
-#' @param n_eff [a positive integer]
+#' When set to "yes", the network reconstruction is taking into account hidden
+#' (latent) variables. When set to "orientation", latent variables are not
+#' considered during the skeleton reconstruction but allows bi-directed edges
+#' during the orientation.
+#' Dependence between two observed variables due to a latent variable is
+#' indicated with a '6' in the adjacency matrix and in the network
+#' edges.summary and by a bi-directed edge in the (partially) oriented graph.
+#'
+#' @param n_eff [a positive integer, optional, -1 by default]
+#'
 #' In standard mode, the n samples given in the \emph{input_data} data frame are
 #' expected to be independent. In case of correlated samples such as in
 #' Monte Carlo sampling approaches, the effective number of independent samples
 #' \emph{n_eff} can be estimated using the decay of the autocorrelation function
-#' (Verny et al., PLoS Comp. Bio. 2017). This \emph{effective} number \emph{n_eff}
-#' of \emph{independent} samples can be provided using this parameter.
+#' (Verny et al., PLoS Comp. Bio. 2017). This effective number \emph{n_eff}
+#' of independent samples can be provided using this parameter.
 #'
-#' @param n_shuffles [a positive integer] The number of shufflings of
-#' the original dataset in order to evaluate the edge specific confidence
-#' ratio of all inferred edges. Default is 0: no confidence cut. If the
-#' number of shufflings is set to an integer > 0, the confidence threshold
-#' must also be > 0 (i.e:  n_shuffles=100 and conf_threshold=0.01).
+#' @param n_shuffles [a positive integer, optional, 0 by default]
 #'
-#' @param conf_threshold [a positive floating point] The threshold used
-#' to filter the less probable edges following the skeleton step. See Verny
-#' \emph{et al.}, PLoS Comp. Bio. 2017. Default is 0: no confidence cut. If the
-#' the confidence threshold is set > 0, the number of shufflings must also
-#' be defined > 0 (i.e:  n_shuffles=100 and conf_threshold=0.01).
+#' The number of shufflings of the original dataset in order to evaluate
+#' the edge specific confidence ratio of all inferred edges.
+#' Default is 0: no confidence cut is applied. If the number of shufflings
+#' is set to an integer > 0, the confidence threshold must also be > 0
+#' (e.g. \emph{n_shuffles} = 100 and \emph{conf_threshold} = 0.01).
 #'
-#' @param sample_weights [a numeric vector]
-#' An optional vector containing the weight of each observation. NULL by default.
-#' If defined, it must be a vector of floats in the range [0,1] of size equal
-#' to the number of samples.
+#' @param conf_threshold [a positive floating point, optional, 0 by default]
 #'
-#' @param test_mar [a boolean value]
-#' If set to TRUE, distributions with missing values will be tested with Kullback-Leibler
-#' divergence : conditioning variables for the given link \eqn{X\rightarrow Y}\eqn{Z} will be
-#' considered only if the divergence between the full distribution and the non-missing
-#' distribution \eqn{KL(P(X,Y) | P(X,Y)_{!NA})} is low enough (with \eqn{P(X,Y)_{!NA}} as
-#' the joint distribution of \eqn{X} and \eqn{Y} on samples which are not missing on Z.
+#' The threshold used to filter the less probable edges following the skeleton
+#' step. See Verny \emph{et al.}, PLoS Comp. Bio. 2017.
+#' Default is 0: no confidence cut is applied. If the the confidence threshold
+#' is set > 0, the number of shufflings must also be > 0
+#' (e.g. \emph{n_shuffles} = 100 and \emph{conf_threshold} = 0.01).
+#'
+#' @param sample_weights [a numeric vector, optional, NULL by default]
+#'
+#' An vector containing the weight of each observation.  If defined, it must be
+#' a vector of floats in the range [0,1] of size equal to the number of samples.
+#'
+#' @param test_mar [a boolean value, optional, TRUE by default]
+#'
+#' If set to TRUE, distributions with missing values will be tested with
+#' Kullback-Leibler divergence: conditioning variables for the given link
+#' \eqn{X - Y}, \eqn{Z} will be considered only if the divergence
+#' between the full distribution and the non-missing distribution
+#' \eqn{KL(P(X,Y) | P(X,Y)_{!NA})} is low enough (with \eqn{P(X,Y)_{!NA}} as
+#' the joint distribution of \eqn{X} and \eqn{Y} on samples which are
+#' not missing on Z.
 #' This is a way to ensure that data are missing at random for the considered
-#' interaction and to avoid selection bias. Set to TRUE by default
+#' interaction and to avoid selection bias.
 #'
-#' @param consistent [a string; \emph{c("no", "orientation", "skeleton")}]
-#' if "orientation": iterate over skeleton and orientation steps to ensure
-#' consistency of the network;
-#' if "skeleton": iterate over skeleton step to get a consistent skeleton, then
-#' orient edges and discard inconsistent orientations to ensure consistency of
-#' the network. See (Li \emph{et al.}, NeurIPS 2019) for details.
+#' @param consistent [a string, optional, "no" by default, possible values:
+#' "no", "orientation", "skeleton"]
 #'
-#' @param max_iteration [a positive integer] When the \emph{consistent} parameter
-#' is set to "skeleton" or "orientation", the maximum number of iterations
-#' allowed when trying to find a consistent graph. Set to 100 by default.
+#' If set to "orientation": iterate over skeleton and orientation steps to
+#' ensure consistency of the network.
+#' If set to "skeleton": iterate over skeleton step to get a consistent skeleton,
+#' then orient edges and discard inconsistent orientations to ensure consistency
+#' of the network (see Li \emph{et al.}, NeurIPS 2019 for details).
 #'
-#' @param consensus_threshold [a floating point between 0.5 and 1.0] When the
-#' \emph{consistent} parameter is set to "skeleton" or "orientation", and when
-#' the result graph is inconsistent, or is a union of more than one inconsistent
-#' graphs, a consensus graph will be produced based on a pool of graphs. If the
-#' result graph is inconsistent, then the pool is made of [max_iteration] graphs
-#' from the iterations, otherwise it is made of those graphs in the union. In
-#' the consensus graph, an edge is present when the proportion of non-zero
+#' @param max_iteration [a positive integer, optional, 100 by default]
+#'
+#' When the \emph{consistent} parameter is set to "skeleton" or "orientation",
+#' the maximum number of iterations allowed when trying to find a consistent
+#' graph.
+#'
+#' @param consensus_threshold [a floating point between 0.5 and 1.0, optional,
+#' 0.8 by default]
+#'
+#' When the \emph{consistent} parameter is set to "skeleton" or "orientation"
+#' and when the result graph is inconsistent or is a union of more than
+#' one inconsistent graphs, a consensus graph will be produced based on
+#' a pool of graphs.
+#' If the result graph is inconsistent, then the pool is made of
+#' \emph{max_iteration} graphs from the iterations, otherwise it is made of
+#' those graphs in the union.
+#' In the consensus graph, an edge is present when the proportion of non-zero
 #' status in the pool is above the threshold. For example, if the pool contains
 #' [A, B, B, 0, 0], where "A", "B" are different status of the edge and "0"
-#' indicates the absence of the edge. Then the edge is set to connected ("1") if
-#' the proportion of non-zero status (0.6 in the example) is equal to or higher
-#' than [consensus_threshold]. (When set to connected, the orientation of the
-#' edge will be further determined by the average probability of orientation.)
-#' Set to 0.8 by default.
+#' indicates the absence of the edge. Then the edge is set to connected ("1")
+#' if the proportion of non-zero status (0.6 in the example) is equal to
+#' or higher than \emph{consensus_threshold}. (When set to connected,
+#' the orientation of the edge will be further determined by the average
+#' probability of orientation.)
 #'
-#' @param mode [a string] Optional, "S" by default, possible values are
-#' "S": Standard (IID samples) or "TS": Temporal Stationary. When temporal mode
-#' is activated, the time information must be provided in the first column of
-#' the dataset.
+#' @param negative_info [a boolean value, optional, FALSE by default]
 #'
-#' @param n_layers [an integer] Optional, NULL by default, must >= 2 if supplied.\cr
+#' For test purpose only. If TRUE, negative shifted mutual information is
+#' allowed during the computation when mutual information is inferior to the
+#' complexity term.
+#' For small dataset with complicated structures, e.g. discrete variables with
+#' many levels, allowing for negative shifted mutual information may help
+#' identifying weak v-structures related to those discrete variables,
+#' as the negative three-point information in those cases will come from
+#' the difference between two negative shifted mutual information terms
+#' (expected to be negative due to the small sample size).
+#' However, under this setting, a v-structure (X -> Z <- Y) in the final graph
+#' does not necessarily imply that X is dependent on Y conditioning on Z,
+#' As a consequence, the interpretability of the final graph
+#' is hindered. In practice, it's advised to keep this parameter as FALSE.
+#'
+#' @param mode [a string, optional, "S" by default, possible values are
+#' "S": Standard (IID samples) or "TS": Temporal Stationary"]
+#'
+#' When temporal mode is activated, the time information must be provided
+#' in the first column of \emph{input_data}. For more details about temporal
+#' stationary mode, see Simon \emph{et al.}, eLife reviewed preprint 2024.
+#'
+#' @param n_layers [an integer, optional, NULL by default, must be >= 2
+#' if supplied]
+#'
 #' Used only in temporal mode, \emph{n_layers} defines the number of layers
-#' that will be considered for the variables. The layers will be distant of
-#' \emph{delta_t} time steps.\cr
+#' that will be considered for the variables in the time unfolded graph.
+#' The layers will be distant of \emph{delta_t} time steps.
 #' If not supplied, the number of layers is estimated from the dynamic of the
 #' dataset and the maximum number of nodes \emph{max_nodes} allowed in the
 #' final lagged graph.
 #'
-#' @param delta_t [an integer] Optional, NULL by default, must be >= 1 if supplied.\cr
-#' Used only in temporal mode. \emph{delta_t} defines the number of time steps
-#' between each layer.\cr
-#' i.e.: on 1000 time steps with  \emph{n_layers} = 3 and \emph{delta_t} = 7,
+#' @param delta_t [an integer, optional, NULL by default, must be >= 1
+#' if supplied]
+#'
+#' Used only in temporal mode, \emph{delta_t} defines the number of time steps
+#' between each layer.
+#' i.e. on 1000 time steps with \emph{n_layers} = 3 and \emph{delta_t} = 7,
 #' the time steps kept for the samples conversion will be 1, 8, 15
-#' for the first sample, the next sample will use 2, 9, 16 and so on.\cr
+#' for the first sample, the next sample will use 2, 9, 16 and so on.
 #' If not supplied, the number of time steps between layers is estimated
 #' from the dynamic of the dataset and the number of layers.
 #'
-#' @param movavg [an integer] Optional, NULL by default, must be >= 2 if supplied\cr
-#' Used only in temporal mode.\cr
-#' When an integer is supplied (integer >= 2), a moving average
-#' operation is applied to all integer and numeric variables that are not
-#' contextual variables.
+#' @param movavg [an integer, optional, NULL by default, must be >= 2
+#' if supplied]
 #'
-#' @param keep_max_data [a boolean] Optional, FALSE by default.\cr
+#' Used only in temporal mode. When supplied, a moving average operation is
+#' applied to all integer and numeric variables that are not contextual
+#' variables.
+#'
+#' @param keep_max_data [a boolean value, optional, FALSE by default]
+#'
 #' Used only in temporal mode. If TRUE, rows where some NAs have been
 #' introduced during the moving averages and lagging will be kept
 #' whilst they will be dropped if FALSE.
 #'
-#' @param max_nodes [an integer] Optional, 50 by default.\cr
+#' @param max_nodes [an integer, optional, 50 by default]
+#'
 #' Used only in temporal mode and if the \emph{n_layers} or \emph{delta_t}
 #' parameters are not supplied. \emph{max_nodes} is used as the maximum number
 #' of nodes in the final graph to compute \emph{n_layers} and/or \emph{delta_t}.
 #' The default is 50 to produce quick runs and can be increased up to 200
 #' or 300 on recent computers to produce more precise results.
 #'
-#' @param negative_info [a boolean value] For test purpose only. FALSE by
-#' default. If TRUE, negative shifted mutual information is allowed during the
-#' computation when mutual information is inferior to the complexity term. For
-#' small dataset with complicated structures, e.g., discrete variables with many
-#' levels, allowing for negative shifted mutual information may help identifying
-#' weak v-structures related to those discrete variables, as the negative
-#' three-point information in those cases will come from the difference between
-#' two negative shifted mutual information terms (expected to be negative due to
-#' the small sample size). However, under this setting, a v-structure (X -> Z <-
-#' Y) in the final graph does not necessarily imply that X is dependent on Y
-#' conditioning on Z, As a consequence, the interpretability of the final graph
-#' is hindered. In practice, it's advised to keep this parameter as FALSE.
+#' @param verbose [a boolean value, optional, FALSE by default]
 #'
-#' @param verbose [a boolean value] If TRUE, debugging output is printed.
+#' If TRUE, debugging output is printed.
 #'
 #' @return A \emph{miic-like} object that contains:
 #' \itemize{
@@ -315,56 +366,70 @@
 #'  \itemize{
 #'  \item{ \emph{x:} X node}
 #'  \item{ \emph{y:} Y node}
-#'  \item{ \emph{type:} contains 'N' if the edge has
-#'  been removed or 'P' for retained edges. If a true edges file is given,
-#'  'P' becomes 'TP' (True Positive) or 'FP' (False Positive), while
-#'  'N' becomes 'TN' (True Negative) or 'FN' (False Negative).}
-#'  \item{ \emph{ai:} the contributing nodes found by the method which participate in
-#'  the mutual information between \emph{x} and \emph{y}, and possibly separate them.}
-#'  \item{ \emph{info:} provides the pairwise mutual information times \emph{Nxyi} for
-#'  the pair (\emph{x}, \emph{y}).}
-#'  \item{ \emph{info_cond:} provides the conditional mutual information times \emph{Nxy_ai} for
-#'  the pair (\emph{x}, \emph{y}) when conditioned on the collected nodes \emph{ai}. It is
+#'  \item{ \emph{type:} contains 'N' if the edge has been removed or 'P' for
+#'  retained edges. If the true graph is supplied in the \emph{true_edges}
+#'  parameter, 'P' becomes 'TP' (True Positive) or 'FP' (False Positive),
+#'  while 'N' becomes 'TN' (True Negative) or 'FN' (False Negative).
+#'  Note that, as the \emph{all.edges.summary} does not contain all the
+#'  negative edges, edges not present are 'TN'.}
+#'  \item{ \emph{ai:} the contributing nodes found by the method which
+#'  participate in the mutual information between \emph{x} and \emph{y},
+#'  and possibly separate them.}
+#'  \item{ \emph{raw_contributions:} describes the share of total mutual
+#'  information between \emph{x} and \emph{y} explained by each contributor.}
+#'  \item{ \emph{contributions:} describes the share of remaining mutual
+#'  information between \emph{x} and \emph{y} explained  by each successive
+#'  contributors.}
+#'  \item{ \emph{info:} provides the pairwise mutual information times
+#'  \emph{Nxyi} for the pair (\emph{x}, \emph{y}).}
+#'  \item{ \emph{info_cond:} provides the conditional mutual information
+#'  times \emph{Nxy_ai} for the pair (\emph{x}, \emph{y}) when conditioned
+#'  on the collected nodes \emph{ai}. It is
 #'  equal to the \emph{info} column when \emph{ai} is an empty set.}
-#'  \item{ \emph{cplx:} gives the computed complexity between the (\emph{x}, \emph{y})
-#'  variables taking into account the contributing nodes \emph{ai}. Edges that have
-#'  have more conditional information \emph{info_cond} than \emph{cplx} are retained in the
-#'  final graph.}
-#'  \item{ \emph{Nxy_ai:} gives the number of complete samples on which the information and
-#'  the  complexity have been computed. If the input dataset has no missing value, the
-#'  number of samples is the same for all pairs and corresponds to the total
-#'  number of samples.}
+#'  \item{ \emph{cplx:} gives the computed complexity between the (\emph{x},
+#'  \emph{y}) variables taking into account the contributing nodes \emph{ai}.
+#'  Edges that have have more conditional information \emph{info_cond}
+#'  than \emph{cplx} are retained in the final graph.}
+#'  \item{ \emph{Nxy_ai:} gives the number of complete samples on which the
+#'  information and the  complexity have been computed. If the input dataset
+#'  has no missing value, the number of samples is the same for all pairs
+#'  and corresponds to the total number of samples.}
 #'  \item{ \emph{info_shifted:} represents the \emph{info} - \emph{cplx} value.
 #'  It is a way to quantify the strength of the edge (\emph{x}, \emph{y}).}
-#'  \item{ \emph{confidenceRatio:} this column is present if the confidence cut
-#'  is > 0 and it represents the ratio between the probability to reject
-#'  the edge (\emph{x}, \emph{y}) in the dataset versus the mean probability
-#'  to do the same in multiple (user defined) number of randomized datasets.}
-#'  \item{ \emph{infOrt:} the orientation of the edge (\emph{x}, \emph{y}). It is
-#'  the same value as in the adjacency matrix at row \emph{x} and column \emph{y} : 1 for
-#'  unoriented, 2 for an edge from X to Y, -2 from Y to X and 6 for bidirectional.}
-#'  \item{ \emph{trueOrt:} the orientation of the edge (\emph{x}, \emph{y}) present
-#'  in the true edges file if provided.}
-#'  \item{ \emph{isOrtOk:} information about the consistency of the inferred graph’s
-#'  orientations with a reference graph is given (i.e. if true edges file is provided).
-#'  Y: the orientation is consistent; N: the orientation is not consistent with
-#'  the PAG (Partial Ancestor Graph) derived from the given true graph.}
+#'  \item{ \emph{infOrt:} the orientation of the edge (\emph{x}, \emph{y}).
+#'  It is the same value as in the adjacency matrix at row \emph{x} and
+#'  column \emph{y} : 1 for unoriented, 2 for an edge from X to Y,
+#'  -2 from Y to X and 6 for bidirectional.}
+#'  \item{ \emph{trueOrt:} the orientation of the edge (\emph{x}, \emph{y})
+#'  present in the true edges are provided.}
+#'  \item{ \emph{isOrtOk:} information about the consistency of the inferred
+#'  graph’s orientations with a reference graph is given (if true edges
+#'  are provided).
+#'  'Y': the orientation is consistent; 'N': the orientation is not consistent
+#'  with the PAG (Partial Ancestor Graph) derived from the given true graph.}
 #'  \item{ \emph{sign:} the sign of the partial correlation between variables
 #'  \emph{x} and \emph{y}, conditioned on the contributing nodes \emph{ai}.}
 #'  \item{ \emph{partial_correlation:} value of the partial correlation for the
 #'  edge (\emph{x}, \emph{y}) conditioned on the contributing nodes \emph{ai}.}
-#'  \item{ \emph{isCausal:} details about the nature of the arrow tip for a directed
-#'  edge. A directed edge in a causal graph does not necessarily imply causation but it
-#'  does imply that the cause-effect relationship is not the other way around. An arrow-tip
-#'  which is itself downstream of another directed edge suggests stronger causal sense and is
-#'  marked by a 'Y', or 'N' otherwise.}
-#'  \item{ \emph{proba:} probabilities for the inferred orientation, derived from the three-point
-#'  mutual information (cf Affeldt & Isambert, UAI 2015 proceedings) and noted as p(x->y);p(x<-y).}
+#'  \item{ \emph{is_causal:} details about the nature of the arrow tip for a
+#'  directed edge. A directed edge in a causal graph does not necessarily imply
+#'  causation but it does imply that the cause-effect relationship is not the
+#'  other way around. An arrow-tip which is itself downstream of another
+#'  directed edge suggests stronger causal sense and is marked by a 'Y',
+#'  or 'N' otherwise.}
+#'  \item{ \emph{proba:} probabilities for the inferred orientation, derived
+#'  from the three-point mutual information (cf Affeldt & Isambert, UAI 2015
+#'  proceedings) and noted as p(x->y);p(x<-y).}
+#'  \item{ \emph{confidence:} this column is computed when the confidence cut
+#'  is activated. It represents the ratio between the probability to reject
+#'  the edge (\emph{x}, \emph{y}) in the dataset versus the mean probability
+#'  to do the same in multiple (user defined) number of randomized datasets.}
 #'  }
 #'  }
 #'
-#'  \item{\emph{orientations.prob:} this data frame lists the orientation probabilities of the two edges of all unshielded triples
-#'  of the reconstructed network with the structure: node1 -- mid-node -- node2:
+#'  \item{\emph{orientations.prob:} this data frame lists the orientation
+#'  probabilities of the two edges of all unshielded triples of the
+#'  reconstructed network with the structure: node1 -- mid-node -- node2:
 #'  \itemize{
 #'  \item{ \emph{node1:} node at the end of the unshielded triplet}
 #'  \item{ \emph{p1:} probability of the arrowhead node1 <- mid-node}
@@ -374,14 +439,16 @@
 #'  \item{ \emph{p4:} probability of the arrowhead mid-node -> node2}
 #'  \item{ \emph{node2:} node at the end of the unshielded triplet}
 #'  \item{ \emph{NI3:} 3 point (conditional) mutual information * N}
+#'  \item{ \emph{Conflict:} indicates if there a conflict between the
+#'  computed probabilities and the NI3 value}
 #'  }
 #'  }
 #'
-#'  \item {\emph{adj_matrix:} the adjacency matrix is a square matrix used to represent
-#'  the inferred graph. The entries of the matrix indicate whether pairs of
-#'  vertices are adjacent or not in the graph. The matrix can be read as a
-#'  (row, column) set of couples where the row represents the source node and
-#'  the column the target node. Since miic can reconstruct mixed networks
+#'  \item {\emph{adj_matrix:} the adjacency matrix is a square matrix used to
+#'  represent the inferred graph. The entries of the matrix indicate whether
+#'  pairs of vertices are adjacent or not in the graph. The matrix can be read
+#'  as a (row, column) set of couples where the row represents the source node
+#'  and the column the target node. Since miic can reconstruct mixed networks
 #'  (including directed, undirected and bidirected edges), we will have a
 #'  different digit for each case:
 #'  \itemize{
@@ -392,15 +459,24 @@
 #'  }
 #'  }
 #'
-#'  \item {\emph{params:} the list of parameters used for the network reconstruction.
-#'  The parameters not supplied are initialized to their default values.
-#'  Otherwise, the parameters are checked and corrected if necessary.}
+#'  \item {\emph{proba_adj_matrix:} the probability adjacency matrix is
+#'  a square  matrix used to represent the orientation probabilities associated
+#'  to the edges tips. The value at ("row", "column") is the probability,
+#'  for the edge between "row" and "column" nodes, of the edge tip on the "row"
+#'  side.  A probability less than 0.5 is an indication of a possible tail
+#'  (cause) and a probability greater than 0.5 a possible head (effect).
+#'  }
 #'
-#'  \item {\emph{state_order:} the state order used for the network reconstruction.
-#'  If no state order is supplied, it is generated by using default values.
-#'  Otherwise, it is the state order checked and corrected if necessary.}
+#'  \item {\emph{params:} the list of parameters used for the network
+#'  reconstruction. The parameters not supplied are initialized to their default
+#'  values. Otherwise, the parameters are checked and corrected if necessary.}
 #'
-#'  \item {\emph{black_box:} present only if a black box has been supplied:
+#'  \item {\emph{state_order:} the state order used for the network
+#'  reconstruction. If no state order is supplied, it is generated by using
+#'  default values. Otherwise, it is the state order checked and corrected
+#'  if necessary.}
+#'
+#'  \item {\emph{black_box:} present only if a black box has been supplied,
 #' the black box, checked and corrected if necessary, used for the network
 #' reconstruction.}
 #'
@@ -518,13 +594,13 @@ miic <- function(input_data,
                  consistent = "no",
                  max_iteration = 100,
                  consensus_threshold = 0.8,
+                 negative_info = FALSE,
                  mode = "S",
                  n_layers = NULL,
                  delta_t = NULL,
                  movavg = NULL,
                  keep_max_data = FALSE,
                  max_nodes = 50,
-                 negative_info = FALSE,
                  verbose = FALSE)
   {
   if (verbose)

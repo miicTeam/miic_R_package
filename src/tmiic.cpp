@@ -1,7 +1,7 @@
 //*****************************************************************************
-// Filename   : tmiic.cpp                   Namespace: tmiic
+// Filename   : tmiic.cpp                           Creation date: 07 may 2020
 //
-// Author     : Franck SIMON                Creation date: 07 may 2020
+// Author     : Franck SIMON
 //
 // Description: Store functions for temporal mode of miic (tmiic)
 //
@@ -239,7 +239,7 @@ void completeOrientationUsingTime (Environment& environment,
 // dropPastEdges
 //-----------------------------------------------------------------------------
 // Description:
-// Drop past edges (the edges having no node of the final timestep)
+// Drop past edges (the edges having no node of the final time step)
 //
 // Detail: for consistency assessment or orientation step with latent variable
 // discovery is enabled, we duplicated edges over history. Here, we ensure that

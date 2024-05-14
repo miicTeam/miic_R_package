@@ -163,7 +163,7 @@ check_input_data <- function (input_data, mode)
 #   * is_consequence: 0=not consequence, 1=consequence (default 0)
 #   additional possible columns in temporal mode are:
 #   * n_layers: the number of layers in the time unfolded graph
-#   * delta_t: the number of timesteps between layers
+#   * delta_t: the number of time steps between layers
 #   * movavg: if a moving average must applied on some variables
 #   NB: is_consequence is not allowed in temporal mode
 # - mode: the MIIC mode

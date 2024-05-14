@@ -1,13 +1,13 @@
-//*****************************************************************************
-// Filename   : tmiic.h                     Namespace: tmiic                                   
+//******************************************************************************
+// Filename   : tmiic.h                              Creation date: 07 may 2020
 //
-// Author     : Franck SIMON                Creation date: 07 may 2020 
+// Author     : Franck SIMON
 //
 // Description: header file of tmiic (temporal miic)
 //
 // Changes history:
 // - 07 may 2020 : initial version
-//*****************************************************************************
+//******************************************************************************
 #ifndef TMIIC_
 #define TMIIC_
 
@@ -20,7 +20,7 @@ namespace tmiic {
 // An unshielded Triple (X, Z, Y):
 using Triple = std::array<int, 3>;
 
-std::vector< std::pair<int, int> > getListLaggedEdges 
+std::vector< std::pair<int, int> > getListLaggedEdges
   (miic::structure::Environment&, int, int);
 void repeatEdgesOverHistory (miic::structure::Environment&);
 void completeOrientationUsingTime (miic::structure::Environment&,
