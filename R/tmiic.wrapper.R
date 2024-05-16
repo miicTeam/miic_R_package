@@ -242,6 +242,7 @@ tmiic_lag_input_data <- function (list_ts, state_order, keep_max_data=FALSE)
 tmiic_precompute_lags_layers_and_shifts <- function (tmiic_res)
   {
   list_nodes_not_lagged = tmiic_res$state_order$var_names
+  is_contextual = tmiic_res$state_order$is_contextual
   n_nodes_not_lagged = length (list_nodes_not_lagged)
   list_n_layers_back <- tmiic_res$state_order$n_layers - 1
   list_delta_t <- tmiic_res$state_order$delta_t
@@ -257,24 +258,24 @@ tmiic_precompute_lags_layers_and_shifts <- function (tmiic_res)
     node_name <- list_nodes_not_lagged[[node_idx]]
     list_corresp_nodes[[i]] <- node_name
 
-    if (list_n_layers_back[[node_idx]] >= 1)
+    if (is_contextual[[node_idx]] == 0)
       node_name <- paste0 (node_name, "_lag0")
     list_nodes_lagged [[i]] <- node_name
     i <- i + 1
     }
 
   n_layers_back_max <- max (list_n_layers_back)
-  for (n_layers_back_max in 1:n_layers_back_max)
+  for (n_layers_back_idx in 1:n_layers_back_max)
     {
     for (node_idx in 1:n_nodes_not_lagged)
       {
-      n_layers_back_of_var <- list_n_layers_back[[node_idx]];
-      if (n_layers_back_max <= n_layers_back_of_var)
+      n_layers_back_of_var <- list_n_layers_back[[node_idx]]
+      if (n_layers_back_idx <= n_layers_back_of_var)
         {
         node_name <- list_nodes_not_lagged[[node_idx]]
         list_corresp_nodes[[i]] <- node_name
 
-        lag <- n_layers_back_max * list_delta_t[[node_idx]];
+        lag <- n_layers_back_idx * list_delta_t[[node_idx]];
         node_name <- paste0 (node_name, "_lag", lag)
         list_nodes_lagged [[i]] <- node_name
         list_lags[[i]] <- lag

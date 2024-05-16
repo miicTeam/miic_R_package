@@ -195,7 +195,8 @@ void completeOrientationUsingTime (Environment& environment,
   // open triples but can be oriented using time
   //
   const auto& edge_list = environment.connected_list;
-  for (auto iter0 = begin(edge_list); iter0 != end(edge_list); ++iter0) {
+  for (auto iter0 = begin(edge_list); iter0 != end(edge_list); ++iter0)
+    {
     int posX = iter0->X, posY = iter0->Y;
     //
     // If edges has no node on the layer 0, it is a duplicated one => skip it
@@ -217,10 +218,11 @@ void completeOrientationUsingTime (Environment& environment,
       if (   ( (triples[i][0] == posX) && (triples[i][1] == posY) )
           || ( (triples[i][0] == posY) && (triples[i][1] == posX) )
           || ( (triples[i][1] == posX) && (triples[i][2] == posY) )
-          || ( (triples[i][1] == posY) && (triples[i][2] == posX) ) ) {
+          || ( (triples[i][1] == posY) && (triples[i][2] == posX) ) )
+        {
         is_in_triple = true;
         break;
-      }
+        }
     if (is_in_triple)
       continue;
     //
@@ -229,11 +231,21 @@ void completeOrientationUsingTime (Environment& environment,
     // As time goes from past to present: edge orientation is max lag -> min lag
     //
     if (environment.nodes_lags[posX] > environment.nodes_lags[posY])
-      miic::reconstruction::updateAdj(environment, posX, posY, tail_proba, 1);
+      {
+      if (environment.is_contextual[posX])
+        miic::reconstruction::updateAdj(environment, posX, posY, 0, 1);
+      else
+        miic::reconstruction::updateAdj(environment, posX, posY, tail_proba, 1);
+      }
     else
-      miic::reconstruction::updateAdj(environment, posX, posY, 1, tail_proba);
+      {
+      if (environment.is_contextual[posY])
+        miic::reconstruction::updateAdj(environment, posX, posY, 1, 0);
+      else
+        miic::reconstruction::updateAdj(environment, posX, posY, 1, tail_proba);
+      }
+    }
   }
-}
 
 //-----------------------------------------------------------------------------
 // dropPastEdges

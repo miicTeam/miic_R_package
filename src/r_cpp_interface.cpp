@@ -94,6 +94,8 @@ void setEnvironmentFromR(const Rcpp::List& input_data,
   } else {
     environment.is_contextual.resize(n_nodes, 0);
   }
+  environment.any_contextual = std::any_of (environment.is_contextual.begin(),
+    environment.is_contextual.end(), [](bool v) { return v; });
   //
   // Variables considered as consequence only
   //

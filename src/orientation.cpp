@@ -47,25 +47,26 @@ void updateAdj(Environment& env, int x, int y, double y2x, double x2y) {
 }
 
 //-----------------------------------------------------------------------------
-// completeOrientationUsingConsequence
+// completeOrientationUsingPrior
 //-----------------------------------------------------------------------------
-// Description: Complete the orientations using the consequence information
-// for edges that were not previously oriented
+// Description: complete the orientations using the prior knowledge of
+// contextual and consequence for edges that were not previously oriented
 //
-// Detail: completeOrientationUsingConsequence will look in the list of connected
-// edges the ones that have not been oriented using the unshielded triples and
-// have at least one variable tagged as consequence.
-// Edges matching these criteria will be oriented using consequence information:
-// from the non consequence variable to the consequence variable
+// Detail: completeOrientationUsingPrior will look in the list of connected
+// edges the ones that have not been oriented using the unshielded triples
+// and have at least one variable tagged as contextual or consequence.
+// Edges matching these criteria will be updated using prior knowledge:
+// - tails on contextual variables will be enforced (edge tip proba = 0)
+// - head toward the consequence variable (edge tip proba = 1)
 //
 // Params:
 // - Environment&: the environment structure
 // - std::vector<Triple>& : list of unshielded triples
 //--------------------------------------------------------------------------------
-void completeOrientationUsingConsequence (Environment& environment,
+void completeOrientationUsingPrior (Environment& environment,
                                    const std::vector<Triple>& triples)
   {
-  // Tail probability to use for edges with one node as consequence differs
+  // Base tail probability to use for edges with one node as consequence differs
   // if latent variables are authorized or not:
   // - 0 if no latent var, we are sure that the not consequence node is the cause
   // - 0.5 with latent var as we can not be sure that the not consequence node
@@ -79,13 +80,17 @@ void completeOrientationUsingConsequence (Environment& environment,
   // open triples but can be oriented using consequence nodes
   //
   const auto& edge_list = environment.connected_list;
-  for (auto iter0 = begin(edge_list); iter0 != end(edge_list); ++iter0) {
+  for (auto iter0 = begin(edge_list); iter0 != end(edge_list); ++iter0)
+    {
     int posX = iter0->X, posY = iter0->Y;
     //
-    // If the edge has no variable tagged as consequence, nothing to do
+    // If the edge has no variable tagged as contextual or consequence,
+    // nothing to do
     //
-    if ( (!environment.is_consequence[posX]) &&
-         (!environment.is_consequence[posY]) )
+    if (  (!environment.is_contextual[posX])
+       && (!environment.is_contextual[posY])
+       && (!environment.is_consequence[posX])
+       && (!environment.is_consequence[posY]) )
       continue;
     //
     // If edge is in triple, head/tail probas have already been computed
@@ -96,23 +101,49 @@ void completeOrientationUsingConsequence (Environment& environment,
       if (   ( (triples[i][0] == posX) && (triples[i][1] == posY) )
           || ( (triples[i][0] == posY) && (triples[i][1] == posX) )
           || ( (triples[i][1] == posX) && (triples[i][2] == posY) )
-          || ( (triples[i][1] == posY) && (triples[i][2] == posX) ) ) {
+          || ( (triples[i][1] == posY) && (triples[i][2] == posX) ) )
+        {
         is_in_triple = true;
         break;
-      }
+        }
     if (is_in_triple)
       continue;
     //
-    // The edge is not in open triples, has a consequence variable
-    // => we need to orient it using the consequence information
-    // edge orientation is other var -> consequence only var
+    // The edge is not in open triples, has a contextual or consequence variable
+    // => we need to update the probabilities
     //
     if (environment.is_consequence[posY])
-      updateAdj(environment, posX, posY, tail_proba, 1);
-    else
-      updateAdj(environment, posX, posY, 1, tail_proba);
+      {
+      if (environment.is_contextual[posX])
+        updateAdj(environment, posX, posY, 0, 1);
+      else
+        updateAdj(environment, posX, posY, tail_proba, 1);
+      continue;
+      }
+    if (environment.is_consequence[posX])
+      {
+      if (environment.is_contextual[posY])
+        updateAdj(environment, posX, posY, 1, 0);
+      else
+        updateAdj(environment, posX, posY, 1, tail_proba);
+      continue;
+      }
+    //
+    // Case with consequence variable done  => at least one of the 2 vars is
+    // contextual and the other one is not consequence
+    //
+    if (environment.is_contextual[posX])
+      {
+      if (environment.is_contextual[posY])
+        updateAdj(environment, posX, posY, 0, 0);
+      else
+        updateAdj(environment, posX, posY, 0, 0.5);
+      continue;
+      }
+    if (environment.is_contextual[posY])
+      updateAdj(environment, posX, posY, 0.5, 0);
+    }
   }
-}
 
 vector<vector<string>> orientationProbability(Environment& environment) {
   vector<Triple> triples;
@@ -151,8 +182,8 @@ vector<vector<string>> orientationProbability(Environment& environment) {
   }
 
   if (triples.empty()) {
-    if (environment.any_consequence)
-      completeOrientationUsingConsequence (environment, triples);
+    if ( (environment.any_contextual) || (environment.any_consequence) )
+      completeOrientationUsingPrior (environment, triples);
     if (environment.temporal)
       tmiic::completeOrientationUsingTime (environment, triples);
     return vector<vector<string>>();
@@ -272,8 +303,8 @@ vector<vector<string>> orientationProbability(Environment& environment) {
   // If we have consequence variables, we look if we can orient some extra
   // edges not part of an open triple by using the consequence information
   //
-  if (environment.any_consequence)
-    completeOrientationUsingConsequence (environment, triples);
+  if ( (environment.any_contextual) || (environment.any_consequence) )
+    completeOrientationUsingPrior (environment, triples);
   //
   // In temporal mode, we add in adj matrix the orientation of temporal edges
   // that were not already oriented (edges was not part of an open triple)

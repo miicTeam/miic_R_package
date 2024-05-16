@@ -31,6 +31,9 @@ struct Environment {
   // this flag is true if we are in a temporal mode, whatever stationarity
   bool temporal = false;
 
+  // Identify if any node is marked as contextual
+  bool any_contextual = false;
+  // For each node, contains 0 = not a contextual node or 1 = contextual node
   vector<int> is_contextual;
   // Identify if any node is marked as consequence
   bool any_consequence = false;
