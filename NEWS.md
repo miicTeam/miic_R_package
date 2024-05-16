@@ -40,7 +40,7 @@
   and multiple enhancements to deal with very large datasets.
   [Ribeiro-Dantas et al., iScience 2024]
   (https://arxiv.org/abs/2303.06423)
-
+  
 # v1.6.0
 
 ## Features
@@ -49,6 +49,9 @@
   finite datasets.
   [Cabeli et al., Why21 at NeurIPS 2021]
   (http://kinefold.curie.fr/isambertlab/PAPERS/cabeli_Why21-NeurIPS2021.pdf)
+
+- By default, MIIC does not propagate orientations anymore
+  and allows latent variables discovery during orientation step. 
 
 # v1.5.3
 

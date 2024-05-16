@@ -57,7 +57,7 @@ Description: We report an information-theoretic method which learns a large
     during tumor development and co-evolving residues in protein structures.
     Since the version 2.0, MIIC can in addition process stationary time series 
     to unveil temporal causal graphs.
-    For more information you can refer to:
+    For more information, you can refer to:
     Simon et al. eLife, reviewed preprint <doi:10.1101/2024.02.06.579177>, 
     Cabeli et al. PLoS Comp. Bio. 2020 <doi:10.1371/journal.pcbi.1007866>,
     Verny et al. PLoS Comp. Bio. 2017 <doi:10.1371/journal.pcbi.1005662>.

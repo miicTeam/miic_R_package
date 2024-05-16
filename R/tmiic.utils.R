@@ -1195,7 +1195,7 @@ tmiic_estimate_dynamic <- function (list_ts, state_order, max_nodes=50,
 #' The expected dataframe layout is variables as columns and
 #' time series/time steps as rows.
 #' The time step information must be supplied in the first column and,
-#' for each time series, be consecutive (increment of 1) and in ascending order.
+#' for each time series, be consecutive and in ascending order (increment of 1).
 #' Multiple trajectories can be provided, the function will consider that a
 #' new trajectory starts each time a smaller time step than the one of the
 #' previous row is encountered.
