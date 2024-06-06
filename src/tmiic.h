@@ -1,12 +1,9 @@
 //******************************************************************************
 // Filename   : tmiic.h                              Creation date: 07 may 2020
 //
-// Author     : Franck SIMON
-//
 // Description: header file of tmiic (temporal miic)
 //
-// Changes history:
-// - 07 may 2020 : initial version
+// Author     : Franck SIMON
 //******************************************************************************
 #ifndef TMIIC_
 #define TMIIC_

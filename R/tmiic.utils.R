@@ -4,9 +4,6 @@
 # Description: Utility functions for temporal MIIC
 #
 # Author     : Franck SIMON
-#
-# Changes history:
-# - 10 may  2023 : initial version
 #*******************************************************************************
 
 #-------------------------------------------------------------------------------
@@ -175,14 +172,14 @@ tmiic_check_parameters <- function (state_order, params,
         na_in_so = is.na (state_order$n_layers)
         if ( any (na_in_so) )
           {
-          miic_warning ("parameters", "the number of layers is supplied both",
-            " in the state_order and as parameter. As some values are missing",
+          miic_warning ("parameters", "the number of layers is both supplied",
+            " in the state_order and as a parameter. As some values are missing",
             " in the state_order, the parameter will be used to fill these",
             " missing values.")
           state_order$n_layers[na_in_so & (state_order$is_contextual == 0)] = n_layers
           }
         else
-          miic_warning ("parameters", "the number of layers is supplied both",
+          miic_warning ("parameters", "the number of layers is both supplied",
             " in the state_order and as parameter. The parameter will be",
             " ignored.")
         }
@@ -219,15 +216,15 @@ tmiic_check_parameters <- function (state_order, params,
         na_in_so = is.na (state_order$delta_t)
         if ( any (na_in_so) )
           {
-          miic_warning ("parameters", "the delta t is supplied both",
-            " in the state_order and as parameter. As some values are missing",
+          miic_warning ("parameters", "the delta t is both supplied",
+            " in the state_order and as a parameter. As some values are missing",
             " in the state_order, the parameter will be used to fill these",
             " missing values.")
           state_order$delta_t[na_in_so & (state_order$is_contextual == 0)] = delta_t
           }
         else
-          miic_warning ("parameters", "the delta t is supplied both",
-            " in the state_order and as parameter. The parameter will be",
+          miic_warning ("parameters", "the delta t is both supplied",
+            " in the state_order and as a parameter. The parameter will be",
             " ignored.")
         }
       }
@@ -266,8 +263,8 @@ tmiic_check_parameters <- function (state_order, params,
         na_in_so = is.na (state_order$movavg)
         if ( any (na_in_so) )
           {
-          miic_warning ("parameters", "the moving average is supplied both",
-            " in the state_order and as parameter. As some values are missing",
+          miic_warning ("parameters", "the moving average is both supplied",
+            " in the state_order and as a parameter. As some values are missing",
             " in the state_order, the parameter will be used to fill these",
             " missing values.")
           state_order$movavg[ na_in_so
@@ -275,8 +272,8 @@ tmiic_check_parameters <- function (state_order, params,
                             & (state_order$is_contextual == 0)] = movavg
           }
         else
-          miic_warning ("parameters", "the moving average is supplied both",
-            " in the state_order and as parameter. The parameter will be",
+          miic_warning ("parameters", "the moving average is both supplied",
+            " in the state_order and as a parameter. The parameter will be",
             " ignored.")
         }
       }
@@ -306,8 +303,10 @@ tmiic_check_parameters <- function (state_order, params,
 #-------------------------------------------------------------------------------
 tmiic_check_state_order_part2 <- function (state_order)
   {
-  # Check state order n_layers. During the check_state_order function,
-  # we already checked NULL, not integer and <1 values, they became NA.
+  # Check the n_layers column in the state order.
+  #
+  # The check_state_order function has already checked NULL, not integer and <1
+  # values, they were turned into NA. So, no need to check here these cases
   #
   if ( ! ("n_layers" %in% colnames(state_order)) )
     {
@@ -318,7 +317,7 @@ tmiic_check_state_order_part2 <- function (state_order)
     }
   else
     {
-    # Replace NA vals if possible:
+    # Replace NA values if any
     #
     na_in_so = is.na (state_order$n_layers)
     are_contextual = (state_order$is_contextual == 1)
@@ -391,7 +390,8 @@ tmiic_check_state_order_part2 <- function (state_order)
       msg_str = list_to_str (uniq_vals)
       miic_warning ("temporal checks", "different values (", msg_str,
         ") have be defined for the number of layers.",
-        " Such setting is experimental and not recommanded.")
+        " Such setting should be avoided unless \"specific\" reason",
+        " as the result will likely not be accurate.")
       }
     #
     # Stop if all nb layers == 1
@@ -477,7 +477,7 @@ tmiic_check_state_order_part2 <- function (state_order)
       state_order$delta_t[wrongs] = 0
       }
     #
-    # Warning if multiple values of delta_t excluding contextual
+    # Warning if multiple values of delta_t (excluding contextual) are present
     #
     uniq_vals = unique (state_order$delta_t[ (!is.na (state_order$delta_t))
                                            & (state_order$is_contextual == 0) ])
@@ -486,7 +486,8 @@ tmiic_check_state_order_part2 <- function (state_order)
       msg_str = list_to_str (uniq_vals)
       miic_warning ("temporal checks", "different values (", msg_str,
         ") have be defined for the delta t.",
-        " Such setting is experimental and not recommanded.")
+        " Such setting should be avoided unless \"specific\" reason",
+        " as the result will likely not be accurate.")
       }
     #
     # Stop if all delta t == 0
@@ -525,10 +526,10 @@ tmiic_check_state_order_part2 <- function (state_order)
       {
       msg_str = list_to_str (state_order$var_names[wrongs], n_max=10)
       if (sum (wrongs) == 1)
-        miic_warning ("temporal checks", "a moving average can not be applied",
+        miic_warning ("temporal checks", "a moving average cannot be applied",
           " on a discrete variable ", msg_str, ".")
       else
-        miic_warning ("temporal checks", "moving average operations can not",
+        miic_warning ("temporal checks", "moving average operations cannot",
         " be applied on discrete variables (", msg_str, ").")
       state_order$movavg[wrongs] = 0
       }
@@ -677,8 +678,8 @@ tmiic_check_other_df_after_lagging <- function (var_names, lagged_df, df_name)
 #-------------------------------------------------------------------------------
 # tmiic_extract_trajectories
 #-------------------------------------------------------------------------------
-# Extract the trajectories from a dataframe and return them in a list
-# - input_data: a dataframe with the time steps in the 1st column
+# Extract the trajectories from a data frame and return them in a list
+# - input_data: a data frame with the time steps in the 1st column
 #   A new trajectory is identified when time step < previous time step
 # - check: optional, default=T. Emit warnings when:
 #   * there is a gap between 2 consecutive time steps
@@ -739,18 +740,17 @@ tmiic_extract_trajectories <- function (input_data, check=T)
 #-------------------------------------------------------------------------------
 # tmiic_group_trajectories
 #-------------------------------------------------------------------------------
-# Merge a list of trajectories into a dataframe
+# Merge a list of trajectories into a data frame
 # - list_ts: the list of trajectories
 # - drop_timestep: boolean, FALSE by default. Drop the time step information
-#   (the 1st column) in the returned dataframe
+#   (the 1st column) in the returned data frame
 # Returns:
-# - a dataframe: dataframe with all the trajectories
+# - a dataframe: data frame with all the trajectories
 #-------------------------------------------------------------------------------
 tmiic_group_trajectories = function (list_ts, drop_timestep=FALSE)
   {
-  # Pre-allocate the dataframe with the same structure as trajectories
+  # Pre-allocate the data frame with the same structure as trajectories
   # and the same number of rows as all the trajectories
-  # VOIR data = data[1:n_row_tot,]
   #
   df = list_ts[[1]][FALSE,]
   n_row_tot = sum (unlist (lapply(list_ts, nrow)))
@@ -888,7 +888,7 @@ tmiic_ajust_window_for_nb_samples <- function (list_ts, n_layers, delta_t,
 
   if (nb_samples < target)
     {
-    # Look for the best value to reach the target recursivly
+    # Look for the best value to reach the target recursively
     # At each iteration, we keep the half part where the best value is
     # until we can not divide in half further
     #
@@ -907,7 +907,7 @@ tmiic_ajust_window_for_nb_samples <- function (list_ts, n_layers, delta_t,
       }
     tau_red = recurs_eval (target, 1, tau_max, ts_lengths)
     #
-    # Max time steps back in time found, (try to) reduce n_layers or delta_t
+    # Max time steps back in time found, try to reduce n_layers or delta_t
     #
     if (reduced_param == "n_layers")
       n_layers[tau_per_var > tau_red] = max ( 2,
@@ -1048,15 +1048,6 @@ tmiic_estimate_dynamic <- function (list_ts, state_order, max_nodes=50,
   #
   # Compute alphas range and deduce taus range
   #
-  # print ("alphas_per_var")
-  # print (alphas_per_var)
-  # print ("taus")
-  # print (unlist (lapply (alphas_per_var, FUN=function(x) {
-  #   return ( (1+x) / (1-x) ) })))
-  # print ("mean taus")
-  # print (mean (unlist (lapply (alphas_per_var, FUN=function(x) {
-  #   return ( (1+x) / (1-x) ) })), na.rm=T))
-
   tau_min  = max ( 1, min (taus_per_var, na.rm=T) )
   tau_mean = max ( 1, round (mean (taus_per_var, na.rm=T), 0) )
   tau_max  = min ( length_to_test, max  (taus_per_var, na.rm=T) )
@@ -1191,8 +1182,8 @@ tmiic_estimate_dynamic <- function (list_ts, state_order, max_nodes=50,
 #' the number of layers and number of time steps between each layer to be used.
 #'
 #' @param input_data [a data frame]
-#' A data frame that contains the observational data.\cr
-#' The expected dataframe layout is variables as columns and
+#' A data frame containing the observational data.\cr
+#' The expected data frame layout is variables as columns and
 #' time series/time steps as rows.
 #' The time step information must be supplied in the first column and,
 #' for each time series, be consecutive and in ascending order (increment of 1).
@@ -1203,6 +1194,8 @@ tmiic_estimate_dynamic <- function (list_ts, state_order, max_nodes=50,
 #' @param state_order [a data frame] An optional data frame providing extra
 #' information about variables. It must have d rows where d is the number of
 #' input variables, excluding the time step one.\cr
+#' For optional columns, if they are not provided or contain missing
+#' values, default values suitable for \emph{input_data} will be used.
 #'
 #' The following structure (named columns) is expected:\cr
 #'
@@ -1230,9 +1223,9 @@ tmiic_estimate_dynamic <- function (list_ts, state_order, max_nodes=50,
 #' consider to use a \emph{movavg} column in the \emph{state_order} parameter.
 #'
 #' @param max_nodes [a positive integer] The maximum number of nodes in the
-#' final temporal causal graph. The more nodes are allowed in the temporal
+#' final temporal causal graph. The more nodes allowed in the temporal
 #' causal discovery, the more precise will be the discovery but at the cost
-#' of longer execution time. The default is set to 50 for a fast causal
+#' of longer execution time. The default is set to 50 for fast causal
 #' discovery. On recent computers, values up to 200 or 300 nodes are usually
 #' possible (depending on the number of trajectories and time steps in the
 #' input data).
@@ -1277,67 +1270,3 @@ estimateTemporalDynamic <- function (input_data, state_order=NULL, movavg=NULL,
   return ( list ("n_layers"=n_layers, "delta_t"=delta_t))
   }
 
-#-------------------------------------------------------------------------------
-# tmiic_check_other_df
-#-------------------------------------------------------------------------------
-# This function is designed to be called after all the temporal checks on
-# parameters and state_order have been done.
-# Using the state order completely filled for each variable, the checks
-# here will verify that true edges or edges in black box are valid.
-#
-# Params :
-# - df: a dataframe, a true edges or black box dataframe, with 3 columns:
-#   origin node, destination node, lag)
-# - df: the name of the data frame, used to display warnings
-# - state_order: a dataframe, the state order comptletely checked with
-#   the column var_type, n_layers and delta_tau fully determined
-# Returns:
-# - a dataframe: the dataframe, eventually with invalid rows filtered out
-#-------------------------------------------------------------------------------
-tmiic_check_other_df <- function (df, df_name, state_order)
-  {
-  if ( (is.null (df)) || (nrow (df) <= 0) )
-    return (df)
-
-  for (i in 1:nrow (df))
-    {
-    orig_node_idx <- which (state_order$var_names == df[i, 1])
-    if (state_order[orig_node_idx, "is_contextual"] == 1)
-      {
-      if ( ! is.na (df[i, 3]) )
-        {
-        miic_warning (paste0 (df_name, " temporal checks"),
-          "the edge at row ", i, " (", df[i, 1], " - ", df[i, 2], ", lag",
-          df[i, 3], ") does not exist in the lagged graph and will be ignored.")
-        df[i, 3] = -1
-        next
-        }
-      }
-    else
-      {
-      possible_lags = seq (from=0, by=state_order[orig_node_idx, "delta_t"],
-                            length=state_order[orig_node_idx, "n_layers"])
-      if (! (df[i, 3] %in% possible_lags) )
-        {
-        miic_warning (paste0 (df_name, " temporal checks"),
-          "the edge at row ", i, " (", df[i, 1], " - ", df[i, 2], ", lag",
-          df[i, 3], ") does not exist in the lagged graph and will be ignored.")
-        df[i, 3] = -1
-        next
-        }
-      }
-
-    dest_node_idx <- which (state_order$var_names == df[i, 2])
-    if (state_order[dest_node_idx, "is_contextual"] == 1)
-      {
-      miic_warning (paste0 (df_name, " temporal checks"),
-        "the edge at row ", i, " (", df[i, 1], " - ", df[i, 2], ", lag",
-        df[i, 3], ") is invalid. A contextual node can not be the",
-        " destination node, the row will be ignored.")
-      df[i, 3] = -1
-      next
-      }
-    }
-  df = df[ !(df$lag == -1) ,]
-  return (df)
-  }

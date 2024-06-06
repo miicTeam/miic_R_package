@@ -4,10 +4,6 @@
 // Author     : Franck SIMON
 //
 // Description: Store functions for temporal mode of miic (tmiic)
-//
-// Changes history:
-// - 07 may 2020 : initial version
-// - 13 oct 2020 : add of completeOrientationUsingTime
 //*****************************************************************************
 
 //=============================================================================

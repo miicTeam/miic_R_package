@@ -56,8 +56,9 @@ starts each time a smaller time step than the one of the previous row is encount
 \item{state_order}{[a data frame, optional, NULL by default]
 
 A data frame providing extra information for variables. It must have d rows
-where d is the number of input variables and the following structure
-(named columns):
+where d is the number of input variables and possible columns are described
+below. For optional columns, if they are not provided or contain missing
+values, default values suitable for \emph{input_data} will be used.
 
 \emph{"var_names"} (required) contains the name of each variable as specified
 by colnames(input_data). In temporal mode, the time steps column should

@@ -1,27 +1,9 @@
 #*******************************************************************************
-# Filename   : tmiic.wrapper.R                    Creation date: 24 march 2020
+# Filename   : tmiic.wrapper.R                     Creation date: 24 march 2020
 #
 # Description: Data transformation of time series for miic
 #
 # Author     : Franck SIMON
-#
-# Changes history:
-# - 24 mar 2020 : initial version
-# - 04 jun 2020 : add tmiic_flatten_network
-# - 15 jun 2020 : add delta_tau and moving average
-# - 27 jul 2020 : rewrite of tmiic.lag_inputs to allow variable
-#                 number of time steps between time series
-# - 06 oct 2020 : add tmiic_repeat_edges_over_history to duplicate the edges
-#                 over history
-# - 07 jan2021 : replace tmiic.transform_data_for_miic by tmiic.lag_inputs:
-#                 allow different tau, delta_tau or movavg per variable
-#                 add support for contextual variables (not lagged)
-#                 transfer input data lagging into C++ function
-#                 lag state_order, true_edges and black_box
-# - 10 fev 2021 : add support in flattening and repeat of edges over history
-#                 of different tau, delta_tau per variable
-# - 09 aou 2023 : lag the inputs in the R part,
-#                 change tau, delta_tau parameters into n_layers and delta_t
 #*******************************************************************************
 
 #-------------------------------------------------------------------------------
@@ -400,12 +382,12 @@ tmiic_combine_orient   <- function (df, col_name)
 #-----------------------------------------------------------------------------
 # tmiic_combine_probas
 #-----------------------------------------------------------------------------
-# Utility function to combine edges probabilities when flattening the network.
-# Depending on the combined edges orientation, chose the appropriate max, min
+# Utility function to combine edge probabilities when flattening the network.
+# Depending on the combined edges orientation, chooses the appropriate max, min
 # or mean probabilities to compute the combined edge probabilities
 #
 # params:
-# - df: the dataframe with the edges to combine
+# - df: the data frame with the edges to combine
 # - comb_orient: integer, the orientation of the combined edge
 #-----------------------------------------------------------------------------
 tmiic_combine_probas <- function (df, comb_orient)

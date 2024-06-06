@@ -4,19 +4,6 @@
 # Description: Plotting for temporal miic (tmiic)
 #
 # Author     : Franck SIMON
-#
-# Changes history:
-# - 24 mar 2020 : initial version
-#   The plot function is a rewrite from miic.plot.R and gmPlot.lib.R.
-#   + add capability to plot multiple edges between the same nodes
-# - 11 sep 2020 : rewrite to be aligned with 1.5.3 miic plotting
-# - 05 oct 2020 : include the flattening as a parameter
-# - 06 oct 2020 : addition of "lagged" graph (edges duplicated over history)
-# - 10 fev 2021 : plotting modified to manage contextual variables
-# - 01 aug 2022 : fix color of edges with negative correlation
-# - 10 aug 2023 : review plotting using parameters returned after miic
-#                 reconstruction. tmiic_getIgraph is no more exported
-#                 (same as getIgraph)
 #*******************************************************************************
 
 #-------------------------------------------------------------------------------
@@ -1044,9 +1031,8 @@ plot.tmiic = function(x, display="compact", show_self_loops=TRUE,
   graph <- tmiic.export (x, display=display, method=method,
                          pcor_palette=pcor_palette)
   #
-  # When we have multiple edges between a couple of nodes or multiple self loops
-  # we need to tune the plotting to plot more nicely these edges
-  # => identify multiple edges
+  # Look if we have cases with multiple edges between two nodes
+  # or multiple self loops because we need to plot these cases iteratively.
   #
   df_mult <- data.frame(count=integer(), stringsAsFactors = FALSE)
   if (! display %in% c("raw", "lagged") )
@@ -1059,7 +1045,7 @@ plot.tmiic = function(x, display="compact", show_self_loops=TRUE,
 
   if (nrow (df_mult) <= 0)
     {
-    # No multiple edges between the same nodes, we draw in one go
+    # If no case with multiple edges between the same nodes, we draw in one go
     #
     if ( is.null (local_layout) )
       igraph::plot.igraph (graph, ...)
@@ -1068,13 +1054,14 @@ plot.tmiic = function(x, display="compact", show_self_loops=TRUE,
     }
   else
     {
-    # Multiple edges between the same nodes exist, draw iteratively
+    # If we have a least on case with multiple edges between the same nodes,
+    # draw iteratively
     #
     df_edges <- x$all.edges.summary
     edges_colors_iter <- igraph::E(graph)$color
     edges_labels_iter <- igraph::E(graph)$label
     #
-    # On a first step, we will draw all the graph except multiple edges
+    # The first step is to draw all the graph except the multiple edges.
     # The multiple edges will be drawn with invisible color "#FF000000"
     # and with no labels
     #
@@ -1127,9 +1114,10 @@ plot.tmiic = function(x, display="compact", show_self_loops=TRUE,
           }
         }
       #
-      # Draw multiple edges one by one
-      # To avoid addition of colors when using transparent color for nodes
-      # set the nodes color to NA for the following draws
+      # Draw multiple edges one by one.
+      #
+      # To avoid the additive effect when using transparent color for nodes,
+      # the color of nodes is set to NA
       #
       list_to_draw = which(df_edges[, "xy"] == one_mult$xy)
       for (idx_to_draw in 1:length(list_to_draw) )

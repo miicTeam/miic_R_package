@@ -14,8 +14,8 @@ estimateTemporalDynamic(
 }
 \arguments{
 \item{input_data}{[a data frame]
-A data frame that contains the observational data.\cr
-The expected dataframe layout is variables as columns and
+A data frame containing the observational data.\cr
+The expected data frame layout is variables as columns and
 time series/time steps as rows.
 The time step information must be supplied in the first column and,
 for each time series, be consecutive and in ascending order (increment of 1).
@@ -26,6 +26,8 @@ previous row is encountered.}
 \item{state_order}{[a data frame] An optional data frame providing extra
 information about variables. It must have d rows where d is the number of
 input variables, excluding the time step one.\cr
+For optional columns, if they are not provided or contain missing
+values, default values suitable for \emph{input_data} will be used.
 
 The following structure (named columns) is expected:\cr
 
@@ -53,9 +55,9 @@ data. If you want to apply a moving average only on specific columns,
 consider to use a \emph{movavg} column in the \emph{state_order} parameter.}
 
 \item{max_nodes}{[a positive integer] The maximum number of nodes in the
-final temporal causal graph. The more nodes are allowed in the temporal
+final temporal causal graph. The more nodes allowed in the temporal
 causal discovery, the more precise will be the discovery but at the cost
-of longer execution time. The default is set to 50 for a fast causal
+of longer execution time. The default is set to 50 for fast causal
 discovery. On recent computers, values up to 200 or 300 nodes are usually
 possible (depending on the number of trajectories and time steps in the
 input data).}
