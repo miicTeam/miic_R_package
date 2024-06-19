@@ -188,9 +188,6 @@ getIgraph <- function(miic.res, pcor_palette = NULL) {
 #' \code{\link[igraph]{igraph.plotting}}
 #'
 plot.miic = function(x, method = 'igraph', pcor_palette = NULL, ...) {
-  if (class(x) != "miic"){
-    stop("Not a miic object.")
-  }
   if (method == 'igraph'){
     if (base::requireNamespace("igraph", quietly = TRUE)) {
       igraph_obj = miic.export (x, 'igraph', pcor_palette = pcor_palette)

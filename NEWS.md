@@ -1,13 +1,72 @@
 # Development version
 
+# v2.0.0
+
+## Features
+
+- tMIIC version for temporal causal discovery on stationary time series: 
+  new mode of MIIC to reconstruct networks from temporal stationary datasets.
+  [Simon et al., eLife, reviewed preprint]
+  (https://www.biorxiv.org/content/10.1101/2024.02.06.579177v1.abstract)
+
+## Known issues
+
+- A (very) large number of contributors can lead to a memory fault.
+  Initial fix has been reverted due to side effects.
+  
+# v1.8.1
+
+## Fixes and improvements
+
+- The discretization of continuous variables has been modified when dealing 
+  with variables having a large number of identical values.
+  
+- Fix for memory overflow on shared memory space.
+
+# v1.8.0
+
+## Features
+
+- Addition of the 'is consequence' prior knowledge. Consequence variables are 
+  excluded from the possible contributors, edges between consequences are 
+  ignored and edges between a non consequence and a consequence are pre-oriented 
+  toward the consequence.
+
+# v1.7.0
+
+## Features
+
+- iMIIC version introducing genuine vs putative causes, contextual variables
+  and multiple enhancements to deal with very large datasets.
+  [Ribeiro-Dantas et al., iScience 2024]
+  (https://arxiv.org/abs/2303.06423)
+  
+# v1.6.0
+
+## Features
+
+- Enhancement of orientations using mutual information supremum principle for 
+  finite datasets.
+  [Cabeli et al., Why21 at NeurIPS 2021]
+  (http://kinefold.curie.fr/isambertlab/PAPERS/cabeli_Why21-NeurIPS2021.pdf)
+
+- By default, MIIC does not propagate orientations anymore
+  and allows latent variables discovery during orientation step. 
+
+# v1.5.3
+
+## Features
+
+- Release to CRAN
+
 # v1.5.2
 
 ## Fixes and improvements
-- Further refactoring of the C++ code for the computation of information
+- Further refactoring of the C++ code for the computation of information.
 
-- Fix minor bugs in the continuous computation
+- Fix minor bugs in the continuous computation.
 
-- Fix incompatibility with older versions of GCC (std::align)
+- Fix incompatibility with older versions of GCC (std::align).
 
 # v1.5.1
 
@@ -29,11 +88,11 @@
   edges.
 
 ## Fixes and improvements
-- Faster post processing in R
+- Faster post processing in R.
 
-- Rework plot functionality
+- Rework plot functionality.
 
-- Fix a bug in the orientation part about the log score
+- Fix a bug in the orientation part about the log score.
 
 - Refactor of the C++ code base (orientation).
 

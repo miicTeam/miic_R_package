@@ -6,11 +6,15 @@
   status](https://github.com/miicTeam/miic_R_package/workflows/R-CMD-check/badge.svg)](https://github.com/miicTeam/miic_R_package/actions)
   <!-- badges: end -->
 
-This repository contains the source code for MIIC (**M**ultivariate **I**nformation based **I**nductive **C**ausation), a method based on constraint-based approaches that learns a large class of causal or non-causal graphical models from purely observational data while including the effects of unobserved latent variables. Starting from a complete graph, the method iteratively removes dispensable edges, by uncovering significant information contributions from indirect paths, and assesses edge-specific confidences from randomization of available data. The remaining edges are then oriented based on the signature of causality in observational data. This approach can be applied on a wide range of datasets and provide new biological insights on regulatory networks from single cell expression data, genomic alterations during tumor development and co-evolving residues in protein structures. For more information you can refer to Cabeli et al. PLoS Comp. Bio. 2020, Verny et al. PLoS Comp. Bio. 2017.
+This repository contains the source code for MIIC (**M**ultivariate **I**nformation based **I**nductive **C**ausation), a method based on constraint-based approaches that learns a large class of causal or non-causal graphical models from purely observational data while including the effects of unobserved latent variables. Starting from a complete graph, the method iteratively removes dispensable edges, by uncovering significant information contributions from indirect paths, and assesses edge-specific confidences from randomization of available data. The remaining edges are then oriented based on the signature of causality in observational data. This approach can be applied on a wide range of datasets and provide new biological insights on regulatory networks from single cell expression data, genomic alterations during tumor development and co-evolving residues in protein structures. Since the version 2.0, MIIC can in addition process 
+stationary time series to unveil temporal causal graphs.
 
 ## References
-Cabeli V., Li H., Ribeiro-Dantas M., Simon F., Isambert H.; [Reliable causal discovery based on mutual information supremum principle for finite dataset;
-Why21 at NeurIPS, 2021](https://why21.causalai.net/papers/WHY21_24.pdf).
+Simon F., Comes M. C., Tocci T., Dupuis L., Cabeli V., Lagrange N., Mencattini A., Parrini M. C., Martinelli E., Isambert H.; [CausalXtract: a flexible pipeline to extract causal effects from live-cell time-lapse imaging data; eLife, reviewed preprint](https://www.biorxiv.org/content/10.1101/2024.02.06.579177v1.abstract).
+
+Ribeiro-Dantas M. D. C., Li H., Cabeli V., Dupuis L., Simon F., Hettal L., Hamy A. S., Isambert H.; [Learning interpretable causal networks from very large datasets, application to 400,000 medical records of breast cancer patients; iScience, 2024](https://arxiv.org/abs/2303.06423).
+
+Cabeli V., Li H., Ribeiro-Dantas M., Simon F., Isambert H.; [Reliable causal discovery based on mutual information supremum principle for finite dataset; Why21 at NeurIPS, 2021](https://why21.causalai.net/papers/WHY21_24.pdf).
 
 Cabeli V., Verny L., Sella N., Uguzzoni G., Verny M., Isambert H.; Learning clinical networks from medical records based on information estimates in mixed-type data; PLoS computational biology., 2020. [doi:10.1371/journal.pcbi.1007866](https://doi.org/10.1371/journal.pcbi.1007866) | [code](https://github.com/vcabeli/miic_PLoS)
 
@@ -60,6 +64,11 @@ if(require(igraph)) {
 You can find the documentation pages in the "man" folder, in the auto generated [PDF](https://cran.r-project.org/web/packages/miic/miic.pdf), or use R functions `help()` and `?`.
 
 ## Authors
+- Tiziana Tocci
+- Nikita Lagrange
+- Orianne Debeaupuis
+- Louise Dupuis
+- Franck Simon
 - Vincent Cabeli
 - Honghao Li
 - Marcel Ribeiro Dantas
