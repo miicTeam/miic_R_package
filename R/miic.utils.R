@@ -885,6 +885,23 @@ check_other_df <- function (input_data, state_order, df, df_name, mode)
   }
 
 #-------------------------------------------------------------------------------
+# check_interact_edges
+#-------------------------------------------------------------------------------
+
+checkInteractEdges <- function(edgesFile) {
+  errCode <- "0"
+  str <- unlist(paste(as.character(edgesFile), collapse = ""))
+  if (grepl("#", str) | grepl("&", str) | grepl("'", str)) {
+    errCode <- "21"
+  } else {
+    if (ncol(edgesFile) != 2 & ncol(edgesFile) != 3) {
+      errCode <- "23"
+    }
+  }
+  return(errCode)
+}
+
+#-------------------------------------------------------------------------------
 # check_param_string
 #-------------------------------------------------------------------------------
 # Params :

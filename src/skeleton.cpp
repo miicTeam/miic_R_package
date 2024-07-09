@@ -42,13 +42,16 @@ int initializeEdge(Environment& environment, int X, int Y) {
 
   if (shifted_mi <= 0) {
     // Unconditional independence
-    info->connected = 0;
-    environment.edges(X, Y).status = 0;
-    environment.edges(Y, X).status = 0;
-    environment.edges(X, Y).status_init = 0;
-    environment.edges(Y, X).status_init = 0;
-    environment.edges(X, Y).proba_head = -1;
-    environment.edges(Y, X).proba_head = -1;
+    // Do not remove interact edges 
+    
+      info->connected = 0;
+      environment.edges(X, Y).status = 0;
+      environment.edges(Y, X).status = 0;
+      environment.edges(X, Y).status_init = 0;
+      environment.edges(Y, X).status_init = 0;
+      environment.edges(X, Y).proba_head = -1;
+      environment.edges(Y, X).proba_head = -1;
+        
   } else {
     info->connected = 1;
     environment.edges(X, Y).status = 1;
@@ -57,6 +60,14 @@ int initializeEdge(Environment& environment, int X, int Y) {
     environment.edges(Y, X).status_init = 1;
   }
 
+  if (environment.interactEdges(X, Y).status == 1) {
+    Rcout << "Did not remove " << X << "---" << Y << "edge in initializeEdges() because status is " << environment.interactEdges(X, Y).status << "\n";
+    environment.edges(X, Y).status = 1;
+    environment.edges(Y, X).status = 1;
+    environment.edges(X, Y).status_init = 1;
+    environment.edges(Y, X).status_init = 1;
+  }
+  
   return environment.edges(X, Y).status;
 }
 
@@ -106,6 +117,9 @@ bool setBestContributingNode(
     for (int j = i + 1; j < environment.n_nodes; j++) {
       // Do dot consider edges removed with unconditional independence
       if (!edges(i, j).status) continue;
+      // Do dot consider interactEdges
+      if (environment.interactEdges(i, j).status == 1) continue;
+      // Else
       edges(i, j).shared_info->reset();
       unsettled_list.emplace_back(i, j, edges(i, j));
     }

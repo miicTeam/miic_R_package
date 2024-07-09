@@ -3,6 +3,7 @@ miic.reconstruct <- function(input_data = NULL,
                              is_consequence = NULL,
                              is_continuous = NULL,
                              black_box = NULL,
+                             interact_edges = NULL,
                              n_threads = 1,
                              n_eff = -1,
                              cplx = "nml",
@@ -87,6 +88,17 @@ miic.reconstruct <- function(input_data = NULL,
     black_box[] <- black_box[stats::complete.cases(black_box),]
     arg_list[["black_box"]] <- as.vector(as.matrix(t(black_box)))
   }
+
+  if (!is.null(interact_edges)) {
+    # transform var names to var indices and keep a matrix object with weights as third optional column
+    
+    interact_edges[c(1,2)] <- sapply(interact_edges[c(1,2)], function(x) {
+      match(as.character(x), colnames(input_data)) - 1 } )
+    interact_edges[] <- interact_edges[stats::complete.cases(interact_edges),]
+    arg_list[["interact_edges"]] <- as.matrix(t(interact_edges))
+    print("the optional weight column in interactEdges file is not a problem in miic.reconstruct.R")
+  }
+
   if (!is.null(sample_weights))
     arg_list[["sample_weights"]] <- sample_weights
   if (!is.null(is_contextual))

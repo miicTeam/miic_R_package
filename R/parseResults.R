@@ -1,5 +1,6 @@
 summarizeResults <- function(observations = NULL, results = NULL,
                              true_edges = NULL, state_order = NULL,
+                             interact_edges = NULL,
                              consensus_threshold = 0.8,
                              ori_consensus_ratio = 0.1, latent = TRUE,
                              propagation = FALSE, verbose = FALSE) {
@@ -289,6 +290,28 @@ summarizeResults <- function(observations = NULL, results = NULL,
   # Sort summary by log confidence and return it
   summary <- summary[order(summary$info_shifted, decreasing = TRUE), ]
   rownames(summary) <- c()
+
+  # Add interact_edges if relevant
+  if (!is.null(interact_edges)) {
+    #summary$CCC_score <- NA
+    max_info <- max(summary$info_shifted)
+    for (i in 1:nrow(interact_edges)) {
+      oneligand <- interact_edges$ligand[i]
+      onereceptor <- interact_edges$receptor[i]
+      onetype <- "P"
+      oneinfo_shifted <- max_info
+      #oneCCCscore <- max_info
+      onepartial <- 0
+      #summary[nrow(summary) +1,] <- list(oneligand, onereceptor, onetype, NA, oneinfo_shifted, NA, NA, NA, oneinfo_shifted, 2, NA, NA, NA, onepartial,"Y","1;1",NA, oneCCCscore)
+      summary[nrow(summary) +1,] <- list(oneligand, onereceptor, onetype, NA, oneinfo_shifted, NA, NA, NA, NA, NA, oneinfo_shifted, 2, NA, NA, NA, onepartial,"Y","1;1",NA)
+    }
+
+  }
+
+
+
+
+
   return(summary)
 }
 

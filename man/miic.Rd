@@ -8,6 +8,7 @@ miic(
   input_data,
   state_order = NULL,
   true_edges = NULL,
+  interact_edges = NULL,
   black_box = NULL,
   n_threads = 1,
   cplx = "nml",
@@ -120,6 +121,11 @@ edge in the time unfolded graph. Please note that the order is important:
 var1, var2, 3 is interpreted as var1_lag3 - var2_lag0. Please note also that,
 for contextual variables that are not lagged, the expected value in the
 third column for the time lag is NA.}
+
+\item{interact_edges}{[a data frame]
+An optional E*2 data frame containing the intearcting edges to be added 
+to complete the interactions links betwen the graphs of different celltypes populations.
+An optional column with link weights can be given (e.g. to specify width of link, and other things)}
 
 \item{black_box}{[a data frame, optional, NULL by default]
 

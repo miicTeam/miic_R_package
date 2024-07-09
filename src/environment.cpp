@@ -1,4 +1,7 @@
 #include "environment.h"
+#include <iostream>
+#include <Rcpp.h>
+
 
 #ifdef _OPENMP
 #include <omp.h>
@@ -11,6 +14,7 @@ namespace miic {
 namespace structure {
 
 using std::vector;
+using Rcpp::Rcout;
 using namespace miic::utility;
 using namespace miic::computation;
 
@@ -25,6 +29,7 @@ Environment::Environment(int n_samples, int n_nodes, vector<int> vec_numeric,
       has_na(n_nodes, 0),
       n_eff(n_samples),
       edges(n_nodes, n_nodes),
+      interactEdges(n_nodes, n_nodes),
       noise_vec(2 * n_samples),
       initbins(std::min(30, int(0.5 + std::cbrt(n_samples)))),
       cache(n_samples) {
@@ -51,6 +56,24 @@ void Environment::readBlackbox(const Grid2d<int>& node_list) {
     edges(pair[1], pair[0]).status = 0;
     edges(pair[1], pair[0]).status_prev = 0;
     edges(pair[1], pair[0]).proba_head = -1;
+  }
+}
+
+void Environment::createInteractEdges(const Grid2d<int>& interact_mat) {
+  int n_pairs = interact_mat.n_rows();
+  int n_cols = interact_mat.n_cols();
+
+
+  for (int i = 0; i < n_pairs; i++) {
+    const auto pair = interact_mat.getConstRow(i);
+    interactEdges(pair[0], pair[1]).status = 1;
+    interactEdges(pair[1], pair[0]).status = 1;
+
+    // if a weight column was added
+    //if (n_cols == 3) {
+    //  interactEdges(pair[0], pair[1]).weight = pair[2];
+    //  interactEdges(pair[1], pair[0]).weight = pair[2];
+    //}
   }
 }
 

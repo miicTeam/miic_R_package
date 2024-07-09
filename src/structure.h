@@ -250,6 +250,17 @@ struct Edge {
   std::shared_ptr<EdgeSharedInfo> shared_info;
 };
 
+struct interactEdge {
+  // For a pair of nodes (X, Y), status describes the arrow tip of the edge
+  // (X *-* Y) at the Y side ('*' means either head '>' or tail '-')
+  // Status code
+  // 0: not connected;
+  // 1: connected;
+  short int status{0};       // Current status
+  double weight{0};          // Weight given by the Cell-Cell Communication (CCC) method
+  double proba_head{0.5};    // Probability that the arrow tip is head (X *-> Y)
+};
+
 // Observer of Edge
 class EdgeID {
  private:
@@ -300,6 +311,7 @@ struct CutPointsInfo {
 }  // namespace detail
 using detail::CutPointsInfo;
 using detail::Edge;
+using detail::interactEdge;
 using detail::EdgeID;
 using detail::EdgeSharedInfo;
 using detail::ExecutionTime;

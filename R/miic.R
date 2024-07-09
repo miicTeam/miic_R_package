@@ -156,6 +156,13 @@
 #' When set greater than 1, n_threads parallel threads will be used for computation. Make sure
 #' your compiler is compatible with openmp if you wish to use multithreading.
 #'
+#' 
+#' @param interact_edges [a data frame]
+#' An optional E*2 data frame containing the intearcting edges to be added 
+#' to complete the interactions links betwen the graphs of different celltypes populations.
+#' An optional column with link weights can be given (e.g. to specify width of link, and other things)
+#' 
+#' 
 #' @param cplx [a string, optional, "nml" by default, possible values:
 #' "nml", "mdl"]
 #'
@@ -579,6 +586,7 @@
 miic <- function(input_data,
                  state_order = NULL,
                  true_edges = NULL,
+                 interact_edges = NULL,
                  black_box = NULL,
                  n_threads = 1,
                  cplx = "nml",
@@ -639,6 +647,17 @@ miic <- function(input_data,
                               black_box, "black box", params$mode)
   true_edges = check_other_df (input_data, state_order,
                                true_edges, "true edges", params$mode)
+
+  if (!is.null(interact_edges)) {
+        print("the interactEdges file is detected in miic.R")
+        err_code <- checkInteractEdges(interact_edges)
+        if (err_code != "0") {
+          warning(paste(errorCodeToString(err_code),
+              "interact_edges file will be ignored.", sep=", "), call.=FALSE)
+          interact_edges <- NULL
+        }
+      }
+
   #
   # Extra steps depending on the mode
   #
@@ -715,6 +734,7 @@ miic <- function(input_data,
                            latent = params$latent,
                            n_eff = params$n_eff,
                            black_box = black_box,
+                           interact_edges = interact_edges,
                            n_shuffles = params$n_shuffles,
                            orientation = params$orientation,
                            ori_proba_ratio = params$ori_proba_ratio,
@@ -743,6 +763,7 @@ miic <- function(input_data,
     observations = input_data,
     results = res,
     true_edges = true_edges,
+    interact_edges = interact_edges,
     state_order = state_order,
     consensus_threshold = params$consensus_threshold,
     ori_consensus_ratio = params$ori_consensus_ratio,

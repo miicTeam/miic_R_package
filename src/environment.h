@@ -45,6 +45,7 @@ struct Environment {
   double n_eff;
   vector<Node> nodes;
   Grid2d<Edge> edges;
+  Grid2d<interactEdge> interactEdges;
   bool orientation = false;
   double ori_proba_ratio = 1;
   bool propagation = false;
@@ -120,6 +121,9 @@ struct Environment {
   Environment() = default;
 
   void readBlackbox(const Grid2d<int>&);
+
+  void createInteractEdges(const Grid2d<int>&);
+
 };
 
 }  // namespace detail

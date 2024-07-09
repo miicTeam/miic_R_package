@@ -14,6 +14,7 @@ constexpr double kMagnitudeTies = 0.00005;
 
 using namespace structure;
 using Rcpp::as;
+using Rcpp::Rcout;
 using std::vector;
 
 void setEnvironmentFromR(const Rcpp::List& input_data,
@@ -239,6 +240,13 @@ void setEnvironmentFromR(const Rcpp::List& input_data,
     auto black_box_vec = as<vector<int>>(arg_list["black_box"]);
     int n_pairs = black_box_vec.size() / 2;
     environment.readBlackbox(Grid2d<int>(n_pairs, 2, std::move(black_box_vec)));
+  }
+
+  if (arg_list.containsElementNamed("interact_edges")) {
+    auto interact_mat = as<vector<int>>(arg_list["interact_edges"]);
+    int n_pairs = interact_mat.size() / 2;
+    // int n_cols = interact_mat.size() ;
+    environment.createInteractEdges(Grid2d<int>( n_pairs, 2, std::move(interact_mat)));
   }
 }
 }  // namespace utility
