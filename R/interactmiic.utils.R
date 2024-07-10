@@ -16,8 +16,6 @@
 #'  datable that contains first senders network
 #'  variables then receivers network variables
 #'
-#' @import Seurat
-#' @import data.table
 #'
 #' @param seurat_object [a Seurat object]
 #' A Single-Cell transcriptomics Seurat object
@@ -204,10 +202,6 @@ interactmiic.mosaic <- function(seurat_object,
 #' types of variables (otherwise detected automatically)... ) and information
 #' for the display (groups of nodes, levels ordering of categorical data ...).
 #'
-#' @import Seurat
-#' @import data.table
-#' @import dplyr
-#' @import stringr
 #'
 #' @param mosaic_data_table [a data frame]
 #' An output of interactmiic.mosaic()
@@ -361,12 +355,6 @@ interactmiic.state_order <- function(mosaic_data_table,
 #' based on fast pairwise mutual information computation. If the user do not
 #' gives genes_senders/genes_receivers, this function will select relevant
 #' genes for the interactMIIC network
-#'
-#' @import Seurat
-#' @import data.table
-#' @import dplyr
-#' @import stringr
-#' @import ggplot2
 #'
 #' @param seurat_object [a Seurat object]
 #' A Single-Cell transcriptomics Seurat object
@@ -613,9 +601,6 @@ interactmiic.MIselection <- function(seurat_object,
 #' display. This initial layout can be modified with your mouse cursor or
 #' with the "Relax" button on the MIIC server for a more organic display.
 #'
-#' @import data.table
-#' @import tidyverse
-#' @import rjson
 #'
 #' @param state_order A data frame containing the state order information.
 #' output of interactmiic.state_order()

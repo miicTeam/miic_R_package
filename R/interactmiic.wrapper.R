@@ -16,8 +16,6 @@
 #'  datable that contains first senders network
 #'  variables then receivers network variables
 #'
-#' @import Seurat
-#' @import data.table
 #'
 #' @param seurat_object [a Seurat object]
 #' A Single-Cell transcriptomics Seurat object
