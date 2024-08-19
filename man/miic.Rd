@@ -116,9 +116,11 @@ must be valid in the time unfolded graph. e.g. a row var1, var2, 3 is valid
 with \emph{n_layers} = 4 + \emph{delta_t} = 1 or
 \emph{n_layers} = 2 + \emph{delta_t} = 3
 but not for \emph{n_layers} = 2 + \emph{delta_t} = 2 as there is no matching
-edge in the time unfolded graph. Please note that the order is important:
-var1, var2, 3 is interpreted as var1_lag3 - var2_lag0. Please note also that,
-for contextual variables that are not lagged, the expected value in the
+edge in the time unfolded graph.\cr
+Please note that the order is important: in standard mode, "var1 var2" will
+be interpreted as var1 -> var2 and in temporal mode, "var1 var2 3" is
+interpreted as var1_lag3 -> var2_lag0. Please note also that, in temporal
+mode, for contextual variables that are not lagged, the expected value in the
 third column for the time lag is NA.}
 
 \item{black_box}{[a data frame, optional, NULL by default]

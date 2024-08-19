@@ -662,15 +662,14 @@ check_state_order <- function (input_data, state_order, mode)
 #-------------------------------------------------------------------------------
 # check_other_df
 #-------------------------------------------------------------------------------
-# input_data: a dataframe with variables as columns and rows as samples
-# - df: the datafame to check, expected to be a 2 columns dataframe. All values
-#   in the dataframe are expected to be variables names.
-#   An invalid dataframe will be ignored, Invalid rows will be discarded
-# - state_order: the dataframe  returned by check_state_order
-# - df_name: the datafame name (i.e. :"black box", "true edges")
-#   This value is used only to display messages
+# input_data: a data frame with variables as columns and rows as samples
+# - df: the data fame to check, expected to be a 2 columns data frame.
+#   All values in the dataframe are expected to be variables names.
+#   An invalid data frame will be ignored, Invalid rows will be discarded
+# - state_order: the data frame  returned by check_state_order
+# - df_name: the data fame name (i.e. :"black box", "true edges")
 # - mode: the MIIC mode
-# return: the dataframe checked
+# return: the data frame checked
 #-------------------------------------------------------------------------------
 check_other_df <- function (input_data, state_order, df, df_name, mode)
   {
@@ -746,7 +745,7 @@ check_other_df <- function (input_data, state_order, df, df_name, mode)
     return (df)
     }
   #
-  # In temporal mode, check that  the 3rd columns is integer >= 0 (lags)
+  # In temporal mode, check that the 3rd columns is integer >= 0 (lags)
   #
   if (mode %in% MIIC_TEMPORAL_MODES)
     {
@@ -788,7 +787,7 @@ check_other_df <- function (input_data, state_order, df, df_name, mode)
       dest_idx = which (state_order$var_names == x[[2]])
       return (  (state_order[orig_idx, "is_contextual"] == 1)
              || (state_order[dest_idx, "is_contextual"] == 1) ) } ) )
-    wrongs_ctx= ( contextuals & ( ! is.na (df[,3]) ) )                                       # NA: OK for now
+    wrongs_ctx= ( contextuals & ( ! is.na (df[,3]) ) )
     if ( any (wrongs_ctx) )
       {
       if (sum (wrongs_ctx) == 1)
@@ -845,30 +844,37 @@ check_other_df <- function (input_data, state_order, df, df_name, mode)
   df = unique (df)
   rownames(df) = NULL
   #
-  # Equal rows but with variable names swapped
+  # For black box, we remove equal rows but with variable names swapped
+  # as edges in black box are not oriented
+  # NB: for true edges, we keep opposite edges as order (and consequently
+  # orientation) matters
   #
-  rows_kept = rep (T, nrow(df))
-  for (i in 1:nrow(df)) {
-    if ( ! rows_kept[[i]] )
-      next
-    if (mode %in% MIIC_TEMPORAL_MODES)
+  if (df_name == "black box")
+    {
+    rows_kept = rep (T, nrow(df))
+    for (i in 1:nrow(df))
       {
-      # In temporal mode, lag != 0 with variable swapped are not duplicate
-      #
-      if ( (!is.na(df[i,3])) && (df[i,3] != 0) )
+      if ( ! rows_kept[[i]] )
         next
-      dup_inverse = ( (df[,1] == df[i,2])
-                    & (df[,2] == df[i,1])
-                    & (rownames(df) != i)
-                    & (is.na(df[,3]) | (df[,3] == 0)) )
-      }
-    else
-      dup_inverse = ( (df[,1] == df[i,2])
-                    & (df[,2] == df[i,1])
-                    & (rownames(df) != i) )
-    rows_kept = rows_kept & (!dup_inverse)
-  }
-  df = df[rows_kept,]
+      if (mode %in% MIIC_TEMPORAL_MODES)
+        {
+        # In temporal mode, lag != 0 with variable swapped are not duplicate
+        #
+        if ( (!is.na(df[i,3])) && (df[i,3] != 0) )
+          next
+        dup_inverse = ( (df[,1] == df[i,2])
+                      & (df[,2] == df[i,1])
+                      & (rownames(df) != i)
+                      & (is.na(df[,3]) | (df[,3] == 0)) )
+        }
+      else
+        dup_inverse = ( (df[,1] == df[i,2])
+                      & (df[,2] == df[i,1])
+                      & (rownames(df) != i) )
+      rows_kept = rows_kept & (!dup_inverse)
+    }
+    df = df[rows_kept,]
+    }
   if ( n_rows_sav != nrow(df) )
     {
     if (n_rows_sav - nrow(df) == 1)
