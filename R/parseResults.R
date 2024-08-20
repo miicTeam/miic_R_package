@@ -97,17 +97,11 @@ summarizeResults = function (observations, results,
       {
       # Add missing edges coming from the ground truth
       #
-      print ("Old summary:")
-      print (summary)
       summary[ ( nrow (summary) + 1 ) :
                ( nrow (summary) + length (missing_fn) ), ] = NA
       rownames (summary) [ (nrow (summary) - length (missing_fn) + 1) :
                            nrow(summary) ] = missing_fn
       summary[ missing_fn, c("x","y") ] = true_edges [ missing_fn, ]
-      print ("Added:")
-      print (true_edges [ missing_fn, ])
-      print ("New summary:")
-      print (summary)
       #
       # Pick values from 'edges' data frame for these missing FN edges
       # To avoid iterations over a possibly huge 'edges' data frame
@@ -117,8 +111,6 @@ summarizeResults = function (observations, results,
       pre_filter = unique (unlist (true_edges [ missing_fn, ]) )
       edges_4_fn = results$edges[ (results$edges$x %in% pre_filter)
                                 | (results$edges$y %in% pre_filter), , drop=F]
-      print ("edges_4_fn:")
-      print (edges_4_fn)
       cols_2_pick = colnames (results$edges)
       cols_2_pick = cols_2_pick[ (cols_2_pick != "x") & (cols_2_pick != "y") ]
       for (i in (nrow (summary) - length (missing_fn) + 1) : nrow(summary) )
@@ -129,8 +121,6 @@ summarizeResults = function (observations, results,
                                & (edges_4_fn$y == summary[i, "x"]) ), , drop=F]
         summary[i, cols_2_pick] = one_edge[1, cols_2_pick]
         }
-      print ("Final new summary:")
-      print (summary)
       }
     }
   #
