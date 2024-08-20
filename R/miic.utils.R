@@ -663,8 +663,10 @@ check_state_order <- function (input_data, state_order, mode)
 # check_other_df
 #-------------------------------------------------------------------------------
 # input_data: a data frame with variables as columns and rows as samples
-# - df: the data fame to check, expected to be a 2 columns data frame.
-#   All values in the dataframe are expected to be variables names.
+# - df: the data fame to check, expected to be a 2 columns data frame in
+#   standard mode and 3 columns data frame in temporal mode.
+#   All values in 2 first columns of the data frame are expected to be variables
+#   names, and in temporal mode, the 3rd column is expected to contain lags.
 #   An invalid data frame will be ignored, Invalid rows will be discarded
 # - state_order: the data frame  returned by check_state_order
 # - df_name: the data fame name (i.e. :"black box", "true edges")
@@ -695,7 +697,7 @@ check_other_df <- function (input_data, state_order, df, df_name, mode)
   #
   if (mode %in% MIIC_TEMPORAL_MODES)
     {
-    input_data = input_data[,2:ncol(input_data)]
+    input_data = input_data[, 2:ncol(input_data), drop=F]
     n_cols <- 3
     }
   else
@@ -709,7 +711,7 @@ check_other_df <- function (input_data, state_order, df, df_name, mode)
   if (nrow(df) == 0)
     {
     miic_warning (df_name, "The provided dataframe is empty.")
-    return (df)
+    return (NULL)
     }
 
   data_var_names <- colnames (input_data)
@@ -738,11 +740,11 @@ check_other_df <- function (input_data, state_order, df, df_name, mode)
       }
     }
   rows_ok <- unlist (lapply (1:nrow(df), FUN=function (x) { ! (x %in% rows_with_warning) } ) )
-  df <- df [rows_ok, ]
+  df <- df [rows_ok, , drop=F]
   if (nrow(df) == 0)
     {
     miic_warning (df_name, "The provided dataframe is empty.")
-    return (df)
+    return (NULL)
     }
   #
   # In temporal mode, check that the 3rd columns is integer >= 0 (lags)
@@ -772,12 +774,12 @@ check_other_df <- function (input_data, state_order, df, df_name, mode)
       else
         miic_warning (df_name, "lag is incorrect for multiple rows (", msg_str,
           "), these rows will be ignored.")
-      df <- df [!wrong_lags, ]
+      df <- df [!wrong_lags, , drop=F]
       }
     if (nrow(df) == 0)
       {
       miic_warning (df_name, "The provided dataframe is empty.")
-      return (df)
+      return (NULL)
       }
     #
     # Check that contextual lag are NA
@@ -787,7 +789,7 @@ check_other_df <- function (input_data, state_order, df, df_name, mode)
       dest_idx = which (state_order$var_names == x[[2]])
       return (  (state_order[orig_idx, "is_contextual"] == 1)
              || (state_order[dest_idx, "is_contextual"] == 1) ) } ) )
-    wrongs_ctx= ( contextuals & ( ! is.na (df[,3]) ) )
+    wrongs_ctx = ( contextuals & ( ! is.na (df[,3]) ) )
     if ( any (wrongs_ctx) )
       {
       if (sum (wrongs_ctx) == 1)
@@ -827,11 +829,11 @@ check_other_df <- function (input_data, state_order, df, df_name, mode)
           sum (wrongs_selfs), " wrong lines will be ignored.")
       }
 
-    df <- df [ (!wrongs_ctx) & (!wrongs_lagged) & (!wrongs_selfs), ]
+    df <- df [ (!wrongs_ctx) & (!wrongs_lagged) & (!wrongs_selfs), , drop=F]
     if (nrow(df) == 0)
       {
       miic_warning (df_name, "The provided dataframe is empty.")
-      return (df)
+      return (NULL)
       }
     }
   #
@@ -844,49 +846,57 @@ check_other_df <- function (input_data, state_order, df, df_name, mode)
   df = unique (df)
   rownames(df) = NULL
   #
-  # For black box, we remove equal rows but with variable names swapped
-  # as edges in black box are not oriented
-  # NB: for true edges, we keep opposite edges as order (and consequently
-  # orientation) matters
+  # We remove equal rows but with variable names swapped
+  # as edges in black box are not oriented and, for true edges,
+  # the post-processing will not be able to process opposite edges
   #
-  if (df_name == "black box")
+  rows_kept = rep (T, nrow(df))
+  for (i in 1:nrow(df))
     {
-    rows_kept = rep (T, nrow(df))
-    for (i in 1:nrow(df))
+    if ( ! rows_kept[[i]] )
+      next
+    if (mode %in% MIIC_TEMPORAL_MODES)
       {
-      if ( ! rows_kept[[i]] )
+      # In temporal mode, lag != 0 with variable swapped are not duplicate
+      #
+      if ( (!is.na(df[i,3])) && (df[i,3] != 0) )
         next
-      if (mode %in% MIIC_TEMPORAL_MODES)
-        {
-        # In temporal mode, lag != 0 with variable swapped are not duplicate
-        #
-        if ( (!is.na(df[i,3])) && (df[i,3] != 0) )
-          next
-        dup_inverse = ( (df[,1] == df[i,2])
-                      & (df[,2] == df[i,1])
-                      & (rownames(df) != i)
-                      & (is.na(df[,3]) | (df[,3] == 0)) )
-        }
-      else
-        dup_inverse = ( (df[,1] == df[i,2])
-                      & (df[,2] == df[i,1])
-                      & (rownames(df) != i) )
-      rows_kept = rows_kept & (!dup_inverse)
+      dup_inverse = ( (df[,1] == df[i,2])
+                    & (df[,2] == df[i,1])
+                    & (rownames(df) != i)
+                    & (is.na(df[,3]) | (df[,3] == 0)) )
+      }
+    else
+      dup_inverse = ( (df[,1] == df[i,2])
+                    & (df[,2] == df[i,1])
+                    & (rownames(df) != i) )
+    rows_kept = rows_kept & (!dup_inverse)
     }
-    df = df[rows_kept,]
-    }
+  df = df[rows_kept, , drop=F]
   if ( n_rows_sav != nrow(df) )
     {
-    if (n_rows_sav - nrow(df) == 1)
-      miic_warning (df_name, "1 row is duplicated. Only one instance",
-        " of the row will be used.")
+    if (df_name == "true edges")
+      {
+      miic_warning (df_name, "the implementation of truth edges",
+        " is not designed to handle opposite edges.",
+        " Only one direction will be considered for the opposite edge(s).")
+      }
     else
-      miic_warning (df_name, n_rows_sav - nrow(df), " rows are duplicated.",
-        " Only one instance of these rows will be used.")
+      {
+      if (n_rows_sav - nrow(df) == 1)
+        miic_warning (df_name, "1 row is duplicated. Only one instance",
+          " of the row will be used.")
+      else
+        miic_warning (df_name, n_rows_sav - nrow(df), " rows are duplicated.",
+          " Only one instance of these rows will be used.")
+      }
     }
 
   if (nrow(df) == 0)
+    {
     miic_warning (df_name, "The provided dataframe is empty.")
+    return (NULL)
+    }
   return (df)
   }
 
