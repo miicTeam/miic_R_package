@@ -88,7 +88,10 @@ bool initializeSkeleton(Environment& environment) {
         edges(i, j).shared_info = std::make_shared<EdgeSharedInfo>();
         edges(j, i).shared_info = edges(i, j).shared_info;
 
-        if (edges(i, j).status) initializeEdge(environment, i, j);
+        if (edges(i, j).status)
+          initializeEdge(environment, i, j);
+        else
+          edges(i, j).shared_info->connected = 0;
       }
     }
   }  // omp parallel

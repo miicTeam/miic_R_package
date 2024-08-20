@@ -116,6 +116,7 @@ void setEnvironmentFromR(const Rcpp::List& input_data,
           environment.edges(i, j).status = 0;
           environment.edges(i, j).status_init = 0;
           environment.edges(i, j).status_prev = 0;
+          environment.edges(i, j).proba_head = -1;
         }
   }
 

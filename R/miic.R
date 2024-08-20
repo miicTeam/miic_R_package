@@ -749,8 +749,58 @@ miic <- function(input_data,
     consensus_threshold = params$consensus_threshold,
     ori_consensus_ratio = params$ori_consensus_ratio,
     latent = (params$latent != "no"),
+    propagation = params$propagation)
+
+  #-----------------------------------------------------------------------------
+  # TO_DE_DELETED
+  #-----------------------------------------------------------------------------
+  sum_new = res$all.edges.summary
+
+  res$all.edges.summary_old = summarizeResults_old  (
+    observations = input_data,
+    results = res,
+    true_edges = true_edges,
+    state_order = state_order,
+    consensus_threshold = params$consensus_threshold,
+    ori_consensus_ratio = params$ori_consensus_ratio,
+    latent = (params$latent != "no"),
     propagation = params$propagation,
     verbose = params$verbose)
+  sum_old = res$all.edges.summary_old
+
+  sum_new = sum_new [order (apply (sum_new[, c("x","y")], MARGIN=1, FUN=function(x) {
+      return (paste0 (x[1], "-", x[2])) }) ), ]
+  sum_old = sum_old[ order (apply (sum_old[, c("x","y")], MARGIN=1, FUN=function(x) {
+      return (paste0 (x[1], "-", x[2])) }) ), ]
+
+  if (! all (colnames (sum_new) == colnames (sum_old)) )
+    {
+    print ("Columns differs")
+    print ("- Summary : ", miic:list_to_str(sum_new) )
+    print ("- V2      : ", miic:list_to_str(sum_old) )
+    }
+  for (one_col in colnames (sum_new) )
+    if ( ! all ( ( is.na (sum_new[,one_col])
+                 & is.na (sum_old[,one_col]) )
+             | ( (!is.na (sum_new[,one_col]))
+               & (!is.na (sum_old[,one_col]))
+               & (sum_new[,one_col] == sum_old[,one_col]) ) ) )
+      {
+      print (paste0 (one_col, " KO"))
+      wrong = which ( !  ( ( is.na (sum_new[,one_col])
+                           & is.na (sum_old[,one_col]) )
+             | ( (!is.na (sum_new[,one_col]))
+               & (!is.na (sum_old[,one_col]))
+               & (sum_new[,one_col] == sum_old[,one_col]) ) ) )
+      print (wrong)
+      for (one_wrong in wrong)
+        print (paste0 ("col ", one_col, " row ", one_wrong,
+                       " new : ", sum_new[one_wrong,one_col] , " != ",
+                       " old : ", sum_old[one_wrong,one_col] ) )
+      }
+  #-----------------------------------------------------------------------------
+  # END TO_DE_DELETED
+  #-----------------------------------------------------------------------------
 
   res$params = params
   if (! (mode %in% MIIC_TEMPORAL_MODES) )
