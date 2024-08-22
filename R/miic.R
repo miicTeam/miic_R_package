@@ -189,12 +189,17 @@
 #'
 #' @param ori_consensus_ratio [a floating point between 0 and 1, optional,
 #' NULL by default]
-#'
-#' The threshold when deducing the type of an consensus edge tip (head/tail)
-#' from the average probability of orientation.
-#' For a given edge tip, denote by p the probability of it being a head,
-#' the orientation is accepted if (1 - p) / p < \emph{ori_consensus_ratio}.
-#' 0 means reject all orientations, 1 means accept all orientations.
+#' Used to determine if orientations correspond to genuine causal edges
+#' and, when consistency is activated, to deduce the orientations in
+#' the consensus graph.\cr
+#' Oriented edges will be marked as genuine causal when:
+#'      (1 - p_{head} / p_{head}) < \emph{ori_consensus_ratio}
+#' and  p_{tail} / (1 - p_{_tail}) < \emph{ori_consensus_ratio}.\cr
+#' When consistency is activated, \emph{ori_consensus_ratio} is used as
+#' threshold when deducing the type of an consensus edge tip (head/tail)
+#' from the average probability of orientations over the cycle of graphs.
+#' For a given edge tip, denote by p the average probability of it being a head,
+#' the orientation is accepted if (1 - p) / p < \emph{ori_consensus_ratio}.\cr
 #' If not supplied, the \emph{ori_consensus_ratio} will be initialized with
 #' the \emph{ori_proba_ratio} value.
 #'
@@ -374,15 +379,18 @@
 #'  parameter, 'P' becomes 'TP' (True Positive) or 'FP' (False Positive),
 #'  while 'N' becomes 'TN' (True Negative) or 'FN' (False Negative).
 #'  Note that, as the \emph{all.edges.summary} does not contain all the
-#'  negative edges, edges not present are 'TN'.}
+#'  true negative edges, edges not present are 'TN'.}
 #'  \item{ \emph{ai:} the contributing nodes found by the method which
 #'  participate in the mutual information between \emph{x} and \emph{y},
 #'  and possibly separate them.}
 #'  \item{ \emph{raw_contributions:} describes the share of total mutual
-#'  information between \emph{x} and \emph{y} explained by each contributor.}
+#'  information between \emph{x} and \emph{y} explained by each contributor,
+#'  measured by I'(x;y;ai|{aj}) / I'(x;y),
+#'  where {aj} is the separating set before adding ai.}
 #'  \item{ \emph{contributions:} describes the share of remaining mutual
 #'  information between \emph{x} and \emph{y} explained  by each successive
-#'  contributors.}
+#'  contributors, measured by I'(x;y;ai|{aj}) / I'(x;y|{aj}),
+#'  where {aj} is the separating set before adding ai. }
 #'  \item{ \emph{info:} provides the pairwise mutual information times
 #'  \emph{Nxyi} for the pair (\emph{x}, \emph{y}).}
 #'  \item{ \emph{info_cond:} provides the conditional mutual information
@@ -407,19 +415,45 @@
 #'  present in the true edges are provided.}
 #'  \item{ \emph{isOrtOk:} information about the consistency of the inferred
 #'  graph’s orientations with a reference graph is given (if true edges
-#'  are provided).
-#'  'Y': the orientation is consistent; 'N': the orientation is not consistent
-#'  with the PAG (Partial Ancestor Graph) derived from the given true graph.}
-#'  \item{ \emph{sign:} the sign of the partial correlation between variables
-#'  \emph{x} and \emph{y}, conditioned on the contributing nodes \emph{ai}.}
-#'  \item{ \emph{partial_correlation:} value of the partial correlation for the
-#'  edge (\emph{x}, \emph{y}) conditioned on the contributing nodes \emph{ai}.}
+#'  are provided). TRUE: the orientation is consistent,
+#'  FALSE: the orientation is not consistent with the PAG
+#'  (Partial Ancestor Graph) derived from the given true graph.}
 #'  \item{ \emph{is_causal:} details about the nature of the arrow tip for a
 #'  directed edge. A directed edge in a causal graph does not necessarily imply
 #'  causation but it does imply that the cause-effect relationship is not the
 #'  other way around. An arrow-tip which is itself downstream of another
-#'  directed edge suggests stronger causal sense and is marked by a 'Y',
-#'  or 'N' otherwise.}
+#'  directed edge suggests stronger causal sense and is marked by TRUE,
+#'  or FALSE otherwise.\cr
+#'  Formally, an oriented edge is marked as genuine causal when
+#'      (1 - p_{head}) / p_{head}  < \emph{ori_consensus_ratio}
+#'  and  p_{tail} / (1 - p_{tail}) < \emph{ori_consensus_ratio}.\cr
+#'  Note that the genuine causality is deducible only when latent variables
+#'   are allowed and propagation is not allowed.}
+#'  \item{ \emph{consensus:} Not computed (full of NAs) when
+#'  consistency is not activated or, when consistency is on,
+#'  if there is only one graph returned (no cycle).
+#'  When computed, indicates the consensus orientation of the edge
+#'  determined from the consensus skeleton and the \emph{ori_consensus_ratio}
+#'  threshold on averaged orientation probabilities.
+#'  Possible values are 0: not connected, 1: not oriented, -2 or 2: oriented
+#'  and 6: bi-directional (latent variable).}
+#'  \item{ \emph{is_causal_consensus:} Not computed (full of NAs) when
+#'  consistency is not activated or, when consistency is on,
+#'  if there is only one graph returned (no cycle).
+#'  When computed, work in the same way as \emph{is_causal}
+#'  but on the consensus graph.}
+#'  \item{ \emph{edge_stats:} Not computed (full of NAs) when
+#'  consistency is not activated or, when consistency is on,
+#'  if there is only one graph returned (no cycle).
+#'  When computed, contains for each edge the frequencies of
+#'  the different orientations present in the cycle of graphs.
+#'  e.g. In a cycle of 4 graphs, if an edge is three times marked as "2"
+#'  (oriented) and one time marked as "1" (un-oriented), edge_stats will
+#'  contain "75\%(2);25\%(1)".}
+#'  \item{ \emph{sign:} the sign of the partial correlation between variables
+#'  \emph{x} and \emph{y}, conditioned on the contributing nodes \emph{ai}.}
+#'  \item{ \emph{partial_correlation:} value of the partial correlation for the
+#'  edge (\emph{x}, \emph{y}) conditioned on the contributing nodes \emph{ai}.}
 #'  \item{ \emph{proba:} probabilities for the inferred orientation, derived
 #'  from the three-point mutual information (cf Affeldt & Isambert, UAI 2015
 #'  proceedings) and noted as p(x->y);p(x<-y).}
@@ -455,24 +489,51 @@
 #'  (including directed, undirected and bidirected edges), we will have a
 #'  different digit for each case:
 #'  \itemize{
-#'  \item{ 1: (\emph{x}, \emph{y}) edge is undirected}
+#'  \item{ 1: (\emph{x}, \emph{y}) edge is un-directed}
 #'  \item{ 2: (\emph{x}, \emph{y}) edge is directed as \emph{x} -> \emph{y} }
 #'  \item{ -2: (\emph{x}, \emph{y}) edge is directed as \emph{x} <- \emph{y} }
-#'  \item{ 6: (\emph{x}, \emph{y}) edge is bidirected}
+#'  \item{ 6: (\emph{x}, \emph{y}) edge is bi-directed}
 #'  }
 #'  }
 #'
 #'  \item {\emph{proba_adj_matrix:} the probability adjacency matrix is
-#'  a square  matrix used to represent the orientation probabilities associated
+#'  a square matrix used to represent the orientation probabilities associated
 #'  to the edges tips. The value at ("row", "column") is the probability,
 #'  for the edge between "row" and "column" nodes, of the edge tip on the "row"
-#'  side.  A probability less than 0.5 is an indication of a possible tail
-#'  (cause) and a probability greater than 0.5 a possible head (effect).
-#'  }
+#'  side. A probability less than 0.5 is an indication of a possible tail
+#'  (cause) and a probability greater than 0.5 a possible head (effect). }
+#'
+#'  \item {\emph{adj_matrices:} present only when consistency is activated.
+#'  The list of the adjacency matrices, one for each graph
+#'  which is part of the resulting cycle of graphs.
+#'  Each item is a square matrix with the same format as \emph{adj_matrix}. }
+#'
+#'  \item {\emph{proba_adj_matrices:} present only when consistency is activated.
+#'  The list of the probability adjacency matrices, one for each graph
+#'  which is part of the resulting cycle of graphs. Each item is a
+#'  square matrix with the same format as \emph{proba_adj_matrix}. }
+#'
+#'  \item {\emph{proba_adj_average:} present only when consistency is activated.
+#'  The average probability adjacency matrix is a square matrix used to
+#'  represent the orientation probabilities associated to the edges tips
+#'  of the consensus graph.
+#'  The value at ("row", "column") is the average probability, for the edge
+#'  between "row" and "column" nodes, of the edge tip on the "row" side.
+#'  A probability less than 0.5 is an indication of a possible tail
+#'  (cause) and a probability greater than 0.5 a possible head (effect). }
+#'
+#'  \item {\emph{is_consistent:} present only when consistency is activated.
+#'  TRUE if the returned graph is consistent, FALSE otherwise. }
+#'
+#'  \item {\emph{time:} execution time of the different steps and total run-time
+#'  of the causal graph reconstruction by MIIC. }
+#'
+#'  \item {\emph{interrupted:} TRUE if causal graph reconstruction has been
+#'  interrupted, FALSE otherwise. }
 #'
 #'  \item {\emph{params:} the list of parameters used for the network
 #'  reconstruction. The parameters not supplied are initialized to their default
-#'  values. Otherwise, the parameters are checked and corrected if necessary.}
+#'  values. Otherwise, the parameters are checked and corrected if necessary. }
 #'
 #'  \item {\emph{state_order:} the state order used for the network
 #'  reconstruction. If no state order is supplied, it is generated by using
@@ -606,6 +667,7 @@ miic <- function(input_data,
                  max_nodes = 50,
                  verbose = FALSE)
   {
+  miic_start = Sys.time()
   if (verbose)
     miic_msg ("Start MIIC...")
   if ( is.null(mode) || ( ! (mode %in% MIIC_VALID_MODES) ) )
@@ -711,6 +773,7 @@ miic <- function(input_data,
   #
   if (verbose)
     miic_msg ("-> Start reconstruction...")
+  pre_end = Sys.time()
   res <- miic.reconstruct (input_data = input_data,
                            n_threads = params$n_threads,
                            cplx = params$cplx,
@@ -741,6 +804,7 @@ miic <- function(input_data,
   #
   # Post-traitment
   #
+  post_start = Sys.time()
   res$all.edges.summary <- summarizeResults (
     observations = input_data,
     results = res,
@@ -750,57 +814,6 @@ miic <- function(input_data,
     ori_consensus_ratio = params$ori_consensus_ratio,
     latent = (params$latent != "no"),
     propagation = params$propagation)
-
-  #-----------------------------------------------------------------------------
-  # TO_DE_DELETED
-  #-----------------------------------------------------------------------------
-  sum_new = res$all.edges.summary
-
-  res$all.edges.summary_old = summarizeResults_old  (
-    observations = input_data,
-    results = res,
-    true_edges = true_edges,
-    state_order = state_order,
-    consensus_threshold = params$consensus_threshold,
-    ori_consensus_ratio = params$ori_consensus_ratio,
-    latent = (params$latent != "no"),
-    propagation = params$propagation,
-    verbose = params$verbose)
-  sum_old = res$all.edges.summary_old
-
-  sum_new = sum_new [order (apply (sum_new[, c("x","y")], MARGIN=1, FUN=function(x) {
-      return (paste0 (x[1], "-", x[2])) }) ), ]
-  sum_old = sum_old[ order (apply (sum_old[, c("x","y")], MARGIN=1, FUN=function(x) {
-      return (paste0 (x[1], "-", x[2])) }) ), ]
-
-  if (! all (colnames (sum_new) == colnames (sum_old)) )
-    {
-    print ("Columns differs")
-    print ("- Summary : ", miic:list_to_str(sum_new) )
-    print ("- V2      : ", miic:list_to_str(sum_old) )
-    }
-  for (one_col in colnames (sum_new) )
-    if ( ! all ( ( is.na (sum_new[,one_col])
-                 & is.na (sum_old[,one_col]) )
-             | ( (!is.na (sum_new[,one_col]))
-               & (!is.na (sum_old[,one_col]))
-               & (sum_new[,one_col] == sum_old[,one_col]) ) ) )
-      {
-      print (paste0 (one_col, " KO"))
-      wrong = which ( !  ( ( is.na (sum_new[,one_col])
-                           & is.na (sum_old[,one_col]) )
-             | ( (!is.na (sum_new[,one_col]))
-               & (!is.na (sum_old[,one_col]))
-               & (sum_new[,one_col] == sum_old[,one_col]) ) ) )
-      print (wrong)
-      for (one_wrong in wrong)
-        print (paste0 ("col ", one_col, " row ", one_wrong,
-                       " new : ", sum_new[one_wrong,one_col] , " != ",
-                       " old : ", sum_old[one_wrong,one_col] ) )
-      }
-  #-----------------------------------------------------------------------------
-  # END TO_DE_DELETED
-  #-----------------------------------------------------------------------------
 
   res$params = params
   if (! (mode %in% MIIC_TEMPORAL_MODES) )
@@ -836,5 +849,13 @@ miic <- function(input_data,
                        lagged_true_edges = true_edges,
                        all.edges.stationarity = edges_dup_stat)
     }
+
+  miic_end = Sys.time()
+  pre_duration = as.numeric (round (pre_end - miic_start, 7) )
+  post_duration = as.numeric (round (miic_end - post_start, 7) )
+  miic_duration = as.numeric (round (miic_end - miic_start, 7) )
+  res$time = c ("pre"=pre_duration, res$time,
+                "post"=post_duration, "total"=miic_duration)
+
   return(res)
   }
