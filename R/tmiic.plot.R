@@ -249,15 +249,15 @@ tmiic_prepare_edges_for_plotting <- function (tmiic_res)
     #
     for(row in 1:nrow(df_edges))
       {
-      if(df_edges[row, "infOrt"] == -2)
+      if(df_edges[row, "ort_inferred"] == -2)
         {
         df_edges[row, c("x","y")] = df_edges[row, c("y","x")]
-        df_edges[row, "infOrt"] = 2
+        df_edges[row, "ort_inferred"] = 2
         if(!is.na(df_edges[row, "proba"]))
           df_edges[row, "proba"] = paste0(rev(
             strsplit(df_edges[row, "proba"], ";")[[1]]), collapse=";")
-        if(!is.na(df_edges[row, "trueOrt"]))
-          df_edges[row, "trueOrt"] = 2
+        if(!is.na(df_edges[row, "ort_ground_truth"]))
+          df_edges[row, "ort_ground_truth"] = 2
         }
       }
     }

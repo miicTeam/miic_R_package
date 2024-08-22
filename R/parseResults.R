@@ -46,19 +46,21 @@
 #   * cplx: the NML complexity (used for independence testing)
 #   * Nxy_ai: the number of samples without missing values used for this edge
 #   * info_shifted: the difference between conditional MI and cplx
-#   * infOrt: the inferred edge orientation
-#   * trueOrt: is the true edge orientation if known. NA if truth is unknown
-#   * isOrtOk: indicate if the inferred edge is correctly oriented.
+#   * ort_inferred: the inferred edge orientation
+#   * ort_ground_truth: is the true edge orientation if known.
+#     NA if truth is unknown
+#   * is_inference_correct: indicate if the inferred edge is correctly oriented.
 #     NA if truth is unknown, TRUE or FALSE if truth is known
 #   * is_causal: indicates if edge is genuine causal.
 #     Note that the genuine causality is deducible only when latent variables
 #     are allowed and propagation is not allowed
-#   * consensus: if consistency is activated, indicates the consensus
+#   * ort_consensus: if consistency is activated, indicates the consensus
 #     orientation of the edge, possible values are 0: not connected,
 #     1: not oriented, -2 or 2: oriented or 6: bi-directional (latent variable)
 #     NA if consistency is not activated.
-#   * is_causal_consensus: if consistency is activated, indicates the consensus
-#     orientation is genuine causal. NA if consistency is not activated.
+#   * is_causal_consensus: if consistency is activated, indicates if the
+#     consensus orientation is genuine causal. NA if consistency is not
+#     activated.
 #   * edge_stats: if consistency is activated, contains the orientation
 #     frequencies of each orientation present in the cycle of graphs.
 #     NA if consistency is not activated.
@@ -142,11 +144,12 @@ summarizeResults = function (observations, results,
       raw_contributions = character(0), contributions = character(0),
       info = numeric(0), info_cond = numeric(0), cplx = numeric(0),
       Nxy_ai = numeric(0), info_shifted = numeric(0),
-      infOrt = integer(0), trueOrt = integer(0), isOrtOk = logical(0),
-      is_causal = logical(0), consensus = integer(0),
-      is_causal_consensus = logical(0), edge_stats = character(0),
-      sign = character(0), partial_correlation = numeric(0),
-      proba = character(0), confidence = numeric(0), stringsAsFactors = FALSE) )
+      ort_inferred = integer(0), ort_ground_truth = integer(0),
+      is_inference_correct = logical(0), is_causal = logical(0),
+      ort_consensus = integer(0), is_causal_consensus = logical(0),
+      edge_stats = character(0), sign = character(0),
+      partial_correlation = numeric(0), proba = character(0),
+      confidence = numeric(0), stringsAsFactors = FALSE) )
   #
   # Edge ordering (A<-B or B->A) is given by alphanumerical order
   #
@@ -190,17 +193,17 @@ summarizeResults = function (observations, results,
   #
   summary$confidence [summary$confidence == -1] <- NA_real_
   #
-  # infOrt is the inferred edge orientation
+  # ort_inferred is the inferred edge orientation
   #
-  summary$infOrt <- apply (summary, 1, function (row, adj_mat) {
+  summary$ort_inferred <- apply (summary, 1, function (row, adj_mat) {
       adj_mat[row[1], row[2]] }, results$adj_matrix)
   #
-  # trueOrt is the true edge orientation (if known)
+  # ort_ground_truth is the true edge orientation (if known)
   #
   var_names <- colnames (results$adj_matrix)
   n_vars <- length (var_names)
   if ( is.null(true_edges) )
-    summary$trueOrt <- NA_integer_
+    summary$ort_ground_truth <- NA_integer_
   else
     {
     true_adj_matrix <- matrix (0, ncol=n_vars, nrow=n_vars,
@@ -211,14 +214,15 @@ summarizeResults = function (observations, results,
       true_adj_matrix[true_edge[1], true_edge[2]] <- 2
       true_adj_matrix[true_edge[2], true_edge[1]] <- -2
       }
-    summary$trueOrt <- apply (summary, 1, function (row, true_adj_matrix) {
+    summary$ort_ground_truth <- apply (summary, 1, function (row, true_adj_matrix) {
       true_adj_matrix[row[1], row[2]] }, true_adj_matrix)
     }
   #
-  # isOrtOk indicates if the inferred edge is correctly oriented.
+  # is_inference_correct indicates if the inferred edge is correctly oriented.
   # NA if truth is unknown, TRUE or FALSE if truth is known
   #
-  summary$isOrtOk <- ifelse (summary$infOrt == summary$trueOrt, TRUE, FALSE)
+  summary$is_inference_correct <- ifelse (summary$ort_inferred == summary$ort_ground_truth,
+                             TRUE, FALSE)
   #
   # Sign and coefficient of partial correlation between x and y conditioned
   # on "ai"s.
@@ -245,7 +249,7 @@ summarizeResults = function (observations, results,
   #
   causality_deducible <- latent && (!propagation)
   summary$is_causal = as.logical (NA)
-  summary$consensus = NA_integer_
+  summary$ort_consensus = NA_integer_
   summary$is_causal_consensus = as.logical (NA)
   summary$edge_stats = NA_character_
 
@@ -265,9 +269,9 @@ summarizeResults = function (observations, results,
       return (t)
       })
 
-    summary$consensus <- unlist (lapply (edge_stats_table,
-                                         get_consensus_status,
-                                         consensus_threshold) )
+    summary$ort_consensus <- unlist (lapply (edge_stats_table,
+                                             get_consensus_status,
+                                             consensus_threshold) )
     summary$edge_stats <- unlist (lapply (edge_stats_table,
                                           get_edge_stats_str) )
     #
@@ -279,12 +283,12 @@ summarizeResults = function (observations, results,
       if (causality_deducible)
         {
         # Set initial values if deducible
-        if (row$infOrt != 0)
+        if (row$ort_inferred != 0)
           summary[i, "is_causal"] <- FALSE
-        if (row$consensus != 0)
+        if (row$ort_consensus != 0)
           summary[i, "is_causal_consensus"] <- FALSE
         }
-      if (row$consensus == 0)
+      if (row$ort_consensus == 0)
         next
 
       # probability of an edge tip being a head (<,>), * means head or tail (-)
@@ -295,33 +299,33 @@ summarizeResults = function (observations, results,
 
       if (  (ratio_x2y < ori_consensus_ratio)
          && (ratio_y2x < ori_consensus_ratio) )
-        summary[i, "consensus"] <- 6
+        summary[i, "ort_consensus"] <- 6
       else if (  (ratio_x2y < ori_consensus_ratio)
               && (ratio_y2x >= ori_consensus_ratio) )
         {
-        summary[i, "consensus"] <- 2
+        summary[i, "ort_consensus"] <- 2
         if (1 / ratio_y2x < ori_consensus_ratio && causality_deducible)
           {
           summary[i, "is_causal_consensus"] <- TRUE
-          if (row$infOrt == 2)
+          if (row$ort_inferred == 2)
             summary[i, "is_causal"] <- TRUE
           }
         }
       else if (  (ratio_y2x < ori_consensus_ratio)
               && (ratio_x2y >= ori_consensus_ratio) )
         {
-        summary[i, "consensus"] <- -2
+        summary[i, "ort_consensus"] <- -2
         if (1 / ratio_x2y < ori_consensus_ratio && causality_deducible)
           {
           summary[i, "is_causal_consensus"] <- TRUE
-          if (row$infOrt == -2)
+          if (row$ort_inferred == -2)
             summary[i, "is_causal"] <- TRUE
           }
         }
       else
-        summary[i, "consensus"] <- 1
+        summary[i, "ort_consensus"] <- 1
       }
-    summary$consensus = as.integer (summary$consensus)
+    summary$ort_consensus = as.integer (summary$ort_consensus)
     }
   else if (causality_deducible)
     {
@@ -330,7 +334,7 @@ summarizeResults = function (observations, results,
     for (i in 1:nrow(summary))
       {
       row <- summary[i, ]
-      if (row$infOrt == 0)
+      if (row$ort_inferred == 0)
         next
       summary[i, "is_causal"] <- FALSE
 
@@ -339,11 +343,11 @@ summarizeResults = function (observations, results,
       proba_y2x <- results$proba_adj_matrix[row$y, row$x]  # proba of x <-* y
       ratio_x2y <- (1 - proba_x2y) / proba_x2y
       ratio_y2x <- (1 - proba_y2x) / proba_y2x
-      if (  (row$infOrt == 2)
+      if (  (row$ort_inferred == 2)
          && (ratio_x2y < ori_consensus_ratio)
          && (1 / ratio_y2x < ori_consensus_ratio) )
         summary[i, "is_causal"] <- TRUE
-      if (  (row$infOrt == -2)
+      if (  (row$ort_inferred == -2)
          && (ratio_y2x < ori_consensus_ratio)
          && (1 / ratio_x2y < ori_consensus_ratio) )
         summary[i, "is_causal"] <- TRUE
@@ -353,10 +357,10 @@ summarizeResults = function (observations, results,
   # Sort summary by log likelihood, keep only some cols and returns
   #
   columns_kept = c ("x", "y", "type", "ai", "raw_contributions", "contributions",
-                    "info", "info_cond", "cplx", "Nxy_ai", "info_shifted",
-                    "infOrt", "trueOrt", "isOrtOk", "is_causal",
-                    "consensus", "is_causal_consensus", "edge_stats",
-                    "sign", "partial_correlation", "proba", "confidence")
+    "info", "info_cond", "cplx", "Nxy_ai", "info_shifted",
+    "ort_inferred", "ort_ground_truth", "is_inference_correct", "is_causal",
+    "ort_consensus", "is_causal_consensus", "edge_stats",
+    "sign", "partial_correlation", "proba", "confidence")
   columns_kept = columns_kept[columns_kept %in% colnames(summary)]
   summary <- summary[order(summary$info_shifted, decreasing = TRUE),
                      columns_kept, drop=F]

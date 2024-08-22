@@ -399,16 +399,16 @@ A \emph{miic-like} object that contains:
  and corresponds to the total number of samples.}
  \item{ \emph{info_shifted:} represents the \emph{info} - \emph{cplx} value.
  It is a way to quantify the strength of the edge (\emph{x}, \emph{y}).}
- \item{ \emph{infOrt:} the orientation of the edge (\emph{x}, \emph{y}).
+ \item{ \emph{ort_inferred:} the orientation of the edge (\emph{x}, \emph{y}).
  It is the same value as in the adjacency matrix at row \emph{x} and
- column \emph{y} : 1 for unoriented, 2 for an edge from X to Y,
+ column \emph{y} : 1 for un-oriented, 2 for an edge from X to Y,
  -2 from Y to X and 6 for bidirectional.}
- \item{ \emph{trueOrt:} the orientation of the edge (\emph{x}, \emph{y})
- present in the true edges are provided.}
- \item{ \emph{isOrtOk:} information about the consistency of the inferred
- graph’s orientations with a reference graph is given (if true edges
- are provided). TRUE: the orientation is consistent,
- FALSE: the orientation is not consistent with the PAG
+ \item{ \emph{ort_ground_truth:} the orientation of the edge (\emph{x},
+ \emph{y}) from a given reference graph when true edges are provided.}
+ \item{ \emph{is_inference_correct:} indicates if the inferred graph’s
+ orientations are correct by comparing with a given reference graph
+ (when true edges are provided). TRUE: the orientation is correct,
+ FALSE: the orientation is not in accordance with the PAG
  (Partial Ancestor Graph) derived from the given true graph.}
  \item{ \emph{is_causal:} details about the nature of the arrow tip for a
  directed edge. A directed edge in a causal graph does not necessarily imply
@@ -421,7 +421,7 @@ A \emph{miic-like} object that contains:
  and  p_{tail} / (1 - p_{tail}) < \emph{ori_consensus_ratio}.\cr
  Note that the genuine causality is deducible only when latent variables
   are allowed and propagation is not allowed.}
- \item{ \emph{consensus:} Not computed (full of NAs) when
+ \item{ \emph{ort_consensus:} Not computed (full of NAs) when
  consistency is not activated or, when consistency is on,
  if there is only one graph returned (no cycle).
  When computed, indicates the consensus orientation of the edge

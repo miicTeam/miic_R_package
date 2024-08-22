@@ -313,11 +313,11 @@ tmiic_combine_lag <- function (df)
   #
   for (idx in 1:nrow(df) )
     {
-    if (df[idx,"infOrt"] == -2)
+    if (df[idx,"ort_inferred"] == -2)
       df[idx, c("x","y","lag")] <- c (df[idx,"y"], df[idx,"x"],
                                       -as.integer (df[idx,"lag"]) )
 
-    if ( (df[idx,"infOrt"] == 6) & (as.integer (df[idx,"lag"]) != 0) )
+    if ( (df[idx,"ort_inferred"] == 6) & (as.integer (df[idx,"lag"]) != 0) )
       df[nrow(df)+1, c("x","y","lag")] <- c (df[idx,"y"], df[idx,"x"],
                                                -as.integer (df[idx,"lag"]) )
     }
@@ -521,11 +521,11 @@ tmiic_flatten_network <- function (tmiic_res, flatten_mode="compact",
     else
       {
       df_edges [edge_idx, c("x","y","lag")] <- c(node_y, node_x, -lag)
-      if (abs (one_edge$infOrt) == 2)
-         df_edges [edge_idx,"infOrt"] <- -one_edge$infOrt
-      if ( !is.na (one_edge$trueOrt ) )
-        if (abs (one_edge$trueOrt ) == 2)
-          df_edges [edge_idx,"trueOrt"] <- -one_edge$trueOrt
+      if (abs (one_edge$ort_inferred) == 2)
+         df_edges [edge_idx,"ort_inferred"] <- -one_edge$ort_inferred
+      if ( !is.na (one_edge$ort_ground_truth ) )
+        if (abs (one_edge$ort_ground_truth ) == 2)
+          df_edges [edge_idx,"ort_ground_truth"] <- -one_edge$ort_ground_truth
       if ( !is.na (one_edge$proba ) )
         {
         df_edges [edge_idx, "proba"] = paste0 (rev (
@@ -581,10 +581,10 @@ tmiic_flatten_network <- function (tmiic_res, flatten_mode="compact",
           # Combine lag, orient and proba
           #
           df_same$new_lag <-  tmiic_combine_lag (df_same)
-          comb_infOrt <- tmiic_combine_orient (df_same, "infOrt")
-          df_same$proba <- tmiic_combine_probas (df_same, comb_infOrt)
-          df_same$trueOrt <- tmiic_combine_orient (df_same, "trueOrt")
-          df_same$infOrt <- comb_infOrt
+          comb_ort_inferred <- tmiic_combine_orient (df_same, "ort_inferred")
+          df_same$proba <- tmiic_combine_probas (df_same, comb_ort_inferred)
+          df_same$ort_ground_truth <- tmiic_combine_orient (df_same, "ort_ground_truth")
+          df_same$ort_inferred <- comb_ort_inferred
           #
           # Orientations and probas have been computed for x <= y,
           # so force x <= y on all rows
