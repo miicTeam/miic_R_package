@@ -184,8 +184,8 @@ Used to determine if orientations correspond to genuine causal edges
 and, when consistency is activated, to deduce the orientations in
 the consensus graph.\cr
 Oriented edges will be marked as genuine causal when:
-     (1 - p_{head} / p_{head}) < \emph{ori_consensus_ratio}
-and  p_{tail} / (1 - p_{_tail}) < \emph{ori_consensus_ratio}.\cr
+     \eqn{ (1 - p_{head}) / p_{head} < } \emph{ori_consensus_ratio}
+and  \eqn{ p_{tail} / (1 - p_{tail}) < } \emph{ori_consensus_ratio}.\cr
 When consistency is activated, \emph{ori_consensus_ratio} is used as
 threshold when deducing the type of an consensus edge tip (head/tail)
 from the average probability of orientations over the cycle of graphs.
@@ -225,7 +225,7 @@ of independent samples can be provided using this parameter.}
 \item{n_shuffles}{[a positive integer, optional, 0 by default]
 
 The number of shufflings of the original dataset in order to evaluate
-the edge specific confidence ratio of all inferred edges.
+the edge specific confidence ratio of all retained edges.
 Default is 0: no confidence cut is applied. If the number of shufflings
 is set to an integer > 0, the confidence threshold must also be > 0
 (e.g. \emph{n_shuffles} = 100 and \emph{conf_threshold} = 0.01).}
@@ -361,17 +361,40 @@ If TRUE, debugging output is printed.}
 \value{
 A \emph{miic-like} object that contains:
 \itemize{
- \item{\emph{all.edges.summary:} a data frame with information about the relationship between
- each pair of variables
+ \item{\emph{all.edges.summary:} a data frame with information about the
+ relationship between relevant pair of variables.
+
+ As returning the information on all possible pairs of variables could lead
+ to an huge data frame, by convention, the summary does not include pair of
+ variables not sharing information at all (\emph{I'(x,y) <= 0}).
+ However, as exception to this convention, when a ground truth is supplied
+ (using the \emph{true_edges} parameter), the edges that are not retained
+ by MIIC because the variables does not share information at all
+ but are present in the true edges will be included in the summary
+ to report correctly all the false negative edges.
+
+ So, the summary contains these categories of edges:
  \itemize{
- \item{ \emph{x:} X node}
- \item{ \emph{y:} Y node}
+ \item{ edges retained}
+ \item{ edges not retained after contionning on some contributor(s)}
+ \item{ edges not retained without condionning but present in true edges}
+ }
+ while these edges are not considered as relevant and are not included:
+ \itemize{
+ \item{ edges not retained without condionning and not in true edges}
+ }
+
+ Information available in the summary are:
+ \itemize{
+ \item{ \emph{x:} X node name}
+ \item{ \emph{y:} Y node name}
  \item{ \emph{type:} contains 'N' if the edge has been removed or 'P' for
  retained edges. If the true graph is supplied in the \emph{true_edges}
  parameter, 'P' becomes 'TP' (True Positive) or 'FP' (False Positive),
  while 'N' becomes 'TN' (True Negative) or 'FN' (False Negative).
  Note that, as the \emph{all.edges.summary} does not contain all the
- true negative edges, edges not present are 'TN'.}
+ removed edges, edges not present have to be considered as 'N'
+ and, if the true graph is supplied, as 'TN'.}
  \item{ \emph{ai:} the contributing nodes found by the method which
  participate in the mutual information between \emph{x} and \emph{y},
  and possibly separate them.}
@@ -383,78 +406,96 @@ A \emph{miic-like} object that contains:
  information between \emph{x} and \emph{y} explained  by each successive
  contributors, measured by I'(x;y;ai|{aj}) / I'(x;y|{aj}),
  where {aj} is the separating set before adding ai. }
- \item{ \emph{info:} provides the pairwise mutual information times
- \emph{Nxyi} for the pair (\emph{x}, \emph{y}).}
- \item{ \emph{info_cond:} provides the conditional mutual information
- times \emph{Nxy_ai} for the pair (\emph{x}, \emph{y}) when conditioned
- on the collected nodes \emph{ai}. It is
- equal to the \emph{info} column when \emph{ai} is an empty set.}
- \item{ \emph{cplx:} gives the computed complexity between the (\emph{x},
- \emph{y}) variables taking into account the contributing nodes \emph{ai}.
- Edges that have have more conditional information \emph{info_cond}
- than \emph{cplx} are retained in the final graph.}
- \item{ \emph{Nxy_ai:} gives the number of complete samples on which the
- information and the  complexity have been computed. If the input dataset
+ \item{ \emph{info:} the mutual information \emph{I(x;y)} times the number
+ of complete samples \emph{Nxy} for the pair (\emph{x}, \emph{y}).}
+ \item{ \emph{Nxy:} gives the number of complete samples on which the
+ information without conditioning has been computed. If the input dataset
  has no missing value, the number of samples is the same for all pairs
  and corresponds to the total number of samples.}
- \item{ \emph{info_shifted:} represents the \emph{info} - \emph{cplx} value.
- It is a way to quantify the strength of the edge (\emph{x}, \emph{y}).}
+ \item{ \emph{info_cond:} the conditional mutual information \emph{I(x;y|ai)}
+ times the number of complete samples \emph{Nxy_ai} used in the computation.
+ \emph{info_cond} is equal to \emph{info} when \emph{ai} is an empty set.}
+ \item{ \emph{cplx:} the complexity term for the pair (\emph{x}, \emph{y})
+ taking into account the contributing nodes \emph{ai}.}
+ \item{ \emph{Nxy_ai:} the number of complete samples taking into account
+ \emph{x}, \emph{y} and all nodes in \emph{ai} on which the
+ information and the complexity terms are computed.
+ If the input dataset has no missing value, the number of samples is the
+ same for all pairs and corresponds to the total number of samples.}
+ \item{ \emph{info_shifted:} value equal to \emph{info_cond} - \emph{cplx}.
+ Used to decide whether the edge is retained (when positive),
+ or removed (when zero or possibly negative when the parameter
+ \emph{negative_info} is set to TRUE).}
  \item{ \emph{ort_inferred:} the orientation of the edge (\emph{x}, \emph{y}).
- It is the same value as in the adjacency matrix at row \emph{x} and
- column \emph{y} : 1 for un-oriented, 2 for an edge from X to Y,
- -2 from Y to X and 6 for bidirectional.}
+ 0: edge removed, 1: un-directed, 2: directed from X to Y, -2: directed
+ from Y to X, 6: bi-directed.\cr
+ When the \emph{consistent} option is turned on and there is more than
+ one graph in the consistent cycle, this is the inferred orientation
+ of the edge in the last graph in the cycle. }
  \item{ \emph{ort_ground_truth:} the orientation of the edge (\emph{x},
  \emph{y}) from a given reference graph when true edges are provided.}
- \item{ \emph{is_inference_correct:} indicates if the inferred graph’s
- orientations are correct by comparing with a given reference graph
- (when true edges are provided). TRUE: the orientation is correct,
- FALSE: the orientation is not in accordance with the PAG
- (Partial Ancestor Graph) derived from the given true graph.}
- \item{ \emph{is_causal:} details about the nature of the arrow tip for a
- directed edge. A directed edge in a causal graph does not necessarily imply
- causation but it does imply that the cause-effect relationship is not the
- other way around. An arrow-tip which is itself downstream of another
- directed edge suggests stronger causal sense and is marked by TRUE,
- or FALSE otherwise.\cr
- Formally, an oriented edge is marked as genuine causal when
-     (1 - p_{head}) / p_{head}  < \emph{ori_consensus_ratio}
- and  p_{tail} / (1 - p_{tail}) < \emph{ori_consensus_ratio}.\cr
+ \item{ \emph{is_inference_correct:} indicates if the inferred orientation
+ agrees with the provided ground truth. TRUE: agrees, FALSE: disagrees and
+ set to NA when no ground truth is supplied.}
+ \item{ \emph{is_causal:} boolean value indicating the causal nature of the
+ arrow tips of an edge, based on the probabilities given in the column
+ \emph{proba}. TRUE: when the edges is directed and both the head
+ and the tail are set with high probabilities (adjustable with the
+ \emph{ori_consensus_ratio} parameter), FALSE otherwise or NA if the edge
+ is not retained.
+ More formally, an oriented edge is marked as genuine causal when
+      \eqn{ (1 - p_{head}) / p_{head} < } \emph{ori_consensus_ratio}
+ and  \eqn{ p_{tail} / (1 - p_{tail}) < } \emph{ori_consensus_ratio}.\cr
+ A directed edge not marked as genuine causal indicates that only
+ the head is set with high probability, while the tail probability
+ is not extreme enough to be either head or tail. In this case,
+ the edge is undecided between a directed edge (implying causation)
+ and a bi-directed edge (implying possible latent confounders).\cr
  Note that the genuine causality is deducible only when latent variables
-  are allowed and propagation is not allowed.}
- \item{ \emph{ort_consensus:} Not computed (full of NAs) when
+ are allowed and propagation is not allowed.}
+ \item{ \emph{ort_consensus:} Not computed (NAs) when
  consistency is not activated or, when consistency is on,
  if there is only one graph returned (no cycle).
  When computed, indicates the consensus orientation of the edge
  determined from the consensus skeleton and the \emph{ori_consensus_ratio}
- threshold on averaged orientation probabilities.
+ threshold on averaged orientation probabilities over the cycle of graphs.
  Possible values are 0: not connected, 1: not oriented, -2 or 2: oriented
  and 6: bi-directional (latent variable).}
- \item{ \emph{is_causal_consensus:} Not computed (full of NAs) when
+ \item{ \emph{is_causal_consensus:} Not computed (NAs) when
  consistency is not activated or, when consistency is on,
  if there is only one graph returned (no cycle).
  When computed, work in the same way as \emph{is_causal}
  but on the consensus graph.}
- \item{ \emph{edge_stats:} Not computed (full of NAs) when
+ \item{ \emph{edge_stats:} Not computed (NAs) when
  consistency is not activated or, when consistency is on,
  if there is only one graph returned (no cycle).
- When computed, contains for each edge the frequencies of
- the different orientations present in the cycle of graphs.
- e.g. In a cycle of 4 graphs, if an edge is three times marked as "2"
- (oriented) and one time marked as "1" (un-oriented), edge_stats will
+ When computed, contains the frequencies of all \emph{ort_inferred}
+ values present in the cycle of graphs for the edge (\emph{x, y}),
+ in the format [percentage(orientation)], separated by ";".
+ e.g. In a cycle of 4 graphs, if an edge is three times marked as 2
+ (oriented) and one time marked as 1 (un-oriented), edge_stats will
  contain "75\%(2);25\%(1)".}
  \item{ \emph{sign:} the sign of the partial correlation between variables
  \emph{x} and \emph{y}, conditioned on the contributing nodes \emph{ai}.}
  \item{ \emph{partial_correlation:} value of the partial correlation for the
- edge (\emph{x}, \emph{y}) conditioned on the contributing nodes \emph{ai}.}
- \item{ \emph{proba:} probabilities for the inferred orientation, derived
- from the three-point mutual information (cf Affeldt & Isambert, UAI 2015
- proceedings) and noted as p(x->y);p(x<-y).}
- \item{ \emph{confidence:} this column is computed when the confidence cut
- is activated. It represents the ratio between the probability to reject
- the edge (\emph{x}, \emph{y}) in the dataset versus the mean probability
- to do the same in multiple (user defined) number of randomized datasets.}
+ edge (\emph{x, y}) conditioned on the contributing nodes \emph{ai}.}
+ \item{ \emph{proba:} probabilities of the tips of the inferred orientation,
+ derived from the three-point mutual information (cf Affeldt & Isambert,
+ UAI 2015 proceedings) and noted as p(x->y);p(x<-y).}
+ \item{ \emph{confidence:} computed only when the confidence cut is
+ activated (see parameters \emph{n_shuffles} and \emph{conf_threshold}),
+ NA otherwise.
+ When computed, it corresponds to a measure of the strength of the retained
+ edges: it is the ratio between the probability to reject the edge
+ \emph{exp(-info_shifted(x;y|ai))} in the original dataset versus
+ the mean probability to do the same in \emph{n_shuffles} number
+ of randomized datasets.}
  }
  }
+
+ \item{\emph{edges:} a data frame with the raw edges output coming from
+ the C++ core function. This data frame is used internally by MIIC to
+ produce the summary and contains all pairs of variables (\emph{x, y}). }
 
  \item{\emph{orientations.prob:} this data frame lists the orientation
  probabilities of the two edges of all unshielded triples of the
@@ -498,21 +539,19 @@ A \emph{miic-like} object that contains:
  \item {\emph{adj_matrices:} present only when consistency is activated.
  The list of the adjacency matrices, one for each graph
  which is part of the resulting cycle of graphs.
- Each item is a square matrix with the same format as \emph{adj_matrix}. }
+ Each item is a square matrix with the same layout as \emph{adj_matrix}. }
 
  \item {\emph{proba_adj_matrices:} present only when consistency is activated.
  The list of the probability adjacency matrices, one for each graph
  which is part of the resulting cycle of graphs. Each item is a
- square matrix with the same format as \emph{proba_adj_matrix}. }
+ square matrix with the same layout as \emph{proba_adj_matrix}. }
 
  \item {\emph{proba_adj_average:} present only when consistency is activated.
  The average probability adjacency matrix is a square matrix used to
  represent the orientation probabilities associated to the edges tips
- of the consensus graph.
- The value at ("row", "column") is the average probability, for the edge
- between "row" and "column" nodes, of the edge tip on the "row" side.
- A probability less than 0.5 is an indication of a possible tail
- (cause) and a probability greater than 0.5 a possible head (effect). }
+ of the consensus graph. Its layout is the same as \emph{proba_adj_matrix}
+ and it contains the averaged probability of edges tips over the resulting
+ cycle of graphs. }
 
  \item {\emph{is_consistent:} present only when consistency is activated.
  TRUE if the returned graph is consistent, FALSE otherwise. }
@@ -522,6 +561,18 @@ A \emph{miic-like} object that contains:
 
  \item {\emph{interrupted:} TRUE if causal graph reconstruction has been
  interrupted, FALSE otherwise. }
+
+ \item {\emph{scores:} present only when true edges have been supplied.
+ Contains the scores of the returned graph in regard of the ground truth:
+ \itemize{
+ \item{ \emph{tp}: number of edges marked as True Positive }
+ \item{ \emph{fp}: number of edges marked as False Positive }
+ \item{ \emph{fn}: number of edges marked as False Negative }
+ \item{ \emph{precision}: Precision }
+ \item{ \emph{recall}: Recall }
+ \item{ \emph{fscore}: F1-Score }
+ }
+ }
 
  \item {\emph{params:} the list of parameters used for the network
  reconstruction. The parameters not supplied are initialized to their default

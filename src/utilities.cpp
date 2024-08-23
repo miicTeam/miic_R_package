@@ -268,7 +268,7 @@ vector<vector<string>> getEdgesInfoTable(
   vector<vector<string>> table;
   table.emplace_back(std::initializer_list<string>{"x", "y", "z.name",
       "ai.vect", "raw_contributions", "contributions", "zi.vect", "Ixy",
-      "Ixy_ai", "cplx", "Rxyz_ai", "category", "Nxy_ai", "confidence"});
+      "Ixy_ai", "cplx", "Rxyz_ai", "category", "Nxy", "Nxy_ai", "confidence"});
   for (const auto& edge : edge_list) {
     auto info = edge.getEdge().shared_info;
     double confidence = -1;
@@ -289,6 +289,7 @@ vector<vector<string>> getEdgesInfoTable(
         to_string(info->kxy_ui),
         to_string(info->Rxyz_ui),
         to_string(info->connected),
+        to_string(info->Nxy),
         to_string(info->Nxy_ui),
         to_string(confidence)
     });

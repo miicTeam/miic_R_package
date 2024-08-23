@@ -41,10 +41,13 @@
 #     mutual information measured by I'(x;y;ai|{aj}) / I'(x;y|{aj}),
 #     where {aj} is the separating set before adding ai.
 #   * info: mutual information (corresponds to Ixy in the C++ output)
+#   * Nxy: the number of samples without missing values for the pair of
+#     variables
 #   * info_cond: conditional mutual information  (corresponds to Ixy_ai in the
 #     C++ output)
 #   * cplx: the NML complexity (used for independence testing)
-#   * Nxy_ai: the number of samples without missing values used for this edge
+#   * Nxy_ai: the number of samples without missing values for the pair of
+#     variables and the contributors
 #   * info_shifted: the difference between conditional MI and cplx
 #   * ort_inferred: the inferred edge orientation
 #   * ort_ground_truth: is the true edge orientation if known.
@@ -142,8 +145,8 @@ summarizeResults = function (observations, results,
     return (data._frame (x = character(0), y = character(0),
       type = character(0), ai = character(0),
       raw_contributions = character(0), contributions = character(0),
-      info = numeric(0), info_cond = numeric(0), cplx = numeric(0),
-      Nxy_ai = numeric(0), info_shifted = numeric(0),
+      info = numeric(0), Nxy = numeric(0), info_cond = numeric(0),
+      cplx = numeric(0), Nxy_ai = numeric(0), info_shifted = numeric(0),
       ort_inferred = integer(0), ort_ground_truth = integer(0),
       is_inference_correct = logical(0), is_causal = logical(0),
       ort_consensus = integer(0), is_causal_consensus = logical(0),
@@ -357,7 +360,7 @@ summarizeResults = function (observations, results,
   # Sort summary by log likelihood, keep only some cols and returns
   #
   columns_kept = c ("x", "y", "type", "ai", "raw_contributions", "contributions",
-    "info", "info_cond", "cplx", "Nxy_ai", "info_shifted",
+    "info", "Nxy", "info_cond", "cplx", "Nxy_ai", "info_shifted",
     "ort_inferred", "ort_ground_truth", "is_inference_correct", "is_causal",
     "ort_consensus", "is_causal_consensus", "edge_stats",
     "sign", "partial_correlation", "proba", "confidence")
