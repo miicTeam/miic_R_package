@@ -446,11 +446,11 @@
 #'  agrees with the provided ground truth. TRUE: agrees, FALSE: disagrees and
 #'  set to NA when no ground truth is supplied.}
 #'  \item{ \emph{is_causal:} boolean value indicating the causal nature of the
-#'  arrow tips of an edge, based on the probabilities given in the column
-#'  \emph{proba}. TRUE: when the edges is directed and both the head
-#'  and the tail are set with high probabilities (adjustable with the
-#'  \emph{ori_consensus_ratio} parameter), FALSE otherwise or NA if the edge
-#'  is not retained.
+#'  arrow tips of an edge, based on the probabilities given in the columns
+#'  \emph{p_y2x} and \emph{p_x2y}. TRUE: when the edges is directed
+#'  and both the head and the tail are set with high probabilities
+#'  (adjustable with the \emph{ori_consensus_ratio} parameter),
+#'  FALSE otherwise or NA if the edge is not retained.
 #'  More formally, an oriented edge is marked as genuine causal when
 #'       \eqn{ (1 - p_{head}) / p_{head} < } \emph{ori_consensus_ratio}
 #'  and  \eqn{ p_{tail} / (1 - p_{tail}) < } \emph{ori_consensus_ratio}.\cr
@@ -487,9 +487,12 @@
 #'  \emph{x} and \emph{y}, conditioned on the contributing nodes \emph{ai}.}
 #'  \item{ \emph{partial_correlation:} value of the partial correlation for the
 #'  edge (\emph{x, y}) conditioned on the contributing nodes \emph{ai}.}
-#'  \item{ \emph{proba:} probabilities of the tips of the inferred orientation,
-#'  derived from the three-point mutual information (cf Affeldt & Isambert,
-#'  UAI 2015 proceedings) and noted as p(x->y);p(x<-y).}
+#'  \item{ \emph{p_y2x:} probability of the arrowhead from \emph{y} to \emph{x},
+#'  of the inferred orientation, derived from the three-point mutual information
+#'  (cf Affeldt & Isambert, UAI 2015 proceedings). NA if the edge is removed.}
+#'  \item{ \emph{p_x2y:} probability of the arrowhead from \emph{x} to \emph{y},
+#'  of the inferred orientation, derived from the three-point mutual information
+#'  (cf Affeldt & Isambert, UAI 2015 proceedings). NA if the edge is removed.}
 #'  \item{ \emph{confidence:} computed only when the confidence cut is
 #'  activated (see parameters \emph{n_shuffles} and \emph{conf_threshold}),
 #'  NA otherwise.

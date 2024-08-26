@@ -70,9 +70,8 @@
 #   * sign: sign of partial correlation between x and y conditioned on "ai"s
 #   * partial_correlation: coefficient of partial correlation between x and y
 #     conditioned on "ai"s
-#   * proba: contains the orientation likelihoods as computed by miic
-#     (cf Affeldt & Isambert, UAI 2015 proceedings) : the probabilities of
-#     both orientations separated by a semi-colon.
+#   * p_y2x: probability of the arrowhead from y to x, NA for removed edges.
+#   * p_x2y: probability of the arrowhead from x to y, NA for removed edges.
 #   * confidence: the ratio of info_shifted between randomized
 #     and normal samples
 #-------------------------------------------------------------------------------
@@ -151,7 +150,7 @@ summarizeResults = function (observations, results,
       is_inference_correct = logical(0), is_causal = logical(0),
       ort_consensus = integer(0), is_causal_consensus = logical(0),
       edge_stats = character(0), sign = character(0),
-      partial_correlation = numeric(0), proba = character(0),
+      partial_correlation = numeric(0), p_y2x = numeric(0), p_x2y = numeric(0),
       confidence = numeric(0), stringsAsFactors = FALSE) )
   #
   # Edge ordering (A<-B or B->A) is given by alphanumerical order
@@ -234,18 +233,20 @@ summarizeResults = function (observations, results,
     summary, observations, state_order)
   summary$partial_correlation <- as.numeric (summary$partial_correlation)
   #
-  # Probabilities of both orientations separated by a semi-colon.
+  # Probabilities of orientations
   #
-  orientation_probabilities <- results$orientations.prob
-  summary$proba <- sapply (1:nrow(summary), function(i)
-    {
-    row <- summary[i, ]
-    if (!is.null(results$adj_matrices) && length(results$adj_matrices) > 1)
-      proba_adj <- results$proba_adj_average
-    else
-      proba_adj <- results$proba_adj_matrix
-    return (paste (proba_adj[row$y, row$x], proba_adj[row$x, row$y], sep = ";") )
-    })
+  if (!is.null(results$adj_matrices) && length(results$adj_matrices) > 1)
+    tmp_proba_adj <- results$proba_adj_average
+  else
+    tmp_proba_adj <- results$proba_adj_matrix
+  summary$p_y2x <- unlist (lapply (1:nrow(summary), function(i) {
+    proba_of_edge <- tmp_proba_adj[ summary[i, "y"], summary[i, "x"] ]
+    ifelse (proba_of_edge == -1, NA_real_, proba_of_edge)
+    } ) )
+  summary$p_x2y <- unlist (lapply (1:nrow(summary), function(i) {
+    proba_of_edge <- tmp_proba_adj[ summary[i, "x"], summary[i, "y"] ]
+    ifelse (proba_of_edge == -1, NA_real_, proba_of_edge)
+    } ) )
   #
   # Genuine causality is deducible only when latent variables are allowed and
   # propagation is not allowed
@@ -363,7 +364,7 @@ summarizeResults = function (observations, results,
     "info", "Nxy", "info_cond", "cplx", "Nxy_ai", "info_shifted",
     "ort_inferred", "ort_ground_truth", "is_inference_correct", "is_causal",
     "ort_consensus", "is_causal_consensus", "edge_stats",
-    "sign", "partial_correlation", "proba", "confidence")
+    "sign", "partial_correlation", "p_y2x", "p_x2y", "confidence")
   columns_kept = columns_kept[columns_kept %in% colnames(summary)]
   summary <- summary[order(summary$info_shifted, decreasing = TRUE),
                      columns_kept, drop=F]

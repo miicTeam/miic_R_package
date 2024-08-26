@@ -194,7 +194,6 @@ tmiic_getIgraph <- function (tmiic_res, display="compact",
   else if (display != "raw")
     tmiic_res <- tmiic_flatten_network (tmiic_res, flatten_mode=display,
                                   keep_edges_on_same_node=show_self_loops)
-
   graph <- getIgraph (tmiic_res, pcor_palette=pcor_palette)
 
   if (display %in% c("raw", "lagged") )
@@ -253,9 +252,13 @@ tmiic_prepare_edges_for_plotting <- function (tmiic_res)
         {
         df_edges[row, c("x","y")] = df_edges[row, c("y","x")]
         df_edges[row, "ort_inferred"] = 2
-        if(!is.na(df_edges[row, "proba"]))
-          df_edges[row, "proba"] = paste0(rev(
-            strsplit(df_edges[row, "proba"], ";")[[1]]), collapse=";")
+        if (  (!is.na(df_edges[row, "p_y2x"]))
+           && (!is.na(df_edges[row, "p_x2y"])) )
+          {
+          temp <- df_edges[row, "p_y2x"]
+          df_edges[row, "p_y2x"] <- df_edges[row, "p_x2y"]
+          df_edges[row, "p_x2y"] <- temp
+          }
         if(!is.na(df_edges[row, "ort_ground_truth"]))
           df_edges[row, "ort_ground_truth"] = 2
         }
@@ -1028,8 +1031,8 @@ plot.tmiic = function(x, display="compact", show_self_loops=TRUE,
   #
   # Export the graph to a graphical object
   #
-  graph <- tmiic.export (x, display=display, method=method,
-                         pcor_palette=pcor_palette)
+  graph <- tmiic.export (x, display=display, show_self_loops=show_self_loops,
+                         method=method, pcor_palette=pcor_palette)
   #
   # Look if we have cases with multiple edges between two nodes
   # or multiple self loops because we need to plot these cases iteratively.

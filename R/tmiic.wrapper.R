@@ -392,36 +392,30 @@ tmiic_combine_orient   <- function (df, col_name)
 #-----------------------------------------------------------------------------
 tmiic_combine_probas <- function (df, comb_orient)
   {
-  valid_probas <- grepl (';', df$proba, fixed=TRUE)
-  df <- df[valid_probas,]
+  df <- df[ (!is.na (df[, "p_y2x"]) )
+          & (!is.na (df[, "p_x2y"]) ), , drop=F]
   if (nrow (df) <= 0)
-    return (NA)
+    return ( c(NA_real_, NA_real_) )
   #
   # We set probas like if we have node X <= node Y
   #
   for ( idx in 1:nrow(df) )
     if (df[idx,"x"] > df[idx,"y"])
-      {
-      proba_split <- strsplit (df[idx, "proba"], ';' )[[1]]
-      df[idx, "proba"] <- paste (proba_split[[2]], proba_split[[1]], sep=";")
-      }
-  #
-  # Split proba column so we can do maths on it
-  #
-  probas_split <- strsplit (df$proba, ';' )
-  df_probas <- do.call(rbind, probas_split)
-  df_probas <- data.frame (x=as.numeric ( as.character (df_probas[,1]) ),
-                           y=as.numeric ( as.character (df_probas[,2]) ) )
+        {
+        temp <- df[idx, "p_y2x"]
+        df[idx, "p_y2x"] <- df[idx, "p_x2y"]
+        df[idx, "p_x2y"] <- temp
+        }
   #
   # Depending on the pre-computed combined orientation, keep max/min/avg
   #
   if (comb_orient == 6)
-    return (paste (max(df_probas[,1]), max(df_probas[,2]), sep=";") )
+    return (c (max(df$p_y2x), max(df$p_x2y) ) )
   if (comb_orient == 2)
-    return (paste (min(df_probas[,1]), max(df_probas[,2]), sep=";") )
+    return (c (min(df$p_y2x), max(df$p_x2y) ) )
   if (comb_orient == -2)
-    return (paste (max(df_probas[,1]), min(df_probas[,2]), sep=";") )
-  return (paste (mean(df_probas[,1]), mean(df_probas[,2]), sep=";"))
+    return (c (max(df$p_y2x), min(df$p_x2y) ) )
+  return (c (mean(df$p_y2x), mean(df$p_x2y) ) )
   }
 
 #-----------------------------------------------------------------------------
@@ -526,10 +520,12 @@ tmiic_flatten_network <- function (tmiic_res, flatten_mode="compact",
       if ( !is.na (one_edge$ort_ground_truth ) )
         if (abs (one_edge$ort_ground_truth ) == 2)
           df_edges [edge_idx,"ort_ground_truth"] <- -one_edge$ort_ground_truth
-      if ( !is.na (one_edge$proba ) )
+      if (  (!is.na(one_edge$p_y2x))
+         && (!is.na(one_edge$p_x2y)) )
         {
-        df_edges [edge_idx, "proba"] = paste0 (rev (
-          strsplit (df_edges [edge_idx, "proba"], ";")[[1]]), collapse=";")
+        temp <- one_edge$p_y2x
+        df_edges[edge_idx, "p_y2x"] <- one_edge$p_x2y
+        df_edges[edge_idx, "p_x2y"] <- temp
         }
       }
     }
@@ -538,7 +534,7 @@ tmiic_flatten_network <- function (tmiic_res, flatten_mode="compact",
   # Exclude self loops if requested
   #
   if (!keep_edges_on_same_node)
-    df_edges <- df_edges[df_edges$x != df_edges$y, ]
+    df_edges <- df_edges[df_edges$x != df_edges$y, , drop=F]
   if (nrow(df_edges) <= 0)
     {
     if (flatten_mode == "drop")
@@ -565,14 +561,14 @@ tmiic_flatten_network <- function (tmiic_res, flatten_mode="compact",
     #
     # Keep one edge per couple of nodes
     #
-    df_group <- df_edges[FALSE,]
+    df_group <- df_edges[FALSE, , drop=F]
     for ( xy_idx in 1:nrow(df_xy) )
       {
       ref_x <- df_xy[xy_idx,"x"]
       ref_y <- df_xy[xy_idx,"y"]
       cond_same_edges = ( ( (df_edges[["x"]] == ref_x) & (df_edges[["y"]] == ref_y) )
                         | ( (df_edges[["x"]] == ref_y) & (df_edges[["y"]] == ref_x) ) )
-      df_same <- df_edges[cond_same_edges,]
+      df_same <- df_edges[cond_same_edges, , drop=F]
 
       if (nrow (df_same) > 1)
         {
@@ -582,7 +578,9 @@ tmiic_flatten_network <- function (tmiic_res, flatten_mode="compact",
           #
           df_same$new_lag <-  tmiic_combine_lag (df_same)
           comb_ort_inferred <- tmiic_combine_orient (df_same, "ort_inferred")
-          df_same$proba <- tmiic_combine_probas (df_same, comb_ort_inferred)
+          tmp_ret <- tmiic_combine_probas (df_same, comb_ort_inferred)
+          df_same$p_y2x <- tmp_ret[[1]]
+          df_same$p_x2y <- tmp_ret[[2]]
           df_same$ort_ground_truth <- tmiic_combine_orient (df_same, "ort_ground_truth")
           df_same$ort_inferred <- comb_ort_inferred
           #
@@ -602,7 +600,7 @@ tmiic_flatten_network <- function (tmiic_res, flatten_mode="compact",
           }
 
         max_info <- max (df_same[["info_shifted"]])
-        df_same <- df_same[ (df_same[["info_shifted"]] == max_info),]
+        df_same <- df_same[ (df_same[["info_shifted"]] == max_info), , drop=F]
         }
       if (nrow(df_same) > 1)
         {
