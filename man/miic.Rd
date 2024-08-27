@@ -407,17 +407,17 @@ A \emph{miic-like} object that contains:
  contributors, measured by I'(x;y;ai|{aj}) / I'(x;y|{aj}),
  where {aj} is the separating set before adding ai. }
  \item{ \emph{info:} the mutual information \emph{I(x;y)} times the number
- of complete samples \emph{Nxy} for the pair (\emph{x}, \emph{y}).}
- \item{ \emph{Nxy:} gives the number of complete samples on which the
+ of complete samples \emph{n_xy} for the pair (\emph{x}, \emph{y}).}
+ \item{ \emph{n_xy:} gives the number of complete samples on which the
  information without conditioning has been computed. If the input dataset
  has no missing value, the number of samples is the same for all pairs
  and corresponds to the total number of samples.}
  \item{ \emph{info_cond:} the conditional mutual information \emph{I(x;y|ai)}
- times the number of complete samples \emph{Nxy_ai} used in the computation.
+ times the number of complete samples \emph{n_xy_ai} used in the computation.
  \emph{info_cond} is equal to \emph{info} when \emph{ai} is an empty set.}
  \item{ \emph{cplx:} the complexity term for the pair (\emph{x}, \emph{y})
  taking into account the contributing nodes \emph{ai}.}
- \item{ \emph{Nxy_ai:} the number of complete samples taking into account
+ \item{ \emph{n_xy_ai:} the number of complete samples taking into account
  \emph{x}, \emph{y} and all nodes in \emph{ai} on which the
  information and the complexity terms are computed.
  If the input dataset has no missing value, the number of samples is the

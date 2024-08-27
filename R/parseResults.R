@@ -33,20 +33,19 @@
 #     If ground truth is known, edges are classified as True or False
 #     Positives/Negatives ("TP", "FP", "TN", "FN").
 #   * ai: list containing the conditioning nodes
-#     (corresponds to ai.vect in the C++ output)
 #   * raw_contributions: raw contributions of each ai to the conditional
 #     independence, measured by I'(x;y;ai|{aj}) / I'(x;y),
 #     where {aj} is the separating set before adding ai.
 #   * contributions : contributions of each ai to the reduction of conditional
 #     mutual information measured by I'(x;y;ai|{aj}) / I'(x;y|{aj}),
 #     where {aj} is the separating set before adding ai.
-#   * info: mutual information (corresponds to Ixy in the C++ output)
-#   * Nxy: the number of samples without missing values for the pair of
+#   * info: mutual information (corresponds to i_xy in the C++ output)
+#   * n_xy: the number of samples without missing values for the pair of
 #     variables
-#   * info_cond: conditional mutual information  (corresponds to Ixy_ai in the
+#   * info_cond: conditional mutual information  (corresponds to i_xy_ai in the
 #     C++ output)
 #   * cplx: the NML complexity (used for independence testing)
-#   * Nxy_ai: the number of samples without missing values for the pair of
+#   * n_xy_ai: the number of samples without missing values for the pair of
 #     variables and the contributors
 #   * info_shifted: the difference between conditional MI and cplx
 #   * ort_inferred: the inferred edge orientation
@@ -144,8 +143,8 @@ summarizeResults = function (observations, results,
     return (data._frame (x = character(0), y = character(0),
       type = character(0), ai = character(0),
       raw_contributions = character(0), contributions = character(0),
-      info = numeric(0), Nxy = numeric(0), info_cond = numeric(0),
-      cplx = numeric(0), Nxy_ai = numeric(0), info_shifted = numeric(0),
+      info = numeric(0), n_xy = numeric(0), info_cond = numeric(0),
+      cplx = numeric(0), n_xy_ai = numeric(0), info_shifted = numeric(0),
       ort_inferred = integer(0), ort_ground_truth = integer(0),
       is_inference_correct = logical(0), is_causal = logical(0),
       ort_consensus = integer(0), is_causal_consensus = logical(0),
@@ -177,14 +176,10 @@ summarizeResults = function (observations, results,
                 & (rownames(summary) %in% rownames(true_edges)) ] <- "FN"
     }
   #
-  # ai is a list containing the conditioning nodes
-  #
-  colnames(summary)[ which (colnames(summary) == "ai.vect") ] <- "ai"
-  #
   # info and info_cond contain the (conditional) mutual information values
   #
-  colnames(summary)[ which (colnames(summary) == "Ixy")] <- "info"
-  colnames(summary)[ which (colnames(summary) == "Ixy_ai")] <- "info_cond"
+  colnames(summary)[ which (colnames(summary) == "i_xy")] <- "info"
+  colnames(summary)[ which (colnames(summary) == "i_xy_ai")] <- "info_cond"
   #
   # info_shifted is the difference between MI and cplx
   #
@@ -361,7 +356,7 @@ summarizeResults = function (observations, results,
   # Sort summary by log likelihood, keep only some cols and returns
   #
   columns_kept = c ("x", "y", "type", "ai", "raw_contributions", "contributions",
-    "info", "Nxy", "info_cond", "cplx", "Nxy_ai", "info_shifted",
+    "info", "n_xy", "info_cond", "cplx", "n_xy_ai", "info_shifted",
     "ort_inferred", "ort_ground_truth", "is_inference_correct", "is_causal",
     "ort_consensus", "is_causal_consensus", "edge_stats",
     "sign", "partial_correlation", "p_y2x", "p_x2y", "confidence")

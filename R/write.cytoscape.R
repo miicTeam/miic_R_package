@@ -396,7 +396,7 @@ writeCytoscapeNetwork <- function(g, file, layout = NULL) {
       )
       line <- paste(line,
         "\t\t\t<data key=\"nSamples\">",
-        summary[index, "Nxy_ui"],
+        summary[index, "n_xy_ai"],
         "</data>\n",
         sep = ""
       )
@@ -712,7 +712,7 @@ writeCytoscapeNetwork <- function(g, file, layout = NULL) {
       line <- paste(
         line,
         "\t\t\t<att name=\"nSamples\" type=\"integer\" value=\"",
-        summary[index, "Nxy_ai"],
+        summary[index, "n_xy_ai"],
         "\"/>\n",
         sep = ""
       )

@@ -116,11 +116,11 @@ miic.reconstruct <- function(input_data = NULL,
                           byrow = TRUE), stringsAsFactors = FALSE)
   colnames(df) <- header
   df[df == "NA"] <- NA
-  df$Ixy <- as.numeric(df$Ixy)
-  df$Ixy_ai <- as.numeric(df$Ixy_ai)
+  df$i_xy <- as.numeric(df$i_xy)
+  df$i_xy_ai <- as.numeric(df$i_xy_ai)
   df$cplx <- as.numeric(df$cplx)
-  df$Rxyz_ai <- as.numeric(df$Rxyz_ai)
-  df$Nxy_ai <- as.numeric(df$Nxy_ai)
+  df$r_xyz_ai <- as.numeric(df$r_xyz_ai)
+  df$n_xy_ai <- as.numeric(df$n_xy_ai)
   df$confidence <- as.numeric(df$confidence)
   res$edges <- df
   #
