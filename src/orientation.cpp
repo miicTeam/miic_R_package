@@ -314,7 +314,7 @@ vector<vector<string>> orientationProbability(Environment& environment) {
 
   // Write output
   vector<vector<string>> orientations{{"source1", "p1", "p2", "target", "p3",
-      "p4", "source2", "NI3", "Conflict"}};
+      "p4", "source2", "ni3", "conflict"}};
   for (size_t i = 0; i < triples.size(); i++) {
     const auto& triple = triples[i];
     const auto& probas = probas_list[i];

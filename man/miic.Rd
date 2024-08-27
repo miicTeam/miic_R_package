@@ -511,8 +511,8 @@ A \emph{miic-like} object that contains:
  \item{ \emph{p3:} probability of the arrowhead mid-node <- node2}
  \item{ \emph{p4:} probability of the arrowhead mid-node -> node2}
  \item{ \emph{node2:} node at the end of the unshielded triplet}
- \item{ \emph{NI3:} 3 point (conditional) mutual information * N}
- \item{ \emph{Conflict:} indicates if there a conflict between the
+ \item{ \emph{ni3:} 3 point (conditional) mutual information * N}
+ \item{ \emph{conflict:} indicates if there a conflict between the
  computed probabilities and the NI3 value}
  }
  }
