@@ -29,8 +29,8 @@ namespace {
 
 constexpr double kEpsI3 = 1.0e-10;
 
-bool acceptProba(double proba, double ori_proba_ratio) {
-  return (1 - proba) / proba < ori_proba_ratio;
+bool acceptProba(double proba, double ort_proba_ratio) {
+  return (1 - proba) / proba < ort_proba_ratio;
 }
 
 }  // anonymous namespace
@@ -39,10 +39,10 @@ bool acceptProba(double proba, double ori_proba_ratio) {
 // x2y: probability that there is an arrow from node x to y
 void updateAdj(Environment& env, int x, int y, double y2x, double x2y) {
   env.edges(x, y).proba_head = x2y;
-  if (acceptProba(x2y, env.ori_proba_ratio))
+  if (acceptProba(x2y, env.ort_proba_ratio))
     env.edges(x, y).status = 2;
   env.edges(y, x).proba_head = y2x;
-  if (acceptProba(y2x, env.ori_proba_ratio))
+  if (acceptProba(y2x, env.ort_proba_ratio))
     env.edges(y, x).status = 2;
 }
 

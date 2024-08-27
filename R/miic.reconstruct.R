@@ -10,7 +10,7 @@ miic.reconstruct <- function(input_data = NULL,
                              latent = "orientation",
                              n_shuffles = 0,
                              orientation = TRUE,
-                             ori_proba_ratio = 1,
+                             ort_proba_ratio = 1,
                              propagation = FALSE,
                              conf_threshold = 0,
                              verbose = FALSE,
@@ -72,7 +72,7 @@ miic.reconstruct <- function(input_data = NULL,
     "n_threads" = n_threads,
     "no_init_eta" = FALSE,
     "orientation" = orientation,
-    "ori_proba_ratio" = ori_proba_ratio,
+    "ort_proba_ratio" = ort_proba_ratio,
     "propagation" = propagation,
     "test_mar" = test_mar,
     "mode" = mode,
@@ -175,7 +175,7 @@ miic.reconstruct <- function(input_data = NULL,
 
   res$time <- stats::setNames(
     as.numeric(time),
-    c("init", "iter", "cut", "ori", "cpp")
+    c("init", "iter", "cut", "ort", "cpp")
   )
 
   # create the data frame of the structures after orientation

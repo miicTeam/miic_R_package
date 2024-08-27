@@ -726,7 +726,7 @@ tmiic_extract_trajectories <- function (input_data, check=T)
                       FUN=function (x) { return (x[1,1] != 1) } ) ) )
     if (length (wrong_starts) > 0)
       miic_warning ("check trajectories", length (wrong_starts),
-        " trajectorie(s) don't start with 1 as first time step value")
+        " trajectories don't start with 1 as first time step value")
     max_nb_ts = max (unlist (lapply (list_ts, FUN=nrow) ) )
     if (max_nb_ts == 1)
       miic_error ("trajectories check",

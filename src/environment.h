@@ -46,7 +46,7 @@ struct Environment {
   vector<Node> nodes;
   Grid2d<Edge> edges;
   bool orientation = false;
-  double ori_proba_ratio = 1;
+  double ort_proba_ratio = 1;
   bool propagation = false;
   // Level of consistency required for the graph
   // 0: no consistency requirement

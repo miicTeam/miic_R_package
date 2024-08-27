@@ -544,7 +544,7 @@ tmiic_compute_row_layout_layers <- function (tmiic_res)
 #-------------------------------------------------------------------------------
 # Internal function to precompute a layout suited for the display of raw and
 # lagged graphs
-# This function computes the layout using Sugiyama algorihtm to
+# This function computes the layout using Sugiyama algorithm to
 # minimize crossing edges
 #
 # param: tmiic_res, a tmiic objectreturned by the execution of miic

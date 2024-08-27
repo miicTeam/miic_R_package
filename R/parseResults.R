@@ -17,7 +17,7 @@
 # - state_order: the state order data frame used, optional, NULL by default.
 # - consensus_threshold: a float, optional, 0.8 by default. Used when
 #   consistency is activated to construct the consensus graph skeleton.
-# - ori_consensus_ratio: a float, optional, 0.1 by default. Used to determine
+# - ort_consensus_ratio: a float, optional, 0.1 by default. Used to determine
 #   if oriented edges are genuine causal and, when consistency is activated,
 #   to determine the consensus graph orientations.
 # - latent: a boolean, optional, TRUE by default. Indicates if latent
@@ -76,7 +76,7 @@
 #-------------------------------------------------------------------------------
 summarizeResults = function (observations, results,
                              true_edges = NULL, state_order = NULL,
-                             consensus_threshold = 0.8, ori_consensus_ratio = 0.1,
+                             consensus_threshold = 0.8, ort_consensus_ratio = 0.1,
                              latent = TRUE, propagation = FALSE)
   {
   # Keep only edges remaining and edges removed using conditioning
@@ -296,25 +296,25 @@ summarizeResults = function (observations, results,
       ratio_x2y <- (1 - proba_x2y) / proba_x2y
       ratio_y2x <- (1 - proba_y2x) / proba_y2x
 
-      if (  (ratio_x2y < ori_consensus_ratio)
-         && (ratio_y2x < ori_consensus_ratio) )
+      if (  (ratio_x2y < ort_consensus_ratio)
+         && (ratio_y2x < ort_consensus_ratio) )
         summary[i, "ort_consensus"] <- 6
-      else if (  (ratio_x2y < ori_consensus_ratio)
-              && (ratio_y2x >= ori_consensus_ratio) )
+      else if (  (ratio_x2y < ort_consensus_ratio)
+              && (ratio_y2x >= ort_consensus_ratio) )
         {
         summary[i, "ort_consensus"] <- 2
-        if (1 / ratio_y2x < ori_consensus_ratio && causality_deducible)
+        if (1 / ratio_y2x < ort_consensus_ratio && causality_deducible)
           {
           summary[i, "is_causal_consensus"] <- TRUE
           if (row$ort_inferred == 2)
             summary[i, "is_causal"] <- TRUE
           }
         }
-      else if (  (ratio_y2x < ori_consensus_ratio)
-              && (ratio_x2y >= ori_consensus_ratio) )
+      else if (  (ratio_y2x < ort_consensus_ratio)
+              && (ratio_x2y >= ort_consensus_ratio) )
         {
         summary[i, "ort_consensus"] <- -2
-        if (1 / ratio_x2y < ori_consensus_ratio && causality_deducible)
+        if (1 / ratio_x2y < ort_consensus_ratio && causality_deducible)
           {
           summary[i, "is_causal_consensus"] <- TRUE
           if (row$ort_inferred == -2)
@@ -343,12 +343,12 @@ summarizeResults = function (observations, results,
       ratio_x2y <- (1 - proba_x2y) / proba_x2y
       ratio_y2x <- (1 - proba_y2x) / proba_y2x
       if (  (row$ort_inferred == 2)
-         && (ratio_x2y < ori_consensus_ratio)
-         && (1 / ratio_y2x < ori_consensus_ratio) )
+         && (ratio_x2y < ort_consensus_ratio)
+         && (1 / ratio_y2x < ort_consensus_ratio) )
         summary[i, "is_causal"] <- TRUE
       if (  (row$ort_inferred == -2)
-         && (ratio_y2x < ori_consensus_ratio)
-         && (1 / ratio_x2y < ori_consensus_ratio) )
+         && (ratio_y2x < ort_consensus_ratio)
+         && (1 / ratio_x2y < ort_consensus_ratio) )
         summary[i, "is_causal"] <- TRUE
       }
     }

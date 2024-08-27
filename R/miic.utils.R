@@ -1041,7 +1041,7 @@ test_param_wrong_float <- function (value, min=NA, max=NA)
 # Returns: a list with all the parameters, eventually modified or initialized
 #-------------------------------------------------------------------------------
 check_parameters <- function (input_data, n_threads, cplx,
-  orientation, ori_proba_ratio, ori_consensus_ratio, propagation, latent,
+  orientation, ort_proba_ratio, ort_consensus_ratio, propagation, latent,
   n_eff, n_shuffles, conf_threshold, sample_weights, test_mar,
   consistent, max_iteration, consensus_threshold,
   mode, negative_info, verbose) {
@@ -1050,28 +1050,28 @@ check_parameters <- function (input_data, n_threads, cplx,
   list_ret$cplx = check_param_string (cplx, "complexity", c("nml", "mdl"))
   list_ret$orientation = check_param_logical (orientation, "orientation", TRUE)
 
-  if ( test_param_wrong_float (ori_proba_ratio, min=0, max=1) )
+  if ( test_param_wrong_float (ort_proba_ratio, min=0, max=1) )
     {
-    miic_warning ("parameters", "supplied value ", ori_proba_ratio,
-      " for the orientation probabilty ratio parameter is invalid.",
+    miic_warning ("parameters", "supplied value ", ort_proba_ratio,
+      " for the orientation probability ratio parameter is invalid.",
       " It must be a floating point between 0 and 1.",
       " The default value (1) will be used.")
-    ori_proba_ratio = 1
+    ort_proba_ratio = 1
     }
-  list_ret$ori_proba_ratio = ori_proba_ratio
+  list_ret$ort_proba_ratio = ort_proba_ratio
 
-  if ( is.null (ori_consensus_ratio) )
-    ori_consensus_ratio = list_ret$ori_proba_ratio
-  else if ( test_param_wrong_float (ori_consensus_ratio, min=0, max=1) )
+  if ( is.null (ort_consensus_ratio) )
+    ort_consensus_ratio = list_ret$ort_proba_ratio
+  else if ( test_param_wrong_float (ort_consensus_ratio, min=0, max=1) )
     {
-    miic_warning ("parameters", "supplied value ", ori_consensus_ratio,
+    miic_warning ("parameters", "supplied value ", ort_consensus_ratio,
       " for the orientation concensus ratio parameter is invalid.",
       " It must be a floating point between 0 and 1.",
       " The default value (same as orientation probabilty ratio: ",
-      ori_proba_ratio, ") will be used.")
-    ori_consensus_ratio = list_ret$ori_proba_ratio
+      ort_proba_ratio, ") will be used.")
+    ort_consensus_ratio = list_ret$ort_proba_ratio
     }
-  list_ret$ori_consensus_ratio = ori_consensus_ratio
+  list_ret$ort_consensus_ratio = ort_consensus_ratio
 
   list_ret$propagation = check_param_logical (propagation, "propagation", FALSE)
   list_ret$latent = check_param_string (latent, "latent", MIIC_VALID_LATENT)

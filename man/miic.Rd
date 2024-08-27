@@ -12,8 +12,8 @@ miic(
   n_threads = 1,
   cplx = "nml",
   orientation = TRUE,
-  ori_proba_ratio = 1,
-  ori_consensus_ratio = NULL,
+  ort_proba_ratio = 1,
+  ort_consensus_ratio = NULL,
   propagation = FALSE,
   latent = "orientation",
   n_eff = -1,
@@ -169,30 +169,30 @@ edge directions, based on the sign and magnitude of the conditional
 3-point information of unshielded triples and, in temporal mode, using time.
 If set to FALSE, the orientation step is not performed.}
 
-\item{ori_proba_ratio}{[a floating point between 0 and 1, optional,
+\item{ort_proba_ratio}{[a floating point between 0 and 1, optional,
 1 by default]
 
 The threshold when deducing the type of an edge tip (head/tail)
 from the probability of orientation.
 For a given edge tip, denote by p the probability of it being a head,
-the orientation is accepted if (1 - p) / p < \emph{ori_proba_ratio}.
+the orientation is accepted if (1 - p) / p < \emph{ort_proba_ratio}.
 0 means reject all orientations, 1 means accept all orientations.}
 
-\item{ori_consensus_ratio}{[a floating point between 0 and 1, optional,
+\item{ort_consensus_ratio}{[a floating point between 0 and 1, optional,
 NULL by default]
 Used to determine if orientations correspond to genuine causal edges
 and, when consistency is activated, to deduce the orientations in
 the consensus graph.\cr
 Oriented edges will be marked as genuine causal when:
-     \eqn{ (1 - p_{head}) / p_{head} < } \emph{ori_consensus_ratio}
-and  \eqn{ p_{tail} / (1 - p_{tail}) < } \emph{ori_consensus_ratio}.\cr
-When consistency is activated, \emph{ori_consensus_ratio} is used as
+     \eqn{ (1 - p_{head}) / p_{head} < } \emph{ort_consensus_ratio}
+and  \eqn{ p_{tail} / (1 - p_{tail}) < } \emph{ort_consensus_ratio}.\cr
+When consistency is activated, \emph{ort_consensus_ratio} is used as
 threshold when deducing the type of an consensus edge tip (head/tail)
 from the average probability of orientations over the cycle of graphs.
 For a given edge tip, denote by p the average probability of it being a head,
-the orientation is accepted if (1 - p) / p < \emph{ori_consensus_ratio}.\cr
-If not supplied, the \emph{ori_consensus_ratio} will be initialized with
-the \emph{ori_proba_ratio} value.}
+the orientation is accepted if (1 - p) / p < \emph{ort_consensus_ratio}.\cr
+If not supplied, the \emph{ort_consensus_ratio} will be initialized with
+the \emph{ort_proba_ratio} value.}
 
 \item{propagation}{[a boolean value, optional, FALSE by default]
 
@@ -441,11 +441,11 @@ A \emph{miic-like} object that contains:
  arrow tips of an edge, based on the probabilities given in the columns
  \emph{p_y2x} and \emph{p_x2y}. TRUE: when the edges is directed
  and both the head and the tail are set with high probabilities
- (adjustable with the \emph{ori_consensus_ratio} parameter),
+ (adjustable with the \emph{ort_consensus_ratio} parameter),
  FALSE otherwise or NA if the edge is not retained.
  More formally, an oriented edge is marked as genuine causal when
-      \eqn{ (1 - p_{head}) / p_{head} < } \emph{ori_consensus_ratio}
- and  \eqn{ p_{tail} / (1 - p_{tail}) < } \emph{ori_consensus_ratio}.\cr
+      \eqn{ (1 - p_{head}) / p_{head} < } \emph{ort_consensus_ratio}
+ and  \eqn{ p_{tail} / (1 - p_{tail}) < } \emph{ort_consensus_ratio}.\cr
  A directed edge not marked as genuine causal indicates that only
  the head is set with high probability, while the tail probability
  is not extreme enough to be either head or tail. In this case,
@@ -457,7 +457,7 @@ A \emph{miic-like} object that contains:
  consistency is not activated or, when consistency is on,
  if there is only one graph returned (no cycle).
  When computed, indicates the consensus orientation of the edge
- determined from the consensus skeleton and the \emph{ori_consensus_ratio}
+ determined from the consensus skeleton and the \emph{ort_consensus_ratio}
  threshold on averaged orientation probabilities over the cycle of graphs.
  Possible values are 0: not connected, 1: not oriented, -2 or 2: oriented
  and 6: bi-directional (latent variable).}

@@ -49,8 +49,8 @@ void setEnvironmentFromR(const Rcpp::List& input_data,
   if (arg_list.containsElementNamed("orientation"))
     environment.orientation = as<bool>(arg_list["orientation"]);
 
-  if (arg_list.containsElementNamed("ori_proba_ratio"))
-    environment.ori_proba_ratio = as<double>(arg_list["ori_proba_ratio"]);
+  if (arg_list.containsElementNamed("ort_proba_ratio"))
+    environment.ort_proba_ratio = as<double>(arg_list["ort_proba_ratio"]);
 
   if (arg_list.containsElementNamed("propagation"))
     environment.propagation = as<bool>(arg_list["propagation"]);
