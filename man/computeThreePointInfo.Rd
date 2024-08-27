@@ -61,13 +61,13 @@ considered as discrete, and numerical vectors as continuous.}
 \value{
 A list that contains :
 \itemize{
-\item I3: The estimation of (conditional) three-point information without the
+\item i3: The estimation of (conditional) three-point information without the
 complexity cost.
-\item I3k: The estimation of (conditional) three-point information with the
+\item i3k: The estimation of (conditional) three-point information with the
 complexity cost (\eqn{I3k = I3 - cplx}).
-\item I2: For reference, the estimation of (conditional) mutual information
+\item i2: For reference, the estimation of (conditional) mutual information
 \eqn{I(X;Y|U)} used in the estimation of \eqn{I3}.
-\item I2k: For reference, the estimation of regularized (conditional) mutual
+\item i2k: For reference, the estimation of regularized (conditional) mutual
 information \eqn{Ik(X;Y|U)} used in the estimation of \eqn{I3k}.
 }
 }
@@ -94,8 +94,8 @@ Z <- runif(N)
 X <- Z * 2 + rnorm(N, sd = 0.2)
 Y <- Z * 2 + rnorm(N, sd = 0.2)
 res <- computeThreePointInfo(X, Y, Z)
-message("I(X;Y;Z) = ", res$I3)
-message("Ik(X;Y;Z) = ", res$I3k)
+message("I(X;Y;Z) = ", res$i3)
+message("Ik(X;Y;Z) = ", res$i3k)
 
 \donttest{
 # Independence, conditional dependence : X -> Z <- Y
@@ -103,8 +103,8 @@ X <- runif(N)
 Y <- runif(N)
 Z <- X + Y + rnorm(N, sd = 0.1)
 res <- computeThreePointInfo(X, Y, Z)
-message("I(X;Y;Z) = ", res$I3)
-message("Ik(X;Y;Z) = ", res$I3k)
+message("I(X;Y;Z) = ", res$i3)
+message("Ik(X;Y;Z) = ", res$i3k)
 }
 
 }

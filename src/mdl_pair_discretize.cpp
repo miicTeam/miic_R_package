@@ -110,10 +110,10 @@ List miicRGetInfo3Point(List input_data, List arg_list) {
   auto res = getInfo3Point(environment, 0, 1, 2, ui_list);
 
   List result = List::create(
-      _["I3"]            = res.Ixyz_ui,
-      _["I3k"]           = res.Ixyz_ui - res.kxyz_ui,
-      _["I2"]            = res.Ixy_ui,
-      _["I2k"]           = res.Ixy_ui - res.kxy_ui);
+      _["i3"]            = res.Ixyz_ui,
+      _["i3k"]           = res.Ixyz_ui - res.kxyz_ui,
+      _["i2"]            = res.Ixy_ui,
+      _["i2k"]           = res.Ixy_ui - res.kxy_ui);
 
   return result;
 }
