@@ -139,7 +139,7 @@
 export <- function (miic_res, method="igraph", pcor_palette=NULL,
                     display="compact", show_self_loops=TRUE)
   {
-  if ( is.null(miic_res$all.edges.summary) )
+  if ( is.null(miic_res$summary) )
     stop("The inferred network does not exist")
   if ( (!is.null(method)) && (method != "igraph") )
     stop("Method not supported")
@@ -180,14 +180,14 @@ export <- function (miic_res, method="igraph", pcor_palette=NULL,
 #' plotting parameters and \code{\link[igraph]{layout}} for different layouts.
 #-------------------------------------------------------------------------------
 getIgraph <- function(miic_res, pcor_palette = NULL) {
-  if (is.null(miic_res$all.edges.summary)) {
+  if (is.null(miic_res$summary)) {
     stop("The inferred network does not exist.")
   }
   if (!base::requireNamespace("igraph", quietly = TRUE)) {
     stop("Package 'igraph' is required.")
   }
 
-  summary = miic_res$all.edges.summary[miic_res$all.edges.summary$type %in% c('P', 'TP', 'FP'), ]
+  summary = miic_res$summary[miic_res$summary$type %in% c('P', 'TP', 'FP'), ]
   if (nrow(summary) > 0) {
     # Re-order summary so that all edges go from "x" to "y"
     for(row in 1:nrow(summary)){

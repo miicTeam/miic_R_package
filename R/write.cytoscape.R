@@ -28,11 +28,11 @@ writeCytoscapeNetwork <- function(g, file, layout = NULL) {
     stop("The file path is necessary")
   }
 
-  if (is.null(g$all.edges.summary)) {
+  if (is.null(g$summary)) {
     stop("The result of the miic execution is required")
   }
 
-  summary <- g$all.edges.summary
+  summary <- g$summary
   adj_matrix <- g$adj_matrix
 
   if (is.null(layout)) {

@@ -179,13 +179,13 @@ miic.reconstruct <- function(input_data = NULL,
   )
 
   # create the data frame of the structures after orientation
-  orientations_prob <- res$orientations.prob
+  orientations_prob <- res$triples
 
-  if (length(res$orientations.prob) > 0) {
+  if (length(res$triples) > 0) {
     a <- length(orientations_prob[[1]])
     b <- length(unlist(orientations_prob))
-    tmp <- unlist(res$orientations.prob)[1:a]
-    res1 <- unlist(res$orientations.prob)[(a + 1):b]
+    tmp <- unlist(res$triples)[1:a]
+    res1 <- unlist(res$triples)[(a + 1):b]
     orientations_prob <- data.frame(matrix(
       res1,
       nrow = length(orientations_prob) - 1,
@@ -200,7 +200,7 @@ miic.reconstruct <- function(input_data = NULL,
     orientations_prob[, c(8:9)] <- sapply(orientations_prob[, c(8:9)], as.numeric)
   }
   # update the returned matrix
-  res$orientations.prob <- orientations_prob
+  res$triples <- orientations_prob
 
   res$interrupted <- FALSE
 

@@ -361,7 +361,7 @@ If TRUE, debugging output is printed.}
 \value{
 A \emph{miic-like} object that contains:
 \itemize{
- \item{\emph{all.edges.summary:} a data frame with information about the
+ \item{\emph{summary:} a data frame with information about the
  relationship between relevant pair of variables.
 
  As returning the information on all possible pairs of variables could lead
@@ -392,7 +392,7 @@ A \emph{miic-like} object that contains:
  retained edges. If the true graph is supplied in the \emph{true_edges}
  parameter, 'P' becomes 'TP' (True Positive) or 'FP' (False Positive),
  while 'N' becomes 'TN' (True Negative) or 'FN' (False Negative).
- Note that, as the \emph{all.edges.summary} does not contain all the
+ Note that, as the \emph{summary} does not contain all the
  removed edges, edges not present have to be considered as 'N'
  and, if the true graph is supplied, as 'TN'.}
  \item{ \emph{ai:} the contributing nodes found by the method which
@@ -500,7 +500,7 @@ A \emph{miic-like} object that contains:
  the C++ core function. This data frame is used internally by MIIC to
  produce the summary and contains all pairs of variables (\emph{x, y}). }
 
- \item{\emph{orientations.prob:} this data frame lists the orientation
+ \item{\emph{triples:} this data frame lists the orientation
  probabilities of the two edges of all unshielded triples of the
  reconstructed network with the structure: node1 -- mid-node -- node2:
  \itemize{

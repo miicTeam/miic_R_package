@@ -71,7 +71,7 @@ tmiic_getIgraph <- function (tmiic_res, display="compact",
                              show_self_loops=TRUE, pcor_palette=NULL)
   {
   if (display == "lagged")
-    tmiic_res$all.edges.summary = tmiic_res$tmiic$all.edges.stationarity
+    tmiic_res$summary = tmiic_res$tmiic$stationarity
   else if (display != "raw")
     tmiic_res <- tmiic_flatten_network (tmiic_res, flatten_mode=display,
                                   keep_edges_on_same_node=show_self_loops)
@@ -86,8 +86,8 @@ tmiic_getIgraph <- function (tmiic_res, display="compact",
   else
     {
     igraph::E(graph)$curved = FALSE
-    if ( "lag" %in% colnames(tmiic_res$all.edges.summary) )
-      igraph::E(graph)$label <- tmiic_res$all.edges.summary$lag
+    if ( "lag" %in% colnames(tmiic_res$summary) )
+      igraph::E(graph)$label <- tmiic_res$summary$lag
     }
   return(graph)
   }
@@ -108,7 +108,7 @@ tmiic_getIgraph <- function (tmiic_res, display="compact",
 #-----------------------------------------------------------------------------
 tmiic_prepare_edges_for_plotting <- function (tmiic_res)
   {
-  df_edges <- tmiic_res$all.edges.summary[tmiic_res$all.edges.summary$type %in% c('P', 'TP', 'FP'), ]
+  df_edges <- tmiic_res$summary[tmiic_res$summary$type %in% c('P', 'TP', 'FP'), ]
   if (nrow(df_edges) <= 0)
     df_edges$xy = character(0)
   else
@@ -145,7 +145,7 @@ tmiic_prepare_edges_for_plotting <- function (tmiic_res)
         }
       }
     }
-  tmiic_res$all.edges.summary <- df_edges
+  tmiic_res$summary <- df_edges
   return (tmiic_res)
   }
 
@@ -165,7 +165,7 @@ tmiic_prepare_edges_for_plotting <- function (tmiic_res)
 #-------------------------------------------------------------------------------
 tmiic_get_multiple_edges_for_plotting <- function (tmiic_res)
   {
-  df_mult <- tmiic_res$all.edges.summary
+  df_mult <- tmiic_res$summary
   if (nrow(df_mult) <= 0)
     df_mult$count <- numeric(0)
   else
@@ -434,7 +434,7 @@ tmiic_compute_row_layout_greedy <- function (tmiic_res)
   # Filter out self edges, count and summarize edges regardless their lags
   #
   tmiic_flat <- tmiic_flatten_network (tmiic_res)
-  df_edges <- tmiic_flat$all.edges.summary
+  df_edges <- tmiic_flat$summary
   df_edges <- df_edges[(df_edges$x != df_edges$y),]
   if (nrow (df_edges) == 0)
     df_edges$count <- integer()
@@ -560,7 +560,7 @@ tmiic_compute_row_layout_sugiyama <- function (tmiic_res)
   # Filter out self edges, count and summarize edges regardless their lags
   #
   tmiic_flat <- tmiic_flatten_network(tmiic_res)
-  df_edges <- tmiic_flat$all.edges.summary
+  df_edges <- tmiic_flat$summary
   df_edges <- df_edges[(df_edges$x != df_edges$y),]
   if (nrow(df_edges) == 0)
     df_edges$count <- integer()
@@ -953,7 +953,7 @@ plot.tmiic = function(x, method='igraph', pcor_palette=NULL,
     # If we have a least on case with multiple edges between the same nodes,
     # draw iteratively
     #
-    df_edges <- x$all.edges.summary
+    df_edges <- x$summary
     edges_colors_iter <- igraph::E(graph)$color
     edges_labels_iter <- igraph::E(graph)$label
     #

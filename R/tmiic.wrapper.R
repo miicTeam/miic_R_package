@@ -482,12 +482,12 @@ tmiic_flatten_network <- function (tmiic_res, flatten_mode="compact",
   #
   # Keep only edges found by miic
   #
-  df_edges <- tmiic_res$all.edges.summary[tmiic_res$all.edges.summary$type %in% c('P', 'TP', 'FP'), ]
+  df_edges <- tmiic_res$summary[tmiic_res$summary$type %in% c('P', 'TP', 'FP'), ]
   if (nrow(df_edges) <= 0)
     {
     if (flatten_mode != "drop")
       df_edges$lag = numeric(0)
-    tmiic_res$all.edges.summary <- df_edges
+    tmiic_res$summary <- df_edges
     return (tmiic_res)
     }
   #
@@ -539,7 +539,7 @@ tmiic_flatten_network <- function (tmiic_res, flatten_mode="compact",
     {
     if (flatten_mode == "drop")
       df_edges$lag <- NULL
-    tmiic_res$all.edges.summary <- df_edges
+    tmiic_res$summary <- df_edges
     return (tmiic_res)
     }
   #
@@ -645,7 +645,7 @@ tmiic_flatten_network <- function (tmiic_res, flatten_mode="compact",
   #
   # returns the tmiic structure where network summary has been flattened
   #
-  tmiic_res$all.edges.summary <- df_edges
+  tmiic_res$summary <- df_edges
   return (tmiic_res)
   }
 
@@ -668,7 +668,7 @@ tmiic_repeat_edges_over_history <- function (tmiic_res)
   {
   # Consider only edges found by miic  type = "P", "TP", "FP"
   #
-  df_edges <- tmiic_res$all.edges.summary[tmiic_res$all.edges.summary$type %in% c('P', 'TP', 'FP'), ]
+  df_edges <- tmiic_res$summary[tmiic_res$summary$type %in% c('P', 'TP', 'FP'), ]
   if (nrow(df_edges) <= 0)
     return (df_edges)
   #

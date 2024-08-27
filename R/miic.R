@@ -369,7 +369,7 @@
 #'
 #' @return A \emph{miic-like} object that contains:
 #' \itemize{
-#'  \item{\emph{all.edges.summary:} a data frame with information about the
+#'  \item{\emph{summary:} a data frame with information about the
 #'  relationship between relevant pair of variables.
 #'
 #'  As returning the information on all possible pairs of variables could lead
@@ -400,7 +400,7 @@
 #'  retained edges. If the true graph is supplied in the \emph{true_edges}
 #'  parameter, 'P' becomes 'TP' (True Positive) or 'FP' (False Positive),
 #'  while 'N' becomes 'TN' (True Negative) or 'FN' (False Negative).
-#'  Note that, as the \emph{all.edges.summary} does not contain all the
+#'  Note that, as the \emph{summary} does not contain all the
 #'  removed edges, edges not present have to be considered as 'N'
 #'  and, if the true graph is supplied, as 'TN'.}
 #'  \item{ \emph{ai:} the contributing nodes found by the method which
@@ -508,7 +508,7 @@
 #'  the C++ core function. This data frame is used internally by MIIC to
 #'  produce the summary and contains all pairs of variables (\emph{x, y}). }
 #'
-#'  \item{\emph{orientations.prob:} this data frame lists the orientation
+#'  \item{\emph{triples:} this data frame lists the orientation
 #'  probabilities of the two edges of all unshielded triples of the
 #'  reconstructed network with the structure: node1 -- mid-node -- node2:
 #'  \itemize{
@@ -859,7 +859,7 @@ miic <- function(input_data,
   # Post-traitment
   #
   post_start = Sys.time()
-  res$all.edges.summary <- summarizeResults (
+  res$summary <- summarizeResults (
     observations = input_data,
     results = res,
     true_edges = true_edges,
@@ -871,9 +871,9 @@ miic <- function(input_data,
 
   if (!is.null (true_edges))
     {
-    tp = sum (res$all.edges.summary$type == "TP")
-    fp = sum (res$all.edges.summary$type == "FP")
-    fn = sum (res$all.edges.summary$type == "FN")
+    tp = sum (res$summary$type == "TP")
+    fp = sum (res$summary$type == "FP")
+    fn = sum (res$summary$type == "FN")
     precision = tp / (tp + fp)
     recall = tp / (tp + fn)
     fscore = (2 * (precision * recall) ) / (precision + recall)
@@ -907,13 +907,13 @@ miic <- function(input_data,
     # The output of the reconstruction is the "raw" temporal graph, without
     # edges identical by stationarity. To have the "real" temporal graph,
     # we duplicate the edges using the stationary assumption and this "real"
-    # graph is stored the "all.edges.stationarity" data frame.
+    # graph is stored the "stationarity" data frame.
     #
     edges_dup_stat = tmiic_repeat_edges_over_history (res)
     res$tmiic <- list (lagged_state_order = state_order,
                        lagged_black_box = black_box,
                        lagged_true_edges = true_edges,
-                       all.edges.stationarity = edges_dup_stat)
+                       stationarity = edges_dup_stat)
     }
 
   miic_end = Sys.time()
