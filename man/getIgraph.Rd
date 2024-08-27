@@ -4,10 +4,10 @@
 \alias{getIgraph}
 \title{Igraph plotting function for miic}
 \usage{
-getIgraph(miic.res, pcor_palette = NULL)
+getIgraph(miic_res, pcor_palette = NULL)
 }
 \arguments{
-\item{miic.res}{[a miic graph object]
+\item{miic_res}{[a miic graph object]
 The graph object returned by the miic execution.}
 
 \item{pcor_palette}{The color palette used to represent the partial correlations

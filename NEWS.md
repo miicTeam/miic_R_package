@@ -1,5 +1,18 @@
 # Development version
 
+# v2.0.1
+
+## Fixes and improvements
+
+- Updated version published on CRAN.
+
+- Standardization of exported function names, parameters and return values.
+
+## Known issues
+
+- A (very) large number of contributors can lead to a memory fault.
+  Initial fix has been reverted due to side effects.
+  
 # v2.0.0
 
 ## Features
@@ -9,11 +22,6 @@
   [Simon et al., eLife, reviewed preprint]
   (https://www.biorxiv.org/content/10.1101/2024.02.06.579177v1.abstract)
 
-## Known issues
-
-- A (very) large number of contributors can lead to a memory fault.
-  Initial fix has been reverted due to side effects.
-  
 # v1.8.1
 
 ## Fixes and improvements

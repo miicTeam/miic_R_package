@@ -641,76 +641,76 @@ library(miic)
 data(hematoData)
 
 # execute MIIC (reconstruct graph)
-miic.res <- miic(
+miic_res <- miic(
   input_data = hematoData[1:1000,], latent = "yes",
   n_shuffles = 10, conf_threshold = 0.001
 )
 
 # plot graph
 if(require(igraph)) {
- plot(miic.res, method="igraph")
+ plot(miic_res, method="igraph")
 }
 
 \donttest{
 # write graph to graphml format. Note that to correctly visualize
 # the network we created the miic style for Cytoscape (http://www.cytoscape.org/).
 
-miic.write.network.cytoscape(g = miic.res, file = file.path(tempdir(), "temp"))
+writeCytoscapeNetwork(g = miic_res, file = file.path(tempdir(), "temp"))
 
 # EXAMPLE CANCER
 data(cosmicCancer)
 data(cosmicCancer_stateOrder)
 # execute MIIC (reconstruct graph)
-miic.res <- miic(
+miic_res <- miic(
   input_data = cosmicCancer, state_order = cosmicCancer_stateOrder, latent = "yes",
   n_shuffles = 100, conf_threshold = 0.001
 )
 
 # plot graph
 if(require(igraph)) {
- plot(miic.res)
+ plot(miic_res)
 }
 
 # write graph to graphml format. Note that to correctly visualize
 # the network we created the miic style for Cytoscape (http://www.cytoscape.org/).
-miic.write.network.cytoscape(g = miic.res, file = file.path(tempdir(), "temp"))
+writeCytoscapeNetwork(g = miic_res, file = file.path(tempdir(), "temp"))
 
 # EXAMPLE OHNOLOGS
 data(ohno)
 data(ohno_stateOrder)
 # execute MIIC (reconstruct graph)
-miic.res <- miic(
+miic_res <- miic(
   input_data = ohno, latent = "yes", state_order = ohno_stateOrder,
   n_shuffles = 100, conf_threshold = 0.001
 )
 
 # plot graph
 if(require(igraph)) {
- plot(miic.res)
+ plot(miic_res)
 }
 
 # write graph to graphml format. Note that to correctly visualize
 # the network we created the miic style for Cytoscape (http://www.cytoscape.org/).
-miic.write.network.cytoscape(g = miic.res, file = file.path(tempdir(), "temp"))
+writeCytoscapeNetwork(g = miic_res, file = file.path(tempdir(), "temp"))
 
 # EXAMPLE COVID CASES (time series demo)
 data(covidCases)
 # execute MIIC (reconstruct graph in temporal mode)
-tmiic.res <- miic(input_data = covidCases, mode = "TS", n_layers = 3, delta_t = 1, movavg = 14)
+tmiic_res <- miic(input_data = covidCases, mode = "TS", n_layers = 3, delta_t = 1, movavg = 14)
 
 # to plot the default graph (compact)
 if(require(igraph)) {
- plot(tmiic.res)
+ plot(tmiic_res)
 }
 
-# to plot the raw temporal network Using igraph
+# to plot the raw temporal network
 if(require(igraph)) {
-  plot(tmiic.res, display="raw")
+  plot(tmiic_res, display="raw")
 }
 
-# to plot the full temporal network Using igraph
+# to plot the full temporal network
 if(require(igraph)) {
-  plot(tmiic.res, display="lagged")
+  plot(tmiic_res, display="lagged")
 }
 
 }

@@ -6,20 +6,33 @@
 \usage{
 \method{plot}{tmiic}(
   x,
+  method = "igraph",
+  pcor_palette = NULL,
   display = "compact",
   show_self_loops = TRUE,
   positioning_for_grid = "greedy",
   orientation_for_grid = "L",
-  method = "igraph",
-  pcor_palette = NULL,
   ...
 )
 }
 \arguments{
-\item{x}{[a tmiic graph object]
-The graph object returned by \code{\link{miic}} in temporal mode}
+\item{x}{[a tmiic graph object, required]
 
-\item{display}{[a string]. Optional, default value "compact".
+The graph object returned by \code{\link{miic}} in temporal mode.}
+
+\item{method}{[a string, optional, default value "igraph"]
+
+The plotting method, currently only "igraph" is supported.}
+
+\item{pcor_palette}{[a color palette, optional, default value
+grDevices::colorRampPalette(c("blue", "darkgrey", "red")]
+
+Used to represent the partial correlations (the color of the edges).
+The palette must be able to handle 201 shades to cover the correlation range
+from -100 to +100.}
+
+\item{display}{[a string, optional, default value "compact"]
+
 Possible values are \emph{"raw"}, \emph{"lagged"}, \emph{"compact"},
 \emph{"combine"}, \emph{"unique"}, \emph{"drop"}:
 \itemize{
@@ -35,14 +48,14 @@ Possible values are \emph{"raw"}, \emph{"lagged"}, \emph{"compact"},
   and edges are converted into a flattened version to produce a compact
   view of the temporal network whilst still presenting all the information
   in the plotting.\cr
-  i.e.: X_lag1->Y_lag0, X_lag2<-Y_lag0 become respectively X->Y lag=1,
+  e.g. X_lag1->Y_lag0, X_lag2<-Y_lag0 become respectively X->Y lag=1,
   X<-Y lag=2.
 \item When \emph{display} = \emph{"combine"}, prior to the plotting,
   a preprocessing will be applied to kept only one edge
   per couple of nodes. The info_shifted will be the highest one
   of the summarized edges whilst the lag and orientation of the
   summarized edge will be an aggregation.\cr
-  i.e.: X_lag1->Y_lag0, X_lag2<-Y_lag0 will become X<->Y lag=1,2 with
+  e.g. X_lag1->Y_lag0, X_lag2<-Y_lag0 will become X<->Y lag=1,2 with
   the info_shifted of X_lag1->Y_lag0 if info_shifted of
   X_lag1->Y_lag0 > X_lag2<-Y_lag0.
 \item When \emph{display} = \emph{"unique"}, prior to the plotting,
@@ -50,27 +63,30 @@ Possible values are \emph{"raw"}, \emph{"lagged"}, \emph{"compact"},
   highest info_shifted for a couple of nodes.
   If several edges between the sames nodes have the same
   info_shifted, then the edge kept is the one with the minimum lag.\cr
-  i.e.: X_lag1->Y_lag0, X_lag2<-Y_lag0 with info_shifted of
+  e.g. X_lag1->Y_lag0, X_lag2<-Y_lag0 with info_shifted of
   X_lag1->Y_lag0 > X_lag2<-Y_lag0 become X->Y lag=1.
 \item When \emph{display} = \emph{"drop"}, prior to the plotting,
   a preprocessing will be applied to kept only the edges having the
   highest info_shifted for a couple of nodes.
   If several edges between the sames nodes have the same
   info_shifted, then the edge kept is the one with the minimum lag.\cr
-  i.e. :  X_lag1->Y_lag0, X_lag2<-Y_lag0 with info_shifted of
+  e.g. X_lag1->Y_lag0, X_lag2<-Y_lag0 with info_shifted of
   X_lag1->Y_lag0 > X_lag2<-Y_lag0 become X->Y.
   The lag information is dropped during the preprocessing and
   will not be displayed on the final plotting.
 }}
 
-\item{show_self_loops}{[a boolean] Optional, TRUE by default.
-When TRUE, the edges like X_lag0-X_lag1 are included in the iGraph object.
-When FALSE, only edges having different nodes are present in the iGraph
+\item{show_self_loops}{[a boolean, optional, TRUE by default]
+
+When TRUE, the lagged edges starting and ending on the same node
+are included in the igraph  object.
+When FALSE, only edges having different nodes are present in the igraph
 object.}
 
-\item{positioning_for_grid}{[a string] Optional, "greedy" by default.
-Used only when the display is "raw" or "lagged and no layout is supplied.
-Possible values are \emph{"none"}, \emph{"alphabetical"}, \emph{"layers"}
+\item{positioning_for_grid}{[a string, optional, "greedy" by default]
+
+Used only when the display is "raw" or "lagged" and no layout is supplied.
+Possible values are \emph{"none"}, \emph{"alphabetical"}, \emph{"layers"},
 \emph{"greedy"} and \emph{"sugiyama"}
 \itemize{
 \item When \emph{positioning_for_grid} = \emph{"none"}
@@ -88,29 +104,24 @@ Possible values are \emph{"none"}, \emph{"alphabetical"}, \emph{"layers"}
  minimizing the crossing edges
 }}
 
-\item{orientation_for_grid}{[a string] Optional, "L" by default.
+\item{orientation_for_grid}{[a string, optional, "L" by default]
+
 Used only when the display is "raw" or "lagged and no layout is supplied.
 Indicates the orientation of the draw, possible values are landscape: "L"
 or portrait: "P".}
 
-\item{method}{A string representing the plotting method. Default to "igraph".
-Currently only "igraph" is supported.}
-
-\item{pcor_palette}{Optional. The color palette used to represent the partial
-correlations (the color of the edges). See \code{\link{getIgraph}} for details.}
-
-\item{\dots}{Additional plotting parameters. See the corresponding plot function
-for the complete list.
+\item{\dots}{Additional plotting parameters. See the corresponding plot
+function for the complete list.
 
 For igraph, see \code{\link[igraph]{igraph.plotting}}.}
 }
 \description{
-This function calls \code{\link{tmiic.export}} to build a
-plottable object from the result returned by \code{\link{miic}} in
-temporal mode and plot it.
+This function calls \code{\link{export}} to build a plottable
+object from the result returned by \code{\link{miic}} in temporal mode
+and plot it.
 }
 \details{
-See the documentation of \code{\link{tmiic.export}} for further
+See the documentation of \code{\link{export}} for further
 details.
 }
 \examples{
@@ -127,12 +138,12 @@ if(require(igraph)) {
   plot(tmiic_res)
 }
 
-# to plot the raw temporal network Using igraph
+# to plot the raw temporal network
 if(require(igraph)) {
   plot(tmiic_res, display="raw")
 }
 
-# to plot the full temporal network Using igraph
+# to plot the full temporal network
 if(require(igraph)) {
   plot(tmiic_res, display="lagged")
 }
@@ -140,6 +151,6 @@ if(require(igraph)) {
 }
 }
 \seealso{
-\code{\link{tmiic.export}} for generic exports,
+\code{\link{export}} for graphical exports,
 \code{\link[igraph]{igraph.plotting}}
 }

@@ -22,7 +22,7 @@ fromStringToNumberArrowType <- function(val) {
 #' @useDynLib miic
 #' @md
 
-miic.write.network.cytoscape <- function(g, file, layout = NULL) {
+writeCytoscapeNetwork <- function(g, file, layout = NULL) {
   ##################################### NETWORK IN GRAPHML
   if (missing(file)) {
     stop("The file path is necessary")

@@ -7,125 +7,6 @@
 #*******************************************************************************
 
 #-------------------------------------------------------------------------------
-# tmiic.export
-#-------------------------------------------------------------------------------
-#' Export temporal miic (tmiic) result to different plotting methods
-#'
-#' @description This function creates an object built from the result returned
-#' by \code{\link{miic}} executed in temporal mode that is ready to be fed to
-#' different plotting methods.
-#'
-#' @param tmiic_res [a tmiic object]
-#' The object returned by the \code{\link{miic}} execution in temporal mode.
-#'
-#' @param display [a string]. Optional, default value "compact".
-#' Possible values are \emph{"raw"}, \emph{"lagged"}, \emph{"compact"},
-#' \emph{"combine"}, \emph{"unique"}, \emph{"drop"}:
-#' \itemize{
-#' \item When \emph{display} = \emph{"raw"}, the export function will
-#'   use the tmiic graph object as it, leading to the return of a lagged
-#'   graph.
-#' \item When \emph{display} = \emph{"lagged"}, the export function will
-#'   repeat the edges over history assuming stationarity and return a lagged
-#'   graph.
-#' \item When \emph{display} = \emph{"compact"}, the default, nodes
-#'   and edges are converted into a flattened version to produce a compact
-#'   view of the temporal network whilst still presenting all the information
-#'   in the export.\cr
-#'   i.e.: X_lag1->Y_lag0, X_lag2<-Y_lag0 become respectively X->Y lag=1,
-#'   X<-Y lag=2.
-#' \item When \emph{display} = \emph{"combine"}, prior to the export,
-#'   a pre-processing will be applied to kept only one edge
-#'   per couple of nodes. The info_shifted will be the highest one
-#'   of the summarized edges whilst the lag and orientation of the
-#'   summarized edge will be an aggregation.\cr
-#'   i.e.: X_lag2->Y_lag0, X_lag0<-Y_lag1 will become X<->Y lag=1-2 with
-#'   the info_shifted of X_lag2->Y_lag0 if info_shifted of
-#'   X_lag2->Y_lag0 > X_lag0<-Y_lag1.
-#' \item When \emph{display} = \emph{"unique"}, prior to the export,
-#'   a pre-processing will be applied to kept only the edges having the
-#'   highest info_shifted for a couple of nodes.
-#'   If several edges between the sames nodes have the same
-#'   info_shifted, then the edge kept is the one with the minimum lag.\cr
-#'   i.e.: X_lag1->Y_lag0, X_lag0<-Y_lag2 with info_shifted of
-#'   X_lag1->Y_lag0 > X_lag0<-Y_lag2 become X->Y lag=1.
-#' \item When \emph{display} = \emph{"drop"}, prior to the export,
-#'   a pre-processing will be applied to kept only the edges having the
-#'   highest info_shifted for a couple of nodes.
-#'   If several edges between the sames nodes have the same
-#'   info_shifted, then the edge kept is the one with the minimum lag.\cr
-#'   i.e. :  X_lag1->Y_lag0, X_lag0<-Y_lag2 with info_shifted of
-#'   X_lag1->Y_lag0 > X_lag0<-Y_lag2 become X->Y.
-#'   The lag information is dropped during the preprocessing and
-#'   will not be exported.
-#' }
-#'
-#' @param show_self_loops [a boolean] Optional, TRUE by default.
-#' When TRUE, the edges like X_lag0-X_lag1 are exported.
-#' When FALSE, only edges having different nodes are exported.
-#'
-#' @param method A string representing the plotting method.
-#' Currently only "igraph" is supported.
-#'
-#' @param pcor_palette Optional. The color palette used to represent the partial
-#' correlations (the color of the edges). See \code{\link{getIgraph}} for details.
-#'
-#' @return A graph object adapted to the method.
-#'
-#' @export
-#'
-#' @examples
-#' \donttest{
-#' library(miic)
-#' data(covidCases)
-#' # execute MIIC (reconstruct graph in temporal mode)
-#' tmiic_res <- miic(input_data = covidCases, mode = "TS", n_layers = 3, delta_t = 1, movavg = 14)
-#'
-#' # Plot default compact temporal network Using igraph
-#' if(require(igraph)) {
-#' g = tmiic.export(tmiic_res, method="igraph")
-#' plot(g) # Default visualisation, calls igraph::plot.igraph()
-#'
-#' # Plot raw temporal network Using igraph
-#' g = tmiic.export(tmiic_res, display="raw", method="igraph")
-#' plot(g) # Default visualisation, calls igraph::plot.igraph()
-#'
-#' # Plot full temporal network Using igraph
-#' g = tmiic.export(tmiic_res, display="lagged", method="igraph")
-#' plot(g) # Default visualisation, calls igraph::plot.igraph()
-#'
-#' # Specifying layout (see ?igraph::layout_)
-#' l <- layout_on_grid(g, width = 5, height = 3, dim = 2)
-#' plot(g, layout=l)
-#'
-#' # Override some graphical parameters
-#' plot(g, edge.arrow.size = 0.75)
-#' plot(g, vertex.shape="none", edge.color="gray85", vertex.label.color="gray10")
-#'
-#' # For compact graphs, please be aware that the rendering of
-#' # igraph::plot.igraph() is not optimal when the graph contains
-#' # multiple edges between the same nodes.
-#' # So the recommend way to plot a compact graph is to use tmiic plotting:
-#' plot(tmiic_res)
-#' }
-#'
-#' }
-#-------------------------------------------------------------------------------
-tmiic.export <- function (tmiic_res, display="compact", show_self_loops=TRUE,
-                          method="igraph", pcor_palette=NULL)
-  {
-  if (is.null(tmiic_res$all.edges.summary))
-    stop("Error: The inferred network does not exist")
-  if (is.null(method))
-    stop("Error: Plotting method is required")
-  if (method != "igraph")
-    stop("Error: Method not supported")
-  return(tmiic_getIgraph(tmiic_res, display=display,
-                         show_self_loops=show_self_loops,
-                         pcor_palette=pcor_palette))
-  }
-
-#-------------------------------------------------------------------------------
 # tmiic_getIgraph
 #-------------------------------------------------------------------------------
 # Igraph plotting function for tmiic (temporal mode of miic)
@@ -152,27 +33,27 @@ tmiic.export <- function (tmiic_res, display="compact", show_self_loops=TRUE,
 #   * "compact", the default, nodes and edges are converted into a flattened
 #     version to produce a compact view of the temporal network
 #     whilst still presenting all the information.
-#     i.e.: X_lag1->Y_lag0, X_lag0<-Y_lag2 become respectively X->Y lag=1,
+#     e.g. X_lag1->Y_lag0, X_lag0<-Y_lag2 become respectively X->Y lag=1,
 #     X<-Y lag=2.
 #   * "combine", a pre-processing will be applied to kept only one edge
 #      per couple of nodes. The info_shifted will be the highest one
 #      of the summarized edges whilst the lag and orientation of the
 #      summarized edge will be an aggregation.
-#      i.e.: X_lag2->Y_lag0, X_lag0<-Y_lag1 will become X<->Y lag=1,2 with
+#      e.g. X_lag2->Y_lag0, X_lag0<-Y_lag1 will become X<->Y lag=1,2 with
 #      the info_shifted of X_lag2->Y_lag0 if info_shifted of
 #      X_lag2->Y_lag0 > X_lag0<-Y_lag1.
 #    * "unique", a pre-processing will be applied to kept only the edges
 #      having the highest info_shifted for a couple of nodes.
 #      If several edges between the sames nodes have the same
 #      info_shifted, then the edge kept is the one with the minimum lag.
-#      i.e.: X_lag1->Y_lag0, X_lag0<-Y_lag2 with info_shifted of
+#      e.g. X_lag1->Y_lag0, X_lag0<-Y_lag2 with info_shifted of
 #      X_lag1->Y_lag0 > X_lag0<-Y_lag2 become X->Y lag=1.
 #    * "drop"}, prior to the plotting, a pre-processing will be applied
 #      to kept only the edges having the highest info_shifted for a couple
 #      of nodes.
 #      If several edges between the sames nodes have the same
 #      info_shifted, then the edge kept is the one with the minimum lag.
-#      i.e. :  X_lag1->Y_lag0, X_lag0<-Y_lag2 with info_shifted of
+#      e.g. X_lag1->Y_lag0, X_lag0<-Y_lag2 with info_shifted of
 #      X_lag1->Y_lag0 > X_lag0<-Y_lag2 become X->Y.
 #      The lag information is dropped during the preprocessing.
 #
@@ -878,17 +759,30 @@ tmiic_compute_grid_layout <- function (tmiic_res, display="raw",
 #-------------------------------------------------------------------------------
 #' Basic plot function of a temporal miic (tmiic) network inference result
 #'
-#' @description This function calls \code{\link{tmiic.export}} to build a
-#' plottable object from the result returned by \code{\link{miic}} in
-#' temporal mode and plot it.
+#' @description This function calls \code{\link{export}} to build a plottable
+#' object from the result returned by \code{\link{miic}} in temporal mode
+#' and plot it.
 #'
-#' @details See the documentation of \code{\link{tmiic.export}} for further
+#' @details See the documentation of \code{\link{export}} for further
 #' details.
 #'
-#' @param x [a tmiic graph object]
-#' The graph object returned by \code{\link{miic}} in temporal mode
+#' @param x [a tmiic graph object, required]
 #'
-#' @param display [a string]. Optional, default value "compact".
+#' The graph object returned by \code{\link{miic}} in temporal mode.
+#'
+#' @param method [a string, optional, default value "igraph"]
+#'
+#' The plotting method, currently only "igraph" is supported.
+#'
+#' @param pcor_palette [a color palette, optional, default value
+#' grDevices::colorRampPalette(c("blue", "darkgrey", "red")]
+#'
+#' Used to represent the partial correlations (the color of the edges).
+#' The palette must be able to handle 201 shades to cover the correlation range
+#' from -100 to +100.
+#'
+#' @param display [a string, optional, default value "compact"]
+#'
 #' Possible values are \emph{"raw"}, \emph{"lagged"}, \emph{"compact"},
 #' \emph{"combine"}, \emph{"unique"}, \emph{"drop"}:
 #' \itemize{
@@ -904,14 +798,14 @@ tmiic_compute_grid_layout <- function (tmiic_res, display="raw",
 #'   and edges are converted into a flattened version to produce a compact
 #'   view of the temporal network whilst still presenting all the information
 #'   in the plotting.\cr
-#'   i.e.: X_lag1->Y_lag0, X_lag2<-Y_lag0 become respectively X->Y lag=1,
+#'   e.g. X_lag1->Y_lag0, X_lag2<-Y_lag0 become respectively X->Y lag=1,
 #'   X<-Y lag=2.
 #' \item When \emph{display} = \emph{"combine"}, prior to the plotting,
 #'   a preprocessing will be applied to kept only one edge
 #'   per couple of nodes. The info_shifted will be the highest one
 #'   of the summarized edges whilst the lag and orientation of the
 #'   summarized edge will be an aggregation.\cr
-#'   i.e.: X_lag1->Y_lag0, X_lag2<-Y_lag0 will become X<->Y lag=1,2 with
+#'   e.g. X_lag1->Y_lag0, X_lag2<-Y_lag0 will become X<->Y lag=1,2 with
 #'   the info_shifted of X_lag1->Y_lag0 if info_shifted of
 #'   X_lag1->Y_lag0 > X_lag2<-Y_lag0.
 #' \item When \emph{display} = \emph{"unique"}, prior to the plotting,
@@ -919,27 +813,30 @@ tmiic_compute_grid_layout <- function (tmiic_res, display="raw",
 #'   highest info_shifted for a couple of nodes.
 #'   If several edges between the sames nodes have the same
 #'   info_shifted, then the edge kept is the one with the minimum lag.\cr
-#'   i.e.: X_lag1->Y_lag0, X_lag2<-Y_lag0 with info_shifted of
+#'   e.g. X_lag1->Y_lag0, X_lag2<-Y_lag0 with info_shifted of
 #'   X_lag1->Y_lag0 > X_lag2<-Y_lag0 become X->Y lag=1.
 #' \item When \emph{display} = \emph{"drop"}, prior to the plotting,
 #'   a preprocessing will be applied to kept only the edges having the
 #'   highest info_shifted for a couple of nodes.
 #'   If several edges between the sames nodes have the same
 #'   info_shifted, then the edge kept is the one with the minimum lag.\cr
-#'   i.e. :  X_lag1->Y_lag0, X_lag2<-Y_lag0 with info_shifted of
+#'   e.g. X_lag1->Y_lag0, X_lag2<-Y_lag0 with info_shifted of
 #'   X_lag1->Y_lag0 > X_lag2<-Y_lag0 become X->Y.
 #'   The lag information is dropped during the preprocessing and
 #'   will not be displayed on the final plotting.
 #' }
 #'
-#' @param show_self_loops [a boolean] Optional, TRUE by default.
-#' When TRUE, the edges like X_lag0-X_lag1 are included in the iGraph object.
-#' When FALSE, only edges having different nodes are present in the iGraph
+#' @param show_self_loops [a boolean, optional, TRUE by default]
+#'
+#' When TRUE, the lagged edges starting and ending on the same node
+#' are included in the igraph  object.
+#' When FALSE, only edges having different nodes are present in the igraph
 #' object.
 #'
-#' @param positioning_for_grid [a string] Optional, "greedy" by default.
-#' Used only when the display is "raw" or "lagged and no layout is supplied.
-#' Possible values are \emph{"none"}, \emph{"alphabetical"}, \emph{"layers"}
+#' @param positioning_for_grid [a string, optional, "greedy" by default]
+#'
+#' Used only when the display is "raw" or "lagged" and no layout is supplied.
+#' Possible values are \emph{"none"}, \emph{"alphabetical"}, \emph{"layers"},
 #' \emph{"greedy"} and \emph{"sugiyama"}
 #' \itemize{
 #' \item When \emph{positioning_for_grid} = \emph{"none"}
@@ -957,25 +854,20 @@ tmiic_compute_grid_layout <- function (tmiic_res, display="raw",
 #'  minimizing the crossing edges
 #' }
 #'
-#' @param orientation_for_grid [a string] Optional, "L" by default.
+#' @param orientation_for_grid [a string, optional, "L" by default]
+#'
 #' Used only when the display is "raw" or "lagged and no layout is supplied.
 #' Indicates the orientation of the draw, possible values are landscape: "L"
 #' or portrait: "P".
 #'
-#' @param method A string representing the plotting method. Default to "igraph".
-#' Currently only "igraph" is supported.
-#'
-#' @param pcor_palette Optional. The color palette used to represent the partial
-#' correlations (the color of the edges). See \code{\link{getIgraph}} for details.
-#'
-#' @param \dots Additional plotting parameters. See the corresponding plot function
-#' for the complete list.
+#' @param \dots Additional plotting parameters. See the corresponding plot
+#' function for the complete list.
 #'
 #' For igraph, see \code{\link[igraph]{igraph.plotting}}.
 #'
 #' @export
 #'
-#' @seealso \code{\link{tmiic.export}} for generic exports,
+#' @seealso \code{\link{export}} for graphical exports,
 #' \code{\link[igraph]{igraph.plotting}}
 #'
 #' @examples
@@ -992,24 +884,25 @@ tmiic_compute_grid_layout <- function (tmiic_res, display="raw",
 #'   plot(tmiic_res)
 #' }
 #'
-#' # to plot the raw temporal network Using igraph
+#' # to plot the raw temporal network
 #' if(require(igraph)) {
 #'   plot(tmiic_res, display="raw")
 #' }
 #'
-#' # to plot the full temporal network Using igraph
+#' # to plot the full temporal network
 #' if(require(igraph)) {
 #'   plot(tmiic_res, display="lagged")
 #' }
 #'
 #' }
 #-------------------------------------------------------------------------------
-plot.tmiic = function(x, display="compact", show_self_loops=TRUE,
+plot.tmiic = function(x, method='igraph', pcor_palette=NULL,
+                      display="compact", show_self_loops=TRUE,
                       positioning_for_grid="greedy", orientation_for_grid="L",
-                      method = 'igraph', pcor_palette=NULL, ...)
+                      ...)
   {
   if (method != 'igraph')
-    stop("Error: Method not supported. See ?tmiic.export for supported methods.")
+    stop("Error: Method not supported. See ?export for supported methods.")
   if ( !base::requireNamespace("igraph", quietly = TRUE) )
     stop("Error: Package 'igraph' is required.")
   if ( is.null (x$adj_matrix) )
@@ -1031,8 +924,8 @@ plot.tmiic = function(x, display="compact", show_self_loops=TRUE,
   #
   # Export the graph to a graphical object
   #
-  graph <- tmiic.export (x, display=display, show_self_loops=show_self_loops,
-                         method=method, pcor_palette=pcor_palette)
+  graph <- export (x, method=method, pcor_palette=pcor_palette,
+                   display=display, show_self_loops=show_self_loops)
   #
   # Look if we have cases with multiple edges between two nodes
   # or multiple self loops because we need to plot these cases iteratively.

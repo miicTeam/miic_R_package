@@ -5,7 +5,7 @@
 #' @export
 #' @useDynLib miic
 
-miic.write.style.cytoscape <- function(file) {
+writeCytoscapeStyle <- function(file) {
   if (missing(file)) {
     cat("The file path is necessary")
   } else {

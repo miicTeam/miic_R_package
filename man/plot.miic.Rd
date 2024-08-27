@@ -7,29 +7,36 @@
 \method{plot}{miic}(x, method = "igraph", pcor_palette = NULL, ...)
 }
 \arguments{
-\item{x}{[a miic graph object]
+\item{x}{[a miic graph object, required]
+
 The graph object returned by \code{\link{miic}}.}
 
-\item{method}{A string representing the plotting method. Default to "igraph".
-Currently only "igraph" is supported.}
+\item{method}{[a string, optional, default value "igraph"]
 
-\item{pcor_palette}{Optional. The color palette used to represent the partial
-correlations (the color of the edges). See \code{\link{miic.export}} for details.}
+The plotting method, currently only "igraph" is supported.}
 
-\item{\dots}{Additional plotting parameters. See the corresponding plot function
-for the complete list.
+\item{pcor_palette}{[a color palette, optional, default value
+grDevices::colorRampPalette(c("blue", "darkgrey", "red")]
+
+Used to represent the partial correlations (the color of the edges).
+The palette must be able to handle 201 shades to cover the correlation range
+from -100 to +100.}
+
+\item{\dots}{Additional plotting parameters. See the corresponding plot
+function for the complete list.
+
 For igraph, see \code{\link[igraph]{igraph.plotting}}.}
 }
 \description{
-This function calls \code{\link{miic.export}} to build a
+This function calls \code{\link{export}} to build a
 plottable object from the result returned by \code{\link{miic}} and plot it.
 }
 \details{
-See the documentation of \code{\link{miic.export}} for further
+See the documentation of \code{\link{export}} for further
 details.
 }
 \seealso{
-\code{\link{miic.export}} for generic exports,
+\code{\link{export}} for graphical exports,
 \code{\link{getIgraph}} for igraph export,
 \code{\link[igraph]{igraph.plotting}}
 }
