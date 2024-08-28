@@ -61,8 +61,8 @@ if(require(igraph)) {
 ```
 
 ## Documentation
-You can find the documentation pages in the "man" folder, in the auto generated [PDF](https://cran.r-project.org/web/packages/miic/miic.pdf), or use R functions `help()` and `?`.
-
+You can find the documentation pages in the "man" folder, in the auto generated [PDF](https://CRAN.R-project.org/package=miic/miic.pdf), or use R functions `help()` and `?`.
+  
 ## Authors
 - Tiziana Tocci
 - Nikita Lagrange
