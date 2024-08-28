@@ -5,8 +5,8 @@
 \title{Compute (conditional) mutual information}
 \usage{
 computeMutualInfo(
-  X,
-  Y,
+  x,
+  y,
   df_conditioning = NULL,
   maxbins = NULL,
   cplx = c("nml", "mdl"),
@@ -17,11 +17,11 @@ computeMutualInfo(
 )
 }
 \arguments{
-\item{X}{[a vector]
-A vector that contains the observational data of the first variable.}
+\item{x}{[a vector]
+The \eqn{X} vector that contains the observational data of the first variable.}
 
-\item{Y}{[a vector]
-A vector that contains the observational data of the second variable.}
+\item{y}{[a vector]
+The \eqn{Y} vector that contains the observational data of the second variable.}
 
 \item{df_conditioning}{[a data frame]
 The data frame of the observations of the conditioning variables.}
@@ -68,8 +68,9 @@ A list that contains :
 \item niterations: Only when at least one of the input variables is
   continuous, the number of iterations it takes to reach the convergence of
   the estimated information.
-\item iterationN: Only when at least one of the input variables is
-  continuous, the list of vectors of cutpoints of each iteration.
+\item iteration1, iteration2, ... Only when at least one of the input
+  variables is continuous, the list of vectors of cutpoints of each
+  iteration.
 \item info: The estimation of (conditional) mutual information without the
 complexity cost.
 \item infok: The estimation of (conditional) mutual information with the

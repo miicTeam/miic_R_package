@@ -23,10 +23,10 @@
 #' \item Affeldt et al., \emph{Bioinformatics 2016}
 #' }
 #'
-#' @param X [a vector]
-#' A vector that contains the observational data of the first variable.
-#' @param Y [a vector]
-#' A vector that contains the observational data of the second variable.
+#' @param x [a vector]
+#' The \eqn{X} vector that contains the observational data of the first variable.
+#' @param y [a vector]
+#' The \eqn{Y} vector that contains the observational data of the second variable.
 #' @param matrix_u [a numeric matrix]
 #' The matrix with the observations of as many columns as conditioning variables.
 #' @param maxbins [an int]
@@ -53,10 +53,10 @@
 #' @return A list that contains :
 #' \itemize{
 #' \item{two vectors containing the cutpoints for each variable :
-#' \emph{cutpoints1} corresponds to \emph{X},
-#' \emph{cutpoints2} corresponds to \emph{Y}.}
+#' \emph{cutpoints1} corresponds to \emph{x},
+#' \emph{cutpoints2} corresponds to \emph{y}.}
 #' \item{\emph{niterations} is the number of iterations performed before convergence of the (C)MI estimation.}
-#' \item{\emph{iterationN}, lists contatining the cutpoint vectors for each iteration.}
+#' \item{\emph{iteration1, iteration2, ...}, lists containing the cutpoint vectors for each iteration.}
 #' \item{\emph{info} and \emph{infok}, the estimated (C)MI value and (C)MI minus the complexity cost.}
 #' \item{if \emph{plot} == TRUE, a plot object (requires ggplot2 and gridExtra).}
 #' }
@@ -97,8 +97,8 @@
 #' message("I(X;Y|Z) = ", res$info)
 #' }
 #'
-discretizeMutual <- function(X,
-                             Y,
+discretizeMutual <- function(x,
+                             y,
                              matrix_u = NULL,
                              maxbins = NULL,
                              cplx = "nml",
@@ -106,8 +106,8 @@ discretizeMutual <- function(X,
                              sample_weights = NULL,
                              is_discrete = NULL,
                              plot = TRUE) {
-  nameDist1 <- deparse(substitute(X))
-  nameDist2 <- deparse(substitute(Y))
+  nameDist1 <- deparse(substitute(x))
+  nameDist2 <- deparse(substitute(y))
   # Check the input arguments
   if (is.null(matrix_u)) {
     nbrU <- 0
@@ -117,8 +117,8 @@ discretizeMutual <- function(X,
 
   if (is.null(is_discrete)) {
     is_discrete <- c(
-      (is.character(X) || is.factor(X)),
-      (is.character(Y) || is.factor(Y))
+      (is.character(x) || is.factor(x)),
+      (is.character(y) || is.factor(y))
     )
     if (nbrU > 0) {
       for (z in 1:nbrU) {
@@ -129,49 +129,49 @@ discretizeMutual <- function(X,
   }
 
   if (all(is_discrete[1:2])) {
-    stop("Either X or Y must be continuous to be discretized.")
+    stop("Either x or y must be continuous to be discretized.")
   }
 
-  if (!(is.vector(X) || is.factor(X)) ||
-    !(is.vector(Y) || is.factor(Y))) {
+  if (!(is.vector(x) || is.factor(x)) ||
+    !(is.vector(y) || is.factor(y))) {
     stop(
       paste0(
-        "Please provide the two samples X and Y as numerical vectors ",
+        "Please provide the two samples x and y as numerical vectors ",
         "for continuous variables and factors or character vectors ",
         "for discrete variables."
       )
     )
   }
 
-  if (length(X) != length(Y)) {
+  if (length(x) != length(y)) {
     stop(
       paste0(
         "The two samples must have the same number of observation ",
         "(found ",
-        length(X),
+        length(x),
         " and ",
-        length(Y),
+        length(y),
         " )."
       )
     )
   }
 
   if ((!is.null(sample_weights)) &&
-    (length(sample_weights) != length(X))) {
+    (length(sample_weights) != length(x))) {
     stop(
       paste0(
         "The sample weight vector must be of the same length as the ",
         "number of observations (found ",
         length(sample_weights),
         " while there are ",
-        length(X),
+        length(x),
         " observations)."
       )
     )
   }
 
   if ((!is.null(matrix_u) && !is.matrix(matrix_u)) ||
-    (!is.null(matrix_u) && nrow(matrix_u) != length(X))) {
+    (!is.null(matrix_u) && nrow(matrix_u) != length(x))) {
     stop(
       paste0(
         "matrix_u is not a matrix or its number of rows differs from",
@@ -192,9 +192,9 @@ discretizeMutual <- function(X,
 
   # Remove rows for which any input vector is NA
   matrix_u_NA <- matrix()
-  NArows <- logical(length(X))
-  NArows <- NArows | is.na(X)
-  NArows <- NArows | is.na(Y)
+  NArows <- logical(length(x))
+  NArows <- NArows | is.na(x)
+  NArows <- NArows | is.na(y)
   if (!is.null(matrix_u)) {
     for (k in 1:ncol(matrix_u)) {
       NArows <- NArows | is.na(matrix_u[, k])
@@ -208,8 +208,8 @@ discretizeMutual <- function(X,
       " rows with NAs in at least one of the inputs. Running on ",
       length(which(!NArows)), " samples."
     ))
-    X <- X[!NArows]
-    Y <- Y[!NArows]
+    x <- x[!NArows]
+    y <- y[!NArows]
   }
   if (length(which(!NArows)) < 3) {
     stop(paste0(
@@ -224,24 +224,24 @@ discretizeMutual <- function(X,
     }
   }
 
-  initbins <- min(30, round(length(X)**(1 / 3)))
+  initbins <- min(30, round(length(x)**(1 / 3)))
 
-  if (is.null(maxbins) || maxbins > length(X) || maxbins < initbins) {
-    maxbins <- min(length(X), 5 * initbins, 50)
+  if (is.null(maxbins) || maxbins > length(x) || maxbins < initbins) {
+    maxbins <- min(length(x), 5 * initbins, 50)
   }
 
   # Converting factors to discrete numerical variables
-  X_orig <- X
-  Y_orig <- Y
+  X_orig <- x
+  Y_orig <- y
   if (is_discrete[1]) {
-    X <- as.factor(X)
-    levels(X) <- 1:nlevels(X)
-    X <- as.numeric(X)
+    x <- as.factor(x)
+    levels(x) <- 1:nlevels(x)
+    x <- as.numeric(x)
   }
   if (is_discrete[2]) {
-    Y <- as.factor(Y)
-    levels(Y) <- 1:nlevels(Y)
-    Y <- as.numeric(Y)
+    y <- as.factor(y)
+    levels(y) <- 1:nlevels(y)
+    y <- as.numeric(y)
   }
   if (nbrU > 0) {
     for (l in 0:(nbrU - 1)) {
@@ -271,14 +271,14 @@ discretizeMutual <- function(X,
   }
 
   if (is.null(n_eff)) {
-    n_eff <- length(X)
+    n_eff <- length(x)
   }
 
   if (is.null(sample_weights)) {
     sample_weights <- numeric(0);
   }
 
-  input_data = data.frame(X,Y)
+  input_data = data.frame(x,y)
   if(!all(is.na(matrix_u_NA))) input_data = cbind(input_data, matrix_u_NA)
   n_samples <- nrow(input_data)
   n_nodes <- ncol(input_data)
@@ -321,7 +321,7 @@ discretizeMutual <- function(X,
   niterations <- nrow(rescpp$cutpointsmatrix) / maxbins
 
   result <- list()
-  epsilon <- min(c(sd(X), sd(Y))) / 100
+  epsilon <- min(c(sd(x), sd(y))) / 100
   result$niterations <- niterations
   for (i in 0:(niterations - 1)) {
     result[[paste0("iteration", i + 1)]] <- list()
@@ -331,10 +331,10 @@ discretizeMutual <- function(X,
           (1:maxbins)]
         clean_cutpoints <- clean_cutpoints[clean_cutpoints != -1]
         if (l == 1) {
-          data <- X
+          data <- x
         } else {
           if (l == 2) {
-            data <- Y
+            data <- y
           } else {
             data <- matrix_u[, l - 2]
           }
@@ -377,7 +377,7 @@ discretizeMutual <- function(X,
   if (plot) {
     if (base::requireNamespace("ggplot2", quietly = TRUE) & base::requireNamespace("gridExtra", quietly = TRUE)) {
       if (!any(is_discrete[1:2])) {
-        result$plot <- jointplot_hist(X, Y, result, nameDist1, nameDist2)
+        result$plot <- jointplot_hist(x, y, result, nameDist1, nameDist2)
       } else if (!all(is_discrete[1:2])) {
         result$plot <- barplot_disc(
           X_orig,

@@ -35,10 +35,10 @@
 #' \item Affeldt et al., \emph{Bioinformatics 2016}
 #' }
 #'
-#' @param X [a vector]
-#' A vector that contains the observational data of the first variable.
-#' @param Y [a vector]
-#' A vector that contains the observational data of the second variable.
+#' @param x [a vector]
+#' The \eqn{X} vector that contains the observational data of the first variable.
+#' @param y [a vector]
+#' The \eqn{Y} vector that contains the observational data of the second variable.
 #' @param df_conditioning [a data frame]
 #' The data frame of the observations of the conditioning variables.
 #' @param maxbins [an integer]
@@ -77,8 +77,9 @@
 #' \item niterations: Only when at least one of the input variables is
 #'   continuous, the number of iterations it takes to reach the convergence of
 #'   the estimated information.
-#' \item iterationN: Only when at least one of the input variables is
-#'   continuous, the list of vectors of cutpoints of each iteration.
+#' \item iteration1, iteration2, ... Only when at least one of the input
+#'   variables is continuous, the list of vectors of cutpoints of each
+#'   iteration.
 #' \item info: The estimation of (conditional) mutual information without the
 #' complexity cost.
 #' \item infok: The estimation of (conditional) mutual information with the
@@ -122,7 +123,7 @@
 #' message("I(X;Y|Z) = ", res$info)
 #' }
 #'
-computeMutualInfo <- function(X, Y,
+computeMutualInfo <- function(x, y,
                               df_conditioning = NULL,
                               maxbins = NULL,
                               cplx = c("nml", "mdl"),
@@ -142,7 +143,7 @@ computeMutualInfo <- function(X, Y,
   )
   cplx <- match.arg(cplx)
 
-  input_data = data.frame(X, Y)
+  input_data = data.frame(x, y)
   if (!is.null(df_conditioning)) {
     input_data <- data.frame(input_data, df_conditioning)
   }
@@ -151,7 +152,7 @@ computeMutualInfo <- function(X, Y,
     stop(paste(
       "Differing number of rows between `sample_weights` and input data:",
       length(sample_weights),
-      length(X)
+      length(x)
     ))
   }
 
@@ -281,8 +282,8 @@ computeMutualInfo <- function(X, Y,
   }
 
   if (plot) {
-    nameDist1 <- deparse(substitute(X))
-    nameDist2 <- deparse(substitute(Y))
+    nameDist1 <- deparse(substitute(x))
+    nameDist2 <- deparse(substitute(y))
     if (base::requireNamespace("ggplot2", quietly = TRUE) &&
         base::requireNamespace("gridExtra", quietly = TRUE)) {
       if (all(is_continuous[1:2])) {
@@ -335,12 +336,12 @@ computeMutualInfo <- function(X, Y,
 #' \item Affeldt et al., \emph{Bioinformatics 2016}
 #' }
 #'
-#' @param X [a vector]
-#' A vector that contains the observational data of the first variable.
-#' @param Y [a vector]
-#' A vector that contains the observational data of the second variable.
-#' @param Z [a vector]
-#' A vector that contains the observational data of the third variable.
+#' @param x [a vector]
+#' The \eqn{X} vector that contains the observational data of the first variable.
+#' @param y [a vector]
+#' The \eqn{Y} vector that contains the observational data of the second variable.
+#' @param z [a vector]
+#' The \eqn{Z} vector that contains the observational data of the third variable.
 #' @param df_conditioning [a data frame]
 #' The data frame of the observations of the set of conditioning variables
 #' \eqn{U}.
@@ -404,7 +405,7 @@ computeMutualInfo <- function(X, Y,
 #' message("Ik(X;Y;Z) = ", res$i3k)
 #' }
 #'
-computeThreePointInfo <- function(X, Y, Z,
+computeThreePointInfo <- function(x, y, z,
                               df_conditioning = NULL,
                               maxbins = NULL,
                               cplx = c("nml", "mdl"),
@@ -423,7 +424,7 @@ computeThreePointInfo <- function(X, Y, Z,
   )
   cplx <- match.arg(cplx)
 
-  input_data = data.frame(X, Y, Z)
+  input_data = data.frame(x, y, z)
   if (!is.null(df_conditioning)) {
     input_data <- data.frame(input_data, df_conditioning)
   }
@@ -432,7 +433,7 @@ computeThreePointInfo <- function(X, Y, Z,
     stop(paste(
       "Differing number of rows between `sample_weights` and input data:",
       length(sample_weights),
-      length(X)
+      length(x)
     ))
   }
 

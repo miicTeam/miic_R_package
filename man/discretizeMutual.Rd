@@ -5,8 +5,8 @@
 \title{Iterative dynamic programming for (conditional) mutual information through optimized discretization.}
 \usage{
 discretizeMutual(
-  X,
-  Y,
+  x,
+  y,
   matrix_u = NULL,
   maxbins = NULL,
   cplx = "nml",
@@ -17,11 +17,11 @@ discretizeMutual(
 )
 }
 \arguments{
-\item{X}{[a vector]
-A vector that contains the observational data of the first variable.}
+\item{x}{[a vector]
+The \eqn{X} vector that contains the observational data of the first variable.}
 
-\item{Y}{[a vector]
-A vector that contains the observational data of the second variable.}
+\item{y}{[a vector]
+The \eqn{Y} vector that contains the observational data of the second variable.}
 
 \item{matrix_u}{[a numeric matrix]
 The matrix with the observations of as many columns as conditioning variables.}
@@ -56,10 +56,10 @@ ggplot2 and gridExtra).}
 A list that contains :
 \itemize{
 \item{two vectors containing the cutpoints for each variable :
-\emph{cutpoints1} corresponds to \emph{X},
-\emph{cutpoints2} corresponds to \emph{Y}.}
+\emph{cutpoints1} corresponds to \emph{x},
+\emph{cutpoints2} corresponds to \emph{y}.}
 \item{\emph{niterations} is the number of iterations performed before convergence of the (C)MI estimation.}
-\item{\emph{iterationN}, lists contatining the cutpoint vectors for each iteration.}
+\item{\emph{iteration1, iteration2, ...}, lists containing the cutpoint vectors for each iteration.}
 \item{\emph{info} and \emph{infok}, the estimated (C)MI value and (C)MI minus the complexity cost.}
 \item{if \emph{plot} == TRUE, a plot object (requires ggplot2 and gridExtra).}
 }

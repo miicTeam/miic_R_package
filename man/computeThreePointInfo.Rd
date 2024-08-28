@@ -5,9 +5,9 @@
 \title{Compute (conditional) three-point information}
 \usage{
 computeThreePointInfo(
-  X,
-  Y,
-  Z,
+  x,
+  y,
+  z,
   df_conditioning = NULL,
   maxbins = NULL,
   cplx = c("nml", "mdl"),
@@ -17,14 +17,14 @@ computeThreePointInfo(
 )
 }
 \arguments{
-\item{X}{[a vector]
-A vector that contains the observational data of the first variable.}
+\item{x}{[a vector]
+The \eqn{X} vector that contains the observational data of the first variable.}
 
-\item{Y}{[a vector]
-A vector that contains the observational data of the second variable.}
+\item{y}{[a vector]
+The \eqn{Y} vector that contains the observational data of the second variable.}
 
-\item{Z}{[a vector]
-A vector that contains the observational data of the third variable.}
+\item{z}{[a vector]
+The \eqn{Z} vector that contains the observational data of the third variable.}
 
 \item{df_conditioning}{[a data frame]
 The data frame of the observations of the set of conditioning variables
