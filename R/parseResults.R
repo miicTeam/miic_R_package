@@ -140,7 +140,7 @@ summarizeResults = function (observations, results,
   # If no edge in the summary, returns directly an empty data frame
   #
   if (nrow (summary) == 0)
-    return (data._frame (x = character(0), y = character(0),
+    return (data.frame (x = character(0), y = character(0),
       type = character(0), ai = character(0),
       raw_contributions = character(0), contributions = character(0),
       info = numeric(0), n_xy = numeric(0), info_cond = numeric(0),

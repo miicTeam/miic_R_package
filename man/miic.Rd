@@ -400,12 +400,12 @@ A \emph{miic-like} object that contains:
  and possibly separate them.}
  \item{ \emph{raw_contributions:} describes the share of total mutual
  information between \emph{x} and \emph{y} explained by each contributor,
- measured by I'(x;y;ai|{aj}) / I'(x;y),
- where {aj} is the separating set before adding ai.}
+ measured by I'(x;y;ai|\{aj\}) / I'(x;y),
+ where \{aj\} is the separating set before adding ai.}
  \item{ \emph{contributions:} describes the share of remaining mutual
  information between \emph{x} and \emph{y} explained  by each successive
- contributors, measured by I'(x;y;ai|{aj}) / I'(x;y|{aj}),
- where {aj} is the separating set before adding ai. }
+ contributors, measured by I'(x;y;ai|\{aj\}) / I'(x;y|\{aj\}),
+ where \{aj\} is the separating set before adding ai. }
  \item{ \emph{info:} the mutual information \emph{I(x;y)} times the number
  of complete samples \emph{n_xy} for the pair (\emph{x}, \emph{y}).}
  \item{ \emph{n_xy:} gives the number of complete samples on which the
@@ -673,7 +673,7 @@ if(require(igraph)) {
 
 # write graph to graphml format. Note that to correctly visualize
 # the network we created the miic style for Cytoscape (http://www.cytoscape.org/).
-writeCytoscapeNetwork(g = miic_obj, file = file.path(tempdir(), "temp"))
+writeCytoscapeNetwork(miic_obj, file = file.path(tempdir(), "temp"))
 
 # EXAMPLE OHNOLOGS
 data(ohno)
