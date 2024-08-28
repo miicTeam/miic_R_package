@@ -5,7 +5,7 @@
 \title{Export miic result for plotting (with igraph)}
 \usage{
 export(
-  miic_res,
+  mo,
   method = "igraph",
   pcor_palette = NULL,
   display = "compact",
@@ -13,7 +13,7 @@ export(
 )
 }
 \arguments{
-\item{miic_res}{[a miic object, required]
+\item{mo}{[a miic object, required]
 
 The object returned by the \code{\link{miic}} execution.}
 
@@ -98,14 +98,14 @@ library(miic)
 data(hematoData)
 
 # execute MIIC (reconstruct graph)
-miic_res <- miic(
+miic_obj <- miic(
   input_data = hematoData, latent = "yes",
   n_shuffles = 10, conf_threshold = 0.001
 )
 
 # Using igraph
 if(require(igraph)) {
-g = export(miic_res, "igraph")
+g = export(miic_obj, "igraph")
 plot(g) # Default visualisation, calls igraph::plot.igraph()
 
 # Specifying layout (see ?igraph::layout_)
@@ -119,19 +119,19 @@ plot(g, vertex.shape="none", edge.color="gray85", vertex.label.color="gray10")
 
 # In temporal mode, execute MIIC
 data(covidCases)
-tmiic_res <- miic(input_data = covidCases, mode = "TS", n_layers = 3, delta_t = 1, movavg = 14)
+tmiic_obj <- miic(input_data = covidCases, mode = "TS", n_layers = 3, delta_t = 1, movavg = 14)
 
 # Plot by default the compact display of the temporal network using igraph
 if(require(igraph)) {
-g = export (tmiic_res)
+g = export (tmiic_obj)
 plot(g)
 
 # Plot the raw temporal network using igraph
-g = export(tmiic_res, display="raw")
+g = export(tmiic_obj, display="raw")
 plot(g)
 
 # Plot the complete temporal network using igraph (completed by stationarity)
-g = export(tmiic_res, display="lagged")
+g = export(tmiic_obj, display="lagged")
 plot(g)
 
 # Specifying layout (see ?igraph::layout_)
@@ -142,7 +142,7 @@ plot(g, layout=l)
 # igraph::plot.igraph() is not optimal when the graph contains
 # multiple edges between the same nodes.
 # So, the recommend way to plot a compact graph is to use tmiic plotting:
-plot(tmiic_res)
+plot(tmiic_obj)
 }
 
 }

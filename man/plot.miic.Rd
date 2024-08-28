@@ -7,9 +7,9 @@
 \method{plot}{miic}(x, method = "igraph", pcor_palette = NULL, ...)
 }
 \arguments{
-\item{x}{[a miic graph object, required]
+\item{x}{[a miic object, required]
 
-The graph object returned by \code{\link{miic}}.}
+The object returned by \code{\link{miic}} execution.}
 
 \item{method}{[a string, optional, default value "igraph"]
 

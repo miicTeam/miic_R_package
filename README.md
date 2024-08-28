@@ -49,14 +49,14 @@ library(miic)
 # EXAMPLE HEMATOPOIESIS
 data(hematoData)
 # execute MIIC (reconstruct graph)
-miic.res <- miic(
+miic_obj <- miic(
   input_data = hematoData, latent = "yes",
   n_shuffles = 10, conf_threshold = 0.001
 )
 
 # plot graph with igraph
 if(require(igraph)) {
-  plot(miic.res, method="igraph")
+  plot(miic_obj, method="igraph")
 }
 ```
 

@@ -619,76 +619,76 @@
 #' data(hematoData)
 #'
 #' # execute MIIC (reconstruct graph)
-#' miic_res <- miic(
+#' miic_obj <- miic(
 #'   input_data = hematoData[1:1000,], latent = "yes",
 #'   n_shuffles = 10, conf_threshold = 0.001
 #' )
 #'
 #' # plot graph
 #' if(require(igraph)) {
-#'  plot(miic_res, method="igraph")
+#'  plot(miic_obj, method="igraph")
 #' }
 #'
 #' \donttest{
 #' # write graph to graphml format. Note that to correctly visualize
 #' # the network we created the miic style for Cytoscape (http://www.cytoscape.org/).
 #'
-#' writeCytoscapeNetwork(g = miic_res, file = file.path(tempdir(), "temp"))
+#' writeCytoscapeNetwork(miic_obj, file = file.path(tempdir(), "temp"))
 #'
 #' # EXAMPLE CANCER
 #' data(cosmicCancer)
 #' data(cosmicCancer_stateOrder)
 #' # execute MIIC (reconstruct graph)
-#' miic_res <- miic(
+#' miic_obj <- miic(
 #'   input_data = cosmicCancer, state_order = cosmicCancer_stateOrder, latent = "yes",
 #'   n_shuffles = 100, conf_threshold = 0.001
 #' )
 #'
 #' # plot graph
 #' if(require(igraph)) {
-#'  plot(miic_res)
+#'  plot(miic_obj)
 #' }
 #'
 #' # write graph to graphml format. Note that to correctly visualize
 #' # the network we created the miic style for Cytoscape (http://www.cytoscape.org/).
-#' writeCytoscapeNetwork(g = miic_res, file = file.path(tempdir(), "temp"))
+#' writeCytoscapeNetwork(g = miic_obj, file = file.path(tempdir(), "temp"))
 #'
 #' # EXAMPLE OHNOLOGS
 #' data(ohno)
 #' data(ohno_stateOrder)
 #' # execute MIIC (reconstruct graph)
-#' miic_res <- miic(
+#' miic_obj <- miic(
 #'   input_data = ohno, latent = "yes", state_order = ohno_stateOrder,
 #'   n_shuffles = 100, conf_threshold = 0.001
 #' )
 #'
 #' # plot graph
 #' if(require(igraph)) {
-#'  plot(miic_res)
+#'  plot(miic_obj)
 #' }
 #'
 #' # write graph to graphml format. Note that to correctly visualize
 #' # the network we created the miic style for Cytoscape (http://www.cytoscape.org/).
-#' writeCytoscapeNetwork(g = miic_res, file = file.path(tempdir(), "temp"))
+#' writeCytoscapeNetwork(miic_obj, file = file.path(tempdir(), "temp"))
 #'
 #' # EXAMPLE COVID CASES (time series demo)
 #' data(covidCases)
 #' # execute MIIC (reconstruct graph in temporal mode)
-#' tmiic_res <- miic(input_data = covidCases, mode = "TS", n_layers = 3, delta_t = 1, movavg = 14)
+#' tmiic_obj <- miic(input_data = covidCases, mode = "TS", n_layers = 3, delta_t = 1, movavg = 14)
 #'
 #' # to plot the default graph (compact)
 #' if(require(igraph)) {
-#'  plot(tmiic_res)
+#'  plot(tmiic_obj)
 #' }
 #'
 #' # to plot the raw temporal network
 #' if(require(igraph)) {
-#'   plot(tmiic_res, display="raw")
+#'   plot(tmiic_obj, display="raw")
 #' }
 #'
 #' # to plot the full temporal network
 #' if(require(igraph)) {
-#'   plot(tmiic_res, display="lagged")
+#'   plot(tmiic_obj, display="lagged")
 #' }
 #'
 #' }

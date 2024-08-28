@@ -16,9 +16,9 @@
 )
 }
 \arguments{
-\item{x}{[a tmiic graph object, required]
+\item{x}{[a tmiic object, required]
 
-The graph object returned by \code{\link{miic}} in temporal mode.}
+The object returned by \code{\link{miic}} in temporal mode.}
 
 \item{method}{[a string, optional, default value "igraph"]
 
@@ -131,21 +131,21 @@ library(miic)
 #' # EXAMPLE COVID CASES (time series demo)
 data(covidCases)
 # execute MIIC (reconstruct graph in temporal mode)
-tmiic_res <- miic(input_data = covidCases, mode = "TS", n_layers = 3, delta_t = 1, movavg = 14)
+tmiic_obj <- miic(input_data = covidCases, mode = "TS", n_layers = 3, delta_t = 1, movavg = 14)
 
 # to plot the default compact graph
 if(require(igraph)) {
-  plot(tmiic_res)
+  plot(tmiic_obj)
 }
 
 # to plot the raw temporal network
 if(require(igraph)) {
-  plot(tmiic_res, display="raw")
+  plot(tmiic_obj, display="raw")
 }
 
 # to plot the full temporal network
 if(require(igraph)) {
-  plot(tmiic_res, display="lagged")
+  plot(tmiic_obj, display="lagged")
 }
 
 }

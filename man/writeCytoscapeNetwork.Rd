@@ -4,10 +4,10 @@
 \alias{writeCytoscapeNetwork}
 \title{GraphML converting function for miic graph}
 \usage{
-writeCytoscapeNetwork(g, file, layout = NULL)
+writeCytoscapeNetwork(mo, file, layout = NULL)
 }
 \arguments{
-\item{g}{The graph object returned by \link[=miic]{miic}.}
+\item{mo}{A miic object. The object returned by the \code{\link{miic}} execution.}
 
 \item{file}{A string. Path to the output file containing file name without
 extension (.graphml will be appended).}

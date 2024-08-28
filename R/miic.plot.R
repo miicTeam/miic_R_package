@@ -9,7 +9,7 @@
 #' @details See the details of specific function for each method.
 #' For igraph, see \code{\link{getIgraph}}.
 #'
-#' @param miic_res [a miic object, required]
+#' @param mo [a miic object, required]
 #'
 #' The object returned by the \code{\link{miic}} execution.
 #'
@@ -87,14 +87,14 @@
 #' data(hematoData)
 #'
 #' # execute MIIC (reconstruct graph)
-#' miic_res <- miic(
+#' miic_obj <- miic(
 #'   input_data = hematoData, latent = "yes",
 #'   n_shuffles = 10, conf_threshold = 0.001
 #' )
 #'
 #' # Using igraph
 #' if(require(igraph)) {
-#' g = export(miic_res, "igraph")
+#' g = export(miic_obj, "igraph")
 #' plot(g) # Default visualisation, calls igraph::plot.igraph()
 #'
 #' # Specifying layout (see ?igraph::layout_)
@@ -108,19 +108,19 @@
 #'
 #' # In temporal mode, execute MIIC
 #' data(covidCases)
-#' tmiic_res <- miic(input_data = covidCases, mode = "TS", n_layers = 3, delta_t = 1, movavg = 14)
+#' tmiic_obj <- miic(input_data = covidCases, mode = "TS", n_layers = 3, delta_t = 1, movavg = 14)
 #'
 #' # Plot by default the compact display of the temporal network using igraph
 #' if(require(igraph)) {
-#' g = export (tmiic_res)
+#' g = export (tmiic_obj)
 #' plot(g)
 #'
 #' # Plot the raw temporal network using igraph
-#' g = export(tmiic_res, display="raw")
+#' g = export(tmiic_obj, display="raw")
 #' plot(g)
 #'
 #' # Plot the complete temporal network using igraph (completed by stationarity)
-#' g = export(tmiic_res, display="lagged")
+#' g = export(tmiic_obj, display="lagged")
 #' plot(g)
 #'
 #' # Specifying layout (see ?igraph::layout_)
@@ -131,23 +131,23 @@
 #' # igraph::plot.igraph() is not optimal when the graph contains
 #' # multiple edges between the same nodes.
 #' # So, the recommend way to plot a compact graph is to use tmiic plotting:
-#' plot(tmiic_res)
+#' plot(tmiic_obj)
 #' }
 #'
 #' }
 #-------------------------------------------------------------------------------
-export <- function (miic_res, method="igraph", pcor_palette=NULL,
+export <- function (mo, method="igraph", pcor_palette=NULL,
                     display="compact", show_self_loops=TRUE)
   {
-  if ( is.null(miic_res$summary) )
+  if ( is.null(mo$summary) )
     stop("The inferred network does not exist")
   if ( (!is.null(method)) && (method != "igraph") )
     stop("Method not supported")
 
-  if ( is.null(miic_res$tmiic) )
-    return (getIgraph(miic_res, pcor_palette=pcor_palette))
+  if ( is.null(mo$tmiic) )
+    return (getIgraph(mo, pcor_palette=pcor_palette))
   else
-    return (tmiic_getIgraph (miic_res, pcor_palette=pcor_palette,
+    return (tmiic_getIgraph (mo, pcor_palette=pcor_palette,
                              display=display, show_self_loops=show_self_loops))
   }
 
@@ -165,8 +165,8 @@ export <- function (miic_res, method="igraph", pcor_palette=NULL,
 #' (negative is blue, null is gray and positive is red) and their width is
 #' based on the conditional mutual information minus the complexity cost.
 #'
-#' @param miic_res [a miic graph object]
-#' The graph object returned by the miic execution.
+#' @param mo [a miic object]
+#' The object returned by the \code{\link{miic}} execution.
 #' @param pcor_palette The color palette used to represent the partial correlations
 #' (the color of the edges). The palette must be able to handle 201 shades
 #' to cover the correlation range from -100 to +100. The default palette is
@@ -179,15 +179,15 @@ export <- function (miic_res, method="igraph", pcor_palette=NULL,
 #' \code{\link[igraph]{igraph.plotting}} for the detailed description of the
 #' plotting parameters and \code{\link[igraph]{layout}} for different layouts.
 #-------------------------------------------------------------------------------
-getIgraph <- function(miic_res, pcor_palette = NULL) {
-  if (is.null(miic_res$summary)) {
+getIgraph <- function(mo, pcor_palette = NULL) {
+  if (is.null(mo$summary)) {
     stop("The inferred network does not exist.")
   }
   if (!base::requireNamespace("igraph", quietly = TRUE)) {
     stop("Package 'igraph' is required.")
   }
 
-  summary = miic_res$summary[miic_res$summary$type %in% c('P', 'TP', 'FP'), ]
+  summary = mo$summary[mo$summary$type %in% c('P', 'TP', 'FP'), ]
   if (nrow(summary) > 0) {
     # Re-order summary so that all edges go from "x" to "y"
     for(row in 1:nrow(summary)){
@@ -209,7 +209,7 @@ getIgraph <- function(miic_res, pcor_palette = NULL) {
 
   # Create igraph object from summary
   ig_graph = igraph::graph_from_data_frame(summary,
-                                           vertices=colnames(miic_res$adj_matrix))
+                                           vertices=colnames(mo$adj_matrix))
 
   # Set nodes visuals
   igraph::V(ig_graph)$color <- "lightblue"
@@ -258,10 +258,9 @@ getIgraph <- function(miic_res, pcor_palette = NULL) {
 #' @details See the documentation of \code{\link{export}} for further
 #' details.
 #'
-#' @param x [a miic graph object, required]
+#' @param x [a miic object, required]
 #'
-#' The graph object returned by \code{\link{miic}}.
-#'
+#' The object returned by \code{\link{miic}} execution.
 #'
 #' @param method  [a string, optional, default value "igraph"]
 #'
