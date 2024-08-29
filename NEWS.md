@@ -2,23 +2,35 @@
 
 # v2.0.1
 
+## Features
+
+- New release to CRAN.
+
 ## Fixes and improvements
 
-- Updated version published on CRAN.
+- Faster post-processing in R for datasets with large number of variables.
 
-- Standardization of exported function names, parameters and return values.
+## Breaking changes
+
+Consolidating long-pending breaking changes:
+
+- Harmonization of exported function names using camel case.
+
+- Harmonization of parameters and return values using snake case.
+
+- Harmonization of abbreviations.
 
 ## Known issues
 
-- A (very) large number of contributors can lead to a memory fault.
-  Initial fix has been reverted due to side effects.
+- Conditioning on a (very) large number of contributors can lead to a memory 
+  fault.
   
 # v2.0.0
 
 ## Features
 
 - tMIIC version for temporal causal discovery on stationary time series: 
-  new mode of MIIC to reconstruct networks from temporal stationary datasets.
+  new mode of `miic()` to reconstruct networks from temporal stationary datasets.
   [Simon et al., eLife, reviewed preprint]
   (https://www.biorxiv.org/content/10.1101/2024.02.06.579177v1.abstract)
 
@@ -26,7 +38,7 @@
 
 ## Fixes and improvements
 
-- The discretization of continuous variables has been modified when dealing 
+- The discretization of continuous variables has been improved when dealing 
   with variables having a large number of identical values.
   
 - Fix for memory overflow on shared memory space.
@@ -58,7 +70,7 @@
   [Cabeli et al., Why21 at NeurIPS 2021]
   (http://kinefold.curie.fr/isambertlab/PAPERS/cabeli_Why21-NeurIPS2021.pdf)
 
-- By default, MIIC does not propagate orientations anymore
+- By default, `miic()` does not propagate orientations anymore
   and allows latent variables discovery during orientation step. 
 
 # v1.5.3
