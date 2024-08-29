@@ -65,7 +65,7 @@ A list that contains :
   the cutpoints for the partitioning of \eqn{X}.
 \item cutpoints2: Only when \eqn{Y} is continuous, a vector containing
   the cutpoints for the partitioning of \eqn{Y}.
-\item niterations: Only when at least one of the input variables is
+\item n_iterations: Only when at least one of the input variables is
   continuous, the number of iterations it takes to reach the convergence of
   the estimated information.
 \item iteration1, iteration2, ... Only when at least one of the input

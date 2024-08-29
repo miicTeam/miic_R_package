@@ -74,7 +74,7 @@
 #'   the cutpoints for the partitioning of \eqn{X}.
 #' \item cutpoints2: Only when \eqn{Y} is continuous, a vector containing
 #'   the cutpoints for the partitioning of \eqn{Y}.
-#' \item niterations: Only when at least one of the input variables is
+#' \item n_iterations: Only when at least one of the input variables is
 #'   continuous, the number of iterations it takes to reach the convergence of
 #'   the estimated information.
 #' \item iteration1, iteration2, ... Only when at least one of the input
@@ -240,7 +240,7 @@ computeMutualInfo <- function(x, y,
     # Parse cutpointsmatrix
     epsilon <- min(c(sd(X_num), sd(Y_num))) / 100
     niterations <- nrow(rescpp$cutpointsmatrix) / maxbins
-    result$niterations <- niterations
+    result$n_iterations <- niterations
     for (i in 0:(niterations - 1)) {
       result[[paste0("iteration", i + 1)]] <- list()
       for (l in 1:2) {

@@ -92,9 +92,9 @@ Possible values are \emph{"none"}, \emph{"alphabetical"}, \emph{"layers"},
 \item When \emph{positioning_for_grid} = \emph{"none"}
  The nodes are positioned as they appear in the miic result
 \item When \emph{positioning_for_grid} = \emph{"alphabetical"}
- The nodes are positioned alphabeticaly in ascending order
+ The nodes are positioned alphabetically in ascending order
 \item When \emph{positioning_for_grid} = \emph{"layers"}
- The nodes with the less lags wil be placed on the exteriors
+ The nodes with the less lags will be placed on the exteriors
  while the nodes having the most lags are in the center
 \item When \emph{positioning_for_grid} = \emph{"greedy"}
  A greedy algorithm will be used to placed the nodes in a way minimizing

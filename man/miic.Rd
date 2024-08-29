@@ -376,12 +376,12 @@ A \emph{miic-like} object that contains:
  So, the summary contains these categories of edges:
  \itemize{
  \item{ edges retained}
- \item{ edges not retained after contionning on some contributor(s)}
- \item{ edges not retained without condionning but present in true edges}
+ \item{ edges not retained after conditioning on some contributor(s)}
+ \item{ edges not retained without conditioning but present in true edges}
  }
  while these edges are not considered as relevant and are not included:
  \itemize{
- \item{ edges not retained without condionning and not in true edges}
+ \item{ edges not retained without conditioning and not in true edges}
  }
 
  Information available in the summary are:
