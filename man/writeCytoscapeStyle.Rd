@@ -7,10 +7,15 @@
 writeCytoscapeStyle(file)
 }
 \arguments{
-\item{file}{[a string] The file path of the output file (containing the file name without extension).}
+\item{file}{[a string] The file path of the output file (containing the
+file name without extension).}
+}
+\value{
+None
 }
 \description{
-This function writes the  miic style for a correct visualization using the cytoscape tool (http://www.cytoscape.org/).
+This function writes the  miic style for a correct
+visualization using the cytoscape tool (http://www.cytoscape.org/).
 }
 \details{
 The style is written in the xml file format.

@@ -4,10 +4,18 @@
 #' Export miic result for plotting (with igraph)
 #'
 #' @description This function creates an object built from the result returned
-#' by \code{\link{miic}} that is ready to be fed to igraph plotting method.
+#' by \code{\link{miic}} that is ready to be fed to the plotting method.
 #'
-#' @details See the details of specific function for each method.
-#' For igraph, see \code{\link{getIgraph}}.
+#' @details The behavior depends on the method used for the export.
+#'
+#' For igraph, edges attributes are passed to the igraph graph
+#' and can be accessed with e.g. \code{E(g)$partial_correlation}.
+#' See \code{\link{miic}} for more details on edge parameters.
+#' By default, edges are colored according to the partial correlation
+#' between two nodes conditioned on the conditioning set
+#' (negative is blue, null is gray and positive is red)
+#' and their width is based on the conditional mutual information
+#' minus the complexity cost.
 #'
 #' @param mo [a miic object, required]
 #'
@@ -152,7 +160,7 @@ export <- function (mo, method="igraph", pcor_palette=NULL,
   }
 
 #-------------------------------------------------------------------------------
-#' Igraph plotting function for miic
+#' Igraph export function for miic
 #'
 #' @description This functions returns an igraph object built from the result
 #' returned by \code{\link{miic}}.
@@ -173,6 +181,8 @@ export <- function (mo, method="igraph", pcor_palette=NULL,
 #' grDevices::colorRampPalette(c("blue", "darkgrey", "red").
 #'
 #' @return An igraph graph object.
+#'
+#' @noRd
 #'
 #' @seealso
 #' \code{\link{miic}} for details on edge parameters in the returned object,

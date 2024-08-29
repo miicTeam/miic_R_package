@@ -17,6 +17,9 @@ coordinate \code{x} and \code{y} for each node. The optional first column can co
 node names. If node names is not given, the order of the input file will be
 assigned to the list of positions.}
 }
+\value{
+None
+}
 \description{
 Convert miic graph to \href{http://graphml.graphdrawing.org/}{GraphML format}.
 }

@@ -18,6 +18,7 @@ fromStringToNumberArrowType <- function(val) {
 #' coordinate `x` and `y` for each node. The optional first column can contain
 #' node names. If node names is not given, the order of the input file will be
 #' assigned to the list of positions.
+#' @return None
 #' @export
 #' @useDynLib miic
 #' @md
