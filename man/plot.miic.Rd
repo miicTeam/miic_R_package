@@ -37,6 +37,5 @@ details.
 }
 \seealso{
 \code{\link{export}} for graphical exports,
-\code{\link{getIgraph}} for igraph export,
 \code{\link[igraph]{igraph.plotting}}
 }

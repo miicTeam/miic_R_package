@@ -291,7 +291,6 @@ getIgraph <- function(mo, pcor_palette = NULL) {
 #' @export
 #'
 #' @seealso \code{\link{export}} for graphical exports,
-#' \code{\link{getIgraph}} for igraph export,
 #' \code{\link[igraph]{igraph.plotting}}
 #'
 plot.miic = function(x, method = 'igraph', pcor_palette = NULL, ...) {
