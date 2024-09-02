@@ -917,9 +917,9 @@ miic <- function(input_data,
     }
 
   miic_end = Sys.time()
-  pre_duration = as.numeric (round (pre_end - miic_start, 7) )
-  post_duration = as.numeric (round (miic_end - post_start, 7) )
-  miic_duration = as.numeric (round (miic_end - miic_start, 7) )
+  pre_duration = as.numeric (pre_end - miic_start, units="secs")
+  post_duration = as.numeric (miic_end - post_start, units="secs")
+  miic_duration = as.numeric (miic_end - miic_start, units="secs")
   res$time = c ("pre"=pre_duration, res$time,
                 "post"=post_duration, "total"=miic_duration)
 
