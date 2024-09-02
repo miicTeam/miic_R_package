@@ -226,6 +226,7 @@ summarizeResults = function (observations, results,
   #
   summary [, c("sign", "partial_correlation")] <- compute_partial_correlation (
     summary, observations, state_order)
+  summary$sign[summary$sign == "NA"] <- NA_character_
   summary$partial_correlation <- as.numeric (summary$partial_correlation)
   #
   # Probabilities of orientations
