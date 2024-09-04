@@ -213,7 +213,7 @@ tmiic_lag_input_data <- function (list_ts, state_order, keep_max_data=FALSE)
 # Utility function to precompute lags, layers and shifts of nodes in the
 # lagged network
 #
-# params: tmo [a tmiic object] The object returned by miic's
+# params: tmiic_obj [a tmiic object] The object returned by miic's
 # execution in temporal mode.
 #
 # returns: a dataframe with lagged nodes as row name and 3 columns:
@@ -221,13 +221,13 @@ tmiic_lag_input_data <- function (list_ts, state_order, keep_max_data=FALSE)
 #  - corresp_nodes: the corresponding non lagged node
 #  - shifts: the shift to apply to find the next lagged node
 #-----------------------------------------------------------------------------
-tmiic_precompute_lags_layers_and_shifts <- function (tmo)
+tmiic_precompute_lags_layers_and_shifts <- function (tmiic_obj)
   {
-  list_nodes_not_lagged = tmo$state_order$var_names
-  is_contextual = tmo$state_order$is_contextual
+  list_nodes_not_lagged = tmiic_obj$state_order$var_names
+  is_contextual = tmiic_obj$state_order$is_contextual
   n_nodes_not_lagged = length (list_nodes_not_lagged)
-  list_n_layers_back <- tmo$state_order$n_layers - 1
-  list_delta_t <- tmo$state_order$delta_t
+  list_n_layers_back <- tmiic_obj$state_order$n_layers - 1
+  list_delta_t <- tmiic_obj$state_order$delta_t
   #
   # Identify lag and layer of each node
   #
@@ -430,7 +430,7 @@ tmiic_combine_probas <- function (df, comb_orient)
 # is reduced to non lagged nodes and filled with NA during the process
 #
 # params:
-# - tmo: a tmiic object, returned by tmiic
+# - tmiic_obj: a tmiic object, returned by tmiic
 #
 # - flatten_mode: string, optional, default value "compact".
 #   Possible values are "compact", "combine", "unique", "drop":
@@ -470,30 +470,30 @@ tmiic_combine_probas <- function (df, comb_orient)
 # as input where the summary dataframe has been flattened and the adjacency
 # matrix reduced to the non lagged nodes
 #-----------------------------------------------------------------------------
-tmiic_flatten_network <- function (tmo, flatten_mode="compact",
+tmiic_flatten_network <- function (tmiic_obj, flatten_mode="compact",
                                    keep_edges_on_same_node=TRUE)
   {
   # Reduce size of adj_matrix to non lagged nodes
   # (we don't care about content as it is not used for plotting)
   #
-  list_nodes <- tmo$state_order$var_names
-  tmo$adj_matrix <- matrix(NA, nrow=0, ncol=length (list_nodes))
-  colnames(tmo$adj_matrix) <- list_nodes
+  list_nodes <- tmiic_obj$state_order$var_names
+  tmiic_obj$adj_matrix <- matrix(NA, nrow=0, ncol=length (list_nodes))
+  colnames(tmiic_obj$adj_matrix) <- list_nodes
   #
   # Keep only edges found by miic
   #
-  df_edges <- tmo$summary[tmo$summary$type %in% c('P', 'TP', 'FP'), ]
+  df_edges <- tmiic_obj$summary[tmiic_obj$summary$type %in% c('P', 'TP', 'FP'), ]
   if (nrow(df_edges) <= 0)
     {
     if (flatten_mode != "drop")
       df_edges$lag = numeric(0)
-    tmo$summary <- df_edges
-    return (tmo)
+    tmiic_obj$summary <- df_edges
+    return (tmiic_obj)
     }
   #
   # Precompute lag and layer of each node
   #
-  df_precomputed <- tmiic_precompute_lags_layers_and_shifts (tmo)
+  df_precomputed <- tmiic_precompute_lags_layers_and_shifts (tmiic_obj)
   #
   # First step, perform flatten_mode="compact":
   # from summary, remove lag info from nodes names and put it into a lag column
@@ -539,8 +539,8 @@ tmiic_flatten_network <- function (tmo, flatten_mode="compact",
     {
     if (flatten_mode == "drop")
       df_edges$lag <- NULL
-    tmo$summary <- df_edges
-    return (tmo)
+    tmiic_obj$summary <- df_edges
+    return (tmiic_obj)
     }
   #
   # "compact" mode is done
@@ -628,10 +628,10 @@ tmiic_flatten_network <- function (tmo, flatten_mode="compact",
     {
     # For contextual variable, we clean the lag info
     #
-    is_contextual <- tmo$state_order$is_contextual
+    is_contextual <- tmiic_obj$state_order$is_contextual
     if (!is.null(is_contextual))
       {
-      list_nodes_not_lagged = tmo$state_order$var_names
+      list_nodes_not_lagged = tmiic_obj$state_order$var_names
       for ( edge_idx in 1:nrow(df_edges) )
         {
         one_edge <- df_edges[edge_idx,]
@@ -645,8 +645,8 @@ tmiic_flatten_network <- function (tmo, flatten_mode="compact",
   #
   # returns the tmiic structure where network summary has been flattened
   #
-  tmo$summary <- df_edges
-  return (tmo)
+  tmiic_obj$summary <- df_edges
+  return (tmiic_obj)
   }
 
 #-----------------------------------------------------------------------------
@@ -660,23 +660,23 @@ tmiic_flatten_network <- function (tmo, flatten_mode="compact",
 # i.e: assuming that we used nlayers=4 and delta_t=1, the edge X_lag0-X_lag1
 # will be copied as X_lag1-X_lag2 and X_lag2-X_lag3.
 #
-# param: tmo, the object returned by tmiic
+# param: tmiic_obj, the object returned by tmiic
 #
 # returns: a dataframe with edges completed by stationarity
 #-----------------------------------------------------------------------------
-tmiic_repeat_edges_over_history <- function (tmo)
+tmiic_repeat_edges_over_history <- function (tmiic_obj)
   {
   # Consider only edges found by miic  type = "P", "TP", "FP"
   #
-  df_edges <- tmo$summary[tmo$summary$type %in% c('P', 'TP', 'FP'), ]
+  df_edges <- tmiic_obj$summary[tmiic_obj$summary$type %in% c('P', 'TP', 'FP'), ]
   if (nrow(df_edges) <= 0)
     return (df_edges)
   #
   # Precompute lag, layer and shift of each node
   #
-  df_precomp <- tmiic_precompute_lags_layers_and_shifts (tmo)
-  list_n_layers_back <- tmo$state_order$n_layers - 1
-  list_nodes_not_lagged <- tmo$state_order$var_names
+  df_precomp <- tmiic_precompute_lags_layers_and_shifts (tmiic_obj)
+  list_n_layers_back <- tmiic_obj$state_order$n_layers - 1
+  list_nodes_not_lagged <- tmiic_obj$state_order$var_names
   #
   # Duplicate the edges over all layers of history
   #

@@ -5,7 +5,7 @@
 \title{Export miic result for plotting (with igraph)}
 \usage{
 export(
-  mo,
+  miic_obj,
   method = "igraph",
   pcor_palette = NULL,
   display = "compact",
@@ -13,7 +13,7 @@ export(
 )
 }
 \arguments{
-\item{mo}{[a miic object, required]
+\item{miic_obj}{[a miic object, required]
 
 The object returned by the \code{\link{miic}} execution.}
 

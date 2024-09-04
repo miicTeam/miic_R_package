@@ -22,7 +22,7 @@
 # conditional mutual information minus the complexity cost.
 #
 # params:
-# - tmo: a tmiic object, returned by the miic execution in temporal mode
+# - tmiic_obj: a tmiic object, returned by the miic execution in temporal mode
 #
 # - display: string. Optional, default value "compact".
 #   Possible values are "raw", "lagged", "compact", "combine", "unique", "drop":
@@ -67,15 +67,15 @@
 #
 # returns: an igraph graph object.
 #-------------------------------------------------------------------------------
-tmiic_getIgraph <- function (tmo, display="compact",
+tmiic_getIgraph <- function (tmiic_obj, display="compact",
                              show_self_loops=TRUE, pcor_palette=NULL)
   {
   if (display == "lagged")
-    tmo$summary = tmo$tmiic$stationarity
+    tmiic_obj$summary = tmiic_obj$tmiic$stationarity
   else if (display != "raw")
-    tmo <- tmiic_flatten_network (tmo, flatten_mode=display,
+    tmiic_obj <- tmiic_flatten_network (tmiic_obj, flatten_mode=display,
                                   keep_edges_on_same_node=show_self_loops)
-  graph <- getIgraph (tmo, pcor_palette=pcor_palette)
+  graph <- getIgraph (tmiic_obj, pcor_palette=pcor_palette)
 
   if (display %in% c("raw", "lagged") )
     {
@@ -86,8 +86,8 @@ tmiic_getIgraph <- function (tmo, display="compact",
   else
     {
     igraph::E(graph)$curved = FALSE
-    if ( "lag" %in% colnames(tmo$summary) )
-      igraph::E(graph)$label <- tmo$summary$lag
+    if ( "lag" %in% colnames(tmiic_obj$summary) )
+      igraph::E(graph)$label <- tmiic_obj$summary$lag
     }
   return(graph)
   }
@@ -106,9 +106,9 @@ tmiic_getIgraph <- function (tmo, display="compact",
 #
 # @return [a tmiic object] The modified tmiic object
 #-----------------------------------------------------------------------------
-tmiic_prepare_edges_for_plotting <- function (tmo)
+tmiic_prepare_edges_for_plotting <- function (tmiic_obj)
   {
-  df_edges <- tmo$summary[tmo$summary$type %in% c('P', 'TP', 'FP'), ]
+  df_edges <- tmiic_obj$summary[tmiic_obj$summary$type %in% c('P', 'TP', 'FP'), ]
   if (nrow(df_edges) <= 0)
     df_edges$xy = character(0)
   else
@@ -145,8 +145,8 @@ tmiic_prepare_edges_for_plotting <- function (tmo)
         }
       }
     }
-  tmo$summary <- df_edges
-  return (tmo)
+  tmiic_obj$summary <- df_edges
+  return (tmiic_obj)
   }
 
 #-------------------------------------------------------------------------------
@@ -163,9 +163,9 @@ tmiic_prepare_edges_for_plotting <- function (tmo)
 #
 # @return df_mult [a dataframe] The dataframe containing the multiple edges
 #-------------------------------------------------------------------------------
-tmiic_get_multiple_edges_for_plotting <- function (tmo)
+tmiic_get_multiple_edges_for_plotting <- function (tmiic_obj)
   {
-  df_mult <- tmo$summary
+  df_mult <- tmiic_obj$summary
   if (nrow(df_mult) <= 0)
     df_mult$count <- numeric(0)
   else
@@ -423,17 +423,17 @@ tmiic_compute_row_layout_greedy_recurs <- function (node_left, node_right,
 # The layout is completed with nodes without edges to produce the final
 # layer 0 layout.
 #
-# param:  tmo, the object returned by the miic execution in temporal mode
+# param:  tmiic_obj, the object returned by the miic execution in temporal mode
 #
 # returns: a list, the position along an axis for each node
 #-------------------------------------------------------------------------------
-tmiic_compute_row_layout_greedy <- function (tmo)
+tmiic_compute_row_layout_greedy <- function (tmiic_obj)
   {
-  list_nodes_not_lagged <- tmo$state_order$var_names
+  list_nodes_not_lagged <- tmiic_obj$state_order$var_names
   #
   # Filter out self edges, count and summarize edges regardless their lags
   #
-  tmiic_flat <- tmiic_flatten_network (tmo)
+  tmiic_flat <- tmiic_flatten_network (tmiic_obj)
   df_edges <- tmiic_flat$summary
   df_edges <- df_edges[(df_edges$x != df_edges$y),]
   if (nrow (df_edges) == 0)
@@ -490,15 +490,15 @@ tmiic_compute_row_layout_greedy <- function (tmo)
 # This function computes the layout so that the less layers
 # has a node, the more to the exteriors it will be placed.
 #
-# param: tmo, a tmiic object returned by the execution of miic
+# param: tmiic_obj, a tmiic object returned by the execution of miic
 # in temporal mode ("raw" graph_type)
 #
 # returns: a list, the position along an axis for each node
 #-------------------------------------------------------------------------------
-tmiic_compute_row_layout_layers <- function (tmo)
+tmiic_compute_row_layout_layers <- function (tmiic_obj)
   {
-  n_nodes_not_lagged <- nrow(tmo$state_order)
-  list_n_layers_back <- tmo$state_order$n_layers - 1
+  n_nodes_not_lagged <- nrow(tmiic_obj$state_order)
+  list_n_layers_back <- tmiic_obj$state_order$n_layers - 1
   n_layers_back_max <- max (list_n_layers_back)
   #
   # Precompute the rows on the grid, putting nodes with the less lags
@@ -547,19 +547,19 @@ tmiic_compute_row_layout_layers <- function (tmo)
 # This function computes the layout using Sugiyama algorithm to
 # minimize crossing edges
 #
-# param: tmo, a tmiic object returned by the execution of miic
+# param: tmiic_obj, a tmiic object returned by the execution of miic
 # in temporal mode ("raw" graph_type)
 #
 # returns: a list, the position along an axis for each node
 #-------------------------------------------------------------------------------
-tmiic_compute_row_layout_sugiyama <- function (tmo)
+tmiic_compute_row_layout_sugiyama <- function (tmiic_obj)
   {
-  list_nodes_not_lagged <- tmo$state_order$var_names
+  list_nodes_not_lagged <- tmiic_obj$state_order$var_names
   n_nodes_not_lagged <- length(list_nodes_not_lagged)
   #
   # Filter out self edges, count and summarize edges regardless their lags
   #
-  tmiic_flat <- tmiic_flatten_network(tmo)
+  tmiic_flat <- tmiic_flatten_network(tmiic_obj)
   df_edges <- tmiic_flat$summary
   df_edges <- df_edges[(df_edges$x != df_edges$y),]
   if (nrow(df_edges) == 0)
@@ -596,7 +596,7 @@ tmiic_compute_row_layout_sugiyama <- function (tmo)
 # graphs
 #
 # params:
-# - tmo, a tmiic object returned by the miic's execution in temporal mode.
+# - tmiic_obj, a tmiic object returned by the miic's execution in temporal mode.
 #
 # - display: string. optional, default value "raw".
 #   Possible values are "raw" and "lagged".
@@ -625,7 +625,7 @@ tmiic_compute_row_layout_sugiyama <- function (tmo)
 #
 # returns: a matrix, the layout to use for drawing
 #-------------------------------------------------------------------------------
-tmiic_compute_grid_layout <- function (tmo, display="raw",
+tmiic_compute_grid_layout <- function (tmiic_obj, display="raw",
                                      positioning="greedy", orientation="L")
   {
   if (! display %in% c("raw", "lagged") )
@@ -635,7 +635,7 @@ tmiic_compute_grid_layout <- function (tmo, display="raw",
   if (! orientation %in% c("L", "P") )
     stop ("Error: Invalid orientation parameter")
 
-  nodes_not_lagged <- tmo$state_order$var_names
+  nodes_not_lagged <- tmiic_obj$state_order$var_names
   n_nodes_not_lagged <- length (nodes_not_lagged)
   #
   # Precompute the layer 0 layout
@@ -652,18 +652,18 @@ tmiic_compute_grid_layout <- function (tmo, display="raw",
     list_pos_of_nodes <- unlist (list_pos_of_nodes)
     }
   if (positioning == "layers")
-    list_pos_of_nodes <- tmiic_compute_row_layout_layers (tmo)
+    list_pos_of_nodes <- tmiic_compute_row_layout_layers (tmiic_obj)
   if (positioning == "greedy")
-    list_pos_of_nodes <- tmiic_compute_row_layout_greedy (tmo)
+    list_pos_of_nodes <- tmiic_compute_row_layout_greedy (tmiic_obj)
   if (positioning == "sugiyama")
-    list_pos_of_nodes <- tmiic_compute_row_layout_sugiyama (tmo)
+    list_pos_of_nodes <- tmiic_compute_row_layout_sugiyama (tmiic_obj)
   if ( is.null (list_pos_of_nodes) )
     stop ("Error: Layout can not be infered")
   #
   # As contextual nodes are placed in an extra column/row when display is "raw",
   # here we update the nodes positions to maintain a "nice" display
   #
-  is_contextual <- tmo$state_order$is_contextual
+  is_contextual <- tmiic_obj$state_order$is_contextual
   if ( (display == "raw") & (sum(is_contextual) > 0) )
     {
     list_pos_upd <- list_pos_of_nodes
@@ -708,9 +708,9 @@ tmiic_compute_grid_layout <- function (tmo, display="raw",
   #
   # Place contextual and lag0 nodes
   #
-  list_n_layers_back <- tmo$state_order$n_layers - 1
+  list_n_layers_back <- tmiic_obj$state_order$n_layers - 1
   n_layers_back_max <- max (list_n_layers_back)
-  list_delta_t <- tmo$state_order$delta_t
+  list_delta_t <- tmiic_obj$state_order$delta_t
   max_lags <- max (list_n_layers_back * list_delta_t)
 
   df_layout <- data.frame ( col=integer(), row=integer() )

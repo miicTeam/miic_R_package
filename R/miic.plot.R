@@ -17,7 +17,7 @@
 #' and their width is based on the conditional mutual information
 #' minus the complexity cost.
 #'
-#' @param mo [a miic object, required]
+#' @param miic_obj [a miic object, required]
 #'
 #' The object returned by the \code{\link{miic}} execution.
 #'
@@ -144,18 +144,18 @@
 #'
 #' }
 #-------------------------------------------------------------------------------
-export <- function (mo, method="igraph", pcor_palette=NULL,
+export <- function (miic_obj, method="igraph", pcor_palette=NULL,
                     display="compact", show_self_loops=TRUE)
   {
-  if ( is.null(mo$summary) )
+  if ( is.null(miic_obj$summary) )
     stop("The inferred network does not exist")
   if ( (!is.null(method)) && (method != "igraph") )
     stop("Method not supported")
 
-  if ( is.null(mo$tmiic) )
-    return (getIgraph(mo, pcor_palette=pcor_palette))
+  if ( is.null(miic_obj$tmiic) )
+    return (getIgraph(miic_obj, pcor_palette=pcor_palette))
   else
-    return (tmiic_getIgraph (mo, pcor_palette=pcor_palette,
+    return (tmiic_getIgraph (miic_obj, pcor_palette=pcor_palette,
                              display=display, show_self_loops=show_self_loops))
   }
 
@@ -173,7 +173,7 @@ export <- function (mo, method="igraph", pcor_palette=NULL,
 #' (negative is blue, null is gray and positive is red) and their width is
 #' based on the conditional mutual information minus the complexity cost.
 #'
-#' @param mo [a miic object]
+#' @param miic_obj [a miic object]
 #' The object returned by the \code{\link{miic}} execution.
 #' @param pcor_palette The color palette used to represent the partial correlations
 #' (the color of the edges). The palette must be able to handle 201 shades
@@ -189,15 +189,15 @@ export <- function (mo, method="igraph", pcor_palette=NULL,
 #' \code{\link[igraph]{igraph.plotting}} for the detailed description of the
 #' plotting parameters and \code{\link[igraph]{layout}} for different layouts.
 #-------------------------------------------------------------------------------
-getIgraph <- function(mo, pcor_palette = NULL) {
-  if (is.null(mo$summary)) {
+getIgraph <- function(miic_obj, pcor_palette = NULL) {
+  if (is.null(miic_obj$summary)) {
     stop("The inferred network does not exist.")
   }
   if (!base::requireNamespace("igraph", quietly = TRUE)) {
     stop("Package 'igraph' is required.")
   }
 
-  summary = mo$summary[mo$summary$type %in% c('P', 'TP', 'FP'), ]
+  summary = miic_obj$summary[miic_obj$summary$type %in% c('P', 'TP', 'FP'), ]
   if (nrow(summary) > 0) {
     # Re-order summary so that all edges go from "x" to "y"
     for(row in 1:nrow(summary)){
@@ -218,8 +218,8 @@ getIgraph <- function(mo, pcor_palette = NULL) {
   }
 
   # Create igraph object from summary
-  ig_graph = igraph::graph_from_data_frame(summary,
-                                           vertices=colnames(mo$adj_matrix))
+  ig_graph = igraph::graph_from_data_frame (summary,
+    vertices=colnames(miic_obj$adj_matrix) )
 
   # Set nodes visuals
   igraph::V(ig_graph)$color <- "lightblue"

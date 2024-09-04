@@ -11,7 +11,7 @@ fromStringToNumberArrowType <- function(val) {
 #' GraphML converting function for miic graph
 #'
 #' @description Convert miic graph to [GraphML format](http://graphml.graphdrawing.org/).
-#' @param mo A miic object. The object returned by the \code{\link{miic}} execution.
+#' @param miic_obj A miic object. The object returned by the \code{\link{miic}} execution.
 #' @param file A string. Path to the output file containing file name without
 #' extension (.graphml will be appended).
 #' @param layout An optional data frame of 2 (or 3) columns containing the
@@ -23,18 +23,18 @@ fromStringToNumberArrowType <- function(val) {
 #' @useDynLib miic
 #' @md
 
-writeCytoscapeNetwork <- function(mo, file, layout = NULL) {
+writeCytoscapeNetwork <- function(miic_obj, file, layout = NULL) {
   ##################################### NETWORK IN GRAPHML
   if (missing(file)) {
     stop("The file path is necessary")
   }
 
-  if (is.null(mo$summary)) {
+  if (is.null(miic_obj$summary)) {
     stop("The result of the miic execution is required")
   }
 
-  summary <- mo$summary
-  adj_matrix <- mo$adj_matrix
+  summary <- miic_obj$summary
+  adj_matrix <- miic_obj$adj_matrix
 
   if (is.null(layout)) {
     line <- "<graphml>\n"
