@@ -159,13 +159,13 @@
 #' your compiler is compatible with openmp if you wish to use multithreading.
 #'
 #' @param cplx [a string, optional, "nml" by default, possible values:
-#' "nml", "mdl"]
+#' "nml", "bic"]
 #'
 #' In practice, the finite size of the input  dataset requires that
 #' the 2-point and 3-point information measures should be \emph{shifted}
 #' by a \emph{complexity} term. The finite size corrections can be based on
-#' the Minimal Description Length (MDL) criterion.
-#' However, the MDL complexity criterion tends to underestimate the
+#' the Bayesian Information Criterion (BIC).
+#' However, the BIC complexity term tends to underestimate the
 #' relevance of edges connecting variables with many different categories,
 #' leading to the removal of false negative edges. To avoid such biases
 #' with finite datasets, the (universal) Normalized Maximum Likelihood (NML)

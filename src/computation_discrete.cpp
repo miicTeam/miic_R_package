@@ -9,7 +9,7 @@
 #include "mutual_information.h"
 #include "structure.h"
 
-constexpr int MDL = 0;
+constexpr int BIC = 0;
 namespace miic {
 namespace computation {
 
@@ -85,7 +85,7 @@ InfoBlock computeCondMutualInfoDiscrete(const TempGrid2d<int>& data,
     // Conclude on current count
     if (Nuy > 0) {
       Huy -= Nuy * log(Nuy);
-      if (cplx != MDL) {
+      if (cplx != BIC) {
         logC_uy_x += cache->getLogC(lround(Nuy), rx);
       }
       Nuy = 0;
@@ -99,7 +99,7 @@ InfoBlock computeCondMutualInfoDiscrete(const TempGrid2d<int>& data,
     for (auto& Nxu : Nux_list) {
       if (Nxu > 0) {
         Hux -= Nxu * log(Nxu);
-        if (cplx != MDL) {
+        if (cplx != BIC) {
           logC_ux_y += cache->getLogC(lround(Nxu), ry);
         }
         Nxu = 0;  // reset counter
@@ -107,7 +107,7 @@ InfoBlock computeCondMutualInfoDiscrete(const TempGrid2d<int>& data,
     }
     if (Nu > 0) {
       Hu -= Nu * log(Nu);
-      if (cplx != MDL) {
+      if (cplx != BIC) {
         auto Nu_long = lround(Nu);
         logC_u_x += cache->getLogC(Nu_long, rx);
         logC_u_y += cache->getLogC(Nu_long, ry);
@@ -116,7 +116,7 @@ InfoBlock computeCondMutualInfoDiscrete(const TempGrid2d<int>& data,
     }
   }
 
-  if (cplx == MDL) {
+  if (cplx == BIC) {
     double logN = log(N_total);
     logC_ux_y = 0.5 * (ry - 1) * (rx * ru - 1) * logN;
     logC_uy_x = 0.5 * (rx - 1) * (ry * ru - 1) * logN;
@@ -214,7 +214,7 @@ Info3PointBlock computeInfo3PointAndScoreDiscrete(const TempGrid2d<int>& data,
     // Conclude on current count
     if (Nuy > 0) {
       Huy -= Nuy * log(Nuy);
-      if (cplx != MDL) {
+      if (cplx != BIC) {
         auto Nuy_long = lround(Nuy);
         logC_uy_x += cache->getLogC(Nuy_long, rx);
         logC_uy_z += cache->getLogC(Nuy_long, rz);
@@ -222,7 +222,7 @@ Info3PointBlock computeInfo3PointAndScoreDiscrete(const TempGrid2d<int>& data,
       for (auto& Nzuy : Nzuy_list) {
         if (Nzuy > 0) {
           Hzuy -= Nzuy * log(Nzuy);
-          if (cplx != MDL) {
+          if (cplx != BIC) {
             logC_zuy_x += cache->getLogC(lround(Nzuy), rx);
           }
           Nzuy = 0;
@@ -238,7 +238,7 @@ Info3PointBlock computeInfo3PointAndScoreDiscrete(const TempGrid2d<int>& data,
     if (Nu == 0) continue;
 
     Hu -= Nu * log(Nu);
-    if (cplx != MDL) {
+    if (cplx != BIC) {
       auto Nu_long = lround(Nu);
       logC_u_x += cache->getLogC(Nu_long, rx);
       logC_u_y += cache->getLogC(Nu_long, ry);
@@ -249,7 +249,7 @@ Info3PointBlock computeInfo3PointAndScoreDiscrete(const TempGrid2d<int>& data,
     for (auto& Nzu : Nzu_list) {
       if (Nzu > 0) {
         Hzu -= Nzu * log(Nzu);
-        if (cplx != MDL) {
+        if (cplx != BIC) {
           auto Nzu_long = lround(Nzu);
           logC_zu_x += cache->getLogC(Nzu_long, rx);
           logC_zu_y += cache->getLogC(Nzu_long, ry);
@@ -263,7 +263,7 @@ Info3PointBlock computeInfo3PointAndScoreDiscrete(const TempGrid2d<int>& data,
       if (Nux == 0) continue;
 
       Hux -= Nux * log(Nux);
-      if (cplx != MDL) {
+      if (cplx != BIC) {
         auto Nux_long = lround(Nux);
         logC_ux_y += cache->getLogC(Nux_long, ry);
         logC_ux_z += cache->getLogC(Nux_long, rz);
@@ -275,7 +275,7 @@ Info3PointBlock computeInfo3PointAndScoreDiscrete(const TempGrid2d<int>& data,
         if (Nzux == 0) continue;
 
         Hzux -= Nzux * log(Nzux);
-        if (cplx != MDL) {
+        if (cplx != BIC) {
           logC_zux_y += cache->getLogC(lround(Nzux), ry);
         }
         Nzux_list(j, l) = 0;
@@ -284,7 +284,7 @@ Info3PointBlock computeInfo3PointAndScoreDiscrete(const TempGrid2d<int>& data,
   }
 
   // check maximum mutual infos - cplx terms
-  if (cplx == MDL) {
+  if (cplx == BIC) {
     double logN = log(N_total);
     logC_ux_y = 0.5 * (ry - 1) * (rx * ru - 1) * logN;
     logC_uy_x = 0.5 * (rx - 1) * (ry * ru - 1) * logN;

@@ -9,7 +9,7 @@ computeMutualInfo(
   y,
   df_conditioning = NULL,
   maxbins = NULL,
-  cplx = c("nml", "mdl"),
+  cplx = c("nml", "bic"),
   n_eff = -1,
   sample_weights = NULL,
   is_continuous = NULL,
@@ -34,8 +34,8 @@ faster, a larger number allows finer discretization.}
 \item{cplx}{[a string]
 The complexity model:
 \itemize{
-\item["mdl"] Minimum description Length
-\item["nml"] Normalized Maximum Likelihood, less costly compared to "mdl" in
+\item["bic"] Bayesian Information Criterion
+\item["nml"] Normalized Maximum Likelihood, less costly compared to "bic" in
 the finite sample case and will allow for more bins.
 }}
 

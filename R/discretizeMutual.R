@@ -33,9 +33,9 @@
 #' The maximum number of bins desired in the discretization. A lower number makes the computation faster, a higher
 #' number allows finer discretization (by default : 5 * cubic root of N).
 #' @param cplx [a string]
-#' The complexity used in the dynamic programming. Either "mdl" for Minimum description Length or
+#' The complexity used in the dynamic programming. Either "bic" for Bayesian Information Criterion or
 #' "nml" for Normalized Maximum Likelihood, which is less costly in the finite sample case and
-#' will allow more bins than mdl.
+#' will allow more bins than bic.
 #' @param n_eff [an int]
 #' The number of effective samples. When there is significant autocorrelation in the samples you may
 #' want to specify a number of effective samples that is lower than the number of points in the distribution.
@@ -258,7 +258,7 @@ discretizeMutual <- function(x,
   is_continuous <- !is_discrete
 
   # Pass complexity parameter as int
-  if (cplx == "mdl") {
+  if (cplx == "bic") {
     intcplx <- 0
   } else if (cplx == "nml") {
     intcplx <- 1
@@ -266,7 +266,7 @@ discretizeMutual <- function(x,
     warning(
       paste0(
         "cplx parameter not understood, please specify either ",
-        "\'mdl\' or \'nml\'. Running with the default option ",
+        "\'bic\' or \'nml\'. Running with the default option ",
         "(nml)."
       )
     )

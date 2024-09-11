@@ -79,7 +79,7 @@ void setEnvironmentFromR(const Rcpp::List& input_data,
     environment.test_mar = as<bool>(arg_list["test_mar"]);
 
   if (arg_list.containsElementNamed("cplx")) {
-    if (as<std::string>(arg_list["cplx"]).compare("mdl") == 0)
+    if (as<std::string>(arg_list["cplx"]).compare("bic") == 0)
       environment.cplx = 0;
   }
 

@@ -1047,7 +1047,7 @@ check_parameters <- function (input_data, n_threads, cplx,
   mode, negative_info, verbose) {
   list_ret = list ("mode" = mode)
   list_ret$n_threads = check_param_int (n_threads, "n_threads", 1, min=1, max=NA)
-  list_ret$cplx = check_param_string (cplx, "complexity", c("nml", "mdl"))
+  list_ret$cplx = check_param_string (cplx, "complexity", c("nml", "bic"))
   list_ret$orientation = check_param_logical (orientation, "orientation", TRUE)
 
   if ( test_param_wrong_float (ort_proba_ratio, min=0, max=1) )

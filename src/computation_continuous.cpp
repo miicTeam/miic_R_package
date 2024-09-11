@@ -267,7 +267,7 @@ void reconstructCutCoarse (const TempVector<int>& cuts_idx,
 //   This speeds up significantly the dynamic programming at the cost of finding
 //   approximated solutions.
 // - cache: shared pointer, cache area storing previous calculations
-// - cplx: int, is the choice of complexity : 0 for simple MDL (product of
+// - cplx: int, is the choice of complexity : 0 for simple BIC (product of
 //   all observed values) and 1 for NML with stochastic complexity and a
 //   combinatorial term with the previous number of levels.
 //
@@ -374,12 +374,12 @@ void optimizeCutPoints (const TempGrid2d<int>::ConstRow& data_ranked_target,
   TempVector<int> cum_counts_target (nb_factors_target);
   TempVector<int> cum_counts_joint (nb_factors_joint);
   //
-  // Stochastic complexity used for the simple MDL cost.
+  // Stochastic complexity used for the simple BIC cost.
   // Its value is 0.5 * number_of_other_levels where number of other levels is
   // the product of number of unique observed levels of all variables except
   // the variable being optimized.
   //
-  double k_mdl = 0.5 * (nb_factors_joint_for_cplx - 1) * nb_factors_target;
+  double k_bic = 0.5 * (nb_factors_joint_for_cplx - 1) * nb_factors_target;
 
   for (int cum_bin_idx = 0; cum_bin_idx < n_cuts_max; ++cum_bin_idx) {
     // Compute info from the first bin to the "cum_bin_idx" bin
@@ -421,7 +421,7 @@ void optimizeCutPoints (const TempGrid2d<int>::ConstRow& data_ranked_target,
       H_cum_bin_target -= cache->getH(weighted_count);
 
       if (cplx == 0 && cum_counts_target[level] > 0)
-        Hk_cum_bin_target -= k_mdl * cache->getLog(n_samples);
+        Hk_cum_bin_target -= k_bic * cache->getLog(n_samples);
       else if (cplx == 1)
         Hk_cum_bin_target -= cache->getLogC(weighted_count, nb_factors_joint_for_cplx);
     }
@@ -498,7 +498,7 @@ void optimizeCutPoints (const TempGrid2d<int>::ConstRow& data_ranked_target,
         H_cut_to_cum_target -= cache->getH(weighted_count);
 
         if (cplx == 0 && cut_counts_target[level] > 0)
-          Hk_cut_to_cum_target -= k_mdl * cache->getLog(n_samples);
+          Hk_cut_to_cum_target -= k_bic * cache->getLog(n_samples);
         else if (cplx == 1)
           Hk_cut_to_cum_target -= cache->getLogC(weighted_count, nb_factors_joint_for_cplx);
       }
@@ -545,8 +545,8 @@ void optimizeCutPoints (const TempGrid2d<int>::ConstRow& data_ranked_target,
 //------------------------------------------------------------------------------
 // Initialize Ik(x,y) with equal bin discretization
 // Repeat
-//   optimize on x Ik(x,y): Hx - Hxy - kmdl
-//   optimize on y Ik(x,y): Hy - Hxy - kmdl
+//   optimize on x Ik(x,y): Hx - Hxy - k_bic
+//   optimize on y Ik(x,y): Hy - Hxy - k_bic
 // Until convergence
 //------------------------------------------------------------------------------
 // Inputs:

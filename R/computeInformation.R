@@ -48,8 +48,8 @@
 #' @param cplx [a string]
 #' The complexity model:
 #' \itemize{
-#' \item["mdl"] Minimum description Length
-#' \item["nml"] Normalized Maximum Likelihood, less costly compared to "mdl" in
+#' \item["bic"] Bayesian Information Criterion
+#' \item["nml"] Normalized Maximum Likelihood, less costly compared to "bic" in
 #' the finite sample case and will allow for more bins.
 #' }
 #' @param n_eff [an integer]
@@ -126,7 +126,7 @@
 computeMutualInfo <- function(x, y,
                               df_conditioning = NULL,
                               maxbins = NULL,
-                              cplx = c("nml", "mdl"),
+                              cplx = c("nml", "bic"),
                               n_eff = -1,
                               sample_weights = NULL,
                               is_continuous = NULL,
@@ -352,8 +352,8 @@ computeMutualInfo <- function(x, y,
 #' @param cplx [a string]
 #' The complexity model:
 #' \itemize{
-#' \item["mdl"] Minimum description Length
-#' \item["nml"] Normalized Maximum Likelihood, less costly compared to "mdl" in
+#' \item["bic"] Bayesian Information Criterion
+#' \item["nml"] Normalized Maximum Likelihood, less costly compared to "bic" in
 #' the finite sample case and will allow for more bins.
 #' }
 #' @param n_eff [an integer]
@@ -408,7 +408,7 @@ computeMutualInfo <- function(x, y,
 computeThreePointInfo <- function(x, y, z,
                               df_conditioning = NULL,
                               maxbins = NULL,
-                              cplx = c("nml", "mdl"),
+                              cplx = c("nml", "bic"),
                               n_eff = -1,
                               sample_weights = NULL,
                               is_continuous = NULL) {

@@ -65,7 +65,7 @@ struct Environment {
   bool latent_orientation = false;
   // Whether or not do MAR (Missing at random) test using KL-divergence
   bool test_mar = false;
-  // Complexity mode. 0: mdl 1: nml
+  // Complexity mode. 0: bic (formerly mdl) 1: nml
   int cplx = 1;
   // List of ids of edge whose status is not yet determined
   vector<EdgeID> unsettled_list;
