@@ -7,19 +7,26 @@
   <!-- badges: end -->
 
 This repository contains the source code for MIIC (**M**ultivariate 
-**I**nformation based **I**nductive **C**ausation), a method based on 
-constraint-based approaches that learns a large class of causal 
-or non-causal graphical models from purely observational data 
-while including the effects of unobserved latent variables. 
+**I**nformation-based **I**nductive **C**ausation), a causal discovery method,
+based on information theory principles, which learns a large class of causal
+or non-causal graphical models from purely observational data,
+while including the effects of unobserved latent variables.
 Starting from a complete graph, the method iteratively removes dispensable 
 edges, by uncovering significant information contributions from indirect paths, 
 and assesses edge-specific confidences from randomization of available data. 
-The remaining edges are then oriented based on the signature of causality in 
-observational data. This approach can be applied on a wide range of datasets 
-and provide new biological insights on regulatory networks from single cell 
-expression data, genomic alterations during tumor development and co-evolving 
-residues in protein structures. Since the version 2.0, MIIC can 
-in addition process stationary time series to unveil temporal causal graphs.
+The remaining edges are then oriented based on the signature of causality 
+in observational data. The recent more interpretable MIIC extension (iMIIC) 
+further distinguishes genuine causes from putative and latent causal effects,
+while scaling to very large datasets (hundreds of thousands of samples). 
+Since the version 2.0, MIIC also includes a temporal mode (tMIIC) 
+to learn temporal causal graphs from stationary time series data. 
+MIIC has been applied to a wide range of biological and biomedical data, 
+such as single cell gene expression data, genomic alterations in tumors, 
+live-cell time-lapse imaging data (CausalXtract), 
+as well as medical records of patients. 
+MIIC brings unique insights based on causal interpretation and could be used 
+in a broad range of other data science domains (technology, climatology, 
+economy, ...).
 
 ## References
 Simon F., Comes M. C., Tocci T., Dupuis L., Cabeli V., Lagrange N., 
