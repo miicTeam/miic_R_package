@@ -82,9 +82,9 @@ Info3PointBlock getInfo3Point(
           environment.data_double, X, Y, ui_list, environment.levels,
           environment.is_continuous, n_samples_non_na_z, levels_red,
           sample_is_not_NA, environment.noise_vec);
-      double cplxMdl = environment.cache.cterm->getLog(n_samples_non_na_z);
+      double cplxBic = environment.cache.cterm->getLog(n_samples_non_na_z);
 
-      if ((kldiv - cplxMdl) > 0) {
+      if ((kldiv - cplxBic) > 0) {
         // The sample is not representative of the population, hence for 3-point
         // information, we cannot draw conclusion the unshielded triple (X, Z,
         // Y), return 0; For contributing score, Z is not a good candidate.

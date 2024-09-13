@@ -1,3 +1,9 @@
+#*******************************************************************************
+# Filename   : miic.utils.R
+#
+# Description: various utilities functions and constants for miic
+#*******************************************************************************
+
 #===============================================================================
 # CONSTANTS
 #===============================================================================
@@ -13,7 +19,7 @@ STATE_ORDER_STANDARD_VALID_COLUMS <- c ("var_names", "var_type",
     "levels_increasing_order", "is_contextual", "is_consequence",
     "group", "group_color")
 STATE_ORDER_TEMPORAL_VALID_COLUMNS = c (STATE_ORDER_STANDARD_VALID_COLUMS,
-                                        "n_layers", "delta_t", "movavg")
+                                        "n_layers", "delta_t", "mov_avg")
 
 #===============================================================================
 # FUNCTIONS
@@ -164,7 +170,7 @@ check_input_data <- function (input_data, mode)
 #   additional possible columns in temporal mode are:
 #   * n_layers: the number of layers in the time unfolded graph
 #   * delta_t: the number of time steps between layers
-#   * movavg: if a moving average must applied on some variables
+#   * mov_avg: if a moving average must applied on some variables
 #   NB: is_consequence is not allowed in temporal mode
 # - mode: the MIIC mode
 # Return: the checked and eventually generated or completed state order dataframe
@@ -261,8 +267,8 @@ check_state_order <- function (input_data, state_order, mode)
       state_order$n_layers[ is.na (state_order$n_layers) ] <- "NA"
     if ("delta_t" %in% colnames (state_order) )
       state_order$delta_t[ is.na (state_order$delta_t) ] <- "NA"
-    if ("movavg" %in% colnames (state_order) )
-      state_order$movavg[ is.na (state_order$movavg) ] <- "NA"
+    if ("mov_avg" %in% colnames (state_order) )
+      state_order$mov_avg[ is.na (state_order$mov_avg) ] <- "NA"
     }
   #
   # Check variable in data not in the state_order
@@ -662,15 +668,16 @@ check_state_order <- function (input_data, state_order, mode)
 #-------------------------------------------------------------------------------
 # check_other_df
 #-------------------------------------------------------------------------------
-# input_data: a dataframe with variables as columns and rows as samples
-# - df: the datafame to check, expected to be a 2 columns dataframe. All values
-#   in the dataframe are expected to be variables names.
-#   An invalid dataframe will be ignored, Invalid rows will be discarded
-# - state_order: the dataframe  returned by check_state_order
-# - df_name: the datafame name (i.e. :"black box", "true edges")
-#   This value is used only to display messages
+# input_data: a data frame with variables as columns and rows as samples
+# - df: the data fame to check, expected to be a 2 columns data frame in
+#   standard mode and 3 columns data frame in temporal mode.
+#   All values in 2 first columns of the data frame are expected to be variables
+#   names, and in temporal mode, the 3rd column is expected to contain lags.
+#   An invalid data frame will be ignored, Invalid rows will be discarded
+# - state_order: the data frame  returned by check_state_order
+# - df_name: the data fame name (i.e. :"black box", "true edges")
 # - mode: the MIIC mode
-# return: the dataframe checked
+# return: the data frame checked
 #-------------------------------------------------------------------------------
 check_other_df <- function (input_data, state_order, df, df_name, mode)
   {
@@ -696,7 +703,7 @@ check_other_df <- function (input_data, state_order, df, df_name, mode)
   #
   if (mode %in% MIIC_TEMPORAL_MODES)
     {
-    input_data = input_data[,2:ncol(input_data)]
+    input_data = input_data[, 2:ncol(input_data), drop=F]
     n_cols <- 3
     }
   else
@@ -710,7 +717,7 @@ check_other_df <- function (input_data, state_order, df, df_name, mode)
   if (nrow(df) == 0)
     {
     miic_warning (df_name, "The provided dataframe is empty.")
-    return (df)
+    return (NULL)
     }
 
   data_var_names <- colnames (input_data)
@@ -739,14 +746,14 @@ check_other_df <- function (input_data, state_order, df, df_name, mode)
       }
     }
   rows_ok <- unlist (lapply (1:nrow(df), FUN=function (x) { ! (x %in% rows_with_warning) } ) )
-  df <- df [rows_ok, ]
+  df <- df [rows_ok, , drop=F]
   if (nrow(df) == 0)
     {
     miic_warning (df_name, "The provided dataframe is empty.")
-    return (df)
+    return (NULL)
     }
   #
-  # In temporal mode, check that  the 3rd columns is integer >= 0 (lags)
+  # In temporal mode, check that the 3rd columns is integer >= 0 (lags)
   #
   if (mode %in% MIIC_TEMPORAL_MODES)
     {
@@ -773,12 +780,12 @@ check_other_df <- function (input_data, state_order, df, df_name, mode)
       else
         miic_warning (df_name, "lag is incorrect for multiple rows (", msg_str,
           "), these rows will be ignored.")
-      df <- df [!wrong_lags, ]
+      df <- df [!wrong_lags, , drop=F]
       }
     if (nrow(df) == 0)
       {
       miic_warning (df_name, "The provided dataframe is empty.")
-      return (df)
+      return (NULL)
       }
     #
     # Check that contextual lag are NA
@@ -788,7 +795,7 @@ check_other_df <- function (input_data, state_order, df, df_name, mode)
       dest_idx = which (state_order$var_names == x[[2]])
       return (  (state_order[orig_idx, "is_contextual"] == 1)
              || (state_order[dest_idx, "is_contextual"] == 1) ) } ) )
-    wrongs_ctx= ( contextuals & ( ! is.na (df[,3]) ) )                                       # NA: OK for now
+    wrongs_ctx = ( contextuals & ( ! is.na (df[,3]) ) )
     if ( any (wrongs_ctx) )
       {
       if (sum (wrongs_ctx) == 1)
@@ -828,11 +835,11 @@ check_other_df <- function (input_data, state_order, df, df_name, mode)
           sum (wrongs_selfs), " wrong lines will be ignored.")
       }
 
-    df <- df [ (!wrongs_ctx) & (!wrongs_lagged) & (!wrongs_selfs), ]
+    df <- df [ (!wrongs_ctx) & (!wrongs_lagged) & (!wrongs_selfs), , drop=F]
     if (nrow(df) == 0)
       {
       miic_warning (df_name, "The provided dataframe is empty.")
-      return (df)
+      return (NULL)
       }
     }
   #
@@ -845,10 +852,13 @@ check_other_df <- function (input_data, state_order, df, df_name, mode)
   df = unique (df)
   rownames(df) = NULL
   #
-  # Equal rows but with variable names swapped
+  # We remove equal rows but with variable names swapped
+  # as edges in black box are not oriented and, for true edges,
+  # the post-processing will not be able to process opposite edges
   #
   rows_kept = rep (T, nrow(df))
-  for (i in 1:nrow(df)) {
+  for (i in 1:nrow(df))
+    {
     if ( ! rows_kept[[i]] )
       next
     if (mode %in% MIIC_TEMPORAL_MODES)
@@ -867,20 +877,32 @@ check_other_df <- function (input_data, state_order, df, df_name, mode)
                     & (df[,2] == df[i,1])
                     & (rownames(df) != i) )
     rows_kept = rows_kept & (!dup_inverse)
-  }
-  df = df[rows_kept,]
+    }
+  df = df[rows_kept, , drop=F]
   if ( n_rows_sav != nrow(df) )
     {
-    if (n_rows_sav - nrow(df) == 1)
-      miic_warning (df_name, "1 row is duplicated. Only one instance",
-        " of the row will be used.")
+    if (df_name == "true edges")
+      {
+      miic_warning (df_name, "the implementation of truth edges",
+        " is not designed to handle opposite edges.",
+        " Only one direction will be considered for the opposite edge(s).")
+      }
     else
-      miic_warning (df_name, n_rows_sav - nrow(df), " rows are duplicated.",
-        " Only one instance of these rows will be used.")
+      {
+      if (n_rows_sav - nrow(df) == 1)
+        miic_warning (df_name, "1 row is duplicated. Only one instance",
+          " of the row will be used.")
+      else
+        miic_warning (df_name, n_rows_sav - nrow(df), " rows are duplicated.",
+          " Only one instance of these rows will be used.")
+      }
     }
 
   if (nrow(df) == 0)
+    {
     miic_warning (df_name, "The provided dataframe is empty.")
+    return (NULL)
+    }
   return (df)
   }
 
@@ -1025,37 +1047,37 @@ test_param_wrong_float <- function (value, min=NA, max=NA)
 # Returns: a list with all the parameters, eventually modified or initialized
 #-------------------------------------------------------------------------------
 check_parameters <- function (input_data, n_threads, cplx,
-  orientation, ori_proba_ratio, ori_consensus_ratio, propagation, latent,
+  orientation, ort_proba_ratio, ort_consensus_ratio, propagation, latent,
   n_eff, n_shuffles, conf_threshold, sample_weights, test_mar,
   consistent, max_iteration, consensus_threshold,
   mode, negative_info, verbose) {
   list_ret = list ("mode" = mode)
   list_ret$n_threads = check_param_int (n_threads, "n_threads", 1, min=1, max=NA)
-  list_ret$cplx = check_param_string (cplx, "complexity", c("nml", "mdl"))
+  list_ret$cplx = check_param_string (cplx, "complexity", c("nml", "bic"))
   list_ret$orientation = check_param_logical (orientation, "orientation", TRUE)
 
-  if ( test_param_wrong_float (ori_proba_ratio, min=0, max=1) )
+  if ( test_param_wrong_float (ort_proba_ratio, min=0, max=1) )
     {
-    miic_warning ("parameters", "supplied value ", ori_proba_ratio,
-      " for the orientation probabilty ratio parameter is invalid.",
+    miic_warning ("parameters", "supplied value ", ort_proba_ratio,
+      " for the orientation probability ratio parameter is invalid.",
       " It must be a floating point between 0 and 1.",
       " The default value (1) will be used.")
-    ori_proba_ratio = 1
+    ort_proba_ratio = 1
     }
-  list_ret$ori_proba_ratio = ori_proba_ratio
+  list_ret$ort_proba_ratio = ort_proba_ratio
 
-  if ( is.null (ori_consensus_ratio) )
-    ori_consensus_ratio = list_ret$ori_proba_ratio
-  else if ( test_param_wrong_float (ori_consensus_ratio, min=0, max=1) )
+  if ( is.null (ort_consensus_ratio) )
+    ort_consensus_ratio = list_ret$ort_proba_ratio
+  else if ( test_param_wrong_float (ort_consensus_ratio, min=0, max=1) )
     {
-    miic_warning ("parameters", "supplied value ", ori_consensus_ratio,
+    miic_warning ("parameters", "supplied value ", ort_consensus_ratio,
       " for the orientation concensus ratio parameter is invalid.",
       " It must be a floating point between 0 and 1.",
       " The default value (same as orientation probabilty ratio: ",
-      ori_proba_ratio, ") will be used.")
-    ori_consensus_ratio = list_ret$ori_proba_ratio
+      ort_proba_ratio, ") will be used.")
+    ort_consensus_ratio = list_ret$ort_proba_ratio
     }
-  list_ret$ori_consensus_ratio = ori_consensus_ratio
+  list_ret$ort_consensus_ratio = ort_consensus_ratio
 
   list_ret$propagation = check_param_logical (propagation, "propagation", FALSE)
   list_ret$latent = check_param_string (latent, "latent", MIIC_VALID_LATENT)

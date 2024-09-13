@@ -139,7 +139,7 @@ List reconstruct(List input_data, List arg_list) {
       _["proba_adj_matrix"]  = getProbaAdjMatrix(environment.edges),
       _["edges"]             = getEdgesInfoTable(environment.edges,
                                    environment.nodes),
-      _["orientations.prob"] = orientations,
+      _["triples"]           = orientations,
       _["time"]              = vector<double>{time.init, time.iter, time.cut,
                                    time.ori, time.getTotal()},
       _["interrupted"]       = false);

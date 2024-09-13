@@ -11,29 +11,30 @@ fromStringToNumberArrowType <- function(val) {
 #' GraphML converting function for miic graph
 #'
 #' @description Convert miic graph to [GraphML format](http://graphml.graphdrawing.org/).
-#' @param g The graph object returned by [miic][miic()].
+#' @param miic_obj A miic object. The object returned by the \code{\link{miic}} execution.
 #' @param file A string. Path to the output file containing file name without
 #' extension (.graphml will be appended).
 #' @param layout An optional data frame of 2 (or 3) columns containing the
 #' coordinate `x` and `y` for each node. The optional first column can contain
 #' node names. If node names is not given, the order of the input file will be
 #' assigned to the list of positions.
+#' @return None
 #' @export
 #' @useDynLib miic
 #' @md
 
-miic.write.network.cytoscape <- function(g, file, layout = NULL) {
+writeCytoscapeNetwork <- function(miic_obj, file, layout = NULL) {
   ##################################### NETWORK IN GRAPHML
   if (missing(file)) {
     stop("The file path is necessary")
   }
 
-  if (is.null(g$all.edges.summary)) {
+  if (is.null(miic_obj$summary)) {
     stop("The result of the miic execution is required")
   }
 
-  summary <- g$all.edges.summary
-  adj_matrix <- g$adj_matrix
+  summary <- miic_obj$summary
+  adj_matrix <- miic_obj$adj_matrix
 
   if (is.null(layout)) {
     line <- "<graphml>\n"
@@ -143,7 +144,7 @@ miic.write.network.cytoscape <- function(g, file, layout = NULL) {
       } else {
         weigth <- (summary[index, "partial_correlation"])
       }
-      if (summary[index, "infOrt"] == 1) {
+      if (summary[index, "ort_inferred"] == 1) {
         line <- paste(
           line,
           "\t\t<edge target=\"",
@@ -166,7 +167,7 @@ miic.write.network.cytoscape <- function(g, file, layout = NULL) {
           sep =
             ""
         )
-      } else if (summary[index, "infOrt"] == 2) {
+      } else if (summary[index, "ort_inferred"] == 2) {
         line <- paste(
           line,
           "\t\t<edge target=\"",
@@ -229,7 +230,7 @@ miic.write.network.cytoscape <- function(g, file, layout = NULL) {
           sep =
             ""
         )
-      } else if (summary[index, "infOrt"] == -2) {
+      } else if (summary[index, "ort_inferred"] == -2) {
         line <- paste(
           line,
           "\t\t<edge target=\"",
@@ -292,7 +293,7 @@ miic.write.network.cytoscape <- function(g, file, layout = NULL) {
           sep =
             ""
         )
-      } else if (summary[index, "infOrt"] == 6) {
+      } else if (summary[index, "ort_inferred"] == 6) {
         line <- paste(
           line,
           "\t\t<edge target=\"",
@@ -396,7 +397,7 @@ miic.write.network.cytoscape <- function(g, file, layout = NULL) {
       )
       line <- paste(line,
         "\t\t\t<data key=\"nSamples\">",
-        summary[index, "Nxy_ui"],
+        summary[index, "n_xy_ai"],
         "</data>\n",
         sep = ""
       )
@@ -495,7 +496,7 @@ miic.write.network.cytoscape <- function(g, file, layout = NULL) {
     for (index in indexes) {
       sourceArrowNum <- 0
       targetArrowNum <- 0
-      if (summary[index, "infOrt"] == 1) {
+      if (summary[index, "ort_inferred"] == 1) {
         line <- paste(
           line,
           "\t\t<edge label=\"",
@@ -513,7 +514,7 @@ miic.write.network.cytoscape <- function(g, file, layout = NULL) {
           "\t\t\t<att name=\"edgeType\" type=\"integer\" value=\"1\"/>\n",
           sep = ""
         )
-      } else if (summary[index, "infOrt"] == 2) {
+      } else if (summary[index, "ort_inferred"] == 2) {
         if (is.na(summary[index, "partial_correlation"])) {
           value <- "arrow"
           varchar <- intToUtf8(187)
@@ -567,7 +568,7 @@ miic.write.network.cytoscape <- function(g, file, layout = NULL) {
         )
         sourceArrowNum <- 0
         targetArrowNum <- fromStringToNumberArrowType(value)
-      } else if (summary[index, "infOrt"] == -2) {
+      } else if (summary[index, "ort_inferred"] == -2) {
         if (is.na(summary[index, "partial_correlation"])) {
           value <- "arrow"
           varchar <- intToUtf8(187)
@@ -621,7 +622,7 @@ miic.write.network.cytoscape <- function(g, file, layout = NULL) {
         )
         sourceArrowNum <- 0
         targetArrowNum <- fromStringToNumberArrowType(value)
-      } else if (summary[index, "infOrt"] == 6) {
+      } else if (summary[index, "ort_inferred"] == 6) {
         if (is.na(summary[index, "partial_correlation"])) {
           value <- "arrow"
           varchar <- intToUtf8(187)
@@ -712,7 +713,7 @@ miic.write.network.cytoscape <- function(g, file, layout = NULL) {
       line <- paste(
         line,
         "\t\t\t<att name=\"nSamples\" type=\"integer\" value=\"",
-        summary[index, "Nxy_ai"],
+        summary[index, "n_xy_ai"],
         "\"/>\n",
         sep = ""
       )

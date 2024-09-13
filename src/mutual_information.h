@@ -33,7 +33,7 @@ using std::lround;
 constexpr double kPrecision = 1.e-10;
 
 // rux: number of levels of each (joint) variable [x, u, ux]
-// cplx 0: MDL, 1: NML
+// cplx 0: BIC, 1: NML
 // flag (for cplx == 1 only) 0: mutual info, 1: conditional mutual info
 // When flag == 1 && cplx == 1, x and u are not symmetrical, x represents single
 // variable, whereas u represents joint variable (see def of cond mutual info)

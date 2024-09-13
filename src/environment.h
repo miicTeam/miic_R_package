@@ -46,7 +46,7 @@ struct Environment {
   vector<Node> nodes;
   Grid2d<Edge> edges;
   bool orientation = false;
-  double ori_proba_ratio = 1;
+  double ort_proba_ratio = 1;
   bool propagation = false;
   // Level of consistency required for the graph
   // 0: no consistency requirement
@@ -65,7 +65,7 @@ struct Environment {
   bool latent_orientation = false;
   // Whether or not do MAR (Missing at random) test using KL-divergence
   bool test_mar = false;
-  // Complexity mode. 0: mdl 1: nml
+  // Complexity mode. 0: bic (formerly mdl) 1: nml
   int cplx = 1;
   // List of ids of edge whose status is not yet determined
   vector<EdgeID> unsettled_list;

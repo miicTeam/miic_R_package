@@ -213,7 +213,7 @@ tmiic_lag_input_data <- function (list_ts, state_order, keep_max_data=FALSE)
 # Utility function to precompute lags, layers and shifts of nodes in the
 # lagged network
 #
-# params: tmiic_res [a tmiic object] The object returned by miic's
+# params: tmiic_obj [a tmiic object] The object returned by miic's
 # execution in temporal mode.
 #
 # returns: a dataframe with lagged nodes as row name and 3 columns:
@@ -221,13 +221,13 @@ tmiic_lag_input_data <- function (list_ts, state_order, keep_max_data=FALSE)
 #  - corresp_nodes: the corresponding non lagged node
 #  - shifts: the shift to apply to find the next lagged node
 #-----------------------------------------------------------------------------
-tmiic_precompute_lags_layers_and_shifts <- function (tmiic_res)
+tmiic_precompute_lags_layers_and_shifts <- function (tmiic_obj)
   {
-  list_nodes_not_lagged = tmiic_res$state_order$var_names
-  is_contextual = tmiic_res$state_order$is_contextual
+  list_nodes_not_lagged = tmiic_obj$state_order$var_names
+  is_contextual = tmiic_obj$state_order$is_contextual
   n_nodes_not_lagged = length (list_nodes_not_lagged)
-  list_n_layers_back <- tmiic_res$state_order$n_layers - 1
-  list_delta_t <- tmiic_res$state_order$delta_t
+  list_n_layers_back <- tmiic_obj$state_order$n_layers - 1
+  list_delta_t <- tmiic_obj$state_order$delta_t
   #
   # Identify lag and layer of each node
   #
@@ -313,11 +313,11 @@ tmiic_combine_lag <- function (df)
   #
   for (idx in 1:nrow(df) )
     {
-    if (df[idx,"infOrt"] == -2)
+    if (df[idx,"ort_inferred"] == -2)
       df[idx, c("x","y","lag")] <- c (df[idx,"y"], df[idx,"x"],
                                       -as.integer (df[idx,"lag"]) )
 
-    if ( (df[idx,"infOrt"] == 6) & (as.integer (df[idx,"lag"]) != 0) )
+    if ( (df[idx,"ort_inferred"] == 6) & (as.integer (df[idx,"lag"]) != 0) )
       df[nrow(df)+1, c("x","y","lag")] <- c (df[idx,"y"], df[idx,"x"],
                                                -as.integer (df[idx,"lag"]) )
     }
@@ -392,36 +392,30 @@ tmiic_combine_orient   <- function (df, col_name)
 #-----------------------------------------------------------------------------
 tmiic_combine_probas <- function (df, comb_orient)
   {
-  valid_probas <- grepl (';', df$proba, fixed=TRUE)
-  df <- df[valid_probas,]
+  df <- df[ (!is.na (df[, "p_y2x"]) )
+          & (!is.na (df[, "p_x2y"]) ), , drop=F]
   if (nrow (df) <= 0)
-    return (NA)
+    return ( c(NA_real_, NA_real_) )
   #
   # We set probas like if we have node X <= node Y
   #
   for ( idx in 1:nrow(df) )
     if (df[idx,"x"] > df[idx,"y"])
-      {
-      proba_split <- strsplit (df[idx, "proba"], ';' )[[1]]
-      df[idx, "proba"] <- paste (proba_split[[2]], proba_split[[1]], sep=";")
-      }
-  #
-  # Split proba column so we can do maths on it
-  #
-  probas_split <- strsplit (df$proba, ';' )
-  df_probas <- do.call(rbind, probas_split)
-  df_probas <- data.frame (x=as.numeric ( as.character (df_probas[,1]) ),
-                           y=as.numeric ( as.character (df_probas[,2]) ) )
+        {
+        temp <- df[idx, "p_y2x"]
+        df[idx, "p_y2x"] <- df[idx, "p_x2y"]
+        df[idx, "p_x2y"] <- temp
+        }
   #
   # Depending on the pre-computed combined orientation, keep max/min/avg
   #
   if (comb_orient == 6)
-    return (paste (max(df_probas[,1]), max(df_probas[,2]), sep=";") )
+    return (c (max(df$p_y2x), max(df$p_x2y) ) )
   if (comb_orient == 2)
-    return (paste (min(df_probas[,1]), max(df_probas[,2]), sep=";") )
+    return (c (min(df$p_y2x), max(df$p_x2y) ) )
   if (comb_orient == -2)
-    return (paste (max(df_probas[,1]), min(df_probas[,2]), sep=";") )
-  return (paste (mean(df_probas[,1]), mean(df_probas[,2]), sep=";"))
+    return (c (max(df$p_y2x), min(df$p_x2y) ) )
+  return (c (mean(df$p_y2x), mean(df$p_x2y) ) )
   }
 
 #-----------------------------------------------------------------------------
@@ -436,7 +430,7 @@ tmiic_combine_probas <- function (df, comb_orient)
 # is reduced to non lagged nodes and filled with NA during the process
 #
 # params:
-# - tmiic_res: a tmiic object, returned by tmiic
+# - tmiic_obj: a tmiic object, returned by tmiic
 #
 # - flatten_mode: string, optional, default value "compact".
 #   Possible values are "compact", "combine", "unique", "drop":
@@ -476,30 +470,30 @@ tmiic_combine_probas <- function (df, comb_orient)
 # as input where the summary dataframe has been flattened and the adjacency
 # matrix reduced to the non lagged nodes
 #-----------------------------------------------------------------------------
-tmiic_flatten_network <- function (tmiic_res, flatten_mode="compact",
+tmiic_flatten_network <- function (tmiic_obj, flatten_mode="compact",
                                    keep_edges_on_same_node=TRUE)
   {
   # Reduce size of adj_matrix to non lagged nodes
   # (we don't care about content as it is not used for plotting)
   #
-  list_nodes <- tmiic_res$state_order$var_names
-  tmiic_res$adj_matrix <- matrix(NA, nrow=0, ncol=length (list_nodes))
-  colnames(tmiic_res$adj_matrix) <- list_nodes
+  list_nodes <- tmiic_obj$state_order$var_names
+  tmiic_obj$adj_matrix <- matrix(NA, nrow=0, ncol=length (list_nodes))
+  colnames(tmiic_obj$adj_matrix) <- list_nodes
   #
   # Keep only edges found by miic
   #
-  df_edges <- tmiic_res$all.edges.summary[tmiic_res$all.edges.summary$type %in% c('P', 'TP', 'FP'), ]
+  df_edges <- tmiic_obj$summary[tmiic_obj$summary$type %in% c('P', 'TP', 'FP'), ]
   if (nrow(df_edges) <= 0)
     {
     if (flatten_mode != "drop")
       df_edges$lag = numeric(0)
-    tmiic_res$all.edges.summary <- df_edges
-    return (tmiic_res)
+    tmiic_obj$summary <- df_edges
+    return (tmiic_obj)
     }
   #
   # Precompute lag and layer of each node
   #
-  df_precomputed <- tmiic_precompute_lags_layers_and_shifts (tmiic_res)
+  df_precomputed <- tmiic_precompute_lags_layers_and_shifts (tmiic_obj)
   #
   # First step, perform flatten_mode="compact":
   # from summary, remove lag info from nodes names and put it into a lag column
@@ -521,15 +515,17 @@ tmiic_flatten_network <- function (tmiic_res, flatten_mode="compact",
     else
       {
       df_edges [edge_idx, c("x","y","lag")] <- c(node_y, node_x, -lag)
-      if (abs (one_edge$infOrt) == 2)
-         df_edges [edge_idx,"infOrt"] <- -one_edge$infOrt
-      if ( !is.na (one_edge$trueOrt ) )
-        if (abs (one_edge$trueOrt ) == 2)
-          df_edges [edge_idx,"trueOrt"] <- -one_edge$trueOrt
-      if ( !is.na (one_edge$proba ) )
+      if (abs (one_edge$ort_inferred) == 2)
+         df_edges [edge_idx,"ort_inferred"] <- -one_edge$ort_inferred
+      if ( !is.na (one_edge$ort_ground_truth ) )
+        if (abs (one_edge$ort_ground_truth ) == 2)
+          df_edges [edge_idx,"ort_ground_truth"] <- -one_edge$ort_ground_truth
+      if (  (!is.na(one_edge$p_y2x))
+         && (!is.na(one_edge$p_x2y)) )
         {
-        df_edges [edge_idx, "proba"] = paste0 (rev (
-          strsplit (df_edges [edge_idx, "proba"], ";")[[1]]), collapse=";")
+        temp <- one_edge$p_y2x
+        df_edges[edge_idx, "p_y2x"] <- one_edge$p_x2y
+        df_edges[edge_idx, "p_x2y"] <- temp
         }
       }
     }
@@ -538,13 +534,13 @@ tmiic_flatten_network <- function (tmiic_res, flatten_mode="compact",
   # Exclude self loops if requested
   #
   if (!keep_edges_on_same_node)
-    df_edges <- df_edges[df_edges$x != df_edges$y, ]
+    df_edges <- df_edges[df_edges$x != df_edges$y, , drop=F]
   if (nrow(df_edges) <= 0)
     {
     if (flatten_mode == "drop")
       df_edges$lag <- NULL
-    tmiic_res$all.edges.summary <- df_edges
-    return (tmiic_res)
+    tmiic_obj$summary <- df_edges
+    return (tmiic_obj)
     }
   #
   # "compact" mode is done
@@ -565,14 +561,14 @@ tmiic_flatten_network <- function (tmiic_res, flatten_mode="compact",
     #
     # Keep one edge per couple of nodes
     #
-    df_group <- df_edges[FALSE,]
+    df_group <- df_edges[FALSE, , drop=F]
     for ( xy_idx in 1:nrow(df_xy) )
       {
       ref_x <- df_xy[xy_idx,"x"]
       ref_y <- df_xy[xy_idx,"y"]
       cond_same_edges = ( ( (df_edges[["x"]] == ref_x) & (df_edges[["y"]] == ref_y) )
                         | ( (df_edges[["x"]] == ref_y) & (df_edges[["y"]] == ref_x) ) )
-      df_same <- df_edges[cond_same_edges,]
+      df_same <- df_edges[cond_same_edges, , drop=F]
 
       if (nrow (df_same) > 1)
         {
@@ -581,10 +577,12 @@ tmiic_flatten_network <- function (tmiic_res, flatten_mode="compact",
           # Combine lag, orient and proba
           #
           df_same$new_lag <-  tmiic_combine_lag (df_same)
-          comb_infOrt <- tmiic_combine_orient (df_same, "infOrt")
-          df_same$proba <- tmiic_combine_probas (df_same, comb_infOrt)
-          df_same$trueOrt <- tmiic_combine_orient (df_same, "trueOrt")
-          df_same$infOrt <- comb_infOrt
+          comb_ort_inferred <- tmiic_combine_orient (df_same, "ort_inferred")
+          tmp_ret <- tmiic_combine_probas (df_same, comb_ort_inferred)
+          df_same$p_y2x <- tmp_ret[[1]]
+          df_same$p_x2y <- tmp_ret[[2]]
+          df_same$ort_ground_truth <- tmiic_combine_orient (df_same, "ort_ground_truth")
+          df_same$ort_inferred <- comb_ort_inferred
           #
           # Orientations and probas have been computed for x <= y,
           # so force x <= y on all rows
@@ -602,7 +600,7 @@ tmiic_flatten_network <- function (tmiic_res, flatten_mode="compact",
           }
 
         max_info <- max (df_same[["info_shifted"]])
-        df_same <- df_same[ (df_same[["info_shifted"]] == max_info),]
+        df_same <- df_same[ (df_same[["info_shifted"]] == max_info), , drop=F]
         }
       if (nrow(df_same) > 1)
         {
@@ -630,10 +628,10 @@ tmiic_flatten_network <- function (tmiic_res, flatten_mode="compact",
     {
     # For contextual variable, we clean the lag info
     #
-    is_contextual <- tmiic_res$state_order$is_contextual
+    is_contextual <- tmiic_obj$state_order$is_contextual
     if (!is.null(is_contextual))
       {
-      list_nodes_not_lagged = tmiic_res$state_order$var_names
+      list_nodes_not_lagged = tmiic_obj$state_order$var_names
       for ( edge_idx in 1:nrow(df_edges) )
         {
         one_edge <- df_edges[edge_idx,]
@@ -647,8 +645,8 @@ tmiic_flatten_network <- function (tmiic_res, flatten_mode="compact",
   #
   # returns the tmiic structure where network summary has been flattened
   #
-  tmiic_res$all.edges.summary <- df_edges
-  return (tmiic_res)
+  tmiic_obj$summary <- df_edges
+  return (tmiic_obj)
   }
 
 #-----------------------------------------------------------------------------
@@ -662,23 +660,23 @@ tmiic_flatten_network <- function (tmiic_res, flatten_mode="compact",
 # i.e: assuming that we used nlayers=4 and delta_t=1, the edge X_lag0-X_lag1
 # will be copied as X_lag1-X_lag2 and X_lag2-X_lag3.
 #
-# param: tmiic_res, the object returned by tmiic
+# param: tmiic_obj, the object returned by tmiic
 #
 # returns: a dataframe with edges completed by stationarity
 #-----------------------------------------------------------------------------
-tmiic_repeat_edges_over_history <- function (tmiic_res)
+tmiic_repeat_edges_over_history <- function (tmiic_obj)
   {
   # Consider only edges found by miic  type = "P", "TP", "FP"
   #
-  df_edges <- tmiic_res$all.edges.summary[tmiic_res$all.edges.summary$type %in% c('P', 'TP', 'FP'), ]
+  df_edges <- tmiic_obj$summary[tmiic_obj$summary$type %in% c('P', 'TP', 'FP'), ]
   if (nrow(df_edges) <= 0)
     return (df_edges)
   #
   # Precompute lag, layer and shift of each node
   #
-  df_precomp <- tmiic_precompute_lags_layers_and_shifts (tmiic_res)
-  list_n_layers_back <- tmiic_res$state_order$n_layers - 1
-  list_nodes_not_lagged <- tmiic_res$state_order$var_names
+  df_precomp <- tmiic_precompute_lags_layers_and_shifts (tmiic_obj)
+  list_n_layers_back <- tmiic_obj$state_order$n_layers - 1
+  list_nodes_not_lagged <- tmiic_obj$state_order$var_names
   #
   # Duplicate the edges over all layers of history
   #

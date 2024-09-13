@@ -61,47 +61,6 @@ NULL
 NULL
 
 
-
-
-
-#' Tetraploidization in vertebrate evolution
-#'
-#' 20,415 protein-coding genes in the human genome from Ensembl (v70) and information on the
-#' retention of duplicates originating either from the two whole genome duplications at
-#' the onset of vertebrates (‘ohnolog’) or from subsequent small scale duplications (‘SSD’)
-#' as well as copy number variants (‘CNV’).
-#'
-#' @docType data
-#' @name ohno
-#' @usage data(ohno)
-#'
-#' @format A data.frame object.
-#'
-#' @keywords datasets
-#'
-#' @references Verny et al., PLoS Comp. Bio. 2017.
-#'
-#' @keywords data
-NULL
-
-
-#' Tetraploidization in vertebrate evolution
-#'
-#' 20,415 protein-coding genes in the human genome from Ensembl (v70) and information on the
-#' retention of duplicates originating either from the two whole genome duplications at
-#' the onset of vertebrates (‘ohnolog’) or from subsequent small scale duplications (‘SSD’)
-#' as well as copy number variants (‘CNV’), category order.
-#'
-#' @docType data
-#' @usage data(ohno_stateOrder)
-#' @format A data.frame object.
-#' @keywords datasets
-#' @name ohno_stateOrder
-#' @references Verny et al., PLoS Comp. Bio. 2017.
-#'
-#' @keywords data
-NULL
-
 #' Covid cases
 #'
 #' Demo dataset of chronological series to be used in temporal mode of miic.

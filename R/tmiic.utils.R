@@ -10,10 +10,10 @@
 # tmiic_check_state_order_part1
 #-------------------------------------------------------------------------------
 # This function performs the first part checks of the state order columns
-# specific to temporal mode: n_layers, delta_t and movavg.
+# specific to temporal mode: n_layers, delta_t and mov_avg.
 # In most cases, these columns will not be present at this stage,
 # as these information will be likely provided as parameters
-# (cf tmiic_check_parameters to see how the n_layers, delta_t and movavg
+# (cf tmiic_check_parameters to see how the n_layers, delta_t and mov_avg
 # parameters are moved into the state_order).
 # Checks here are basic and cover NULL, integer type and minimal values only.
 # NAs are excluded from warnings (NA = row added because var name missing)
@@ -86,11 +86,11 @@ tmiic_check_state_order_part1 <- function (state_order)
     state_order$delta_t = as.integer (state_order$delta_t)
     }
   #
-  # movavg check
+  # mov_avg check
   #
-  if ("movavg" %in% colnames (state_order) )
+  if ("mov_avg" %in% colnames (state_order) )
     {
-    wrongs = unlist (lapply (state_order$movavg, FUN=function(x) {
+    wrongs = unlist (lapply (state_order$mov_avg, FUN=function(x) {
       if  (is.na (x))                   # NA: OK (missing row added before)
         return (FALSE)
       else if ( is.na ( suppressWarnings (as.numeric(x)) ) ) # Not num: KO
@@ -111,9 +111,9 @@ tmiic_check_state_order_part1 <- function (state_order)
       else
         miic_warning ("state order", "the moving average are incorrect for",
           " several variables (", msg_str, "), these values will be ignored.")
-      state_order$movavg[wrongs] = NA
+      state_order$mov_avg[wrongs] = NA
       }
-    state_order$movavg = as.integer (state_order$movavg)
+    state_order$mov_avg = as.integer (state_order$mov_avg)
     }
   return (state_order)
   }
@@ -123,7 +123,7 @@ tmiic_check_state_order_part1 <- function (state_order)
 #-------------------------------------------------------------------------------
 # Checks on parameters for temporal mode
 #
-# As the temporal parameters n_layers, delta_t, movavg need to take different
+# As the temporal parameters n_layers, delta_t, mov_avg need to take different
 # values depending on the type (discrete/continuous) or contextual,
 # these parameters are moved in the state_order to have a value defined
 # for each variable (unless these information are already in the state_order,
@@ -140,7 +140,7 @@ tmiic_check_state_order_part1 <- function (state_order)
 # - params: the list of parameters with temporal parameters added
 #-------------------------------------------------------------------------------
 tmiic_check_parameters <- function (state_order, params,
-  n_layers, delta_t, movavg, keep_max_data, max_nodes)
+  n_layers, delta_t, mov_avg, keep_max_data, max_nodes)
   {
   # Check number of layers parameter
   #
@@ -230,46 +230,46 @@ tmiic_check_parameters <- function (state_order, params,
       }
     }
   #
-  # Check movavg
+  # Check mov_avg
   #
-  if ( ! is.null (movavg) )
+  if ( ! is.null (mov_avg) )
     {
-    if (   test_param_wrong_int (movavg, min=0, max=NA)
-       || (movavg == 1) )
+    if (   test_param_wrong_int (mov_avg, min=0, max=NA)
+       || (mov_avg == 1) )
       {
-      if ( "movavg" %in% colnames(state_order) )
-        miic_warning ("parameters", "supplied value ", list_to_str (movavg),
+      if ( "mov_avg" %in% colnames(state_order) )
+        miic_warning ("parameters", "supplied value ", list_to_str (mov_avg),
           " for the moving average parameter is invalid,",
           " if not NULL or 0, it must be an integer >= 2.",
           " This issue has no impact as the moving average is provided",
           " in the state_order.")
       else
-        miic_warning ("parameters", "supplied value ", list_to_str (movavg),
+        miic_warning ("parameters", "supplied value ", list_to_str (mov_avg),
           " for the moving average parameter is invalid,",
           " if not NULL or 0, it must be an integer >= 2.",
           " The moving average parameter will be ignored.")
       }
-    else # valid movavg
+    else # valid mov_avg
       {
-      if ( ! ("movavg" %in% colnames(state_order)) )
+      if ( ! ("mov_avg" %in% colnames(state_order)) )
         {
-        state_order$movavg = movavg
-        # No movavg on discrete or contextual vars
-        state_order$movavg[state_order$var_type == 0] = 0
-        state_order$movavg[state_order$is_contextual == 1] = 0
+        state_order$mov_avg = mov_avg
+        # No mov_avg on discrete or contextual vars
+        state_order$mov_avg[state_order$var_type == 0] = 0
+        state_order$mov_avg[state_order$is_contextual == 1] = 0
         }
-      else # movavg in state_order
+      else # mov_avg in state_order
         {
-        na_in_so = is.na (state_order$movavg)
+        na_in_so = is.na (state_order$mov_avg)
         if ( any (na_in_so) )
           {
           miic_warning ("parameters", "the moving average is both supplied",
             " in the state_order and as a parameter. As some values are missing",
             " in the state_order, the parameter will be used to fill these",
             " missing values.")
-          state_order$movavg[ na_in_so
-                            & (state_order$var_type == 1)
-                            & (state_order$is_contextual == 0)] = movavg
+          state_order$mov_avg[ na_in_so
+                             & (state_order$var_type == 1)
+                             & (state_order$is_contextual == 0)] = mov_avg
           }
         else
           miic_warning ("parameters", "the moving average is both supplied",
@@ -291,7 +291,7 @@ tmiic_check_parameters <- function (state_order, params,
 #-------------------------------------------------------------------------------
 # Second part of the check state order for temporal mode.
 # This function is designed to be called after the check_parameters_temporal
-# function has moved (if needed) the n_layers, delta_t and movavg parameters
+# function has moved (if needed) the n_layers, delta_t and mov_avg parameters
 # into the state_order.
 # This function will try to fill possible missing values and will check/fix
 # the temporal settings against the var_type and is_contextual information.
@@ -498,30 +498,30 @@ tmiic_check_state_order_part2 <- function (state_order)
                   "there must be one variable at least with a delta t > 0.")
     }
   #
-  # Check state order movavg
+  # Check state order mov_avg
   #
-  if ( ! ("movavg" %in% colnames(state_order)) )
+  if ( ! ("mov_avg" %in% colnames(state_order)) )
     {
-    # Add movavg column with 0 for all vars
+    # Add mov_avg column with 0 for all vars
     #
-    state_order$movavg = 0
+    state_order$mov_avg = 0
     }
   else
     {
     # Replace NA vals by 0
     #
-    na_in_so = is.na (state_order$movavg)
+    na_in_so = is.na (state_order$mov_avg)
     if ( any (na_in_so) )
       {
       msg_str = list_to_str (state_order$var_names[na_in_so], n_max=10)
       miic_warning ("state order", "the missing moving average have been",
         " set to 0 for variables ", msg_str)
-      state_order$movavg[na_in_so] = 0
+      state_order$mov_avg[na_in_so] = 0
       }
     #
     # Check/fix invalid values: for discrete vars, no moving average
     #
-    wrongs = ( (state_order$movavg != 0) & (state_order$var_type == 0) )
+    wrongs = ( (state_order$mov_avg != 0) & (state_order$var_type == 0) )
     if ( any (wrongs) )
       {
       msg_str = list_to_str (state_order$var_names[wrongs], n_max=10)
@@ -531,12 +531,12 @@ tmiic_check_state_order_part2 <- function (state_order)
       else
         miic_warning ("temporal checks", "moving average operations cannot",
         " be applied on discrete variables (", msg_str, ").")
-      state_order$movavg[wrongs] = 0
+      state_order$mov_avg[wrongs] = 0
       }
     #
     # Check/fix invalid values: for contextual vars, no moving average
     #
-    wrongs = ( (state_order$movavg != 0) & (state_order$is_contextual == 1) )
+    wrongs = ( (state_order$mov_avg != 0) & (state_order$is_contextual == 1) )
     if ( any (wrongs) )
       {
       msg_str = list_to_str (state_order$var_names[wrongs], n_max=10)
@@ -546,14 +546,14 @@ tmiic_check_state_order_part2 <- function (state_order)
       else
         miic_warning ("temporal checks", "moving average operations can not",
         " be applied on contextualvariables (", msg_str, ").")
-      state_order$movavg[wrongs] = 0
+      state_order$mov_avg[wrongs] = 0
       }
     #
     # Warning if multiple values of moving average excluding discrete and contextual
     #
-    uniq_vals = unique (state_order$movavg[ (!is.na (state_order$movavg))
-                                          & (state_order$var_type == 1)
-                                          & (state_order$is_contextual == 0) ])
+    uniq_vals = unique (state_order$mov_avg[ (!is.na (state_order$mov_avg))
+                                           & (state_order$var_type == 1)
+                                           & (state_order$is_contextual == 0) ])
     if (length (uniq_vals) > 1)
       {
       msg_str = list_to_str (uniq_vals)
@@ -726,7 +726,7 @@ tmiic_extract_trajectories <- function (input_data, check=T)
                       FUN=function (x) { return (x[1,1] != 1) } ) ) )
     if (length (wrong_starts) > 0)
       miic_warning ("check trajectories", length (wrong_starts),
-        " trajectorie(s) don't start with 1 as first time step value")
+        " trajectories don't start with 1 as first time step value")
     max_nb_ts = max (unlist (lapply (list_ts, FUN=nrow) ) )
     if (max_nb_ts == 1)
       miic_error ("trajectories check",
@@ -769,7 +769,7 @@ tmiic_group_trajectories = function (list_ts, drop_timestep=FALSE)
   }
 
 #-------------------------------------------------------------------------------
-# tmiic_movavg_onecol
+# tmiic_mov_avg_onecol
 #-------------------------------------------------------------------------------
 # Utility function to a apply a moving average over a list
 # params:
@@ -778,7 +778,7 @@ tmiic_group_trajectories = function (list_ts, drop_timestep=FALSE)
 # This moving average is centered, so the first (w-1) %/% 2 and the last
 # (w-1) - low_shift items will be filled with NA_real_
 #-------------------------------------------------------------------------------
-tmiic_movavg_onecol = function (x, w)
+tmiic_mov_avg_onecol = function (x, w)
   {
   low_shift = (w-1) %/% 2
   high_shift = (w-1) - low_shift
@@ -798,18 +798,18 @@ tmiic_movavg_onecol = function (x, w)
   }
 
 #-------------------------------------------------------------------------------
-# tmiic_movavg
+# tmiic_mov_avg
 #-------------------------------------------------------------------------------
 # Apply moving averages on data
 # - list_ts: a list of dataframe, each item representing a trajectory.
 #   Each dataframe must contain the time step information in the 1st column
 #   and the variables in the other columns.
-# - movavg: the list of moving average to be applied, optional, NULL by defaut.
-#   The length of the movavg list is the number of columns of the dataframes - 1
+# - mov_avg: the list of moving average to be applied, optional, NULL by defaut.
+#   The length of the mov_avg list is the number of columns of the dataframes - 1
 #   (because the 1st column in dataframes is the time step).
-#   When the movavg item value is >= 2, a moving average using this value as
+#   When the mov_avg item value is >= 2, a moving average using this value as
 #   window size is applied on the corresponding column:
-#   movavg item 1 is applied data column 2, moavg item 2 to data column 3, ...
+#   mov_avg item 1 is applied data column 2, moavg item 2 to data column 3, ...
 # - keep_max_data: boolean flag, optional, FALSE by default
 #   When FALSE, the rows containing NA introduced by the moving average(s)
 #   are deleted, otherwise when TRUE, the rows are kept
@@ -818,34 +818,34 @@ tmiic_movavg_onecol = function (x, w)
 # Returns:
 # - list_ts: the list trajectories with moving averages applied
 #-------------------------------------------------------------------------------
-tmiic_movavg = function (list_ts, movavg=NULL, keep_max_data=F, verbose_level=0)
+tmiic_mov_avg = function (list_ts, mov_avg=NULL, keep_max_data=F, verbose_level=0)
   {
-  if ( is.null (movavg) || all (movavg < 2) )
+  if ( is.null (mov_avg) || all (mov_avg < 2) )
     return (list_ts)
   if (verbose_level >= 1)
     miic_msg ("Applying moving averages...")
-  # Apply movavg on each trajectory and variable of the dataset
+  # Apply mov_avg on each trajectory and variable of the dataset
   #
   n_vars = ncol(list_ts[[1]])-1
   var_names = colnames (list_ts[[1]])[-1]
   for (i in 1:length(list_ts) )
     for (j in 1:n_vars)
-      if (movavg[[j]] >= 2)
+      if (mov_avg[[j]] >= 2)
         {
-        # print (paste0 (j, " => movavg = ", movavg[[j]]))
-        list_ts[[i]][,j+1] = tmiic_movavg_onecol (list_ts[[i]][,j+1], movavg[[j]])
+        # print (paste0 (j, " => mov_avg = ", mov_avg[[j]]))
+        list_ts[[i]][,j+1] = tmiic_mov_avg_onecol (list_ts[[i]][,j+1], mov_avg[[j]])
         if (verbose_level == 2)
           miic_msg ("- ", var_names[[j]], ": moving average of window size ",
-                    movavg[[j]], " applied")
+                    mov_avg[[j]], " applied")
         }
   #
   # Remove starting and ending rows where NAs were introduced
   #
   if (!keep_max_data)
     {
-    movavg_max = max(movavg)
-    low_shift = (movavg_max-1) %/% 2
-    high_shift = (movavg_max-1) - low_shift
+    mov_avg_max = max(mov_avg)
+    low_shift = (mov_avg_max-1) %/% 2
+    high_shift = (mov_avg_max-1) - low_shift
     start_idx = 1
     if (low_shift > 0)
       start_idx = start_idx + low_shift
@@ -1178,7 +1178,7 @@ tmiic_estimate_dynamic <- function (list_ts, state_order, max_nodes=50,
 #' time steps between each layer that are needed to cover the dynamic of a
 #' temporal dataset when reconstructing a temporal causal graph.
 #' Using autocorrelation decay, the function computes the average relaxation
-#' time of the variables and, in regard of a maximum number of nodes, deduces
+#' time of the variables and, based on a maximum number of nodes, deduces
 #' the number of layers and number of time steps between each layer to be used.
 #'
 #' @param input_data [a data frame]
@@ -1210,20 +1210,20 @@ tmiic_estimate_dynamic <- function (list_ts, state_order, max_nodes=50,
 #' variable is to be considered as a contextual variable (1) or not (0).
 #' Contextual variables will be excluded from the temporal dynamic estimation.
 #'
-#' "movavg" (optional) contains an integer value that specifies the size of
+#' "mov_avg" (optional) contains an integer value that specifies the size of
 #' the moving average window to be applied to the variable.
-#' Note that if "movavg" column is present in the \emph{state_order},
+#' Note that if "mov_avg" column is present in the \emph{state_order},
 #' its values will overwrite the function parameter.
 #'
-#' @param movavg [an integer] Optional, NULL by default.\cr
+#' @param mov_avg [an integer] Optional, NULL by default.\cr
 #' When an integer>= 2 is supplied, a moving average operation is applied
 #' to all the non discrete and not contextual variables. If no \emph{state_order}
 #' is provided, the discrete/continuous variables are deduced from the input
 #' data. If you want to apply a moving average only on specific columns,
-#' consider to use a \emph{movavg} column in the \emph{state_order} parameter.
+#' consider to use a \emph{mov_avg} column in the \emph{state_order} parameter.
 #'
 #' @param max_nodes [a positive integer] The maximum number of nodes in the
-#' final temporal causal graph. The more nodes allowed in the temporal
+#' final time-unfolded causal graph. The more nodes allowed in the temporal
 #' causal discovery, the more precise will be the discovery but at the cost
 #' of longer execution time. The default is set to 50 for fast causal
 #' discovery. On recent computers, values up to 200 or 300 nodes are usually
@@ -1241,7 +1241,7 @@ tmiic_estimate_dynamic <- function (list_ts, state_order, max_nodes=50,
 #'
 #' @export
 #-------------------------------------------------------------------------------
-estimateTemporalDynamic <- function (input_data, state_order=NULL, movavg=NULL,
+estimateTemporalDynamic <- function (input_data, state_order=NULL, mov_avg=NULL,
                                      max_nodes=50, verbose_level=1)
   {
   input_data = check_input_data (input_data, "TS")
@@ -1253,13 +1253,13 @@ estimateTemporalDynamic <- function (input_data, state_order=NULL, movavg=NULL,
                                      params = list(),
                                      n_layers = NULL,
                                      delta_t = NULL,
-                                     movavg = movavg,
+                                     mov_avg = mov_avg,
                                      keep_max_data = F,
                                      max_nodes = max_nodes)
   state_order = tmiic_check_state_order_part2 (list_ret$state_order)
 
   list_ts = tmiic_extract_trajectories (input_data)
-  list_ts = tmiic_movavg (list_ts, state_order$movavg, verbose_level=verbose_level)
+  list_ts = tmiic_mov_avg (list_ts, state_order$mov_avg, verbose_level=verbose_level)
 
   state_order = tmiic_estimate_dynamic (list_ts, state_order, max_nodes=max_nodes,
                                         verbose_level=verbose_level)

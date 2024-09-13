@@ -12,8 +12,8 @@ miic(
   n_threads = 1,
   cplx = "nml",
   orientation = TRUE,
-  ori_proba_ratio = 1,
-  ori_consensus_ratio = NULL,
+  ort_proba_ratio = 1,
+  ort_consensus_ratio = NULL,
   propagation = FALSE,
   latent = "orientation",
   n_eff = -1,
@@ -28,7 +28,7 @@ miic(
   mode = "S",
   n_layers = NULL,
   delta_t = NULL,
-  movavg = NULL,
+  mov_avg = NULL,
   keep_max_data = FALSE,
   max_nodes = 50,
   verbose = FALSE
@@ -97,9 +97,9 @@ of time steps between each layer for the variable.
 Note that if a \emph{"delta_t"} column is present in the \emph{state_order},
 its values will overwrite the function parameter.
 
-\emph{"movavg"} (optional) contains an integer value that specifies the size of
-the moving average window to be applied to the variable.
-Note that if \emph{"movavg"} column is present in the \emph{state_order},
+\emph{"mov_avg"} (optional) contains an integer value that specifies the size
+of the moving average window to be applied to the variable.
+Note that if \emph{"mov_avg"} column is present in the \emph{state_order},
 its values will overwrite the function parameter.}
 
 \item{true_edges}{[a data frame, optional, NULL by default]
@@ -116,9 +116,11 @@ must be valid in the time unfolded graph. e.g. a row var1, var2, 3 is valid
 with \emph{n_layers} = 4 + \emph{delta_t} = 1 or
 \emph{n_layers} = 2 + \emph{delta_t} = 3
 but not for \emph{n_layers} = 2 + \emph{delta_t} = 2 as there is no matching
-edge in the time unfolded graph. Please note that the order is important:
-var1, var2, 3 is interpreted as var1_lag3 - var2_lag0. Please note also that,
-for contextual variables that are not lagged, the expected value in the
+edge in the time unfolded graph.\cr
+Please note that the order is important: in standard mode, "var1 var2" will
+be interpreted as var1 -> var2 and in temporal mode, "var1 var2 3" is
+interpreted as var1_lag3 -> var2_lag0. Please note also that, in temporal
+mode, for contextual variables that are not lagged, the expected value in the
 third column for the time lag is NA.}
 
 \item{black_box}{[a data frame, optional, NULL by default]
@@ -148,17 +150,17 @@ When set greater than 1, n_threads parallel threads will be used for computation
 your compiler is compatible with openmp if you wish to use multithreading.}
 
 \item{cplx}{[a string, optional, "nml" by default, possible values:
-"nml", "mdl"]
+"nml", "bic"]
 
 In practice, the finite size of the input  dataset requires that
 the 2-point and 3-point information measures should be \emph{shifted}
 by a \emph{complexity} term. The finite size corrections can be based on
-the Minimal Description Length (MDL) criterion.
-However, the MDL complexity criterion tends to underestimate the
+the Bayesian Information Criterion (BIC).
+However, the BIC complexity term tends to underestimate the
 relevance of edges connecting variables with many different categories,
 leading to the removal of false negative edges. To avoid such biases
 with finite datasets, the (universal) Normalized Maximum Likelihood (NML)
-criterion can be used (see Affeldt \emph{et al.}, UAI 2015).}
+criterion can be used (see Affeldt 2015).}
 
 \item{orientation}{[a boolean value, optional, TRUE by default]
 
@@ -167,33 +169,38 @@ edge directions, based on the sign and magnitude of the conditional
 3-point information of unshielded triples and, in temporal mode, using time.
 If set to FALSE, the orientation step is not performed.}
 
-\item{ori_proba_ratio}{[a floating point between 0 and 1, optional,
+\item{ort_proba_ratio}{[a floating point between 0 and 1, optional,
 1 by default]
 
 The threshold when deducing the type of an edge tip (head/tail)
 from the probability of orientation.
 For a given edge tip, denote by p the probability of it being a head,
-the orientation is accepted if (1 - p) / p < \emph{ori_proba_ratio}.
+the orientation is accepted if (1 - p) / p < \emph{ort_proba_ratio}.
 0 means reject all orientations, 1 means accept all orientations.}
 
-\item{ori_consensus_ratio}{[a floating point between 0 and 1, optional,
+\item{ort_consensus_ratio}{[a floating point between 0 and 1, optional,
 NULL by default]
-
-The threshold when deducing the type of an consensus edge tip (head/tail)
-from the average probability of orientation.
-For a given edge tip, denote by p the probability of it being a head,
-the orientation is accepted if (1 - p) / p < \emph{ori_consensus_ratio}.
-0 means reject all orientations, 1 means accept all orientations.
-If not supplied, the \emph{ori_consensus_ratio} will be initialized with
-the \emph{ori_proba_ratio} value.}
+Used to determine if orientations correspond to genuine causal edges
+and, when consistency is activated, to deduce the orientations in
+the consensus graph.\cr
+Oriented edges will be marked as genuine causal when:
+     \eqn{ (1 - p_{head}) / p_{head} < } \emph{ort_consensus_ratio}
+and  \eqn{ p_{tail} / (1 - p_{tail}) < } \emph{ort_consensus_ratio}.\cr
+When consistency is activated, \emph{ort_consensus_ratio} is used as
+threshold when deducing the type of an consensus edge tip (head/tail)
+from the average probability of orientations over the cycle of graphs.
+For a given edge tip, denote by p the average probability of it being a head,
+the orientation is accepted if (1 - p) / p < \emph{ort_consensus_ratio}.\cr
+If not supplied, the \emph{ort_consensus_ratio} will be initialized with
+the \emph{ort_proba_ratio} value.}
 
 \item{propagation}{[a boolean value, optional, FALSE by default]
 
 If set to FALSE, the skeleton is partially oriented with only the
 v-structure orientations. Otherwise, the v-structure orientations are
-propagated to downstream undirected edges in unshielded triples following
+propagated to downstream un-directed edges in unshielded triples following
 the propagation procedure, relying on probabilities (for more details,
-see Verny \emph{et al.}, PLoS Comp. Bio. 2017).}
+see Verny 2017).}
 
 \item{latent}{[a string, optional, "orientation" by default, possible
 values: "orientation", "no", "yes"]
@@ -212,13 +219,13 @@ In standard mode, the n samples given in the \emph{input_data} data frame are
 expected to be independent. In case of correlated samples such as in
 Monte Carlo sampling approaches, the effective number of independent samples
 \emph{n_eff} can be estimated using the decay of the autocorrelation function
-(Verny et al., PLoS Comp. Bio. 2017). This effective number \emph{n_eff}
-of independent samples can be provided using this parameter.}
+(see Verny 2017). This effective number \emph{n_eff} of independent samples
+can be provided using this parameter.}
 
 \item{n_shuffles}{[a positive integer, optional, 0 by default]
 
 The number of shufflings of the original dataset in order to evaluate
-the edge specific confidence ratio of all inferred edges.
+the edge specific confidence ratio of all retained edges.
 Default is 0: no confidence cut is applied. If the number of shufflings
 is set to an integer > 0, the confidence threshold must also be > 0
 (e.g. \emph{n_shuffles} = 100 and \emph{conf_threshold} = 0.01).}
@@ -226,9 +233,8 @@ is set to an integer > 0, the confidence threshold must also be > 0
 \item{conf_threshold}{[a positive floating point, optional, 0 by default]
 
 The threshold used to filter the less probable edges following the skeleton
-step. See Verny \emph{et al.}, PLoS Comp. Bio. 2017.
-Default is 0: no confidence cut is applied. If the the confidence threshold
-is set > 0, the number of shufflings must also be > 0
+step (see Verny 2017). Default is 0: no confidence cut is applied. If the
+confidence threshold is set > 0, the number of shufflings must also be > 0
 (e.g. \emph{n_shuffles} = 100 and \emph{conf_threshold} = 0.01).}
 
 \item{sample_weights}{[a numeric vector, optional, NULL by default]
@@ -246,16 +252,17 @@ between the full distribution and the non-missing distribution
 the joint distribution of \eqn{X} and \eqn{Y} on samples which are
 not missing on Z.
 This is a way to ensure that data are missing at random for the considered
-interaction and to avoid selection bias.}
+interaction and detect bias due to values not missing at random.}
 
 \item{consistent}{[a string, optional, "no" by default, possible values:
 "no", "orientation", "skeleton"]
 
 If set to "orientation": iterate over skeleton and orientation steps to
-ensure consistency of the network.
-If set to "skeleton": iterate over skeleton step to get a consistent skeleton,
-then orient edges and discard inconsistent orientations to ensure consistency
-of the network (see Li \emph{et al.}, NeurIPS 2019 for details).}
+ensure consistency of the separating sets and all disconnected pairs in the
+final network.
+If set to "skeleton": iterate over skeleton step to get a consistent
+skeleton, then orient edges including inconsistent orientations
+(see Li 2019 for details).}
 
 \item{max_iteration}{[a positive integer, optional, 100 by default]
 
@@ -284,9 +291,8 @@ probability of orientation.)}
 
 \item{negative_info}{[a boolean value, optional, FALSE by default]
 
-For test purpose only. If TRUE, negative shifted mutual information is
-allowed during the computation when mutual information is inferior to the
-complexity term.
+If TRUE, negative shifted mutual information is allowed during the
+computation when mutual information is inferior to the complexity term.
 For small dataset with complicated structures, e.g. discrete variables with
 many levels, allowing for negative shifted mutual information may help
 identifying weak v-structures related to those discrete variables,
@@ -295,15 +301,16 @@ the difference between two negative shifted mutual information terms
 (expected to be negative due to the small sample size).
 However, under this setting, a v-structure (X -> Z <- Y) in the final graph
 does not necessarily imply that X is dependent on Y conditioning on Z,
-As a consequence, the interpretability of the final graph
-is hindered. In practice, it's advised to keep this parameter as FALSE.}
+As a consequence, the reliability of certain orientations is not guaranteed.
+By contrast, keeping this parameter as FALSE is more conservative and leads
+to more reliable orientations (see Cabeli 2021 and Ribeiro-Dantas 2024).}
 
 \item{mode}{[a string, optional, "S" by default, possible values are
-"S": Standard (IID samples) or "TS": Temporal Stationary"]
+"S": Standard (non temporal data) or "TS": Temporal Stationary data]
 
 When temporal mode is activated, the time information must be provided
 in the first column of \emph{input_data}. For more details about temporal
-stationary mode, see Simon \emph{et al.}, eLife reviewed preprint 2024.}
+stationary mode (see Simon 2024).}
 
 \item{n_layers}{[an integer, optional, NULL by default, must be >= 2
 if supplied]
@@ -326,7 +333,7 @@ for the first sample, the next sample will use 2, 9, 16 and so on.
 If not supplied, the number of time steps between layers is estimated
 from the dynamic of the dataset and the number of layers.}
 
-\item{movavg}{[an integer, optional, NULL by default, must be >= 2
+\item{mov_avg}{[an integer, optional, NULL by default, must be >= 2
 if supplied]
 
 Used only in temporal mode. When supplied, a moving average operation is
@@ -343,7 +350,7 @@ whilst they will be dropped if FALSE.}
 
 Used only in temporal mode and if the \emph{n_layers} or \emph{delta_t}
 parameters are not supplied. \emph{max_nodes} is used as the maximum number
-of nodes in the final graph to compute \emph{n_layers} and/or \emph{delta_t}.
+of nodes in the final time-unfolded graph to compute \emph{n_layers} and/or \emph{delta_t}.
 The default is 50 to produce quick runs and can be increased up to 200
 or 300 on recent computers to produce more precise results.}
 
@@ -354,73 +361,149 @@ If TRUE, debugging output is printed.}
 \value{
 A \emph{miic-like} object that contains:
 \itemize{
- \item{\emph{all.edges.summary:} a data frame with information about the relationship between
- each pair of variables
+ \item{\emph{summary:} a data frame with information about the
+ relationship between relevant pair of variables.
+
+ As returning the information on all possible pairs of variables could lead
+ to an huge data frame, by convention, the summary does not include pair of
+ variables not sharing information at all (\emph{I'(x,y) <= 0}).
+ However, as exception to this convention, when a ground truth is supplied
+ (using the \emph{true_edges} parameter), the edges that are not retained
+ by MIIC because the variables does not share information at all
+ but are present in the true edges will be included in the summary
+ to report correctly all the false negative edges.
+
+ So, the summary contains these categories of edges:
  \itemize{
- \item{ \emph{x:} X node}
- \item{ \emph{y:} Y node}
+ \item{ edges retained}
+ \item{ edges not retained after conditioning on some contributor(s)}
+ \item{ edges not retained without conditioning but present in true edges}
+ }
+ while these edges are not considered as relevant and are not included:
+ \itemize{
+ \item{ edges not retained without conditioning and not in true edges}
+ }
+
+ Information available in the summary are:
+ \itemize{
+ \item{ \emph{x:} X node name}
+ \item{ \emph{y:} Y node name}
  \item{ \emph{type:} contains 'N' if the edge has been removed or 'P' for
  retained edges. If the true graph is supplied in the \emph{true_edges}
  parameter, 'P' becomes 'TP' (True Positive) or 'FP' (False Positive),
  while 'N' becomes 'TN' (True Negative) or 'FN' (False Negative).
- Note that, as the \emph{all.edges.summary} does not contain all the
- negative edges, edges not present are 'TN'.}
+ Note that, as the \emph{summary} does not contain all the
+ removed edges, edges not present have to be considered as 'N'
+ and, if the true graph is supplied, as 'TN'.}
  \item{ \emph{ai:} the contributing nodes found by the method which
- participate in the mutual information between \emph{x} and \emph{y},
+ contribute to the mutual information between \emph{x} and \emph{y},
  and possibly separate them.}
  \item{ \emph{raw_contributions:} describes the share of total mutual
- information between \emph{x} and \emph{y} explained by each contributor.}
+ information between \emph{x} and \emph{y} explained by each contributor,
+ measured by I'(x;y;ai|\{aj\}) / I'(x;y),
+ where \{aj\} is the separating set before adding ai.}
  \item{ \emph{contributions:} describes the share of remaining mutual
  information between \emph{x} and \emph{y} explained  by each successive
- contributors.}
- \item{ \emph{info:} provides the pairwise mutual information times
- \emph{Nxyi} for the pair (\emph{x}, \emph{y}).}
- \item{ \emph{info_cond:} provides the conditional mutual information
- times \emph{Nxy_ai} for the pair (\emph{x}, \emph{y}) when conditioned
- on the collected nodes \emph{ai}. It is
- equal to the \emph{info} column when \emph{ai} is an empty set.}
- \item{ \emph{cplx:} gives the computed complexity between the (\emph{x},
- \emph{y}) variables taking into account the contributing nodes \emph{ai}.
- Edges that have have more conditional information \emph{info_cond}
- than \emph{cplx} are retained in the final graph.}
- \item{ \emph{Nxy_ai:} gives the number of complete samples on which the
- information and the  complexity have been computed. If the input dataset
+ contributors, measured by I'(x;y;ai|\{aj\}) / I'(x;y|\{aj\}),
+ where \{aj\} is the separating set before adding ai. }
+ \item{ \emph{info:} the mutual information \emph{I(x;y)} times \emph{n_xy},
+ the number of samples without missing or NA values for both \emph{x}
+ and \emph{y}. }
+ \item{ \emph{n_xy:} gives the number of samples on which the information
+ without conditioning has been computed. If the input dataset
  has no missing value, the number of samples is the same for all pairs
  and corresponds to the total number of samples.}
- \item{ \emph{info_shifted:} represents the \emph{info} - \emph{cplx} value.
- It is a way to quantify the strength of the edge (\emph{x}, \emph{y}).}
- \item{ \emph{infOrt:} the orientation of the edge (\emph{x}, \emph{y}).
- It is the same value as in the adjacency matrix at row \emph{x} and
- column \emph{y} : 1 for unoriented, 2 for an edge from X to Y,
- -2 from Y to X and 6 for bidirectional.}
- \item{ \emph{trueOrt:} the orientation of the edge (\emph{x}, \emph{y})
- present in the true edges are provided.}
- \item{ \emph{isOrtOk:} information about the consistency of the inferred
- graph’s orientations with a reference graph is given (if true edges
- are provided).
- 'Y': the orientation is consistent; 'N': the orientation is not consistent
- with the PAG (Partial Ancestor Graph) derived from the given true graph.}
+ \item{ \emph{info_cond:} the conditional mutual information \emph{I(x;y|ai)}
+ times the number of samples without NA \emph{n_xy_ai} used in the
+ computation.
+ \emph{info_cond} is equal to \emph{info} when \emph{ai} is an empty set.}
+ \item{ \emph{cplx:} the complexity term for the pair (\emph{x}, \emph{y})
+ taking into account the contributing nodes \emph{ai}.}
+ \item{ \emph{n_xy_ai:} the number of samples without NA in
+ \emph{x}, \emph{y} and all nodes in \emph{ai} on which the
+ information and the complexity terms are computed.
+ If the input dataset has no missing value, the number of samples is the
+ same for all pairs and corresponds to the total number of samples.}
+ \item{ \emph{info_shifted:} value equal to \emph{info_cond} - \emph{cplx}.
+ Used to decide whether the edge is retained (when positive),
+ or removed (when zero or possibly negative when the parameter
+ \emph{negative_info} is set to TRUE).}
+ \item{ \emph{ort_inferred:} the orientation of the edge (\emph{x}, \emph{y}).
+ 0: edge removed, 1: un-directed, 2: directed from X to Y, -2: directed
+ from Y to X, 6: bi-directed.\cr
+ When the \emph{consistent} option is turned on and there is more than
+ one graph in the consistent cycle, this is the inferred orientation
+ of the edge in the last graph in the cycle. }
+ \item{ \emph{ort_ground_truth:} the orientation of the edge (\emph{x},
+ \emph{y}) in the ground truth graph when true edges are provided.}
+ \item{ \emph{is_inference_correct:} indicates if the inferred orientation
+ agrees with the provided ground truth. TRUE: agrees, FALSE: disagrees and
+ set to NA when no ground truth is supplied.}
+ \item{ \emph{is_causal:} boolean value indicating the causal nature of the
+ arrow tips of an edge, based on the probabilities given in the columns
+ \emph{p_y2x} and \emph{p_x2y}. TRUE: when the edges is directed
+ and both the head and the tail are set with high confidence
+ (adjustable with the \emph{ort_consensus_ratio} parameter),
+ FALSE otherwise or NA if the edge is not retained.
+ More formally, an oriented edge is marked as genuine causal when
+      \eqn{ (1 - p_{head}) / p_{head} < } \emph{ort_consensus_ratio}
+ and  \eqn{ p_{tail} / (1 - p_{tail}) < } \emph{ort_consensus_ratio}.\cr
+ A directed edge not marked as genuine causal indicates that only
+ the head is set with high confidence, while the tail remains uncertain.
+ This corresponds to a putative causal edge, which could either be
+ a genuine causal edge or a bi-directed edge from a latent confounder.\cr
+ Note that the genuine causality is deducible only when latent variables
+ are allowed and propagation is not allowed.}
+ \item{ \emph{ort_consensus:} Not computed (NAs) when
+ consistency is not activated or, when consistency is on,
+ if there is only one graph returned (no cycle).
+ When computed, indicates the consensus orientation of the edge
+ determined from the consensus skeleton and the \emph{ort_consensus_ratio}
+ threshold on averaged orientation probabilities over the cycle of graphs.
+ Possible values are 0: not connected, 1: un-directed, -2 or 2: directed
+ and 6: bi-directed (latent variable).}
+ \item{ \emph{is_causal_consensus:} Not computed (NAs) when
+ consistency is not activated or, when consistency is on,
+ if there is only one graph returned (no cycle).
+ When computed, work in the same way as \emph{is_causal}
+ but on the consensus graph.}
+ \item{ \emph{edge_stats:} Not computed (NAs) when
+ consistency is not activated or, when consistency is on,
+ if there is only one graph returned (no cycle).
+ When computed, contains the frequencies of all \emph{ort_inferred}
+ values present in the cycle of graphs for the edge (\emph{x, y}),
+ in the format [percentage(orientation)], separated by ";".
+ e.g. In a cycle of 4 graphs, if an edge is three times marked as 2
+ (directed) and one time marked as 1 (un-directed), edge_stats will
+ contain "75\%(2);25\%(1)".}
  \item{ \emph{sign:} the sign of the partial correlation between variables
  \emph{x} and \emph{y}, conditioned on the contributing nodes \emph{ai}.}
  \item{ \emph{partial_correlation:} value of the partial correlation for the
- edge (\emph{x}, \emph{y}) conditioned on the contributing nodes \emph{ai}.}
- \item{ \emph{is_causal:} details about the nature of the arrow tip for a
- directed edge. A directed edge in a causal graph does not necessarily imply
- causation but it does imply that the cause-effect relationship is not the
- other way around. An arrow-tip which is itself downstream of another
- directed edge suggests stronger causal sense and is marked by a 'Y',
- or 'N' otherwise.}
- \item{ \emph{proba:} probabilities for the inferred orientation, derived
- from the three-point mutual information (cf Affeldt & Isambert, UAI 2015
- proceedings) and noted as p(x->y);p(x<-y).}
- \item{ \emph{confidence:} this column is computed when the confidence cut
- is activated. It represents the ratio between the probability to reject
- the edge (\emph{x}, \emph{y}) in the dataset versus the mean probability
- to do the same in multiple (user defined) number of randomized datasets.}
+ edge (\emph{x, y}) conditioned on the contributing nodes \emph{ai}.}
+ \item{ \emph{p_y2x:} probability of the arrowhead from \emph{y} to \emph{x},
+ of the inferred orientation, derived from the three-point mutual information
+ (see Verny 2017 and Ribeiro-Dantas 2024). NA if the edge is removed.}
+ \item{ \emph{p_x2y:} probability of the arrowhead from \emph{x} to \emph{y},
+ of the inferred orientation, derived from the three-point mutual information
+ (see Verny 2017 and Ribeiro-Dantas 2024). NA if the edge is removed.}
+ \item{ \emph{confidence:} computed only when the confidence cut is
+ activated, NA otherwise.
+ When computed, it corresponds to a measure of the strength of the retained
+ edges: it is the ratio between the probability to reject the edge
+ \emph{exp(-info_shifted(x;y|ai))} in the original dataset and
+ the mean probability to do the same in \emph{n_shuffles} number
+ of randomized datasets. Edges with \emph{confidence} > \emph{conf_threshold}
+ will be filtered out from the graph.
+ (see parameters \emph{n_shuffles} and \emph{conf_threshold})
+ }
  }
  }
 
- \item{\emph{orientations.prob:} this data frame lists the orientation
+ \item{\emph{edges:} a data frame with the raw edges output coming from
+ the C++ core function. This data frame is used internally by MIIC to
+ produce the summary and contains all pairs of variables (\emph{x, y}). }
+
+ \item{\emph{triples:} this data frame lists the orientation
  probabilities of the two edges of all unshielded triples of the
  reconstructed network with the structure: node1 -- mid-node -- node2:
  \itemize{
@@ -431,9 +514,9 @@ A \emph{miic-like} object that contains:
  \item{ \emph{p3:} probability of the arrowhead mid-node <- node2}
  \item{ \emph{p4:} probability of the arrowhead mid-node -> node2}
  \item{ \emph{node2:} node at the end of the unshielded triplet}
- \item{ \emph{NI3:} 3 point (conditional) mutual information * N}
- \item{ \emph{Conflict:} indicates if there a conflict between the
- computed probabilities and the NI3 value}
+ \item{ \emph{ni3:} 3 point (conditional) mutual information * N}
+ \item{ \emph{conflict:} indicates if there is a conflict between the
+ computed probabilities and the \emph{ni3} value}
  }
  }
 
@@ -442,27 +525,64 @@ A \emph{miic-like} object that contains:
  pairs of vertices are adjacent or not in the graph. The matrix can be read
  as a (row, column) set of couples where the row represents the source node
  and the column the target node. Since miic can reconstruct mixed networks
- (including directed, undirected and bidirected edges), we will have a
+ (including directed, un-directed and bi-directed edges), we will have a
  different digit for each case:
  \itemize{
- \item{ 1: (\emph{x}, \emph{y}) edge is undirected}
+ \item{ 1: (\emph{x}, \emph{y}) edge is un-directed}
  \item{ 2: (\emph{x}, \emph{y}) edge is directed as \emph{x} -> \emph{y} }
  \item{ -2: (\emph{x}, \emph{y}) edge is directed as \emph{x} <- \emph{y} }
- \item{ 6: (\emph{x}, \emph{y}) edge is bidirected}
+ \item{ 6: (\emph{x}, \emph{y}) edge is bi-directed}
  }
  }
 
  \item {\emph{proba_adj_matrix:} the probability adjacency matrix is
- a square  matrix used to represent the orientation probabilities associated
+ a square matrix used to represent the orientation probabilities associated
  to the edges tips. The value at ("row", "column") is the probability,
  for the edge between "row" and "column" nodes, of the edge tip on the "row"
- side.  A probability less than 0.5 is an indication of a possible tail
- (cause) and a probability greater than 0.5 a possible head (effect).
+ side. A probability less than 0.5 is an indication of a possible tail
+ (cause) and a probability greater than 0.5 a possible head (effect). }
+
+ \item {\emph{adj_matrices:} present only when consistency is activated.
+ The list of the adjacency matrices, one for each graph
+ which is part of the resulting cycle of graphs.
+ Each item is a square matrix with the same layout as \emph{adj_matrix}. }
+
+ \item {\emph{proba_adj_matrices:} present only when consistency is activated.
+ The list of the probability adjacency matrices, one for each graph
+ which is part of the resulting cycle of graphs. Each item is a
+ square matrix with the same layout as \emph{proba_adj_matrix}. }
+
+ \item {\emph{proba_adj_average:} present only when consistency is activated.
+ The average probability adjacency matrix is a square matrix used to
+ represent the orientation probabilities associated to the edges tips
+ of the consensus graph. Its layout is the same as \emph{proba_adj_matrix}
+ and it contains the averaged probability of edges tips over the resulting
+ cycle of graphs. }
+
+ \item {\emph{is_consistent:} present only when consistency is activated.
+ TRUE if the returned graph is consistent, FALSE otherwise. }
+
+ \item {\emph{time:} execution time of the different steps and total run-time
+ of the causal graph reconstruction by MIIC. }
+
+ \item {\emph{interrupted:} TRUE if causal graph reconstruction has been
+ interrupted, FALSE otherwise. }
+
+ \item {\emph{scores:} present only when true edges have been supplied.
+ Contains the scores of the returned graph in regard of the ground truth:
+ \itemize{
+ \item{ \emph{tp}: number of edges marked as True Positive }
+ \item{ \emph{fp}: number of edges marked as False Positive }
+ \item{ \emph{fn}: number of edges marked as False Negative }
+ \item{ \emph{precision}: Precision }
+ \item{ \emph{recall}: Recall }
+ \item{ \emph{fscore}: F1-Score }
+ }
  }
 
  \item {\emph{params:} the list of parameters used for the network
  reconstruction. The parameters not supplied are initialized to their default
- values. Otherwise, the parameters are checked and corrected if necessary.}
+ values. Otherwise, the parameters are checked and corrected if necessary. }
 
  \item {\emph{state_order:} the state order used for the network
  reconstruction. If no state order is supplied, it is generated by using
@@ -484,38 +604,42 @@ evaluation.}
 }
 }
 \description{
-MIIC (Multivariate Information based Inductive Causation) combines
+MIIC (Multivariate Information-based Inductive Causation) combines
 constraint-based and information-theoretic approaches to disentangle direct
 from indirect effects amongst correlated variables, including cause-effect
 relationships and the effect of unobserved latent causes.
 }
 \details{
-In standard mode, starting from a complete graph, the method iteratively removes
+Starting from a complete graph, the method iteratively removes
 dispensable edges, by uncovering significant information contributions from
 indirect paths, and assesses edge-specific confidences from randomization of
 available data. The remaining edges are then oriented based on the signature
-of causality in observational data.
+of causality in observational data. Miic distinguishes genuine causal edges
+(with both reliable arrow heads and tails) from putative causal edges (with
+one reliable arrow head only) and latent causal edges (with both reliable
+arrow heads). (see Ribeiro-Dantas 2024)
 
 In temporal mode, miic reorganizes the dataset using the \emph{n_layers} and
 \emph{delta_t} parameters to transform the time steps into lagged samples.
 As starting point, a lagged graph is created with only edges having at
 least one node laying on the last time step.
 Then, miic standard algorithm is applied to remove dispensable edges.
-The remaining edges are then oriented by using the temporality and the
+The remaining edges are then duplicated to ensure time invariance
+(stationary dynamic) and oriented using the temporality and the
 signature of causality in observational data. The use of temporal mode
-is exposed in Simon \emph{et al.}, eLife reviewed preprint 2024.
+is presented in Simon 2024.
 
-The method relies on an information theoretic based (conditional) independence
-test which is described in (Verny \emph{et al.}, PLoS Comp. Bio. 2017),
-(Cabeli \emph{et al.}, PLoS Comp. Bio. 2020). It deals with both categorical
-and continuous variables by performing optimal context-dependent discretization.
-As such, the input data frame may contain both numerical columns which will be
-treated as continuous, or character / factor columns which will be treated
+The method relies on information theoretic principles which replace
+(conditional) independence tests as described in Affeldt 2015, Cabeli 2020,
+Cabeli 2021 and Ribeiro-Dantas 2024. It deals with both categorical and
+continuous variables by performing optimal context-dependent discretization.
+As such, the input data frame may contain both numerical columns which will
+be treated as continuous, or character / factor columns which will be treated
 as categorical. For further details on the optimal discretization method and
 the conditional independence test, see the function discretizeMutual.
-The user may also choose to run miic with scheme presented in
-(Li \emph{et al.}, NeurIPS 2019) to improve the end result's interpretability
-by ensuring consistent separating set during the skeleton iterations.
+The user may also choose to run miic with scheme presented in Li 2019
+and Ribeiro-Dantas 2024 to improve the end result's interpretability
+by ensuring consistent separating sets.
 }
 \examples{
 library(miic)
@@ -524,76 +648,58 @@ library(miic)
 data(hematoData)
 
 # execute MIIC (reconstruct graph)
-miic.res <- miic(
+miic_obj <- miic(
   input_data = hematoData[1:1000,], latent = "yes",
   n_shuffles = 10, conf_threshold = 0.001
 )
 
 # plot graph
 if(require(igraph)) {
- plot(miic.res, method="igraph")
+ plot(miic_obj, method="igraph")
 }
 
 \donttest{
 # write graph to graphml format. Note that to correctly visualize
 # the network we created the miic style for Cytoscape (http://www.cytoscape.org/).
 
-miic.write.network.cytoscape(g = miic.res, file = file.path(tempdir(), "temp"))
+writeCytoscapeNetwork(miic_obj, file = file.path(tempdir(), "temp"))
 
 # EXAMPLE CANCER
 data(cosmicCancer)
 data(cosmicCancer_stateOrder)
 # execute MIIC (reconstruct graph)
-miic.res <- miic(
+miic_obj <- miic(
   input_data = cosmicCancer, state_order = cosmicCancer_stateOrder, latent = "yes",
   n_shuffles = 100, conf_threshold = 0.001
 )
 
 # plot graph
 if(require(igraph)) {
- plot(miic.res)
+ plot(miic_obj)
 }
 
 # write graph to graphml format. Note that to correctly visualize
 # the network we created the miic style for Cytoscape (http://www.cytoscape.org/).
-miic.write.network.cytoscape(g = miic.res, file = file.path(tempdir(), "temp"))
-
-# EXAMPLE OHNOLOGS
-data(ohno)
-data(ohno_stateOrder)
-# execute MIIC (reconstruct graph)
-miic.res <- miic(
-  input_data = ohno, latent = "yes", state_order = ohno_stateOrder,
-  n_shuffles = 100, conf_threshold = 0.001
-)
-
-# plot graph
-if(require(igraph)) {
- plot(miic.res)
-}
-
-# write graph to graphml format. Note that to correctly visualize
-# the network we created the miic style for Cytoscape (http://www.cytoscape.org/).
-miic.write.network.cytoscape(g = miic.res, file = file.path(tempdir(), "temp"))
+writeCytoscapeNetwork(miic_obj, file = file.path(tempdir(), "temp"))
 
 # EXAMPLE COVID CASES (time series demo)
 data(covidCases)
 # execute MIIC (reconstruct graph in temporal mode)
-tmiic.res <- miic(input_data = covidCases, mode = "TS", n_layers = 3, delta_t = 1, movavg = 14)
+tmiic_obj <- miic(input_data = covidCases, mode = "TS", n_layers = 3, delta_t = 1, mov_avg = 14)
 
 # to plot the default graph (compact)
 if(require(igraph)) {
- plot(tmiic.res)
+ plot(tmiic_obj)
 }
 
-# to plot the raw temporal network Using igraph
+# to plot the raw temporal network
 if(require(igraph)) {
-  plot(tmiic.res, display="raw")
+  plot(tmiic_obj, display="raw")
 }
 
-# to plot the full temporal network Using igraph
+# to plot the full temporal network
 if(require(igraph)) {
-  plot(tmiic.res, display="lagged")
+  plot(tmiic_obj, display="lagged")
 }
 
 }
@@ -601,11 +707,13 @@ if(require(igraph)) {
 }
 \references{
 \itemize{
-\item{Simon et al., \emph{eLife reviewed preprint}  https://www.biorxiv.org/content/10.1101/2024.02.06.579177v1.abstract }
-\item{Ribeiro-Dantas et al., \emph{iScience 2024}  https://arxiv.org/abs/2303.06423 }
-\item{Cabeli et al., \emph{PLoS Comp. Bio. 2020.}  https://doi.org/10.1371/journal.pcbi.1007866 }
-\item{Li et al., \emph{NeurIPS 2019} http://papers.nips.cc/paper/9573-constraint-based-causal-structure-learning-with-consistent-separating-sets.pdf }
-\item{Verny et al., \emph{PLoS Comp. Bio. 2017.}  https://doi.org/10.1371/journal.pcbi.1005662 }
+\item Simon \emph{et al.}, eLife 2024, \href{https://www.biorxiv.org/content/10.1101/2024.02.06.579177v1.abstract}{CausalXtract: a flexible pipeline to extract causal effects from live-cell time-lapse imaging data}
+\item Ribeiro-Dantas \emph{et al.}, iScience 2024, \href{https://doi.org/10.1016/j.isci.2024.109736}{Learning interpretable causal networks from very large datasets, application to 400,000 medical records of breast cancer patients}
+\item Cabeli \emph{et al.}, NeurIPS 2021, \href{https://why21.causalai.net/papers/WHY21_24.pdf}{Reliable causal discovery based on mutual information supremum principle for finite dataset}
+\item Cabeli \emph{et al.}, PLoS Comput. Biol. 2020, \href{https://doi.org/10.1371/journal.pcbi.1007866}{Learning clinical networks from medical records based on information estimates in mixed-type data}
+\item Li \emph{et al.}, NeurIPS 2019, \href{http://papers.nips.cc/paper/9573-constraint-based-causal-structure-learning-with-consistent-separating-sets.pdf}{Constraint-based causal structure learning with consistent separating sets}
+\item Verny \emph{et al.}, PLoS Comput. Biol. 2017, \href{https://doi.org/10.1371/journal.pcbi.1005662}{Learning causal networks with latent variables from multivariate information in genomic data}
+\item Affeldt \emph{et al.}, UAI 2015, \href{https://auai.org/uai2015/proceedings/papers/293.pdf}{Robust Reconstruction of Causal Graphical Models based on Conditional 2-point and 3-point Information}
 }
 }
 \seealso{

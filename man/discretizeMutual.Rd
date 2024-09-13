@@ -2,26 +2,27 @@
 % Please edit documentation in R/discretizeMutual.R
 \name{discretizeMutual}
 \alias{discretizeMutual}
-\title{Iterative dynamic programming for (conditional) mutual information through optimized discretization.}
+\title{Iterative dynamic programming for (conditional) mutual information through
+optimized discretization.}
 \usage{
 discretizeMutual(
-  X,
-  Y,
+  x,
+  y,
   matrix_u = NULL,
   maxbins = NULL,
   cplx = "nml",
   n_eff = NULL,
   sample_weights = NULL,
-  is_discrete = NULL,
+  is_continuous = NULL,
   plot = TRUE
 )
 }
 \arguments{
-\item{X}{[a vector]
-A vector that contains the observational data of the first variable.}
+\item{x}{[a vector]
+The \eqn{X} vector that contains the observational data of the first variable.}
 
-\item{Y}{[a vector]
-A vector that contains the observational data of the second variable.}
+\item{y}{[a vector]
+The \eqn{Y} vector that contains the observational data of the second variable.}
 
 \item{matrix_u}{[a numeric matrix]
 The matrix with the observations of as many columns as conditioning variables.}
@@ -31,53 +32,67 @@ The maximum number of bins desired in the discretization. A lower number makes t
 number allows finer discretization (by default : 5 * cubic root of N).}
 
 \item{cplx}{[a string]
-The complexity used in the dynamic programming. Either "mdl" for Minimum description Length or
-"nml" for Normalized Maximum Likelihood, which is less costly in the finite sample case and
-will allow more bins than mdl.}
+The complexity used in the dynamic programming:
+\itemize{
+\item["bic"] Bayesian Information Criterion
+\item["nml"] Normalized Maximum Likelihood, more accurate complexity cost
+compared to BIC, especially on small sample size.
+}}
 
-\item{n_eff}{[an int]
-The number of effective samples. When there is significant autocorrelation in the samples you may
-want to specify a number of effective samples that is lower than the number of points in the distribution.}
+\item{n_eff}{[an integer]
+The effective number of samples. When there is significant autocorrelation
+between successive samples, you may want to specify an effective number of
+samples that is lower than the total number of samples.}
 
 \item{sample_weights}{[a vector of floats]
-Individual weights for each sample, used for the same reason as the effective sample number but with individual
-precision.}
+Individual weights for each sample, used for the same reason as the effective
+number of samples but with individual weights.}
 
-\item{is_discrete}{[a vector of booleans]
-Specify if each variable is to be treated as discrete (TRUE) or continuous (FALSE) in a
-logical vector of length ncol(matrix_u) + 2, in the order [X, Y, U1, U2...]. By default,
-factors and character vectors are treated as discrete, and numerical vectors as continuous.}
+\item{is_continuous}{[a vector of booleans]
+Specify if each variable is to be treated as continuous (TRUE)
+or discrete (FALSE) in a logical vector of length ncol(matrix_u) + 2,
+in the order [X, Y, U1, U2...]. By default, factors and character vectors
+are treated as discrete, and numerical vectors as continuous.}
 
 \item{plot}{[a boolean]
-Specify if the XY joint space with discretization scheme is to be plotted or not (requires
-ggplot2 and gridExtra).}
+Specify whether the resulting XY optimum discretization is to be plotted
+(requires `ggplot2` and `gridExtra`).}
 }
 \value{
 A list that contains :
 \itemize{
 \item{two vectors containing the cutpoints for each variable :
-\emph{cutpoints1} corresponds to \emph{X},
-\emph{cutpoints2} corresponds to \emph{Y}.}
-\item{\emph{niterations} is the number of iterations performed before convergence of the (C)MI estimation.}
-\item{\emph{iterationN}, lists contatining the cutpoint vectors for each iteration.}
-\item{\emph{info} and \emph{infok}, the estimated (C)MI value and (C)MI minus the complexity cost.}
+\emph{cutpoints1} corresponds to \emph{x},
+\emph{cutpoints2} corresponds to \emph{y}.}
+\item{\emph{n_iterations} is the number of iterations performed before
+convergence of the (C)MI estimation.}
+\item{\emph{iteration1, iteration2, ...}, lists containing
+the cutpoint vectors for each iteration.}
+\item{\emph{info} and \emph{infok}, the estimated (C)MI value
+and (C)MI minus the complexity cost.}
 \item{if \emph{plot} == TRUE, a plot object (requires ggplot2 and gridExtra).}
 }
 }
 \description{
-This function chooses cutpoints in the input distributions by maximizing the mutual
-information minus a complexity cost (computed as BIC or with the Normalized Maximum Likelihood). The
-(conditional) mutual information computed on the optimized discretized distributions effectively approaches
-the mutual information computed on the original continuous variables.
+This function chooses cutpoints in the input distributions by
+maximizing the mutual information minus a complexity cost
+(computed as BIC or with the Normalized Maximum Likelihood).
+The (conditional) mutual information computed on the optimized discretized
+distributions effectively estimates the mutual information of the original
+continuous variables.
 }
 \details{
-For a pair of variables \eqn{X} and \eqn{Y}, the algorithm will in turn choose cutpoints on \eqn{X}
-then on \eqn{Y}, maximizing \eqn{I(X_{d};Y_{d}) - cplx(X_{d};Y_{d})} where \eqn{cplx(X_{d};Y_{d})} is the
-complexity cost of the considered discretizations of \eqn{X} and \eqn{Y} (see Affeldt 2016 and Cabeli 2020).
-When the value \eqn{I(X_{d};Y_{d})} is stable between two iterations the discretization scheme of
-\eqn{X_{d}} and \eqn{Y_{d}} is returned as well as \eqn{I(X_{d};Y_{d})} and \eqn{I(X_{d};Y_{d})-cplx(X_{d};Y_{d})}.
+For a pair of continuous variables \eqn{X} and \eqn{Y},
+the algorithm will iteratively choose cutpoints on \eqn{X} then on \eqn{Y},
+maximizing \eqn{I(X_{d};Y_{d}) - cplx(X_{d};Y_{d})} where
+\eqn{cplx(X_{d};Y_{d})} is the complexity cost of the considered
+discretizations of \eqn{X} and \eqn{Y} (see Cabeli 2020).
+Upon convergence, the discretization scheme of \eqn{X_{d}} and \eqn{Y_{d}}
+is returned as well as \eqn{I(X_{d};Y_{d})}
+and \eqn{I(X_{d};Y_{d})-cplx(X_{d};Y_{d})}.
 
-With a set of conditioning variables \eqn{U}, the discretization scheme maximizes each term of the sum
+With a set of conditioning variables \eqn{U}, the discretization scheme
+maximizes each term of the sum
 \eqn{I(X;Y|U) \sim 0.5*(I(X_{d};Y_{d}, U_{d}) - I(X_{d};U_{d}) + I(Y_{d};X_{d}, U_{d}) - I(Y_{d};U_{d}))}.
 
 Discrete variables can be passed as factors and will be used "as is" to maximize each term.
@@ -101,7 +116,7 @@ X <- -as.numeric(Z == 1) + as.numeric(Z == 2) + 0.2 * rnorm(N)
 Y <- as.numeric(Z == 1) + as.numeric(Z == 2) + 0.2 * rnorm(N)
 res <- miic::discretizeMutual(X, Y, cplx = "nml")
 message("I(X;Y) = ", res$info)
-res <- miic::discretizeMutual(X, Y, matrix(Z, ncol = 1), is_discrete = c(FALSE, FALSE, TRUE))
+res <- miic::discretizeMutual(X, Y, matrix(Z, ncol = 1), is_continuous = c(TRUE, TRUE, FALSE))
 message("I(X;Y|Z) = ", res$info)
 
 
@@ -114,12 +129,9 @@ message("I(X;Y) = ", res$info)
 res <- discretizeMutual(X, Y, matrix_u = matrix(Z, ncol = 1), plot = TRUE)
 message("I(X;Y|Z) = ", res$info)
 }
-
 }
 \references{
 \itemize{
-\item Verny et al., \emph{PLoS Comp. Bio. 2017.}  https://doi.org/10.1371/journal.pcbi.1005662
-\item Cabeli et al., \emph{PLoS Comp. Bio. 2020.}  https://doi.org/10.1371/journal.pcbi.1007866
-\item Affeldt et al., \emph{Bioinformatics 2016}
+\item Cabeli \emph{et al.}, PLoS Comput. Biol. 2020, \href{https://doi.org/10.1371/journal.pcbi.1007866}{Learning clinical networks from medical records based on information estimates in mixed-type data}
 }
 }
