@@ -224,7 +224,7 @@
 #'
 #' If set to FALSE, the skeleton is partially oriented with only the
 #' v-structure orientations. Otherwise, the v-structure orientations are
-#' propagated to downstream undirected edges in unshielded triples following
+#' propagated to downstream un-directed edges in unshielded triples following
 #' the propagation procedure, relying on probabilities (for more details,
 #' see Verny 2017).
 #'
@@ -550,7 +550,7 @@
 #'  pairs of vertices are adjacent or not in the graph. The matrix can be read
 #'  as a (row, column) set of couples where the row represents the source node
 #'  and the column the target node. Since miic can reconstruct mixed networks
-#'  (including directed, undirected and bidirected edges), we will have a
+#'  (including directed, un-directed and bi-directed edges), we will have a
 #'  different digit for each case:
 #'  \itemize{
 #'  \item{ 1: (\emph{x}, \emph{y}) edge is un-directed}
