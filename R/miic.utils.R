@@ -19,7 +19,7 @@ STATE_ORDER_STANDARD_VALID_COLUMS <- c ("var_names", "var_type",
     "levels_increasing_order", "is_contextual", "is_consequence",
     "group", "group_color")
 STATE_ORDER_TEMPORAL_VALID_COLUMNS = c (STATE_ORDER_STANDARD_VALID_COLUMS,
-                                        "n_layers", "delta_t", "movavg")
+                                        "n_layers", "delta_t", "mov_avg")
 
 #===============================================================================
 # FUNCTIONS
@@ -170,7 +170,7 @@ check_input_data <- function (input_data, mode)
 #   additional possible columns in temporal mode are:
 #   * n_layers: the number of layers in the time unfolded graph
 #   * delta_t: the number of time steps between layers
-#   * movavg: if a moving average must applied on some variables
+#   * mov_avg: if a moving average must applied on some variables
 #   NB: is_consequence is not allowed in temporal mode
 # - mode: the MIIC mode
 # Return: the checked and eventually generated or completed state order dataframe
@@ -267,8 +267,8 @@ check_state_order <- function (input_data, state_order, mode)
       state_order$n_layers[ is.na (state_order$n_layers) ] <- "NA"
     if ("delta_t" %in% colnames (state_order) )
       state_order$delta_t[ is.na (state_order$delta_t) ] <- "NA"
-    if ("movavg" %in% colnames (state_order) )
-      state_order$movavg[ is.na (state_order$movavg) ] <- "NA"
+    if ("mov_avg" %in% colnames (state_order) )
+      state_order$mov_avg[ is.na (state_order$mov_avg) ] <- "NA"
     }
   #
   # Check variable in data not in the state_order

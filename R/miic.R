@@ -126,9 +126,9 @@
 #' Note that if a \emph{"delta_t"} column is present in the \emph{state_order},
 #' its values will overwrite the function parameter.
 #'
-#' \emph{"movavg"} (optional) contains an integer value that specifies the size of
-#' the moving average window to be applied to the variable.
-#' Note that if \emph{"movavg"} column is present in the \emph{state_order},
+#' \emph{"mov_avg"} (optional) contains an integer value that specifies the size
+#' of the moving average window to be applied to the variable.
+#' Note that if \emph{"mov_avg"} column is present in the \emph{state_order},
 #' its values will overwrite the function parameter.
 #'
 #' @param true_edges [a data frame, optional, NULL by default]
@@ -364,7 +364,7 @@
 #' If not supplied, the number of time steps between layers is estimated
 #' from the dynamic of the dataset and the number of layers.
 #'
-#' @param movavg [an integer, optional, NULL by default, must be >= 2
+#' @param mov_avg [an integer, optional, NULL by default, must be >= 2
 #' if supplied]
 #'
 #' Used only in temporal mode. When supplied, a moving average operation is
@@ -683,7 +683,7 @@
 #' # EXAMPLE COVID CASES (time series demo)
 #' data(covidCases)
 #' # execute MIIC (reconstruct graph in temporal mode)
-#' tmiic_obj <- miic(input_data = covidCases, mode = "TS", n_layers = 3, delta_t = 1, movavg = 14)
+#' tmiic_obj <- miic(input_data = covidCases, mode = "TS", n_layers = 3, delta_t = 1, mov_avg = 14)
 #'
 #' # to plot the default graph (compact)
 #' if(require(igraph)) {
@@ -725,7 +725,7 @@ miic <- function(input_data,
                  mode = "S",
                  n_layers = NULL,
                  delta_t = NULL,
-                 movavg = NULL,
+                 mov_avg = NULL,
                  keep_max_data = FALSE,
                  max_nodes = 50,
                  verbose = FALSE)
@@ -780,15 +780,15 @@ miic <- function(input_data,
                                        params = params,
                                        n_layers = n_layers,
                                        delta_t = delta_t,
-                                       movavg = movavg,
+                                       mov_avg = mov_avg,
                                        keep_max_data = keep_max_data,
                                        max_nodes = max_nodes)
     params = list_ret$params
     state_order = tmiic_check_state_order_part2 (list_ret$state_order)
     list_ts = tmiic_extract_trajectories (input_data)
-    list_ts = tmiic_movavg (list_ts, state_order$movavg,
-                            keep_max_data=params$keep_max_data,
-                            verbose_level=ifelse (params$verbose, 2, 1) )
+    list_ts = tmiic_mov_avg (list_ts, state_order$mov_avg,
+                             keep_max_data=params$keep_max_data,
+                             verbose_level=ifelse (params$verbose, 2, 1) )
     state_order = tmiic_estimate_dynamic (list_ts, state_order,
                             max_nodes=params$max_nodes,
                             verbose_level=ifelse (params$verbose, 2, 1) )

@@ -67,7 +67,7 @@ and allows latent variables discovery during orientation step.
   The temporal mode of `miic()` is not activated by default and can be enabled by
   setting the newly added parameter `mode` to `"TS"`(Temporal Stationary).
   A tuning of the temporal mode is possible through a set of new parameters:
-  `max_nodes`, `n_layers`, `delta_t`, `movavg` and `keep_max_data`.
+  `max_nodes`, `n_layers`, `delta_t`, `mov_avg` and `keep_max_data`.
 
 # v1.8.1
 

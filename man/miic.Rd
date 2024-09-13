@@ -28,7 +28,7 @@ miic(
   mode = "S",
   n_layers = NULL,
   delta_t = NULL,
-  movavg = NULL,
+  mov_avg = NULL,
   keep_max_data = FALSE,
   max_nodes = 50,
   verbose = FALSE
@@ -97,9 +97,9 @@ of time steps between each layer for the variable.
 Note that if a \emph{"delta_t"} column is present in the \emph{state_order},
 its values will overwrite the function parameter.
 
-\emph{"movavg"} (optional) contains an integer value that specifies the size of
-the moving average window to be applied to the variable.
-Note that if \emph{"movavg"} column is present in the \emph{state_order},
+\emph{"mov_avg"} (optional) contains an integer value that specifies the size
+of the moving average window to be applied to the variable.
+Note that if \emph{"mov_avg"} column is present in the \emph{state_order},
 its values will overwrite the function parameter.}
 
 \item{true_edges}{[a data frame, optional, NULL by default]
@@ -335,7 +335,7 @@ for the first sample, the next sample will use 2, 9, 16 and so on.
 If not supplied, the number of time steps between layers is estimated
 from the dynamic of the dataset and the number of layers.}
 
-\item{movavg}{[an integer, optional, NULL by default, must be >= 2
+\item{mov_avg}{[an integer, optional, NULL by default, must be >= 2
 if supplied]
 
 Used only in temporal mode. When supplied, a moving average operation is
@@ -692,7 +692,7 @@ writeCytoscapeNetwork(miic_obj, file = file.path(tempdir(), "temp"))
 # EXAMPLE COVID CASES (time series demo)
 data(covidCases)
 # execute MIIC (reconstruct graph in temporal mode)
-tmiic_obj <- miic(input_data = covidCases, mode = "TS", n_layers = 3, delta_t = 1, movavg = 14)
+tmiic_obj <- miic(input_data = covidCases, mode = "TS", n_layers = 3, delta_t = 1, mov_avg = 14)
 
 # to plot the default graph (compact)
 if(require(igraph)) {

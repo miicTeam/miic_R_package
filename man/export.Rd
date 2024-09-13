@@ -121,7 +121,7 @@ plot(g, vertex.shape="none", edge.color="gray85", vertex.label.color="gray10")
 
 # In temporal mode, execute MIIC
 data(covidCases)
-tmiic_obj <- miic(input_data = covidCases, mode = "TS", n_layers = 3, delta_t = 1, movavg = 14)
+tmiic_obj <- miic(input_data = covidCases, mode = "TS", n_layers = 3, delta_t = 1, mov_avg = 14)
 
 # Plot by default the compact display of the temporal network using igraph
 if(require(igraph)) {

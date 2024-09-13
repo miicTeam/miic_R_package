@@ -7,7 +7,7 @@
 estimateTemporalDynamic(
   input_data,
   state_order = NULL,
-  movavg = NULL,
+  mov_avg = NULL,
   max_nodes = 50,
   verbose_level = 1
 )
@@ -42,17 +42,17 @@ Discrete variables will be excluded from the temporal dynamic estimation.
 variable is to be considered as a contextual variable (1) or not (0).
 Contextual variables will be excluded from the temporal dynamic estimation.
 
-"movavg" (optional) contains an integer value that specifies the size of
+"mov_avg" (optional) contains an integer value that specifies the size of
 the moving average window to be applied to the variable.
-Note that if "movavg" column is present in the \emph{state_order},
+Note that if "mov_avg" column is present in the \emph{state_order},
 its values will overwrite the function parameter.}
 
-\item{movavg}{[an integer] Optional, NULL by default.\cr
+\item{mov_avg}{[an integer] Optional, NULL by default.\cr
 When an integer>= 2 is supplied, a moving average operation is applied
 to all the non discrete and not contextual variables. If no \emph{state_order}
 is provided, the discrete/continuous variables are deduced from the input
 data. If you want to apply a moving average only on specific columns,
-consider to use a \emph{movavg} column in the \emph{state_order} parameter.}
+consider to use a \emph{mov_avg} column in the \emph{state_order} parameter.}
 
 \item{max_nodes}{[a positive integer] The maximum number of nodes in the
 final time-unfolded causal graph. The more nodes allowed in the temporal
