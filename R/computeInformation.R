@@ -1,38 +1,46 @@
+#*******************************************************************************
+# Filename   : computeInformation.R
+#
+# Description: Compute 2 and 3 point (conditional) mutual information
+#*******************************************************************************
+
+#===============================================================================
+# FUNCTIONS
+#===============================================================================
+# computeMutualInfo
+#-------------------------------------------------------------------------------
 #' Compute (conditional) mutual information
-#' @description For discrete variables, the computation is based on the
-#' empirical frequency minus a complexity cost (computed as BIC or with the
-#' Normalized Maximum Likelihood). When continuous variables are present, each
-#' continuous variable is discretized where the partitioning is chosen by
-#' maximizing the mutual information minus the complexity cost. The estimation
-#' based on the optimally discretized distributions effectively approaches the
-#' mutual information computed on the original continuous variables.
+#' @description For discrete or categorical variables, the (conditional)
+#' mutual information is computed using the empirical frequencies minus a
+#' complexity cost (computed as BIC or with the Normalized Maximum Likelihood).
+#' When continuous variables are present, each continuous variable is
+#' discretized for each mutual information estimate so as to maximize the
+#' mutual information minus the complexity cost (see Cabeli \emph{et al.},
+#' PLoS Comput. Biol. 2020).
 #'
 #' @details For a pair of continuous variables \eqn{X} and \eqn{Y}, the mutual
 #' information \eqn{I(X;Y)} will be computed iteratively. In each iteration, the
-#' algorithm optimizes first the partitioning of \eqn{X} and then that of
-#' \eqn{Y}, while maximizing
+#' algorithm optimizes the partitioning of \eqn{X} and then of \eqn{Y},
+#' in order to maximize
 #' \deqn{Ik(X_{d};Y_{d}) = I(X_{d};Y_{d}) - cplx(X_{d};Y_{d})}
-#' where \eqn{cplx(X_{d}; Y_{d})} is the complexity cost of the current
-#' partitioning (see Affeldt 2016 and Cabeli 2020). Upon convergence, the
-#' information terms \eqn{I(X_{d};Y_{d})} and \eqn{Ik(X_{d};Y_{d})}, as well as
-#' the partitioning of \eqn{X_{d}} and \eqn{Y_{d}} in terms of cutpoints, are
-#' returned.
+#' where \eqn{cplx(X_{d}; Y_{d})} is the complexity cost of the corresponding
+#' partitioning (see Cabeli \emph{et al.}, PLoS Comput. Biol. 2020.).
+#' Upon convergence, the information terms \eqn{I(X_{d};Y_{d})}
+#' and \eqn{Ik(X_{d};Y_{d})}, as well as the partitioning of \eqn{X_{d}}
+#' and \eqn{Y_{d}} in terms of cutpoints, are returned.
 #'
-#' For conditional mutual information with conditioning set \eqn{U}, the
+#' For conditional mutual information with a conditioning set \eqn{U}, the
 #' computation is done based on
 #' \deqn{
 #'   Ik(X;Y|U) = 0.5*(Ik(X_{d};Y_{d},U_{d}) - Ik(X_{d};U_{d})
 #'                  + Ik(Y_{d};X_{d},U_{d}) - Ik(Y_{d};U_{d})),
 #' }
-#' where each of the four summands is estimated independently.
+#' where each of the four summands is estimated separately.
 #'
 #' @references
 #' \itemize{
-#' \item Verny et al., \emph{PLoS Comp. Bio. 2017.}
-#'   https://doi.org/10.1371/journal.pcbi.1005662
-#' \item Cabeli et al., \emph{PLoS Comp. Bio. 2020.}
-#'   https://doi.org/10.1371/journal.pcbi.1007866
-#' \item Affeldt et al., \emph{Bioinformatics 2016}
+#' \item \href{https://doi.org/10.1371/journal.pcbi.1007866}{Cabeli \emph{et al.}, PLoS Comput. Biol. 2020}
+#' \item \href{https://auai.org/uai2015/proceedings.shtml}{Affeldt \emph{et al.}, UAI 2015}
 #' }
 #'
 #' @param x [a vector]
@@ -49,24 +57,24 @@
 #' The complexity model:
 #' \itemize{
 #' \item["bic"] Bayesian Information Criterion
-#' \item["nml"] Normalized Maximum Likelihood, less costly compared to "bic" in
-#' the finite sample case and will allow for more bins.
+#' \item["nml"] Normalized Maximum Likelihood, more accurate complexity cost
+#' compared to BIC, especially on small sample size.
 #' }
 #' @param n_eff [an integer]
-#' The number of effective samples. When there is significant autocorrelation in
-#' the samples you may want to specify a number of effective samples that is
-#' lower than the number of points in the distribution.
+#' The effective number of samples. When there is significant autocorrelation
+#' between successive samples, you may want to specify an effective number of
+#' samples that is lower than the total number of samples.
 #' @param sample_weights [a vector of floats]
 #' Individual weights for each sample, used for the same reason as the effective
-#' sample number but with individual precision.
+#' number of samples but with individual weights.
 #' @param is_continuous [a vector of booleans]
 #' Specify if each variable is to be treated as continuous (TRUE) or discrete
 #' (FALSE), must be of length `ncol(df_conditioning) + 2`, in the order
 #' \eqn{X, Y, U1, U2, ...}. If not specified, factors and character vectors are
 #' considered as discrete, and numerical vectors as continuous.
 #' @param plot [a boolean]
-#' Specify whether the XY joint space with discretization scheme is to be
-#' plotted (requires `ggplot2` and `gridExtra`).
+#' Specify whether the resulting XY optimum discretization is to be plotted
+#' (requires `ggplot2` and `gridExtra`).
 #'
 #' @return A list that contains :
 #' \itemize{
@@ -122,7 +130,7 @@
 #' res <- computeMutualInfo(X, Y, df_conditioning = matrix(Z, ncol = 1), plot = TRUE)
 #' message("I(X;Y|Z) = ", res$info)
 #' }
-#'
+#-------------------------------------------------------------------------------
 computeMutualInfo <- function(x, y,
                               df_conditioning = NULL,
                               maxbins = NULL,
@@ -313,27 +321,27 @@ computeMutualInfo <- function(x, y,
   return(result)
 }
 
+#-------------------------------------------------------------------------------
+# computeThreePointInfo
+#-------------------------------------------------------------------------------
 #' Compute (conditional) three-point information
-#' @description Three point information is defined based on mutual information.
-#' For discrete variables, the computation is based on the
-#' empirical frequency minus a complexity cost (computed as BIC or with the
-#' Normalized Maximum Likelihood). When continuous variables are present, each
-#' continuous variable is discretized where the partitioning is chosen by
-#' maximizing the mutual information minus the complexity cost.
+#' @description Three point information is defined and computed as the
+#' difference of mutual information and conditional mutual information, e.g.
+#' \deqn{I(X;Y;Z|U) = I(X;Y|U) - Ik(X;Y|U,Z)}
+#' For discrete or categorical variables, the three-point information is
+#' computed with the empirical frequencies minus a complexity cost
+#' (computed as BIC or with the Normalized Maximum Likelihood).
 #'
 #' @details For variables \eqn{X}, \eqn{Y}, \eqn{Z} and a set of conditioning
 #' variables \eqn{U}, the conditional three point information is defined as
-#' \deqn{Ik(X;Y;Z|U) = Ik(X;Y|U) - Ik(X;Y|U,Z)}, where \eqn{Ik} is the
-#' regularized conditional mutual information.
+#' \deqn{Ik(X;Y;Z|U) = Ik(X;Y|U) - Ik(X;Y|U,Z)}
+#' where \eqn{Ik} is the shifted or regularized conditional mutual information.
 #' See \code{\link{computeMutualInfo}} for the definition of \eqn{Ik}.
 #'
 #' @references
 #' \itemize{
-#' \item Verny et al., \emph{PLoS Comp. Bio. 2017.}
-#'   https://doi.org/10.1371/journal.pcbi.1005662
-#' \item Cabeli et al., \emph{PLoS Comp. Bio. 2020.}
-#'   https://doi.org/10.1371/journal.pcbi.1007866
-#' \item Affeldt et al., \emph{Bioinformatics 2016}
+#' \item \href{https://doi.org/10.1371/journal.pcbi.1007866}{Cabeli \emph{et al.}, PLoS Comput. Biol. 2020}
+#' \item \href{https://auai.org/uai2015/proceedings.shtml}{Affeldt \emph{et al.}, UAI 2015}
 #' }
 #'
 #' @param x [a vector]
@@ -353,32 +361,32 @@ computeMutualInfo <- function(x, y,
 #' The complexity model:
 #' \itemize{
 #' \item["bic"] Bayesian Information Criterion
-#' \item["nml"] Normalized Maximum Likelihood, less costly compared to "bic" in
-#' the finite sample case and will allow for more bins.
+#' \item["nml"] Normalized Maximum Likelihood, more accurate complexity cost
+#' compared to BIC, especially on small sample size.
 #' }
 #' @param n_eff [an integer]
-#' The number of effective samples. When there is significant autocorrelation in
-#' the samples you may want to specify a number of effective samples that is
-#' lower than the number of points in the distribution.
+#' The effective number of samples. When there is significant autocorrelation
+#' between successive samples, you may want to specify an effective number of
+#' samples that is lower than the total number of samples.
 #' @param sample_weights [a vector of floats]
 #' Individual weights for each sample, used for the same reason as the effective
-#' sample number but with individual precision.
+#' number of samples but with individual weights.
 #' @param is_continuous [a vector of booleans]
 #' Specify if each variable is to be treated as continuous (TRUE) or discrete
-#' (FALSE), must be of length `ncol(df_conditioning) + 2`, in the order
-#' \eqn{X, Y, U1, U2, ...}. If not specified, factors and character vectors are
-#' considered as discrete, and numerical vectors as continuous.
+#' (FALSE), must be of length `ncol(df_conditioning) + 3`, in the order
+#' \eqn{X, Y, Z, U1, U2, ...}. If not specified, factors and character vectors
+#' are considered as discrete, and numerical vectors as continuous.
 #'
 #' @return A list that contains :
 #' \itemize{
 #' \item i3: The estimation of (conditional) three-point information without the
 #' complexity cost.
 #' \item i3k: The estimation of (conditional) three-point information with the
-#' complexity cost (\eqn{I3k = I3 - cplx}).
+#' complexity cost (\emph{i3k = i3 - cplx}).
 #' \item i2: For reference, the estimation of (conditional) mutual information
-#' \eqn{I(X;Y|U)} used in the estimation of \eqn{I3}.
+#' \eqn{I(X;Y|U)} used in the estimation of \emph{i3}.
 #' \item i2k: For reference, the estimation of regularized (conditional) mutual
-#' information \eqn{Ik(X;Y|U)} used in the estimation of \eqn{I3k}.
+#' information \eqn{Ik(X;Y|U)} used in the estimation of \emph{i3k}.
 #' }
 #' @export
 #' @useDynLib miic
@@ -404,7 +412,7 @@ computeMutualInfo <- function(x, y,
 #' message("I(X;Y;Z) = ", res$i3)
 #' message("Ik(X;Y;Z) = ", res$i3k)
 #' }
-#'
+#-------------------------------------------------------------------------------
 computeThreePointInfo <- function(x, y, z,
                               df_conditioning = NULL,
                               maxbins = NULL,

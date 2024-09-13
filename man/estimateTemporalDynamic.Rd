@@ -55,7 +55,7 @@ data. If you want to apply a moving average only on specific columns,
 consider to use a \emph{movavg} column in the \emph{state_order} parameter.}
 
 \item{max_nodes}{[a positive integer] The maximum number of nodes in the
-final temporal causal graph. The more nodes allowed in the temporal
+final time-unfolded causal graph. The more nodes allowed in the temporal
 causal discovery, the more precise will be the discovery but at the cost
 of longer execution time. The default is set to 50 for fast causal
 discovery. On recent computers, values up to 200 or 300 nodes are usually
@@ -77,6 +77,6 @@ This function estimates the number of layers and number of
 time steps between each layer that are needed to cover the dynamic of a
 temporal dataset when reconstructing a temporal causal graph.
 Using autocorrelation decay, the function computes the average relaxation
-time of the variables and, in regard of a maximum number of nodes, deduces
+time of the variables and, based on a maximum number of nodes, deduces
 the number of layers and number of time steps between each layer to be used.
 }

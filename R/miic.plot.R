@@ -8,7 +8,7 @@
 #'
 #' @details The behavior depends on the method used for the export.
 #'
-#' For igraph, edges attributes are passed to the igraph graph
+#' For igraph, edge attributes are passed to the igraph graph
 #' and can be accessed with e.g. \code{E(g)$partial_correlation}.
 #' See \code{\link{miic}} for more details on edge parameters.
 #' By default, edges are colored according to the partial correlation
@@ -53,7 +53,7 @@
 #'   X<-Y lag=2.
 #' \item When \emph{display} = \emph{"combine"}, prior to the export,
 #'   a pre-processing will be applied to kept only one edge
-#'   per couple of nodes. The info_shifted will be the highest one
+#'   per pair of nodes. The info_shifted will be the highest one
 #'   of the summarized edges whilst the lag and orientation of the
 #'   summarized edge will be an aggregation.\cr
 #'   e.g. X_lag2->Y_lag0, X_lag0<-Y_lag1 will become X<->Y lag=1-2 with
@@ -61,20 +61,14 @@
 #'   X_lag2->Y_lag0 > X_lag0<-Y_lag1.
 #' \item When \emph{display} = \emph{"unique"}, prior to the export,
 #'   a pre-processing will be applied to kept only the edges having the
-#'   highest info_shifted for a couple of nodes.
+#'   highest info_shifted for a pair of nodes.
 #'   If several edges between the sames nodes have the same
 #'   info_shifted, then the edge kept is the one with the minimum lag.\cr
 #'   e.g. X_lag1->Y_lag0, X_lag0<-Y_lag2 with info_shifted of
 #'   X_lag1->Y_lag0 > X_lag0<-Y_lag2 become X->Y lag=1.
-#' \item When \emph{display} = \emph{"drop"}, prior to the export,
-#'   a pre-processing will be applied to kept only the edges having the
-#'   highest info_shifted for a couple of nodes.
-#'   If several edges between the sames nodes have the same
-#'   info_shifted, then the edge kept is the one with the minimum lag.\cr
-#'   e.g. X_lag1->Y_lag0, X_lag0<-Y_lag2 with info_shifted of
-#'   X_lag1->Y_lag0 > X_lag0<-Y_lag2 become X->Y.
-#'   The lag information is dropped during the preprocessing and
-#'   will not be exported.
+#' \item When \emph{display} = \emph{"drop"}, the same pre-processing
+#'   as \emph{"unique"} will be applied, then the lag information will be
+#'   dropped before the export.
 #' }
 #'
 #' @param show_self_loops [a boolean, optional, TRUE by default]

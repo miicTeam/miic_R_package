@@ -39,24 +39,24 @@ faster, a larger number allows finer discretization.}
 The complexity model:
 \itemize{
 \item["bic"] Bayesian Information Criterion
-\item["nml"] Normalized Maximum Likelihood, less costly compared to "bic" in
-the finite sample case and will allow for more bins.
+\item["nml"] Normalized Maximum Likelihood, more accurate complexity cost
+compared to BIC, especially on small sample size.
 }}
 
 \item{n_eff}{[an integer]
-The number of effective samples. When there is significant autocorrelation in
-the samples you may want to specify a number of effective samples that is
-lower than the number of points in the distribution.}
+The effective number of samples. When there is significant autocorrelation
+between successive samples, you may want to specify an effective number of
+samples that is lower than the total number of samples.}
 
 \item{sample_weights}{[a vector of floats]
 Individual weights for each sample, used for the same reason as the effective
-sample number but with individual precision.}
+number of samples but with individual weights.}
 
 \item{is_continuous}{[a vector of booleans]
 Specify if each variable is to be treated as continuous (TRUE) or discrete
-(FALSE), must be of length `ncol(df_conditioning) + 2`, in the order
-\eqn{X, Y, U1, U2, ...}. If not specified, factors and character vectors are
-considered as discrete, and numerical vectors as continuous.}
+(FALSE), must be of length `ncol(df_conditioning) + 3`, in the order
+\eqn{X, Y, Z, U1, U2, ...}. If not specified, factors and character vectors
+are considered as discrete, and numerical vectors as continuous.}
 }
 \value{
 A list that contains :
@@ -64,26 +64,26 @@ A list that contains :
 \item i3: The estimation of (conditional) three-point information without the
 complexity cost.
 \item i3k: The estimation of (conditional) three-point information with the
-complexity cost (\eqn{I3k = I3 - cplx}).
+complexity cost (\emph{i3k = i3 - cplx}).
 \item i2: For reference, the estimation of (conditional) mutual information
-\eqn{I(X;Y|U)} used in the estimation of \eqn{I3}.
+\eqn{I(X;Y|U)} used in the estimation of \emph{i3}.
 \item i2k: For reference, the estimation of regularized (conditional) mutual
-information \eqn{Ik(X;Y|U)} used in the estimation of \eqn{I3k}.
+information \eqn{Ik(X;Y|U)} used in the estimation of \emph{i3k}.
 }
 }
 \description{
-Three point information is defined based on mutual information.
-For discrete variables, the computation is based on the
-empirical frequency minus a complexity cost (computed as BIC or with the
-Normalized Maximum Likelihood). When continuous variables are present, each
-continuous variable is discretized where the partitioning is chosen by
-maximizing the mutual information minus the complexity cost.
+Three point information is defined and computed as the
+difference of mutual information and conditional mutual information, e.g.
+\deqn{I(X;Y;Z|U) = I(X;Y|U) - Ik(X;Y|U,Z)}
+For discrete or categorical variables, the three-point information is
+computed with the empirical frequencies minus a complexity cost
+(computed as BIC or with the Normalized Maximum Likelihood).
 }
 \details{
 For variables \eqn{X}, \eqn{Y}, \eqn{Z} and a set of conditioning
 variables \eqn{U}, the conditional three point information is defined as
-\deqn{Ik(X;Y;Z|U) = Ik(X;Y|U) - Ik(X;Y|U,Z)}, where \eqn{Ik} is the
-regularized conditional mutual information.
+\deqn{Ik(X;Y;Z|U) = Ik(X;Y|U) - Ik(X;Y|U,Z)}
+where \eqn{Ik} is the shifted or regularized conditional mutual information.
 See \code{\link{computeMutualInfo}} for the definition of \eqn{Ik}.
 }
 \examples{
@@ -106,14 +106,10 @@ res <- computeThreePointInfo(X, Y, Z)
 message("I(X;Y;Z) = ", res$i3)
 message("Ik(X;Y;Z) = ", res$i3k)
 }
-
 }
 \references{
 \itemize{
-\item Verny et al., \emph{PLoS Comp. Bio. 2017.}
-  https://doi.org/10.1371/journal.pcbi.1005662
-\item Cabeli et al., \emph{PLoS Comp. Bio. 2020.}
-  https://doi.org/10.1371/journal.pcbi.1007866
-\item Affeldt et al., \emph{Bioinformatics 2016}
+\item \href{https://doi.org/10.1371/journal.pcbi.1007866}{Cabeli \emph{et al.}, PLoS Comput. Biol. 2020}
+\item \href{https://auai.org/uai2015/proceedings.shtml}{Affeldt \emph{et al.}, UAI 2015}
 }
 }

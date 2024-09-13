@@ -191,7 +191,7 @@ CRAN).
 ## Features
 * The method now works with continuous variables (solely or mixed with discrete
   variables), thanks to the discretization method as described in
-  [Cabeli et al., PLoS Comp. Bio. 2020](https://doi.org/10.1371/journal.pcbi.1007866).
+  [Cabeli et al., PLoS Comput. Biol. 2020](https://doi.org/10.1371/journal.pcbi.1007866).
 
 * Add an option `consistent` to improve the reconstructed graph's
   interpretability based on schemes as described in

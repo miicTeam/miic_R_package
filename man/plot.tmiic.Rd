@@ -51,29 +51,23 @@ Possible values are \emph{"raw"}, \emph{"lagged"}, \emph{"compact"},
   e.g. X_lag1->Y_lag0, X_lag2<-Y_lag0 become respectively X->Y lag=1,
   X<-Y lag=2.
 \item When \emph{display} = \emph{"combine"}, prior to the plotting,
-  a preprocessing will be applied to kept only one edge
-  per couple of nodes. The info_shifted will be the highest one
+  a pre-processing will be applied to kept only one edge
+  per pair of nodes. The info_shifted will be the highest one
   of the summarized edges whilst the lag and orientation of the
   summarized edge will be an aggregation.\cr
   e.g. X_lag1->Y_lag0, X_lag2<-Y_lag0 will become X<->Y lag=1,2 with
   the info_shifted of X_lag1->Y_lag0 if info_shifted of
   X_lag1->Y_lag0 > X_lag2<-Y_lag0.
 \item When \emph{display} = \emph{"unique"}, prior to the plotting,
-  a preprocessing will be applied to kept only the edges having the
-  highest info_shifted for a couple of nodes.
+  a pre-processing will be applied to kept only the edges having the
+  highest info_shifted for a pair of nodes.
   If several edges between the sames nodes have the same
   info_shifted, then the edge kept is the one with the minimum lag.\cr
   e.g. X_lag1->Y_lag0, X_lag2<-Y_lag0 with info_shifted of
   X_lag1->Y_lag0 > X_lag2<-Y_lag0 become X->Y lag=1.
-\item When \emph{display} = \emph{"drop"}, prior to the plotting,
-  a preprocessing will be applied to kept only the edges having the
-  highest info_shifted for a couple of nodes.
-  If several edges between the sames nodes have the same
-  info_shifted, then the edge kept is the one with the minimum lag.\cr
-  e.g. X_lag1->Y_lag0, X_lag2<-Y_lag0 with info_shifted of
-  X_lag1->Y_lag0 > X_lag2<-Y_lag0 become X->Y.
-  The lag information is dropped during the preprocessing and
-  will not be displayed on the final plotting.
+\item When \emph{display} = \emph{"drop"}, the same pre-processing
+  as \emph{"unique"} will be applied, then the lag information will be
+  dropped and will not be displayed on the final plotting.
 }}
 
 \item{show_self_loops}{[a boolean, optional, TRUE by default]

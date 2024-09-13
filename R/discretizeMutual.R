@@ -1,26 +1,43 @@
-#' Iterative dynamic programming for (conditional) mutual information through optimized discretization.
-#' @description This function chooses cutpoints in the input distributions by maximizing the mutual
-#' information minus a complexity cost (computed as BIC or with the Normalized Maximum Likelihood). The
-#' (conditional) mutual information computed on the optimized discretized distributions effectively approaches
-#' the mutual information computed on the original continuous variables.
+#*******************************************************************************
+# Filename   : discretizeMutual.R
+#
+# Description: Optimal discretization to compute (conditional) mutual
+#              information
+#*******************************************************************************
+
+#===============================================================================
+# FUNCTIONS
+#===============================================================================
+# discretizeMutual
+#-------------------------------------------------------------------------------
+#' Iterative dynamic programming for (conditional) mutual information through
+#' optimized discretization.
 #'
-#' @details For a pair of variables \eqn{X} and \eqn{Y}, the algorithm will in turn choose cutpoints on \eqn{X}
-#' then on \eqn{Y}, maximizing \eqn{I(X_{d};Y_{d}) - cplx(X_{d};Y_{d})} where \eqn{cplx(X_{d};Y_{d})} is the
-#' complexity cost of the considered discretizations of \eqn{X} and \eqn{Y} (see Affeldt 2016 and Cabeli 2020).
-#' When the value \eqn{I(X_{d};Y_{d})} is stable between two iterations the discretization scheme of
-#' \eqn{X_{d}} and \eqn{Y_{d}} is returned as well as \eqn{I(X_{d};Y_{d})} and \eqn{I(X_{d};Y_{d})-cplx(X_{d};Y_{d})}.
+#' @description This function chooses cutpoints in the input distributions by
+#' maximizing the mutual information minus a complexity cost
+#' (computed as BIC or with the Normalized Maximum Likelihood).
+#' The (conditional) mutual information computed on the optimized discretized
+#' distributions effectively estimates the mutual information of the original
+#' continuous variables.
 #'
-#' With a set of conditioning variables \eqn{U}, the discretization scheme maximizes each term of the sum
+#' @details For a pair of continuous variables \eqn{X} and \eqn{Y},
+#' the algorithm will iteratively choose cutpoints on \eqn{X} then on \eqn{Y},
+#' maximizing \eqn{I(X_{d};Y_{d}) - cplx(X_{d};Y_{d})} where
+#' \eqn{cplx(X_{d};Y_{d})} is the complexity cost of the considered
+#' discretizations of \eqn{X} and \eqn{Y} (see Cabeli \emph{et al.},
+#' PLoS Comput. Biol. 2020). Upon convergence, the discretization scheme of
+#' \eqn{X_{d}} and \eqn{Y_{d}} is returned as well as \eqn{I(X_{d};Y_{d})}
+#' and \eqn{I(X_{d};Y_{d})-cplx(X_{d};Y_{d})}.
+#'
+#' With a set of conditioning variables \eqn{U}, the discretization scheme
+#' maximizes each term of the sum
 #' \eqn{I(X;Y|U) \sim 0.5*(I(X_{d};Y_{d}, U_{d}) - I(X_{d};U_{d}) + I(Y_{d};X_{d}, U_{d}) - I(Y_{d};U_{d}))}.
 #'
 #' Discrete variables can be passed as factors and will be used "as is" to maximize each term.
 #'
-#'
 #' @references
 #' \itemize{
-#' \item Verny et al., \emph{PLoS Comp. Bio. 2017.}  https://doi.org/10.1371/journal.pcbi.1005662
-#' \item Cabeli et al., \emph{PLoS Comp. Bio. 2020.}  https://doi.org/10.1371/journal.pcbi.1007866
-#' \item Affeldt et al., \emph{Bioinformatics 2016}
+#' \item \href{https://doi.org/10.1371/journal.pcbi.1007866}{Cabeli \emph{et al.}, PLoS Comput. Biol. 2020}
 #' }
 #'
 #' @param x [a vector]
@@ -33,22 +50,27 @@
 #' The maximum number of bins desired in the discretization. A lower number makes the computation faster, a higher
 #' number allows finer discretization (by default : 5 * cubic root of N).
 #' @param cplx [a string]
-#' The complexity used in the dynamic programming. Either "bic" for Bayesian Information Criterion or
-#' "nml" for Normalized Maximum Likelihood, which is less costly in the finite sample case and
-#' will allow more bins than bic.
+#' The complexity used in the dynamic programming:
+#' \itemize{
+#' \item["bic"] Bayesian Information Criterion
+#' \item["nml"] Normalized Maximum Likelihood, more accurate complexity cost
+#' compared to BIC, especially on small sample size.
+#' }
 #' @param n_eff [an int]
-#' The number of effective samples. When there is significant autocorrelation in the samples you may
-#' want to specify a number of effective samples that is lower than the number of points in the distribution.
+#' @param n_eff [an integer]
+#' The effective number of samples. When there is significant autocorrelation
+#' between successive samples, you may want to specify an effective number of
+#' samples that is lower than the total number of samples.
 #' @param sample_weights [a vector of floats]
-#' Individual weights for each sample, used for the same reason as the effective sample number but with individual
-#' precision.
+#' Individual weights for each sample, used for the same reason as the effective
+#' number of samples but with individual weights.
 #' @param is_discrete [a vector of booleans]
 #' Specify if each variable is to be treated as discrete (TRUE) or continuous (FALSE) in a
 #' logical vector of length ncol(matrix_u) + 2, in the order [X, Y, U1, U2...]. By default,
 #' factors and character vectors are treated as discrete, and numerical vectors as continuous.
 #' @param plot [a boolean]
-#' Specify if the XY joint space with discretization scheme is to be plotted or not (requires
-#' ggplot2 and gridExtra).
+#' Specify whether the resulting XY optimum discretization is to be plotted
+#' (requires `ggplot2` and `gridExtra`).
 #'
 #' @return A list that contains :
 #' \itemize{
@@ -99,7 +121,7 @@
 #' res <- discretizeMutual(X, Y, matrix_u = matrix(Z, ncol = 1), plot = TRUE)
 #' message("I(X;Y|Z) = ", res$info)
 #' }
-#'
+#-------------------------------------------------------------------------------
 discretizeMutual <- function(x,
                              y,
                              matrix_u = NULL,
@@ -399,8 +421,9 @@ discretizeMutual <- function(x,
   result
 }
 
+#-------------------------------------------------------------------------------
 # Plot functions
-
+#-------------------------------------------------------------------------------
 axisprint <- function(x) {
   sprintf("%6s", x)
 }
