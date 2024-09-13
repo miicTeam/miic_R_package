@@ -15,8 +15,7 @@
 #' complexity cost (computed as BIC or with the Normalized Maximum Likelihood).
 #' When continuous variables are present, each continuous variable is
 #' discretized for each mutual information estimate so as to maximize the
-#' mutual information minus the complexity cost (see Cabeli \emph{et al.},
-#' PLoS Comput. Biol. 2020).
+#' mutual information minus the complexity cost (see Cabeli 2020).
 #'
 #' @details For a pair of continuous variables \eqn{X} and \eqn{Y}, the mutual
 #' information \eqn{I(X;Y)} will be computed iteratively. In each iteration, the
@@ -24,7 +23,7 @@
 #' in order to maximize
 #' \deqn{Ik(X_{d};Y_{d}) = I(X_{d};Y_{d}) - cplx(X_{d};Y_{d})}
 #' where \eqn{cplx(X_{d}; Y_{d})} is the complexity cost of the corresponding
-#' partitioning (see Cabeli \emph{et al.}, PLoS Comput. Biol. 2020.).
+#' partitioning (see Cabeli 2020).
 #' Upon convergence, the information terms \eqn{I(X_{d};Y_{d})}
 #' and \eqn{Ik(X_{d};Y_{d})}, as well as the partitioning of \eqn{X_{d}}
 #' and \eqn{Y_{d}} in terms of cutpoints, are returned.
@@ -39,8 +38,8 @@
 #'
 #' @references
 #' \itemize{
-#' \item \href{https://doi.org/10.1371/journal.pcbi.1007866}{Cabeli \emph{et al.}, PLoS Comput. Biol. 2020}
-#' \item \href{https://auai.org/uai2015/proceedings.shtml}{Affeldt \emph{et al.}, UAI 2015}
+#' \item Cabeli \emph{et al.}, PLoS Comput. Biol. 2020, \href{https://doi.org/10.1371/journal.pcbi.1007866}{Learning clinical networks from medical records based on information estimates in mixed-type data}
+#' \item Affeldt \emph{et al.}, UAI 2015, \href{https://auai.org/uai2015/proceedings/papers/293.pdf}{Robust Reconstruction of Causal Graphical Models based on Conditional 2-point and 3-point Information}
 #' }
 #'
 #' @param x [a vector]
@@ -340,8 +339,8 @@ computeMutualInfo <- function(x, y,
 #'
 #' @references
 #' \itemize{
-#' \item \href{https://doi.org/10.1371/journal.pcbi.1007866}{Cabeli \emph{et al.}, PLoS Comput. Biol. 2020}
-#' \item \href{https://auai.org/uai2015/proceedings.shtml}{Affeldt \emph{et al.}, UAI 2015}
+#' \item Cabeli \emph{et al.}, PLoS Comput. Biol. 2020, \href{https://doi.org/10.1371/journal.pcbi.1007866}{Learning clinical networks from medical records based on information estimates in mixed-type data}
+#' \item Affeldt \emph{et al.}, UAI 2015, \href{https://auai.org/uai2015/proceedings/papers/293.pdf}{Robust Reconstruction of Causal Graphical Models based on Conditional 2-point and 3-point Information}
 #' }
 #'
 #' @param x [a vector]

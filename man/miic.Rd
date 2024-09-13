@@ -160,7 +160,7 @@ However, the BIC complexity term tends to underestimate the
 relevance of edges connecting variables with many different categories,
 leading to the removal of false negative edges. To avoid such biases
 with finite datasets, the (universal) Normalized Maximum Likelihood (NML)
-criterion can be used (see Affeldt \emph{et al.}, UAI 2015).}
+criterion can be used (see Affeldt 2015).}
 
 \item{orientation}{[a boolean value, optional, TRUE by default]
 
@@ -200,7 +200,7 @@ If set to FALSE, the skeleton is partially oriented with only the
 v-structure orientations. Otherwise, the v-structure orientations are
 propagated to downstream undirected edges in unshielded triples following
 the propagation procedure, relying on probabilities (for more details,
-see Verny \emph{et al.}, PLoS Comput. Biol. 2017).}
+see Verny 2017).}
 
 \item{latent}{[a string, optional, "orientation" by default, possible
 values: "orientation", "no", "yes"]
@@ -219,8 +219,8 @@ In standard mode, the n samples given in the \emph{input_data} data frame are
 expected to be independent. In case of correlated samples such as in
 Monte Carlo sampling approaches, the effective number of independent samples
 \emph{n_eff} can be estimated using the decay of the autocorrelation function
-(Verny et al., PLoS Comput. Biol. 2017). This effective number \emph{n_eff}
-of independent samples can be provided using this parameter.}
+(see Verny 2017). This effective number \emph{n_eff} of independent samples
+can be provided using this parameter.}
 
 \item{n_shuffles}{[a positive integer, optional, 0 by default]
 
@@ -233,9 +233,8 @@ is set to an integer > 0, the confidence threshold must also be > 0
 \item{conf_threshold}{[a positive floating point, optional, 0 by default]
 
 The threshold used to filter the less probable edges following the skeleton
-step. See Verny \emph{et al.}, PLoS Comput. Biol. 2017.
-Default is 0: no confidence cut is applied. If the the confidence threshold
-is set > 0, the number of shufflings must also be > 0
+step (see Verny 2017). Default is 0: no confidence cut is applied. If the
+confidence threshold is set > 0, the number of shufflings must also be > 0
 (e.g. \emph{n_shuffles} = 100 and \emph{conf_threshold} = 0.01).}
 
 \item{sample_weights}{[a numeric vector, optional, NULL by default]
@@ -261,9 +260,9 @@ interaction and detect bias due to values not missing at random.}
 If set to "orientation": iterate over skeleton and orientation steps to
 ensure consistency of the separating sets and all disconnected pairs in the
 final network.
-If set to "skeleton": iterate over skeleton step to get a consistent skeleton,
-then orient edges including inconsistent orientations
-(see Li \emph{et al.}, NeurIPS 2019 for details).}
+If set to "skeleton": iterate over skeleton step to get a consistent
+skeleton, then orient edges including inconsistent orientations
+(see Li 2019 for details).}
 
 \item{max_iteration}{[a positive integer, optional, 100 by default]
 
@@ -303,16 +302,15 @@ the difference between two negative shifted mutual information terms
 However, under this setting, a v-structure (X -> Z <- Y) in the final graph
 does not necessarily imply that X is dependent on Y conditioning on Z,
 As a consequence, the reliability of certain orientations is not guaranteed.
-By contrast, keeping this parameter as FALSE is more conservative
-and leads to more reliable orientations (see Cabeli \emph{et al.},
-NeurIPS 2021 and Ribeiro-Dantas \emph{et al.}, iScience 2024).}
+By contrast, keeping this parameter as FALSE is more conservative and leads
+to more reliable orientations (see Cabeli 2021 and Ribeiro-Dantas 2024).}
 
 \item{mode}{[a string, optional, "S" by default, possible values are
 "S": Standard (non temporal data) or "TS": Temporal Stationary data]
 
 When temporal mode is activated, the time information must be provided
 in the first column of \emph{input_data}. For more details about temporal
-stationary mode, see Simon \emph{et al.}, eLife 2024.}
+stationary mode (see Simon 2024).}
 
 \item{n_layers}{[an integer, optional, NULL by default, must be >= 2
 if supplied]
@@ -484,12 +482,10 @@ A \emph{miic-like} object that contains:
  edge (\emph{x, y}) conditioned on the contributing nodes \emph{ai}.}
  \item{ \emph{p_y2x:} probability of the arrowhead from \emph{y} to \emph{x},
  of the inferred orientation, derived from the three-point mutual information
- (see Verny \emph{et al.}, PLoS Comput. Biol. 2017 and Ribeiro-Dantas
- \emph{et al.}, iScience 2024). NA if the edge is removed.}
+ (see Verny 2017 and Ribeiro-Dantas 2024). NA if the edge is removed.}
  \item{ \emph{p_x2y:} probability of the arrowhead from \emph{x} to \emph{y},
  of the inferred orientation, derived from the three-point mutual information
- (see Verny \emph{et al.}, PLoS Comput. Biol. 2017 and Ribeiro-Dantas
- \emph{et al.}, iScience 2024). NA if the edge is removed.}
+ (see Verny 2017 and Ribeiro-Dantas 2024). NA if the edge is removed.}
  \item{ \emph{confidence:} computed only when the confidence cut is
  activated, NA otherwise.
  When computed, it corresponds to a measure of the strength of the retained
@@ -621,7 +617,7 @@ available data. The remaining edges are then oriented based on the signature
 of causality in observational data. Miic distinguishes genuine causal edges
 (with both reliable arrow heads and tails) from putative causal edges (with
 one reliable arrow head only) and latent causal edges (with both reliable
-arrow heads). (see Ribeiro-Dantas \emph{et al.}, iScience 2024)
+arrow heads). (see Ribeiro-Dantas 2024)
 
 In temporal mode, miic reorganizes the dataset using the \emph{n_layers} and
 \emph{delta_t} parameters to transform the time steps into lagged samples.
@@ -631,21 +627,18 @@ Then, miic standard algorithm is applied to remove dispensable edges.
 The remaining edges are then duplicated to ensure time invariance
 (stationary dynamic) and oriented using the temporality and the
 signature of causality in observational data. The use of temporal mode
-is presented in Simon \emph{et al.}, eLife 2024.
+is presented in Simon 2024.
 
 The method relies on information theoretic principles which replace
-(conditional) independence tests as described in Affeldt \emph{et al.},
-UAI 2015, Cabeli \emph{et al.}, PLoS Comput. Biol. 2020,
-Cabeli \emph{et al.}, NeurIPS 2021 and Ribeiro-Dantas \emph{et al.},
-iScience 2024. It deals with both categorical and continuous variables by performing
-optimal context-dependent discretization.
+(conditional) independence tests as described in Affeldt 2015, Cabeli 2020,
+Cabeli 2021 and Ribeiro-Dantas 2024. It deals with both categorical and
+continuous variables by performing optimal context-dependent discretization.
 As such, the input data frame may contain both numerical columns which will
 be treated as continuous, or character / factor columns which will be treated
 as categorical. For further details on the optimal discretization method and
 the conditional independence test, see the function discretizeMutual.
-The user may also choose to run miic with scheme presented in
-Li \emph{et al.}, NeurIPS 2019 and Ribeiro-Dantas \emph{et al.},
-iScience 2024 to improve the end result's interpretability
+The user may also choose to run miic with scheme presented in Li 2019
+and Ribeiro-Dantas 2024 to improve the end result's interpretability
 by ensuring consistent separating sets.
 }
 \examples{
@@ -714,13 +707,13 @@ if(require(igraph)) {
 }
 \references{
 \itemize{
-\item{ \href{https://www.biorxiv.org/content/10.1101/2024.02.06.579177v1.abstract}{Simon \emph{et al.}, eLife 2024} }
-\item{ \href{https://doi.org/10.1016/j.isci.2024.109736}{Ribeiro-Dantas \emph{et al.}, iScience 2024} }
-\item{ \href{https://why21.causalai.net/papers/WHY21_24.pdf}{Cabeli \emph{et al.}, NeurIPS 2021} }
-\item{ \href{https://doi.org/10.1371/journal.pcbi.1007866}{Cabeli \emph{et al.}, PLoS Comput. Biol. 2020} }
-\item{ \href{http://papers.nips.cc/paper/9573-constraint-based-causal-structure-learning-with-consistent-separating-sets.pdf}{Li \emph{et al.}, NeurIPS 2019} }
-\item{ \href{https://doi.org/10.1371/journal.pcbi.1005662}{Verny \emph{et al.}, PLoS Comput. Biol. 2017} }
-\item{ \href{https://auai.org/uai2015/proceedings.shtml}{Affeldt \emph{et al.}, UAI 2015} }
+\item Simon \emph{et al.}, eLife 2024, \href{https://www.biorxiv.org/content/10.1101/2024.02.06.579177v1.abstract}{CausalXtract: a flexible pipeline to extract causal effects from live-cell time-lapse imaging data}
+\item Ribeiro-Dantas \emph{et al.}, iScience 2024, \href{https://doi.org/10.1016/j.isci.2024.109736}{Learning interpretable causal networks from very large datasets, application to 400,000 medical records of breast cancer patients}
+\item Cabeli \emph{et al.}, NeurIPS 2021, \href{https://why21.causalai.net/papers/WHY21_24.pdf}{Reliable causal discovery based on mutual information supremum principle for finite dataset}
+\item Cabeli \emph{et al.}, PLoS Comput. Biol. 2020, \href{https://doi.org/10.1371/journal.pcbi.1007866}{Learning clinical networks from medical records based on information estimates in mixed-type data}
+\item Li \emph{et al.}, NeurIPS 2019, \href{http://papers.nips.cc/paper/9573-constraint-based-causal-structure-learning-with-consistent-separating-sets.pdf}{Constraint-based causal structure learning with consistent separating sets}
+\item Verny \emph{et al.}, PLoS Comput. Biol. 2017, \href{https://doi.org/10.1371/journal.pcbi.1005662}{Learning causal networks with latent variables from multivariate information in genomic data}
+\item Affeldt \emph{et al.}, UAI 2015, \href{https://auai.org/uai2015/proceedings/papers/293.pdf}{Robust Reconstruction of Causal Graphical Models based on Conditional 2-point and 3-point Information}
 }
 }
 \seealso{

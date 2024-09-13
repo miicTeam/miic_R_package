@@ -86,9 +86,9 @@ For a pair of continuous variables \eqn{X} and \eqn{Y},
 the algorithm will iteratively choose cutpoints on \eqn{X} then on \eqn{Y},
 maximizing \eqn{I(X_{d};Y_{d}) - cplx(X_{d};Y_{d})} where
 \eqn{cplx(X_{d};Y_{d})} is the complexity cost of the considered
-discretizations of \eqn{X} and \eqn{Y} (see Cabeli \emph{et al.},
-PLoS Comput. Biol. 2020). Upon convergence, the discretization scheme of
-\eqn{X_{d}} and \eqn{Y_{d}} is returned as well as \eqn{I(X_{d};Y_{d})}
+discretizations of \eqn{X} and \eqn{Y} (see Cabeli 2020).
+Upon convergence, the discretization scheme of \eqn{X_{d}} and \eqn{Y_{d}}
+is returned as well as \eqn{I(X_{d};Y_{d})}
 and \eqn{I(X_{d};Y_{d})-cplx(X_{d};Y_{d})}.
 
 With a set of conditioning variables \eqn{U}, the discretization scheme
@@ -132,6 +132,6 @@ message("I(X;Y|Z) = ", res$info)
 }
 \references{
 \itemize{
-\item \href{https://doi.org/10.1371/journal.pcbi.1007866}{Cabeli \emph{et al.}, PLoS Comput. Biol. 2020}
+\item Cabeli \emph{et al.}, PLoS Comput. Biol. 2020, \href{https://doi.org/10.1371/journal.pcbi.1007866}{Learning clinical networks from medical records based on information estimates in mixed-type data}
 }
 }
