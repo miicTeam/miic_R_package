@@ -61,9 +61,8 @@ and allows latent variables discovery during orientation step.
 ## Features
 
 * tMIIC version for temporal causal discovery on stationary time series:
-  new mode of `miic()` to reconstruct networks from temporal stationary datasets.
-  [Simon et al., eLife, reviewed preprint]
-  (https://www.biorxiv.org/content/10.1101/2024.02.06.579177v1.abstract)  
+  new mode of `miic()` to reconstruct networks from temporal stationary 
+  datasets ([Simon et al., eLife 2024](https://www.biorxiv.org/content/10.1101/2024.02.06.579177v1.abstract)).  
   The temporal mode of `miic()` is not activated by default and can be enabled by
   setting the newly added parameter `mode` to `"TS"`(Temporal Stationary).
   A tuning of the temporal mode is possible through a set of new parameters:
@@ -94,9 +93,7 @@ and allows latent variables discovery during orientation step.
 ## Features
 
 * iMIIC version introducing contextual variables, genuine vs putative causes
-  and multiple enhancements to deal with very large datasets.
-  [Ribeiro-Dantas et al., iScience 2024]
-  (https://arxiv.org/abs/2303.06423)  
+  and multiple enhancements to deal with very large datasets ([Ribeiro-Dantas et al., iScience 2024](https://doi.org/10.1016/j.isci.2024.109736)).  
   Information on contextual variables can be provided to `miic()`
   in the `state_order`, by supplying an `is_contextual`column and 
   genuine vs putative causes can be tuned by the newly added parameter
@@ -107,9 +104,7 @@ and allows latent variables discovery during orientation step.
 ## Features
 
 * Enhancement of orientations using mutual information supremum principle for 
-  finite datasets.
-  [Cabeli et al., Why21 at NeurIPS 2021]
-  (http://kinefold.curie.fr/isambertlab/PAPERS/cabeli_Why21-NeurIPS2021.pdf)  
+  finite datasets ([Cabeli et al., Why21 at NeurIPS 2021](http://kinefold.curie.fr/isambertlab/PAPERS/cabeli_Why21-NeurIPS2021.pdf)).  
   The use of enhanced orientations is controlled by the newly added parameter
   `negative_info` of `miic()` and is activated by default.
 
