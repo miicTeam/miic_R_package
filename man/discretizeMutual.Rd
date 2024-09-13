@@ -13,7 +13,7 @@ discretizeMutual(
   cplx = "nml",
   n_eff = NULL,
   sample_weights = NULL,
-  is_discrete = NULL,
+  is_continuous = NULL,
   plot = TRUE
 )
 }
@@ -48,10 +48,11 @@ samples that is lower than the total number of samples.}
 Individual weights for each sample, used for the same reason as the effective
 number of samples but with individual weights.}
 
-\item{is_discrete}{[a vector of booleans]
-Specify if each variable is to be treated as discrete (TRUE) or continuous (FALSE) in a
-logical vector of length ncol(matrix_u) + 2, in the order [X, Y, U1, U2...]. By default,
-factors and character vectors are treated as discrete, and numerical vectors as continuous.}
+\item{is_continuous}{[a vector of booleans]
+Specify if each variable is to be treated as continuous (TRUE)
+or discrete (FALSE) in a logical vector of length ncol(matrix_u) + 2,
+in the order [X, Y, U1, U2...]. By default, factors and character vectors
+are treated as discrete, and numerical vectors as continuous.}
 
 \item{plot}{[a boolean]
 Specify whether the resulting XY optimum discretization is to be plotted
@@ -115,7 +116,7 @@ X <- -as.numeric(Z == 1) + as.numeric(Z == 2) + 0.2 * rnorm(N)
 Y <- as.numeric(Z == 1) + as.numeric(Z == 2) + 0.2 * rnorm(N)
 res <- miic::discretizeMutual(X, Y, cplx = "nml")
 message("I(X;Y) = ", res$info)
-res <- miic::discretizeMutual(X, Y, matrix(Z, ncol = 1), is_discrete = c(FALSE, FALSE, TRUE))
+res <- miic::discretizeMutual(X, Y, matrix(Z, ncol = 1), is_continuous = c(TRUE, TRUE, FALSE))
 message("I(X;Y|Z) = ", res$info)
 
 

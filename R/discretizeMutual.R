@@ -64,10 +64,11 @@
 #' @param sample_weights [a vector of floats]
 #' Individual weights for each sample, used for the same reason as the effective
 #' number of samples but with individual weights.
-#' @param is_discrete [a vector of booleans]
-#' Specify if each variable is to be treated as discrete (TRUE) or continuous (FALSE) in a
-#' logical vector of length ncol(matrix_u) + 2, in the order [X, Y, U1, U2...]. By default,
-#' factors and character vectors are treated as discrete, and numerical vectors as continuous.
+#' @param is_continuous [a vector of booleans]
+#' Specify if each variable is to be treated as continuous (TRUE)
+#' or discrete (FALSE) in a logical vector of length ncol(matrix_u) + 2,
+#' in the order [X, Y, U1, U2...]. By default, factors and character vectors
+#' are treated as discrete, and numerical vectors as continuous.
 #' @param plot [a boolean]
 #' Specify whether the resulting XY optimum discretization is to be plotted
 #' (requires `ggplot2` and `gridExtra`).
@@ -108,7 +109,7 @@
 #' Y <- as.numeric(Z == 1) + as.numeric(Z == 2) + 0.2 * rnorm(N)
 #' res <- miic::discretizeMutual(X, Y, cplx = "nml")
 #' message("I(X;Y) = ", res$info)
-#' res <- miic::discretizeMutual(X, Y, matrix(Z, ncol = 1), is_discrete = c(FALSE, FALSE, TRUE))
+#' res <- miic::discretizeMutual(X, Y, matrix(Z, ncol = 1), is_continuous = c(TRUE, TRUE, FALSE))
 #' message("I(X;Y|Z) = ", res$info)
 #'
 #'
@@ -129,7 +130,7 @@ discretizeMutual <- function(x,
                              cplx = "nml",
                              n_eff = NULL,
                              sample_weights = NULL,
-                             is_discrete = NULL,
+                             is_continuous = NULL,
                              plot = TRUE) {
   nameDist1 <- deparse(substitute(x))
   nameDist2 <- deparse(substitute(y))
@@ -140,7 +141,7 @@ discretizeMutual <- function(x,
     nbrU <- ncol(matrix_u)
   }
 
-  if (is.null(is_discrete)) {
+  if (is.null(is_continuous)) {
     is_discrete <- c(
       (is.character(x) || is.factor(x)),
       (is.character(y) || is.factor(y))
@@ -151,8 +152,10 @@ discretizeMutual <- function(x,
           is.factor(matrix_u[, z])))
       }
     }
+    is_continuous <- (!is_discrete)
   }
-
+  else
+    is_discrete <- (!is_continuous)
   if (all(is_discrete[1:2])) {
     stop("Either x or y must be continuous to be discretized.")
   }
@@ -205,10 +208,10 @@ discretizeMutual <- function(x,
     )
   }
 
-  if (!is.null(is_discrete) && (length(is_discrete) != (2 + nbrU))) {
+  if (!is.null(is_continuous) && (length(is_continuous) != (2 + nbrU))) {
     stop(
       paste0(
-        "The vector passed as is_discrete argument must be the same",
+        "The vector passed as is_continuous argument must be the same",
         " length as the number of variables, which is ncol(matrix_u) ",
         "+ 2."
       )
@@ -277,7 +280,6 @@ discretizeMutual <- function(x,
       }
     }
   }
-  is_continuous <- !is_discrete
 
   # Pass complexity parameter as int
   if (cplx == "bic") {
