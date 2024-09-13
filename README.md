@@ -52,7 +52,8 @@ in genomic data, PLoS Comput. Biol. 2017](https://doi.org/10.1371/journal.pcbi.1
 
 Affeldt S., Isambert H.,
 [Robust Reconstruction of Causal Graphical Models based on Conditional 2-point 
-and 3-point Information, UAI 2015](https://auai.org/uai2015/proceedings.shtml)
+and 3-point Information, UAI 2015](https://auai.org/uai2015/proceedings/papers/293.pdf)
+| [supp](https://auai.org/uai2015/proceedings/supp/293_supp.pdf).
 
 ## Prerequisites
 
