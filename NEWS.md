@@ -1,8 +1,10 @@
-# v2.0.1
+# v2.0.2
 
 ## Features
 
 * Release to CRAN.
+
+# v2.0.1
 
 ## Fixes and improvements
 
@@ -10,7 +12,7 @@
 
 ## Breaking changes
 
-Consolidating long-pending breaking changes:
+Preparation of new release on CRAN, consolidating long-pending breaking changes:
 
 * Harmonization of exported function names using `camel case`.
 

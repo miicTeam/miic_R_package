@@ -53,11 +53,11 @@
 #' @references
 #' \itemize{
 #' \item Simon \emph{et al.}, eLife 2024, \href{https://www.biorxiv.org/content/10.1101/2024.02.06.579177v1.abstract}{CausalXtract: a flexible pipeline to extract causal effects from live-cell time-lapse imaging data}
-#' \item Ribeiro-Dantas \emph{et al.}, iScience 2024, \href{https://doi.org/10.1016/j.isci.2024.109736}{Learning interpretable causal networks from very large datasets, application to 400,000 medical records of breast cancer patients}
+#' \item Ribeiro-Dantas \emph{et al.}, iScience 2024, \href{https://arxiv.org/pdf/2303.06423}{Learning interpretable causal networks from very large datasets, application to 400,000 medical records of breast cancer patients}
 #' \item Cabeli \emph{et al.}, NeurIPS 2021, \href{https://why21.causalai.net/papers/WHY21_24.pdf}{Reliable causal discovery based on mutual information supremum principle for finite dataset}
-#' \item Cabeli \emph{et al.}, PLoS Comput. Biol. 2020, \href{https://doi.org/10.1371/journal.pcbi.1007866}{Learning clinical networks from medical records based on information estimates in mixed-type data}
+#' \item Cabeli \emph{et al.}, PLoS Comput. Biol. 2020, \href{https://journals.plos.org/ploscompbiol/article?id=10.1371/journal.pcbi.1007866}{Learning clinical networks from medical records based on information estimates in mixed-type data}
 #' \item Li \emph{et al.}, NeurIPS 2019, \href{http://papers.nips.cc/paper/9573-constraint-based-causal-structure-learning-with-consistent-separating-sets.pdf}{Constraint-based causal structure learning with consistent separating sets}
-#' \item Verny \emph{et al.}, PLoS Comput. Biol. 2017, \href{https://doi.org/10.1371/journal.pcbi.1005662}{Learning causal networks with latent variables from multivariate information in genomic data}
+#' \item Verny \emph{et al.}, PLoS Comput. Biol. 2017, \href{https://journals.plos.org/ploscompbiol/article?id=10.1371/journal.pcbi.1005662}{Learning causal networks with latent variables from multivariate information in genomic data}
 #' \item Affeldt \emph{et al.}, UAI 2015, \href{https://auai.org/uai2015/proceedings/papers/293.pdf}{Robust Reconstruction of Causal Graphical Models based on Conditional 2-point and 3-point Information}
 #' }
 #'
