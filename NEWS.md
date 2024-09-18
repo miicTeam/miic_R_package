@@ -1,8 +1,21 @@
-# v2.0.1
+# v2.0.3
 
 ## Features
 
 * Release to CRAN.
+
+## Known issues
+
+* Conditioning on a (very) large number of contributors can lead to a memory 
+  fault.
+  
+# v2.0.2
+
+## Fixes and improvements
+
+* Minor changes to fulfill CRAN requirements.
+
+# v2.0.1
 
 ## Fixes and improvements
 
@@ -10,7 +23,7 @@
 
 ## Breaking changes
 
-Consolidating long-pending breaking changes:
+Preparation of new release on CRAN, consolidating long-pending breaking changes:
 
 * Harmonization of exported function names using `camel case`.
 
@@ -18,7 +31,7 @@ Consolidating long-pending breaking changes:
 
 * Harmonization of abbreviations.
 
-All the documentation has been updated accordingly, if you encounter any issue
+All the documentation has been updated accordingly, in case of issue when
 upgrading to this version, please consult the help of the relevant function
 for more information about its interface.
 
@@ -51,11 +64,6 @@ Still compared to 1.5.3, another important change in the behavior of `miic()`
 is that, by default, `miic()` no longer propagates orientations 
 and allows latent variables discovery during orientation step.
 
-## Known issues
-
-* Conditioning on a (very) large number of contributors can lead to a memory 
-  fault.
-  
 # v2.0.0
 
 ## Features
