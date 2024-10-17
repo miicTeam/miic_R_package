@@ -125,6 +125,21 @@ void setEnvironmentFromR(const Rcpp::List& input_data,
     environment.is_consequence.resize(n_nodes, 0);
   environment.any_consequence = std::any_of (environment.is_consequence.begin(),
     environment.is_consequence.end(), [](bool v) { return v; });
+  //
+  // Remove edges between consequence variables
+  //
+  if (environment.any_consequence)
+    {
+    for (int i = 0; i < n_nodes; i++)
+      for (int j = 0; j < n_nodes; j++)
+        if (environment.is_consequence[i] && environment.is_consequence[j])
+          {
+          environment.edges(i, j).status = 0;
+          environment.edges(i, j).status_init = 0;
+          environment.edges(i, j).status_prev = 0;
+          environment.edges(i, j).proba_head = -1;
+          }
+    }
 
   if (arg_list.containsElementNamed("sample_weights"))
     environment.sample_weights = as<vector<double>>(arg_list["sample_weights"]);
@@ -158,82 +173,6 @@ void setEnvironmentFromR(const Rcpp::List& input_data,
     environment.n_threads = omp_get_num_procs();
   omp_set_num_threads(environment.n_threads);
 #endif
-
-  if (environment.temporal)
-    {
-    environment.list_n_layers = as<vector<int>> (arg_list["n_layers"]);
-    environment.layer_max = *std::max_element ( environment.list_n_layers.begin(),
-                                                environment.list_n_layers.end() );
-    environment.n_nodes_not_lagged = environment.list_n_layers.size();
-    //
-    // Precompute the class of each variable (unique ID for the part before "_lagX")
-    //
-    for (int node_idx = 0; node_idx < environment.n_nodes_not_lagged; ++node_idx)
-      environment.nodes_class.push_back (node_idx);
-    for (int layer_idx = 2; layer_idx <= environment.layer_max; ++layer_idx)
-      for (int node_idx = 0; node_idx < environment.n_nodes_not_lagged; ++node_idx)
-        if (layer_idx <= environment.list_n_layers[node_idx])
-          environment.nodes_class.push_back (node_idx);
-    //
-    // Precompute the lag of each variable: (layer - 1) * delta_t
-    //
-    vector<int> list_delta_t = as<vector<int>> (arg_list["delta_t"]);
-    environment.nodes_lags.assign (environment.n_nodes_not_lagged, 0);
-    for (int layer_idx = 2; layer_idx <= environment.layer_max; ++layer_idx)
-      for (int node_idx = 0; node_idx < environment.n_nodes_not_lagged; ++node_idx)
-        if (layer_idx <= environment.list_n_layers[node_idx])
-          environment.nodes_lags.push_back ( (layer_idx - 1) * list_delta_t[node_idx]);
-    //
-    // For contextual variables, we consider them as very old,
-    // so they are never the consequence of another variable
-    //
-    for (size_t ctx_idx = 0; ctx_idx < environment.is_contextual.size();  ++ctx_idx)
-      if (environment.is_contextual[ctx_idx])
-        environment.nodes_lags[ctx_idx] = INT_MAX;
-    //
-    // Pre-compute the index shifts from a var to its next lagged counterpart
-    // (i.e.: variables: x_lag0, ctr_var, y_lag0, x_lag1, y_lag1
-    //  => nodes_shifts:   3   ,    0   ,   2   ,   0   ,   0)
-    //
-    int n_nodes_shifts = environment.n_nodes_not_lagged;
-    vector <bool> end_reached (environment.n_nodes_not_lagged, false);
-    for (int layer_idx = 2; layer_idx <= environment.layer_max+1; ++layer_idx)
-      for (int node_idx = 0; node_idx < environment.n_nodes_not_lagged; ++node_idx)
-        if (layer_idx <= environment.list_n_layers[node_idx])
-          environment.nodes_shifts.push_back (n_nodes_shifts);
-        else if (!end_reached[node_idx]) {
-          end_reached[node_idx] = true;
-          environment.nodes_shifts.push_back (0);
-          --n_nodes_shifts;
-        }
-    //
-    // In temporal mode, we do not start from a complete graph
-    // => Remove all edges not having a node on the layer 0
-    //
-    for (int i = environment.n_nodes_not_lagged; i < n_nodes; i++)
-      for (int j = environment.n_nodes_not_lagged; j < n_nodes; j++) {
-        environment.edges(i, j).status = 0;
-        environment.edges(i, j).status_init = 0;
-        environment.edges(i, j).status_prev = 0;
-        environment.edges(i, j).proba_head = -1;
-      }
-    //
-    // In addition, non lagged variable (i.e.:contextual) can only have edges
-    // with nodes of the layer 0 (others can be found by stationarity)
-    //
-    for (int i = 0; i < environment.n_nodes_not_lagged; i++)
-      if (environment.is_contextual[i])
-        for (int j = environment.n_nodes_not_lagged; j < n_nodes; j++) {
-          environment.edges(i, j).status = 0;
-          environment.edges(i, j).status_init = 0;
-          environment.edges(i, j).status_prev = 0;
-          environment.edges(i, j).proba_head = -1;
-          environment.edges(j, i).status = 0;
-          environment.edges(j, i).status_init = 0;
-          environment.edges(j, i).status_prev = 0;
-          environment.edges(j, i).proba_head = -1;
-        }
-  }
 
   if (arg_list.containsElementNamed("negative_info"))
     environment.negative_info = as<bool>(arg_list["negative_info"]);
@@ -276,20 +215,6 @@ void setEnvironmentFromR(const Rcpp::List& input_data,
           << "\n";
         }
     environment.layers = layers;
-    }
-  //
-  // Remove edges between consequence variables
-  //
-  if (environment.any_consequence)
-    {
-    for (int i = 0; i < n_nodes; i++)
-      for (int j = 0; j < n_nodes; j++)
-        if (environment.is_consequence[i] && environment.is_consequence[j])
-          {
-          environment.edges(i, j).status = 0;
-          environment.edges(i, j).status_init = 0;
-          environment.edges(i, j).status_prev = 0;
-          }
     }
   //
   // Temporal stationary mode

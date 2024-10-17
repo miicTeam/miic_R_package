@@ -16,7 +16,7 @@
 #' from indirect effects amongst correlated variables, including cause-effect
 #' relationships and the effect of unobserved latent causes.
 #'
-#' @details In regular mode, starting from a complete graph, the method iteratively removes
+#' @details Starting from a complete graph, the method iteratively removes
 #' dispensable edges, by uncovering significant information contributions from
 #' indirect paths, and assesses edge-specific confidences from randomization of
 #' available data. The remaining edges are then oriented based on the signature
@@ -380,9 +380,14 @@
 #' The default is 50 to produce quick runs and can be increased up to 200
 #' or 300 on recent computers to produce more precise results.
 #'
-#' @param verbose [a boolean value, optional, FALSE by default]
+#' @param verbose [an integer value, optional, 1 by default]
 #'
-#' If TRUE, debugging output is printed.
+#' Define the level of verbosity, possible values are:
+#' \itemize{
+#' \item{ \emph{0:} no display (excepted warnings and errors if any)}
+#' \item{ \emph{1:} synthetic display with progress status}
+#' \item{ \emph{1:} debug display}
+#' }
 #'
 #' @return A \emph{miic-like} object that contains:
 #' \itemize{
@@ -726,15 +731,10 @@ miic <- function(input_data,
                  window_position = "start",
                  layers = NULL,
                  nodes_layers = NULL,
-                 verbose = FALSE)
+                 verbose = 1)
   {
+  # TODO review all code for verbose level and mode print in prepare_inputs
   miic_start = Sys.time()
-  if (verbose)
-    miic_msg ("Start MIIC...")
-  if (mode %in% MIIC_TEMPORAL_MODES)
-      miic_msg ("Using temporal mode of MIIC")
-  else if (mode == "L")
-    miic_msg ("Using layered mode of MIIC")
   #
   # Check all inputs
   #

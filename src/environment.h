@@ -113,15 +113,14 @@ struct Environment {
   // of another variable
   vector<int> nodes_lags;
   // Store nodes index shift, giving for each node the same lagged node
-  // (i.e.: variables: x_lag0, ctr_var, y_lag0, x_lag1, y_lag1
+  // in the next layer
+  // (e.g.  variables: x_lag0, ctx_var, y_lag0, x_lag1, y_lag1
   //  => nodes_shifts:   3   ,    0   ,   2   ,   0   ,   0)
-  // in the next layer (temporal mode only)
   vector<int> nodes_shifts;
   //
   // Multi-layers mode
   //
   bool is_layered = false;
-  // vector<Layer> layers;
   vector<int> nodes_layers;
   vector<Layer> layers;
   //

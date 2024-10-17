@@ -85,7 +85,7 @@ tmiic_group_trajectories <- function (list_traj)
   {
   # Pre-allocate the data frame with the same structure as trajectories
   # and the same number of rows as all the trajectories
-  # VOIR data <- data[1:n_row_tot,]
+  # TODO VOIR data <- data[1:n_row_tot,]
   #
   df <- list_traj[[1]][FALSE,]
   n_row_tot <- sum (unlist (lapply(list_traj, nrow)))
@@ -135,6 +135,7 @@ tmiic_precompute_lags_layers_and_shifts <- function (tmiic_obj)
     node_name <- list_nodes_not_lagged[[node_idx]]
     list_corresp_nodes[[i]] <- node_name
 
+    # TODO VOIR 2.0.3: if (is_contextual[[node_idx]] == 0)
     if (list_n_layers_back[[node_idx]] >= 1)
       node_name <- paste0 (node_name, "_lag0")
     list_nodes_lagged [[i]] <- node_name
@@ -142,17 +143,17 @@ tmiic_precompute_lags_layers_and_shifts <- function (tmiic_obj)
     }
 
   n_layers_back_max <- max (list_n_layers_back)
-  for (n_layers_back_max in 1:n_layers_back_max)
+  for (n_layers_back_idx in 1:n_layers_back_max)
     {
     for (node_idx in 1:n_nodes_not_lagged)
       {
       n_layers_back_of_var <- list_n_layers_back[[node_idx]]
-      if (n_layers_back_max <= n_layers_back_of_var)
+      if (n_layers_back_idx <= n_layers_back_of_var)
         {
         node_name <- list_nodes_not_lagged[[node_idx]]
         list_corresp_nodes[[i]] <- node_name
 
-        lag <- n_layers_back_max * list_delta_t[[node_idx]];
+        lag <- n_layers_back_idx * list_delta_t[[node_idx]];
         node_name <- paste0 (node_name, "_lag", lag)
         list_nodes_lagged [[i]] <- node_name
         list_lags[[i]] <- lag
@@ -559,7 +560,6 @@ tmiic_flatten_network <- function (tmiic_obj, flatten_mode="compact",
 #
 # returns: a dataframe with edges completed by stationarity
 #-----------------------------------------------------------------------------
-#
 tmiic_repeat_edges_over_history <- function (tmiic_obj)
   {
   # Consider only edges found by miic  type = "P", "TP", "FP"

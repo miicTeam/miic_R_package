@@ -184,7 +184,7 @@ tmiic_check_parameters <- function (list_in, n_layers, delta_t, mov_avg,
             " for the number of layers is invalid.",
             " If not NULL, it must be an integer >= 2",
             " or a couple of integers 'n,m' such as n >= 1 and m >= 1.",
-            " The number of layers will be determined by the program.")
+            " The number of layers will be determined from the data.")
         else
           {
           # Even if not completely ok, we should been able to use the n_layers
@@ -224,12 +224,12 @@ tmiic_check_parameters <- function (list_in, n_layers, delta_t, mov_avg,
             " for the number of layers can not be of the form 'n,m' for",
             " the window position '", list_in$params$window_position,
             "'. If not NULL, it must be an integer >= 2.",
-            " The number of layers will be determined by the program.")
+            " The number of layers will be determined from the data.")
         else if ( test_param_wrong_int (n_layers, min=2, max=NA) )
           miic_warning ("parameters", "supplied value ", list_to_str (n_layers),
             " for the number of layers is invalid.",
             " If not NULL, it must be an integer >= 2.",
-            " The number of layers will be determined by the program.")
+            " The number of layers will be determined from the data.")
         else # valid n_layers
           {
           list_in$non_lagged$state_order$n_layers <- as.integer (n_layers)
@@ -254,7 +254,7 @@ tmiic_check_parameters <- function (list_in, n_layers, delta_t, mov_avg,
         miic_warning ("parameters", "supplied value ", list_to_str (delta_t),
           " for the delta t parameter is invalid.",
           " If not NULL, it must be an integer >= 1.",
-          " The delta t will be determined by the program.")
+          " The delta t will be determined from the data.")
       else # valid delta_t
         {
         list_in$non_lagged$state_order$delta_t <- delta_t
@@ -294,7 +294,7 @@ tmiic_check_parameters <- function (list_in, n_layers, delta_t, mov_avg,
         # and expected to be not 'averageable' in non stationary,
         # i.e.: addition of treatment, cell division, temperature threshold
         # NB: in non stationary, if the user wants a moving average on a
-        # contextual variable, it is possible by specifying the movavh in
+        # contextual variable, it is possible by specifying the mov_avg in
         # the state_order
         #
         list_in$non_lagged$state_order$mov_avg[list_in$non_lagged$state_order$is_contextual == 1] <- 0
@@ -305,6 +305,7 @@ tmiic_check_parameters <- function (list_in, n_layers, delta_t, mov_avg,
   return (list_in)
   }
 
+# TODO review
 #-------------------------------------------------------------------------------
 # tmiic_check_state_order
 #-------------------------------------------------------------------------------
@@ -559,7 +560,8 @@ tmiic_check_state_order <- function (list_in)
       if (list_in$params$mode == "TS")
         miic_warning ("state order", "different values (", msg_str,
           ") have been defined for the number of layers.",
-          " Such setting is experimental and not recommanded.")
+          " Such setting should be avoided unless \"specific\" reason",
+          " as the result will likely not be accurate.")
       else
         miic_warning ("state order", "different values (", msg_str,
           ") have been defined for the number of layers.")
@@ -739,7 +741,8 @@ tmiic_check_state_order <- function (list_in)
       if (list_in$params$mode == "TS")
         miic_warning ("state order", "different values (", msg_str,
           ") have been defined for the delta t.",
-          " Such setting is experimental and not recommanded.")
+          " Such setting should be avoided unless \"specific\" reason",
+          " as the result will likely not be accurate.")
       else
         miic_warning ("state order", "different values (", msg_str,
           ") have been defined for the delta t.")
@@ -817,7 +820,7 @@ tmiic_check_state_order <- function (list_in)
           " on the discrete variable ", msg_str, ".")
       else
         miic_warning ("state order", "moving average operations can not",
-        " be applied on the discrete variables (", msg_str, ").")
+        " be applied on discrete variables (", msg_str, ").")
       list_in$non_lagged$state_order$mov_avg[wrongs] <- 0
       }
     #
@@ -914,16 +917,14 @@ tmiic_mov_avg_onecol <- function (x, w)
   {
   low_shift <- (w-1) %/% 2
   high_shift <- (w-1) - low_shift
-  # TODO supp x
-  ret <- x
   ret <- rep(-1, length(x))
   ret[1:low_shift] <- NA_real_
   # print (head (ret))
 
   start_idx <- low_shift+1
   end_idx <- length(x) - high_shift
-  i <- start_idx + 1
-  i <- start_idx
+  # i <- start_idx + 1
+  # i <- start_idx
   for (i in start_idx:end_idx)
     {
     idx_low <- i - low_shift
@@ -942,7 +943,7 @@ tmiic_mov_avg_onecol <- function (x, w)
 # tmiic_mov_avg
 #-------------------------------------------------------------------------------
 # Apply moving averages on data
-# - list_traj: a list of data frame, each item representing a trajectory.
+# - list_traj: a list of data frames, each item representing a trajectory.
 #   Each data frame must contain the time step information in the 1st column
 #   and the variables in the other columns.
 # - mov_avg: the list of moving average to be applied, optional, NULL by defaut.

@@ -596,9 +596,9 @@ check_state_order <- function (input_data, state_order, mode)
       #
       # Remove "NA" from levels_increasing_order
       # NB : we test here only "NA" string as only "NA" is converted as NA in R
-      # by default when using read.table or read.csv.
+      # by default when using read.table or read.csv. So a field containing
+      # "NA,1,2,3", when split, will contain [ "NA", "1", "2", "3" ]
       #
-      # TODO if ( (! ("NA" %in% values)) && ("NA" %in% orders) )
       if ("NA" %in% orders)
         {
         miic_warning ("state order", "variable ", state_order[i, "var_names"],
@@ -704,7 +704,7 @@ check_state_order <- function (input_data, state_order, mode)
       # If the levels_increasing_order was not turned into NA,
       # update the levels_increasing_order to have a clean string without
       # leading or trailing blanks and same type format between data and state
-      # order (i.e. if data column is logical (TRUE/FALSE), values (T/F) in the
+      # order (e.g. if data column is logical (TRUE/FALSE), values (T/F) in the
       # state_order will be converted as TRUE/FALSE )
       #
       state_order[i, "levels_increasing_order"] <- paste0 (orders, collapse=",")
@@ -751,6 +751,7 @@ check_state_order <- function (input_data, state_order, mode)
 # - mode: the MIIC mode
 # Return: the data frame checked
 #-------------------------------------------------------------------------------
+# TODO split in 3 fonctions std, TS, TNS
 check_other_df <- function (input_data, state_order, df, df_name, mode)
   {
   if ( is.null(df) )
@@ -842,12 +843,14 @@ check_other_df <- function (input_data, state_order, df, df_name, mode)
     return (NULL)
     }
   #
-  # In temporal mode, check that the lag column(s) is integer >= 0 (lags)
+  # In temporal mode, check that the lag column(s)
   #
   if (mode %in% MIIC_TEMPORAL_MODES)
     {
     if (mode == "TS")
       {
+      # Temporal stationnary, we expect a 3col with integer >= 0
+      #
       test_wrong_lag <- function(x)
         {
         if ( is.null (x) )                                     # NULL: KO
@@ -867,6 +870,8 @@ check_other_df <- function (input_data, state_order, df, df_name, mode)
       }
     else
       {
+      # Non stationary, we expect 2nd and 4th columns with integers
+      #
       test_wrong_lag <-  function(x)
         {
         if ( is.null (x) )                                     # NULL: KO
@@ -1192,6 +1197,7 @@ check_param_int <- function (value, name, default, min=NA, max=NA)
 # - min: the min value, NA if none
 # - max: the max values, NA if none
 # - strict_min: if TRUE, value must be < min. if FALSE, value must be <= min
+# TODO Revoir strict_min pas clair
 # Return: TRUE if the value is not a float or not in the range, FALSE otherwise
 #-------------------------------------------------------------------------------
 test_param_wrong_float <- function (value, min=NA, strict_min=T, max=NA)
@@ -1214,6 +1220,7 @@ test_param_wrong_float <- function (value, min=NA, strict_min=T, max=NA)
 # - all possible parameters not specific to a mode of MIIC method
 # Return: a list with all the parameters, eventually modified or initialized
 #-------------------------------------------------------------------------------
+# REVIEW strict_min
 check_parameters <- function (input_data, n_threads, cplx,
   orientation, ort_proba_ratio, ort_consensus_ratio, propagation, latent,
   n_eff, n_shuffles, conf_threshold, sample_weights, test_mar,
@@ -1466,6 +1473,28 @@ prepare_inputs <- function (input_data,
     miic_error ("parameters check", "invalid mode ", mode,
       ". Possible modes are S (Standard), TS (Temporal Stationnary),",
       " TNS (Temporal Non Stationnary).")
+
+  if ( ! is.null(verbose) )
+    {
+    if ( is.logical(verbose) )
+      {
+      verbose <- as.integer ( check_param_logical (verbose, "verbose", FALSE) ) + 1
+      miic_warning ("parameters", " type expected for verbose is now integer.")
+      }
+    else
+      verbose <- check_param_int (verbose, "verbose", 1, min=0, max=2)
+    }
+  if (verbose >= 1)
+    {
+    if (mode == "TS")
+      miic_msg ("Start MIIC in temporal stationary mode")
+    else if (mode == "TNS")
+      miic_msg ("Start MIIC in temporal non stationary mode")
+    else if (mode == "L")
+      miic_msg ("Start MIIC in layered mode")
+    else
+      miic_msg ("Start MIIC...")
+    }
   #
   # Basic checks applicable with few differences between the different modes.
   # Once these functions done, we will have

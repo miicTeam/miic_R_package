@@ -85,7 +85,7 @@ miic.reconstruct <- function (list_in)
     "levels" = max_level_list,
     "max_bins" = min(50, n_samples),
     #
-    # Parameters fixed to a default value, not supplied by miic
+    # Parameters fixed to a default value, not supplied by the user to miic
     #
     "degenerate" = FALSE,
     "half_v_structure" = 0,
