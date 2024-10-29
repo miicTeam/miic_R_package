@@ -80,7 +80,6 @@ struct Environment {
   vector<double> noise_vec;
 
   double log_eta = 0;
-  bool is_k23 = true;
   bool degenerate = false;
   bool no_init_eta = false;
   bool half_v_structure = false;
@@ -94,26 +93,28 @@ struct Environment {
   int n_threads = 1;
   CompCache cache;
 
-  // Max number of layers (temporal mode only)
+  bool verbose = false;
+  //
+  // Temporal mode
+  //
+  // Max number of layers
   // Even if not recommended, the number of layers can be different for each
   // variables, layer_max is the maximum number of layers for all variables
   int layer_max = -1;
-  // Number of layers for each variable (temporal mode only)
+  // Number of layers for each variable
   vector<int> list_n_layers;
-  // Class for each node (temporal mode only)
+  // Class for each node
   vector<int> nodes_class;
-  // Lag for each node (temporal mode only)
+  // Lag for each node
   // Note that we consider contextual variables as very old (= INT_MAX)
   // so from the time point of view, they are never the consequence
   // of another variable
   vector<int> nodes_lags;
   // Store nodes index shift, giving for each node the same lagged node
-  // (i.e.: variables: x_lag0, ctr_var, y_lag0, x_lag1, y_lag1
+  // in the next layer
+  // (e.g.  variables: x_lag0, ctx_var, y_lag0, x_lag1, y_lag1
   //  => nodes_shifts:   3   ,    0   ,   2   ,   0   ,   0)
-  // (temporal mode only)
   vector<int> nodes_shifts;
-
-  bool verbose = false;
 
   Environment(int n_samples, int n_nodes, vector<int> vec_numeric,
       vector<int> vec_index, vector<int> is_continuous_, vector<int> levels_);
