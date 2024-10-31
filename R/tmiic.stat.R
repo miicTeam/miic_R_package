@@ -10,20 +10,20 @@
 # FUNCTIONS
 #===============================================================================
 # tmiic_stat_ajust_window_for_nb_samples
-#-----------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 # Reduce the window size (n_layers or delta_t) if the foreseen n_layers and
 # delta_t would lead to too few samples after data lagging
 # params:
-# - list_traj: a list of data frame, each item representing a trajectory.
+# - list_traj: a list of data frames, each item representing a trajectory.
 # - n_layers: a list, the n_layers in the state_order column
 # - delta_t: a list, the delta_t in the state_order column
-# - reduced_param: a string, can be "n_layers" or "delta_t". Indicates with
+# - reduced_param: a string, can be "n_layers" or "delta_t". Indicates which
 #   parameter will be reduced if the number of samples is too small
 # - verbose: boolean, if TRUE, display a message if the window size is reduced
 # returns:
 # - a list: the n_layers or delta_t, depending of the reduced_param value.
 #   The value are possibly decreased to reduce the window size
-#-----------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 tmiic_stat_ajust_window_for_nb_samples <- function (list_traj, n_layers, delta_t,
                                                     reduced_param, verbose)
   {
@@ -89,7 +89,7 @@ tmiic_stat_ajust_window_for_nb_samples <- function (list_traj, n_layers, delta_t
         " to increase the number of samples. However,",
         " the number of usable samples will still only be ", nb_samples_red,
         ". Consider to specify manually n_layers and delta_t.")
-    else if (verbose)
+    else if (verbose >= 1)
       miic_msg ("- The ", reduced_param, " parameter has been reduced ",
         " to increase the number of samples.")
     }
@@ -101,11 +101,11 @@ tmiic_stat_ajust_window_for_nb_samples <- function (list_traj, n_layers, delta_t
   }
 
 #-------------------------------------------------------------------------------
-# tmiic_stat_estimate_dynamic
+# tmiic_estimate_dynamic
 #-------------------------------------------------------------------------------
 # Estimate tau (the number of total time steps back to cover the dynamic,
 # the number of layers and delta t parameters from the data
-# - list_traj: list of data frame, each item representing a trajectory.
+# - list_traj: list of data frames, each item representing a trajectory.
 #   Each data frame must contain the time step information in the 1st column
 #   and the variables in the other columns.
 # - state_order: the state_order data frame. This state_order is expected
@@ -116,11 +116,11 @@ tmiic_stat_ajust_window_for_nb_samples <- function (list_traj, n_layers, delta_t
 #   variables.
 # - max_nodes: maximum number of nodes in the inferred time unfolded graph,
 #   optional, 50 by default
-# - verbose_level: integer in the range [0,2], 1 by default. The level of
-#   verbosity: 0 = no display, 1 = summary display, 2 = maximum display.
-#-----------------------------------------------------------------------------
-tmiic_stat_estimate_dynamic <- function (list_traj, state_order, max_nodes=50,
-                                         verbose_level=1)
+# - verbose: integer in the range [0,2], 1 by default. The level of verbosity:
+#   0 = no display, 1 = summary display, 2 = maximum display.
+#-------------------------------------------------------------------------------
+tmiic_estimate_dynamic <- function (list_traj, state_order, max_nodes=50,
+                                    verbose=1)
   {
   # If n_layers and delta_t all defined, nothing to do
   #
@@ -137,8 +137,8 @@ tmiic_stat_estimate_dynamic <- function (list_traj, state_order, max_nodes=50,
   # are NAs (otherwise the checks would have completed the NAs by
   # generalizing the known values)
   #
-  if (verbose_level >= 2)
-    miic_msg ("Estimating the temporal dynamic...")
+  if (verbose >= 1)
+    miic_msg ("Estimating the temporal dynamic ...")
   n_ts <- length (list_traj)
   n_vars_tot <- ncol (list_traj[[1]]) - 1
   n_vars_ctx <- sum (state_order$is_contextual)
@@ -147,7 +147,8 @@ tmiic_stat_estimate_dynamic <- function (list_traj, state_order, max_nodes=50,
   # Remove time step, contextual and discrete variables
   #
   if ( ! any ( (state_order$is_contextual == 0) & (state_order$var_type == 1) ) )
-    miic_error ("dynamic estimation", "no variable to estimate the temporal dynamic",
+    miic_error ("dynamic estimation",
+                "no variable to estimate the temporal dynamic",
                 " (all variables are discrete or contextual).",
                 " Consider specifying the n_layers and delta_t parameters.")
   for (ts_idx in 1:n_ts)
@@ -155,8 +156,9 @@ tmiic_stat_estimate_dynamic <- function (list_traj, state_order, max_nodes=50,
     if (nrow (list_traj[[ts_idx]]) == 1)
       miic_warning ("dynamic estimation", "trajectory ", ts_idx,
                     " with only 1 time step is ignored for dynamic estimation.")
-    list_traj[[ts_idx]] <- list_traj[[ts_idx]][, c(F, ( (state_order$is_contextual == 0)
-                                                  & (state_order$var_type == 1) ) ), F]
+    list_traj[[ts_idx]] <- list_traj[[ts_idx]][,
+      c(F, ( (state_order$is_contextual == 0) & (state_order$var_type == 1) ) ),
+      drop=F]
     }
   #
   # Compute mean alpha per variable
@@ -191,7 +193,7 @@ tmiic_stat_estimate_dynamic <- function (list_traj, state_order, max_nodes=50,
     taus_per_var[[var_idx]] <- round ( (1+alphas_per_var[[var_idx]])
                                     / (1-alphas_per_var[[var_idx]]) )
     }
-  if (verbose_level >= 2)
+  if (verbose >= 2)
     {
     miic_msg ("Tau per variable:")
     for (i in 1:length (var_names))
@@ -215,7 +217,7 @@ tmiic_stat_estimate_dynamic <- function (list_traj, state_order, max_nodes=50,
   tau_max  <- min ( length_to_test, max  (taus_per_var, na.rm=T) )
   tau_max_kept <- min (length_to_test, tau_max, tau_mean * 2)
   tau <- tau_max_kept
-  if (verbose_level >= 1)
+  if (verbose >= 1)
     miic_msg ("Automatic estimation of parameters:\n",
       "- Relaxation times goes from ", tau_min, " to ", tau_max,
       " with a mean of ", tau_mean, ", tau max considered = ", tau_max_kept)
@@ -231,13 +233,13 @@ tmiic_stat_estimate_dynamic <- function (list_traj, state_order, max_nodes=50,
 
     state_order$delta_t <- tmiic_stat_ajust_window_for_nb_samples (list_traj,
       state_order$n_layers, state_order$delta_t, reduced_param="delta_t",
-      verbose=(verbose_level >= 1) )
+      verbose=verbose)
 
     uniq_n_layers <- unique (state_order$n_layers[ (state_order$is_contextual == 0)
                                                 & (state_order$var_type == 1)] )
     uniq_delta_t <- unique (state_order$delta_t[ (state_order$is_contextual == 0)
                                               & (state_order$var_type == 1)] )
-    if (verbose_level >= 1)
+    if (verbose >= 1)
       {
       if (length (uniq_n_layers) == 1)
         miic_msg ("- As the number of layers was defined to ", uniq_n_layers,
@@ -263,13 +265,13 @@ tmiic_stat_estimate_dynamic <- function (list_traj, state_order, max_nodes=50,
 
     state_order$n_layers <- tmiic_stat_ajust_window_for_nb_samples (list_traj,
       state_order$n_layers, state_order$delta_t, reduced_param="n_layers",
-      verbose=(verbose_level >= 1) )
+      verbose=verbose)
 
     uniq_n_layers <- unique (state_order$n_layers[ (state_order$is_contextual == 0)
                                                  & (state_order$var_type == 1)] )
     uniq_delta_t <- unique (state_order$delta_t[ (state_order$is_contextual == 0)
                                                & (state_order$var_type == 1)] )
-    if (verbose_level >= 1)
+    if (verbose >= 1)
       {
       if (length (uniq_delta_t) == 1)
         miic_msg ("- As the value of delta t was defined to ", uniq_delta_t,
@@ -314,11 +316,11 @@ tmiic_stat_estimate_dynamic <- function (list_traj, state_order, max_nodes=50,
 
     state_order$delta_t <- tmiic_stat_ajust_window_for_nb_samples (list_traj,
       state_order$n_layers, state_order$delta_t, reduced_param="delta_t",
-      verbose=(verbose_level >= 1) )
+      verbose=verbose)
     delta_t <- unique (state_order$delta_t[ (state_order$var_type == 1)
                                           & (state_order$is_contextual == 0) ])
 
-    if (verbose_level >= 1)
+    if (verbose >= 1)
       miic_msg ("- For a final graph with a target of ", max_nodes,
         " nodes having ", n_vars_lag, " lagged variables",
         ifelse (n_vars_ctx > 0, paste0 ("\n  and ", n_vars_ctx, " contextual variables"), ""),
@@ -336,10 +338,10 @@ tmiic_stat_estimate_dynamic <- function (list_traj, state_order, max_nodes=50,
 #-------------------------------------------------------------------------------
 # Modify the state order into a lagged version: the lagged variables are
 # completed and/or repeated with lagX to match the lagged temporal graph.
-# inputs:
-# - state_order: a dataframe, the state order returned by
-#   tmiic_check_state_order_part2
-# Returns: a dataframe: the lagged state_order
+# Params:
+# - state_order: a data frame, the state order returned by
+#   tmiic_check_state_order
+# Returns: a data frame: the lagged state_order
 #-------------------------------------------------------------------------------
 tmiic_stat_lag_state_order <- function (state_order)
   {
@@ -392,22 +394,22 @@ tmiic_stat_lag_state_order <- function (state_order)
   }
 
 #-------------------------------------------------------------------------------
-# tmiic_stat_lag_other_df
+# tmiic_stat_lag_bb_te
 #-------------------------------------------------------------------------------
-# Modify the complementary df int a lagged version: the 3 column dataframes are
+# Modify the complementary df int a lagged version: the 3 column data frames are
 # transformed into a 2 columns one, in which variables are transformed into
-# their lagged representation. i.e:
+# their lagged representation. e.g.
 # - normal_var1 - normal_var2 - 1 becomes normal_var1_lag1 - normal_var2_lag0
 # - ctx_var1 - normal_var2 - NA becomes ctx_var1 - normal_var2_lag0
-# inputs:
-# - state_order: a dataframe, the state order returned by
-#   tmiic_check_state_order_part2
-# - df: the dataframe to transform in its lagged version
-# Returns: a dataframe: the lagged dataframe
+# Params:
+# - state_order: a data frame, the state order returned by
+#   tmiic_check_state_order
+# - df: the data frame to transform in its lagged version
+# Returns: a data frame: the lagged data frame
 #-------------------------------------------------------------------------------
-tmiic_stat_lag_other_df <- function (state_order, df)
+tmiic_stat_lag_bb_te <- function (state_order, df)
   {
-  if (is.null (df))
+  if ( is.null (df) )
     return (df)
 
   if (nrow (df) > 0)
@@ -424,7 +426,7 @@ tmiic_stat_lag_other_df <- function (state_order, df)
   return (df)
   }
 
-#-----------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 # tmiic_stat_lag_input_data
 #-------------------------------------------------------------------------------
 # Reorganizes the inputs in a format usable by miic: input data are lagged
@@ -434,7 +436,7 @@ tmiic_stat_lag_other_df <- function (state_order, df)
 #
 # The number of variables is increased and renamed on n_layers
 # layers by delta_t steps.
-# i.e. with n_layers=3 and delta_t=3 : var1, var2 =>
+# e.g. with n_layers=3 and delta_t=3 : var1, var2 =>
 # var1_lag0, var2_lag0, var1_lag3, var2_lag3, var1_lag6, var2_lag6.
 #
 # Every time step (until number of time steps - (n_layers  - 1) * delta_t)
@@ -442,20 +444,20 @@ tmiic_stat_lag_other_df <- function (state_order, df)
 #
 # Example with n_layers=3 and delta_t=3:
 #
-# Timestep Var & value    Var & value  => Sample  Var & value   Var & value
-#   t-6    Var1_val(t-6) Var2_val(t-6) =>   i    Var1_lag6_val Var2_lag6_val
-#   t-3    Var1_val(t-3) Var2_val(t-3) =>   i    Var1_lag3_val Var2_lag3_val
-#    t      Var1_val(t)   Var2_val(t)  =>   i    Var1_lag0_val Var2_lag0_val
+# Time step Var & value    Var & value  => Sample  Var & value   Var & value
+#   t-6     Var1_val(t-6) Var2_val(t-6) =>   i    Var1_lag6_val Var2_lag6_val
+#   t-3     Var1_val(t-3) Var2_val(t-3) =>   i    Var1_lag3_val Var2_lag3_val
+#    t       Var1_val(t)   Var2_val(t)  =>   i    Var1_lag0_val Var2_lag0_val
 #
-#   t-7    Var1_val(t-7) Var2_val(t-7) =>   i'   Var1_lag6_val Var2_lag6_val
-#   t-4    Var1_val(t-4) Var2_val(t-4) =>   i'   Var1_lag3_val Var2_lag3_val
-#   t-1    Var1_val(t-1) Var2_val(t-1) =>   i'   Var1_lag0_val Var2_lag0_val
+#   t-7     Var1_val(t-7) Var2_val(t-7) =>   i'   Var1_lag6_val Var2_lag6_val
+#   t-4     Var1_val(t-4) Var2_val(t-4) =>   i'   Var1_lag3_val Var2_lag3_val
+#   t-1     Var1_val(t-1) Var2_val(t-1) =>   i'   Var1_lag0_val Var2_lag0_val
 #
-#   t-8    Var1_val(t-8) Var2_val(t-8) =>   i"   Var1_lag6_val Var2_lag6_val
-#   t-5    Var1_val(t-5) Var2_val(t-5) =>   i"   Var1_lag3_val Var2_lag3_val
-#   t-2    Var1_val(t-2) Var2_val(t-2) =>   i"   Var1_lag0_val Var2_lag0_val
+#   t-8     Var1_val(t-8) Var2_val(t-8) =>   i"   Var1_lag6_val Var2_lag6_val
+#   t-5     Var1_val(t-5) Var2_val(t-5) =>   i"   Var1_lag3_val Var2_lag3_val
+#   t-2     Var1_val(t-2) Var2_val(t-2) =>   i"   Var1_lag0_val Var2_lag0_val
 #
-#   ...    ............. ............. => ...... ............. ............
+#   ...     ............. ............. => ...... ............. ............
 #
 # until number of time steps - (n_layers - 1) * delta_t is reached.
 # The same process is applied to all input time series.
@@ -464,9 +466,9 @@ tmiic_stat_lag_other_df <- function (state_order, df)
 # if different values of n_layers or delta_t are supplied and some
 # variables can be not lagged at all like contextual ones.
 #
-# inputs:
+# Params:
 # - list_traj: the list of time series
-# - state_order: a dataframe, the lagged state order returned by
+# - state_order: a data frame, the lagged state order returned by
 #   tmiic_stat_lag_state_order
 # - keep_max_data: boolean flag, optional, FALSE by default
 #   When FALSE, the rows containing NA introduced by the lagging process
@@ -500,6 +502,10 @@ tmiic_stat_lag_input_data <- function (list_traj, state_order, keep_max_data=FAL
         list_ret[[ts_idx]] <- df[FALSE,]
         next
         }
+      #
+      # When keep_max_data is T but not enough time steps to lag completely,
+      # lag till the maximum available in this trajectory
+      #
       miic_warning ("data lagging", "the trajectory ", ts_idx, " has only ",
         nrow (df), " time steps and can not be lagged over ", tau_max,
         " time steps back.")
@@ -536,12 +542,12 @@ tmiic_stat_lag_input_data <- function (list_traj, state_order, keep_max_data=FAL
     #                 ", class :", class (df[,var_idx])))
 
     if (!keep_max_data)
-      df <- df [(tau_max+1):nrow(df),]
+      df <- df [(tau_max+1):nrow(df), , drop=F]
     #
     # Check rows with only NAs
     #
     rows_only_na <- ( rowSums (is.na (df)) == ncol (df) )
-    df <- df [!rows_only_na, ]
+    df <- df [!rows_only_na, , drop=F]
     na_count <- na_count + sum (rows_only_na)
 
     list_ret[[ts_idx]] <- df
@@ -622,7 +628,7 @@ tmiic_stat_lag_input_data <- function (list_traj, state_order, keep_max_data=FAL
 #' possible (depending on the number of trajectories and time steps in the
 #' input data).
 #'
-#' @param verbose_level [an integer value in the range [0,2], 1 by default]
+#' @param verbose [an integer value in the range [0,2], 1 by default]
 #' The level of verbosity: 0 = no display, 1 = summary display, 2 = full display.
 #'
 #' @return A named list with two items:
@@ -633,8 +639,9 @@ tmiic_stat_lag_input_data <- function (list_traj, state_order, keep_max_data=FAL
 #'
 #' @export
 #-------------------------------------------------------------------------------
+# TODO add lags, alpha and tau in returned values
 estimateTemporalDynamic <- function (input_data, state_order=NULL, mov_avg=NULL,
-                                     max_nodes=50, verbose_level=1)
+                                     max_nodes=50, verbose=1)
   {
   input_data <- check_input_data (input_data, "TS")
   state_order <- check_state_order (input_data, state_order, "TS")
@@ -652,10 +659,10 @@ estimateTemporalDynamic <- function (input_data, state_order=NULL, mov_avg=NULL,
   state_order <- tmiic_check_state_order_part2 (list_ret$state_order)
 
   list_traj <- tmiic_extract_trajectories (input_data)
-  list_traj <- tmiic_mov_avg (list_traj, state_order$mov_avg, verbose_level=verbose_level)
+  list_traj <- tmiic_mov_avg (list_traj, state_order$mov_avg, verbose=verbose)
 
-  state_order <- tmiic_stat_estimate_dynamic (list_traj, state_order, max_nodes=max_nodes,
-                                              verbose_level=verbose_level)
+  state_order <- tmiic_stat_estimate_dynamic (list_traj, state_order,
+    max_nodes=max_nodes, verbose=verbose)
   n_layers <- unique (state_order$n_layers[ (state_order$var_type == 1)
                                          & (state_order$is_contextual == 0) ])
   delta_t <- unique (state_order$delta_t[ (state_order$var_type == 1)

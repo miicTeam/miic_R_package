@@ -102,7 +102,8 @@ tmiic_getIgraph <- function (tmiic_obj, display="compact",
 #-----------------------------------------------------------------------------
 tmiic_prepare_edges_for_plotting <- function (tmiic_obj)
   {
-  df_edges <- tmiic_obj$summary[tmiic_obj$summary$type %in% c('P', 'TP', 'FP'), , drop=F]
+  df_edges <- tmiic_obj$summary[tmiic_obj$summary$type %in% c('P', 'TP', 'FP'),
+                                , drop=F]
   if (nrow(df_edges) <= 0)
     df_edges$xy = character(0)
   else

@@ -322,6 +322,7 @@ void setEnvironmentFromR(const Rcpp::List& input_data,
             }
     debug::debugEdges (environment, "After pruning");
     }
-}
+  }
+
 }  // namespace utility
 }  // namespace miic

@@ -81,7 +81,6 @@ object.}
 
 Used only when the display is "raw" or "lagged" and no layout is supplied.
 Possible values are \emph{"none"}, \emph{"alphabetical"}, \emph{"layers"},
-
 \emph{"greedy"} and \emph{"sugiyama"}
 \itemize{
 \item When \emph{positioning_for_grid} = \emph{"none"}

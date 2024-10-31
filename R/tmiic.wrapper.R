@@ -99,7 +99,7 @@ tmiic_group_trajectories <- function (list_traj)
       df[row_idx:(row_idx-1+nrow(list_traj[[i]])),] <- list_traj[[i]]
       row_idx <- row_idx + nrow(list_traj[[i]])
       }
-  return (df)
+    return (df)
   }
 
 #-------------------------------------------------------------------------------
@@ -564,7 +564,8 @@ tmiic_repeat_edges_over_history <- function (tmiic_obj)
   {
   # Consider only edges found by miic  type = "P", "TP", "FP"
   #
-  df_edges <- tmiic_obj$summary[tmiic_obj$summary$type %in% c('P', 'TP', 'FP'), , drop=F]
+  df_edges <- tmiic_obj$summary[tmiic_obj$summary$type %in% c('P', 'TP', 'FP'),
+                                , drop=F]
   if (nrow(df_edges) <= 0)
     return (df_edges)
   #

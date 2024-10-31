@@ -30,7 +30,7 @@ miic.reconstruct <- function (list_in)
   # NA mapped to -1), -1 for discrete columns
   #
   input_order <- matrix(nrow = n_samples, ncol = n_nodes)
-  for (i in c(1:ncol(list_in$input_data)))
+  for ( i in c (1:ncol(list_in$input_data)) )
     {
     if (list_in$state_order[i,"var_type"] == 1)
       {
@@ -90,33 +90,35 @@ miic.reconstruct <- function (list_in)
     "degenerate" = FALSE,
     "half_v_structure" = 0,
     "no_init_eta" = FALSE
+    # TODO see "eta" in utilities.cpp (was init to 1 before)
     )
   #
   # Optional parameters
   #
-  if (!is.null(list_in$black_box))
+  if ( ! is.null (list_in$black_box) )
     {
-    # transform var names to var indices
+    # Transform var names to var indices
+    #
     black_box <- list_in$black_box
     black_box[] <- sapply(black_box, function(x) {
       match(as.character(x), colnames(list_in$input_data)) - 1 } )
     black_box[] <- black_box[stats::complete.cases(black_box),]
     arg_list[["black_box"]] <- as.vector(as.matrix(t(black_box)))
     }
-  if (!is.null(list_in$params$sample_weights))
+  if ( ! is.null (list_in$params$sample_weights) )
     arg_list[["sample_weights"]] <- list_in$params$sample_weights
-  if (!is.null(list_in$state_order$is_contextual))
+  if ( ! is.null (list_in$state_order$is_contextual) )
     arg_list[["is_contextual"]] <- list_in$state_order$is_contextual
-  if (!is.null(list_in$state_order$is_consequence))
+  if ( ! is.null (list_in$state_order$is_consequence) )
     arg_list[["is_consequence"]] <- list_in$state_order$is_consequence
-  if (!is.null(list_in$state_order$n_layers))
-    arg_list[["n_layers"]] <- list_in$state_order$n_layers
-  if (!is.null(list_in$state_order$delta_t))
-    arg_list[["delta_t"]] <- list_in$state_order$delta_t
-  if (!is.null(list_in$state_order$layers))
+  if ( ! is.null (list_in$state_order$n_layers) )
+    arg_list[["n_layers"]] <- list_in$non_lagged$state_order$n_layers
+  if ( ! is.null (list_in$state_order$delta_t) )
+    arg_list[["delta_t"]] <- list_in$non_lagged$state_order$delta_t
+  if ( ! is.null (list_in$state_order$layers) )
     # # -1 for C++ indices starting at 0
     arg_list[["nodes_layers"]] <- list_in$state_order$layers
-  if (!is.null(list_in$layers))
+  if ( ! is.null (list_in$layers) )
     # {
     # -1 for C++ indices starting at 0
     # list_in$layers$contributors = unlist (lapply (list_in$layers$contributors,
@@ -133,10 +135,12 @@ miic.reconstruct <- function (list_in)
     arg_list[["layers"]] <- list_in$layers
     # }
 
-  cpp_input <- list("factor" = input_factor, "double" = input_double,
-                    "order" = input_order)
+  cpp_input <- list ("factor" = input_factor, "double" = input_double,
+                     "order" = input_order)
+  #
   # Call C++ function
-  res <- reconstruct(cpp_input, arg_list)
+  #
+  res <- reconstruct (cpp_input, arg_list)
   if (res$interrupted)
     return(list(interrupted = TRUE))
   #
@@ -207,36 +211,33 @@ miic.reconstruct <- function (list_in)
   #
   time <- strsplit(as.character(res$time), " ")
   time[which(time == 0)] <- NA
-  res$time <- stats::setNames(
-    as.numeric(time),
-    c("init", "iter", "cut", "ort", "cpp")
-  )
+  res$time <- stats::setNames (as.numeric(time),
+                               c("init", "iter", "cut", "ort", "cpp") )
   #
   # Create the data frame of the structures after orientation
   #
   orientations_prob <- res$triples
 
-  if (length(res$triples) > 0) {
+  if (length(res$triples) > 0)
+    {
     a <- length(orientations_prob[[1]])
     b <- length(unlist(orientations_prob))
     tmp <- unlist(res$triples)[1:a]
     res1 <- unlist(res$triples)[(a + 1):b]
-    orientations_prob <- data.frame(matrix(
-      res1,
-      nrow = length(orientations_prob) - 1,
-      byrow = TRUE
-    ),
-    stringsAsFactors = FALSE
-    )
+    orientations_prob <- data.frame (matrix (res1,
+                                          nrow = length(orientations_prob) - 1,
+                                          byrow = TRUE),
+                                     stringsAsFactors = FALSE)
     colnames(orientations_prob) <- tmp
 
     orientations_prob[, c(2:3)] <- sapply(orientations_prob[, c(2:3)], as.numeric)
     orientations_prob[, c(5:6)] <- sapply(orientations_prob[, c(5:6)], as.numeric)
     orientations_prob[, c(8:9)] <- sapply(orientations_prob[, c(8:9)], as.numeric)
-  }
-  # update the returned matrix
+    }
+  #
+  # Update the returned matrix
+  #
   res$triples <- orientations_prob
-
   res$interrupted <- FALSE
   return (res)
   }

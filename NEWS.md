@@ -2,7 +2,13 @@
 
 ## Features
 
-- Extension of temporal mode to non stationary time series
+* Extension of temporal mode to non stationary time series.
+
+## Fixes and improvements
+
+* Improved parameter checks.
+
+* Redesign of inputs processing to prepare the addition of new modes.
 
 # v2.0.3
 

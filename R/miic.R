@@ -384,7 +384,7 @@
 #'
 #' Define the level of verbosity, possible values are:
 #' \itemize{
-#' \item{ \emph{0:} no display (excepted warnings and errors if any)}
+#' \item{ \emph{0:} no display excepted warnings and errors if any}
 #' \item{ \emph{1:} synthetic display with progress status}
 #' \item{ \emph{1:} debug display}
 #' }
@@ -733,10 +733,9 @@ miic <- function(input_data,
                  nodes_layers = NULL,
                  verbose = 1)
   {
-  # TODO review all code for verbose level and mode print in prepare_inputs
   miic_start = Sys.time()
   #
-  # Check all inputs
+  # Check and prepare all inputs for the C++ part
   #
   list_inputs = prepare_inputs (input_data = input_data,
                                 state_order = state_order,
@@ -761,7 +760,7 @@ miic <- function(input_data,
                                 mode = mode,
                                 n_layers = n_layers,
                                 delta_t = delta_t,
-                                movavg = movavg,
+                                mov_avg = mov_avg,
                                 keep_max_data = keep_max_data,
                                 max_nodes = max_nodes,
                                 var_interest = var_interest,
@@ -776,14 +775,14 @@ miic <- function(input_data,
   #
   # Call C++ reconstruction
   #
-  if (verbose)
-    miic_msg ("-> Start reconstruction...")
+  if (list_inputs$params$verbose >= 1)
+    miic_msg ("-> Start reconstruction ...")
   pre_end = Sys.time()
   res <- miic.reconstruct (list_inputs)
   if (res$interrupted)
-    stop("Interupted by user")
-  if (verbose)
-    miic_msg ("-> End reconstruction...")
+    stop ("Interupted by user")
+  if (list_inputs$params$verbose >= 1)
+    miic_msg ("-> End reconstruction ...")
   #
   # Post-traitment
   #
@@ -800,24 +799,24 @@ miic <- function(input_data,
 
   if (!is.null (true_edges))
     {
-    tp = sum (res$summary$type == "TP")
-    fp = sum (res$summary$type == "FP")
-    fn = sum (res$summary$type == "FN")
-    precision = tp / (tp + fp)
-    recall = tp / (tp + fn)
-    fscore = (2 * (precision * recall) ) / (precision + recall)
-    res$scores = c ("tp"=tp, "fp"=fp, "fn"=fn, "precision"=round (precision, 4),
-                    "recall"=round (recall, 4), "fscore"=round (fscore, 4) )
+    tp <- sum (res$summary$type == "TP")
+    fp <- sum (res$summary$type == "FP")
+    fn <- sum (res$summary$type == "FN")
+    precision <- tp / (tp + fp)
+    recall <- tp / (tp + fn)
+    fscore <- (2 * (precision * recall) ) / (precision + recall)
+    res$scores <- c ("tp"=tp, "fp"=fp, "fn"=fn, "precision"=round (precision, 4),
+                     "recall"=round (recall, 4), "fscore"=round (fscore, 4) )
     }
 
-  res$params = list_inputs$params
+  res$params <- list_inputs$params
   if (! (list_inputs$params$mode %in% MIIC_TEMPORAL_MODES) )
     {
     class(res) <- "miic"
-    res$input_data = list_inputs$input_data
-    res$state_order = list_inputs$state_order
-    res$black_box = list_inputs$black_box
-    res$true_edges = list_inputs$true_edges
+    res$input_data <- list_inputs$input_data
+    res$state_order <- list_inputs$state_order
+    res$black_box <- list_inputs$black_box
+    res$true_edges <- list_inputs$true_edges
     }
   else
     {
@@ -826,10 +825,10 @@ miic <- function(input_data,
     if (list_inputs$params$mode == "TS")
       class(res) <- "tmiic"
 
-    res$input_data = list_inputs$non_lagged$input_data
-    res$state_order = list_inputs$non_lagged$state_order
-    res$black_box = list_inputs$non_lagged$black_box
-    res$true_edges = list_inputs$non_lagged$true_edges
+    res$input_data <- list_inputs$non_lagged$input_data
+    res$state_order <- list_inputs$non_lagged$state_order
+    res$black_box <- list_inputs$non_lagged$black_box
+    res$true_edges <- list_inputs$non_lagged$true_edges
     #
     # Clean state_order structure to remove extra columns used internally
     #

@@ -20,15 +20,14 @@ STATE_ORDER_STANDARD_VALID_COLUMS <- c ("var_names", "var_type",
     "group", "group_color")
 STATE_ORDER_TEMPORAL_VALID_COLUMNS = c (STATE_ORDER_STANDARD_VALID_COLUMS,
                                         "n_layers", "delta_t", "mov_avg")
-
 #===============================================================================
 # FUNCTIONS
 #===============================================================================
 # list_to_str
 #-------------------------------------------------------------------------------
 # Utility function to transform the first n_max items of a list into a
-# displayable (comma + space separated) string: "item1, item2, item3, ..."
-# Parameters:
+# displayable string: "item1, item2, item3, ..."
+# Params:
 # - list: a list
 # - n_max: int, optional, NULL by default, maximum of items used. If NULL,
 #   all items are used. If the list has more than n_max items, ", ..." is added
@@ -85,37 +84,39 @@ miic_msg <- function (...)
 # - rows full of NA are discarded in non temporal modes
 # - warn about constants variables
 #
-# Parameters:
+# Params:
 # - input_data: a data frame with variables as columns and rows as samples
 # - mode : MIIC mode
 # Return:
 # - input_data: the input data data frame, eventually without full of NAs rows
+# NB: no way to test for leading or trailing blanks in column names
+# as R replaces them with '.'
 #-------------------------------------------------------------------------------
 check_input_data <- function (input_data, mode)
   {
   if ( is.null(input_data) )
-    miic_error ("input data", "The input data is required.")
+    miic_error ("input data", "the input data is required.")
   if ( ! is.data.frame (input_data) )
-    miic_error ("input data", "The input data must be a dataframe.")
+    miic_error ("input data", "the input data must be a data frame.")
   #
   # Ensure we have a true data frame (i.e.: not a tibble) with data
   #
   input_data = as.data.frame (input_data)
   if (nrow (input_data) == 0)
-    miic_error ("input data", "The input data is empty.")
+    miic_error ("input data", "the input data is empty.")
   if (ncol (input_data) == 0)
-    miic_error ("input data", "The input data has no variable.")
+    miic_error ("input data", "the input data has no variable.")
   if ( (mode %in% MIIC_TEMPORAL_MODES) && (ncol (input_data) == 1) )
-    miic_error ("input data", "The input data has only one column (assumed to be the time steps), no variable.")
+    miic_error ("input data", "the input data has only one column (assumed to be the time steps), no variable.")
   #
   # Check variables full of NAs
   #
   cols_only_na <- colSums (is.na (input_data)) == nrow (input_data)
   input_data <- input_data [, !cols_only_na, drop=F]
   if (ncol (input_data) == 0)
-    miic_error ("input data", "The input data contains only NAs.")
+    miic_error ("input data", "the input data contains only NAs.")
   if ( (mode %in% MIIC_TEMPORAL_MODES) && (ncol (input_data) == 1) )
-    miic_error ("input data", "The input data has only one column (assumed to be the timesteps) not full of NAs.")
+    miic_error ("input data", "the input data has only one column (assumed to be the timesteps) not full of NAs.")
   if ( any (cols_only_na) )
     miic_warning ("input data", "the input data contains ", sum(cols_only_na),
              " variables(s) with only NAs. These variables(s) will be removed.")
@@ -126,7 +127,7 @@ check_input_data <- function (input_data, mode)
   if ( ! (mode %in% MIIC_TEMPORAL_MODES) )
     {
     rows_only_na <- rowSums (is.na (input_data)) == ncol (input_data)
-    input_data <- input_data [!rows_only_na, , F]
+    input_data <- input_data [!rows_only_na, , drop=F]
     if ( any (rows_only_na) )
       miic_warning ("input data", "the input data contains ", sum(rows_only_na),
                " row(s) with only NAs. These row(s) will be removed.")
@@ -164,17 +165,46 @@ check_input_data <- function (input_data, mode)
 #-------------------------------------------------------------------------------
 # check_state_order
 #-------------------------------------------------------------------------------
-# Basically, ensure, if a state_order is supplied, that all the values are valid
-# and set the wrong ones to default values (or ignore them if it can't be fixed)
+# Ensure, if a state_order is supplied, that all the "common" columns have valid
+# values. ("common" = the columns usable in the various miic modes: 'var_names',
+# 'var_type', 'is_contextual', 'is_consequence', 'levels_increasing_order')
+#
 # Missing information will be added by examining the input_data.
-# The returned state_order will have all expected columns for the mode chosen
-# and a var_names column with all variables ordered in the same way as the data.
-# Few errors lead to a stop : if all variables are contextual or consequences,
-# other issues will raise a warning and be "fixed" by using default values.
+# The wrong values are ignored or set to their default as the missing ones.
+# Few errors lead to a stop, preference is to raise a warning.
 #
-# Please look at the comments inside the function for the detail of checks done
+# The returned state_order will have a 'var_names' column with all variables
+# ordered in the same way as the data and all "common" columns checked.
+# Even if the columns checked are only the "common" ones, note that the checks
+# preformed depend on the mode, e.g. contextual variables are not authorized
+# in temporal mode.
 #
-# Parameters:
+# NOTE: Trick !
+# To distinguish NAs supplied by the users from NAs introduced by the check
+# function. In most of the columns, the initial NAs are replaced by the string
+# "NA". It allows to generate a warning in one go about all the wrong values:
+# e.g. var_names  var_type
+#         'V'        '1'
+#         'W'        'NA'
+#         'X'        '0'
+#         'Y'        '2'
+#         'Z'        NA  (Z was not present in var_names and has been
+#                         added by the check function => no warning)
+# raises the warning:
+# "2 variables (W, Y) do not have a valid value in the var_type column".
+#
+# CAUTIONS:
+# - This turn of NAs into 'NA's is applied to all columns (excepted 'var_names'
+#   and 'levels_increasing_order'). e.g. this is applied on 'n_layers' even
+#   if 'n_layers' is a column used only in temporal modes and not checked here.
+# - When looking to turn NA into 'NA', if one NA (or more) is detected and
+#   changed into string, then the column type is changed into character.
+#   The next steps of the check_state_order function ensure that the "common"
+#   columns have the expected type but the columns of other modes of miic are
+#   not converted back, e.g. in the value returned, 'n_layers' column type can
+#   be not modified (so still the initial one) or turned into character.
+#
+# Params:
 # - input_data: a data frame with variables as columns and rows as samples
 # - state_order: a data frame, can be NULL.
 #   possible/expected columns are:
@@ -186,18 +216,20 @@ check_input_data <- function (input_data, mode)
 #     can be NA or the full ordered list of the unique values. (default NA)
 #   * is_contextual: 0=not contextual, 1=contextual (default 0)
 #   * is_consequence: 0=not consequence, 1=consequence (default 0)
-#   additional possible columns in temporal mode are:
-#   * n_layers: the number of layers in the time unfolded graph
-#   * delta_t: the number of time steps between layers
-#   * mov_avg: if a moving average must applied on some variables
-#   NB: is_consequence is not allowed in temporal mode
+#     NB: is_consequence is not allowed in temporal mode
+#   * additional possible columns used by specific modes can be present
+#     (e.g. n_layers, delta_t, mov_avg for temporal mode) but will not be
+#     checked here
 # - mode: the MIIC mode
-# Return: the checked and eventually generated or completed state order
+# Return: the checked and eventually generated or completed state order.
+# In temporal mode, an extra column is added to memorize if var_type was
+# specified by the user.
+# TODO: remove the turn of NA into "NA" and add a column "auto_gen"
 #-------------------------------------------------------------------------------
 check_state_order <- function (input_data, state_order, mode)
   {
   if (mode %in% MIIC_TEMPORAL_MODES)
-    input_data <- input_data[, 2:ncol(input_data), drop=F]
+    input_data <- input_data[, 2:ncol(input_data), drop=FALSE]
   data_var_names <- colnames (input_data)
   n_vars <- length (data_var_names)
   #
@@ -213,7 +245,7 @@ check_state_order <- function (input_data, state_order, mode)
     }
   else
     #
-    # Ensure we have a true data frame (i.e.: not a tibble)
+    # Ensure we have a true data frame (e.g. not a tibble)
     #
     state_order <- as.data.frame (state_order)
   #
@@ -248,7 +280,7 @@ check_state_order <- function (input_data, state_order, mode)
     else
       miic_warning ("state order", sum (mismatch), " columns (", msg_str,
         ") are not valid and will be ignored.")
-    state_order <- state_order[, !mismatch, drop=F]
+    state_order <- state_order[, !mismatch, drop=FALSE]
     }
   #
   # We ensure that the var_names column is the first
@@ -256,7 +288,7 @@ check_state_order <- function (input_data, state_order, mode)
   idx_var_names <- which (colnames(state_order) == "var_names")
   idx_others <- 1:ncol (state_order)
   idx_others <- idx_others[idx_others != idx_var_names]
-  state_order <- state_order[, c(idx_var_names, idx_others), drop=F]
+  state_order <- state_order[, c(idx_var_names, idx_others), drop=FALSE]
   #
   # Check variables in state_order not in data
   #
@@ -270,31 +302,39 @@ check_state_order <- function (input_data, state_order, mode)
     else
       miic_warning ("state order", sum (mismatch), " variables (", msg_str,
         ") do not match any name in input data and will be ignored.")
-    state_order <- state_order[!mismatch, , drop=F]
+    state_order <- state_order[!mismatch, , drop=FALSE]
     }
   #
-  # Before checking variables in data not in the state_order
-  # if var_type, is_contextual or is_consequence are present, we flag NA
-  # in these columns as "NA" string (that is not a NA value)
-  # to be able to display correct warnings later.
-  # The same applies for the specific columns of the temporal modes.
-  # ( !! this changes the column type to character, even if no NA is detected !! )
+  # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! WARNING !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   #
-  if ("var_type" %in% colnames (state_order) )
-    state_order$var_type[ is.na (state_order$var_type) ] <- "NA"
-  if ("is_contextual" %in% colnames (state_order) )
-    state_order$is_contextual[ is.na (state_order$is_contextual) ] <- "NA"
-  if ("is_consequence" %in% colnames (state_order) )
-    state_order$is_consequence[ is.na (state_order$is_consequence) ] <- "NA"
-  if (mode %in% MIIC_TEMPORAL_MODES)
-    {
-    if ("n_layers" %in% colnames (state_order) )
-      state_order$n_layers[ is.na (state_order$n_layers) ] <- "NA"
-    if ("delta_t" %in% colnames (state_order) )
-      state_order$delta_t[ is.na (state_order$delta_t) ] <- "NA"
-    if ("mov_avg" %in% colnames (state_order) )
-      state_order$mov_avg[ is.na (state_order$mov_avg) ] <- "NA"
-    }
+  # CAUTION, trick: to check in one go the columns var_type, is_contextual, ...
+  # We replace here NA values with string "NA". The "NA" string will generate
+  # a warning during invalid values checks.
+  # e.g. var_names  var_type
+  #         "V"       "1"
+  #         "W"       "NA" => NA was here at the start (specified by user)
+  #         "X"       "0"
+  #         "Y"       "2"
+  #         "Z"       NA   => NA has been added because "Z" variable is in the
+  #                           data but was not in the supplied state_order,
+  #                           no warning about the NA in var_type,
+  #                           NA mean "to be initialized by a default value"
+  # Warning raised:
+  # "2 variables (W, Y) do not have a valid value in the var_type column"
+  #
+  # Note that:
+  # - if a NA is detected and turned into string, the columns type is changed
+  #   into character
+  # - this code is applied to all valid columns (expect "var_names" and
+  #   "levels_increasing_order") => By default, it will apply also if you
+  #   introduce new columns in the future.
+  #
+  # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! WARNING !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  #
+  for (one_col in valid_cols)
+    if (  ( ! (one_col %in% c("var_names", "levels_increasing_order")) )
+       && (one_col %in% colnames (state_order)) )
+      state_order[ is.na (state_order[,one_col]), one_col ] <- "NA"
   #
   # Check variables in data not in the state_order
   #
@@ -321,7 +361,7 @@ check_state_order <- function (input_data, state_order, mode)
   # The state_order rows are ordered as the variables in the data
   #
   state_order <- state_order [order (match(state_order$var_names,
-                                           data_var_names)), , drop=F]
+                                           data_var_names)), , drop=FALSE]
   rownames (state_order) <- NULL
   #
   # var_type (0=discrete / 1=continuous)
@@ -361,19 +401,20 @@ check_state_order <- function (input_data, state_order, mode)
           " the invalid values will be ignored and types determined from data.")
       }
     #
-    # All non 0 or 1 need to be fixed (same as if var_type column is not supplied)
+    # All non 0 or 1 need to be fixed and will be set to default value
+    # (we apply the same rule as when the value is not supply)
     #
     non_valid <- ! (state_order$var_type %in% c(0,1))
     if ( any (non_valid) )
       {
       state_order$var_type[non_valid] <- as.integer(data_is_num)[non_valid]
-      state_order$var_type [ non_valid & (n_unique_vals < MIIC_CONTINUOUS_TRESHOLD) ] = 0
+      state_order$var_type[ non_valid & (n_unique_vals < MIIC_CONTINUOUS_TRESHOLD) ] = 0
       var_type_specified[non_valid] <- F
       }
     #
     # Ensure the type of var_type is integer
     # (because when looking for NAs present before, the column type has been
-    # shifted to character. Now, we are sure that we have only O and 1
+    # shifted to character. Now, we are sure that we have only O and 1 => as.int
     #
     state_order$var_type = as.integer(state_order$var_type)
     #
@@ -396,14 +437,6 @@ check_state_order <- function (input_data, state_order, mode)
       }
     }
   #
-  # In temporal mode, we store if var_type was specified by the user
-  # It will be used when assessing the type of lagged variables to decide
-  # if a warning is raised (when user had specified the type)
-  # or not (automatic type determination)
-  #
-  if (mode %in% MIIC_TEMPORAL_MODES)
-    state_order$var_type_specified <- var_type_specified
-  #
   # Check the number of unique values versus var_type
   #
   for (i in 1:n_vars)
@@ -420,7 +453,7 @@ check_state_order <- function (input_data, state_order, mode)
               " non-NA unique values. It will be processed as discrete.")
         state_order$var_type[[i]] <- as.integer(0)
         if (mode %in% MIIC_TEMPORAL_MODES)
-          state_order$var_type_specified[[i]] <- F
+          var_type_specified[[i]] <- F
         }
       #
       # Less than MIIC_CONTINUOUS_TRESHOLD unique variables can be discretized
@@ -438,6 +471,14 @@ check_state_order <- function (input_data, state_order, mode)
           " is treated as discrete but has ", n_unique_vals[[i]], " levels.")
       }
     }
+  #
+  # In temporal mode, we store if var_type was specified by the user
+  # It will be used when assessing the type of lagged variables to decide
+  # if a warning is raised (when the user had specified the type)
+  # or not (automatic type determination)
+  #
+  if (mode %in% MIIC_TEMPORAL_MODES)
+    state_order$var_type_specified <- var_type_specified
   #
   # is_contextual
   #
@@ -536,9 +577,9 @@ check_state_order <- function (input_data, state_order, mode)
       if (any (non_valid))
         state_order$is_consequence[non_valid] <- 0
       #
-      # Ensure the type of is_consequence is integer
-      # (because when looking for NAs present before, the column type has been
-      # shifted to character. Now, we are sure that we have only int O and 1
+      # Ensure the type of is_consequence is integer (because when looking for
+      # NAs present before, the column type has been shifted to character.
+      # Now, we are sure that we have only O and 1 => as.int
       #
       state_order$is_consequence = as.integer (state_order$is_consequence)
       #
@@ -595,9 +636,9 @@ check_state_order <- function (input_data, state_order, mode)
       values <- unique (input_data[!is.na(input_data[,i]),i])
       #
       # Remove "NA" from levels_increasing_order
-      # NB : we test here only "NA" string as only "NA" is converted as NA in R
-      # by default when using read.table or read.csv. So a field containing
-      # "NA,1,2,3", when split, will contain [ "NA", "1", "2", "3" ]
+      # NB: we test here only "NA" string as only "NA" alone is converted as NA
+      # when using read.table or read.csv. So, a value "NA,1,2,3" will not be
+      # turned into NA and when split, will contain [ "NA", "1", "2", "3" ]
       #
       if ("NA" %in% orders)
         {
@@ -626,9 +667,9 @@ check_state_order <- function (input_data, state_order, mode)
       if (length (orders) <= 1)
         {
         miic_warning ("state order", "the provided levels order ",
-                      as.character (order_str), " for variable ",
-                      state_order[i, "var_names"],
-                      " should contain at least 2 non NA values, it will be ignored.")
+          as.character (order_str), " for variable ",
+          state_order[i, "var_names"],
+          " should contain at least 2 non NA values, it will be ignored.")
         state_order[i, "levels_increasing_order"] <- NA_character_
         next
         }
@@ -733,26 +774,28 @@ check_state_order <- function (input_data, state_order, mode)
   }
 
 #-------------------------------------------------------------------------------
-# check_other_df
+# check_bb_te
 #-------------------------------------------------------------------------------
-# Check optional data frame like black box or true edges
-# Parameters:
+# Check black box or true edges data frames
+# An invalid data frame will be ignored, invalid rows will be discarded
+#
+# Params:
 # - input_data: a data frame with variables as columns and rows as samples
 # - state_order: the data frame returned by check_state_order. As it has been
 #   checked, the state_order should never been NULL or empty. It should also
 #   contain an is_contextual column filled with a valid value for each variable
-# - df: the data fame to check, expected to be a 2 columns data frame in
-#   standard mode and 3 columns data frame in temporal mode.
-#   All values in 2 first columns of the data frame are expected to be variables
-#   names, and in temporal mode, the 3rd column is expected to contain lags.
-#   An invalid data frame will be ignored, Invalid rows will be discarded
-# - df_name: the data fame name (i.e. :"black box", "true edges")
+# - df: the data fame to check, expected layout depends of the mode:
+#   * not temporal: 2 columns filled with variables names
+#   * temporal stationary: 3 columns, the 2 first filled with variables names,
+#     the 3rd by the lags
+#   * temporal non stationary: 4 columns, the 1st and 3rd filled with variables
+#     names, the 2nd and 4th by the lags
+# - df_name: the data fame name ("black box" or "true edges")
 #   This value is used only to display messages
 # - mode: the MIIC mode
 # Return: the data frame checked
 #-------------------------------------------------------------------------------
-# TODO split in 3 fonctions std, TS, TNS
-check_other_df <- function (input_data, state_order, df, df_name, mode)
+check_bb_te <- function (input_data, state_order, df, df_name, mode)
   {
   if ( is.null(df) )
     return (NULL)
@@ -761,12 +804,12 @@ check_other_df <- function (input_data, state_order, df, df_name, mode)
   #
   if ( ! is.data.frame(df) )
     {
-    miic_warning (df_name, "The ", df_name, " parameter, if provided,",
+    miic_warning (df_name, "the ", df_name, " parameter, when provided,",
       " must be a data frame. The ", df_name, " will be ignored.")
     return (NULL)
     }
   #
-  # Ensure we have a true data frame (i.e.: not a tibble)
+  # Ensure we have a true data frame (e.g. not a tibble)
   #
   df <- as.data.frame (df)
   #
@@ -788,7 +831,7 @@ check_other_df <- function (input_data, state_order, df, df_name, mode)
     n_cols <- 2
   if (ncol(df) != n_cols)
     {
-    miic_warning (df_name, "The expected dataframe must have ", n_cols,
+    miic_warning (df_name, "the expected data frame must have ", n_cols,
       " columns but the provided one has ", ncol(df), " and will be ignored.")
     return (NULL)
     }
@@ -797,7 +840,7 @@ check_other_df <- function (input_data, state_order, df, df_name, mode)
   #
   if (nrow(df) == 0)
     {
-    miic_warning (df_name, "The provided dataframe is empty.")
+    miic_warning (df_name, "the provided dataframe is empty.")
     return (NULL)
     }
   #
@@ -818,7 +861,7 @@ check_other_df <- function (input_data, state_order, df, df_name, mode)
       one_var_name <- df[row_idx, col_idx]
       if (! (one_var_name %in% data_var_names) )
         {
-        miic_warning (df_name, "The variable ", one_var_name,
+        miic_warning (df_name, "the variable ", one_var_name,
           " is not present in the input data. The row ", row_idx, " will be ignored.")
         rows_ok[[row_idx]] <- F
         }
@@ -839,17 +882,41 @@ check_other_df <- function (input_data, state_order, df, df_name, mode)
   df <- df [rows_ok, , drop=F]
   if (nrow(df) == 0)
     {
-    miic_warning (df_name, "The provided dataframe is empty.")
+    miic_warning (df_name, "the provided data frame is empty.")
     return (NULL)
     }
   #
-  # In temporal mode, check that the lag column(s)
+  # In temporal mode, check the lag column(s)
   #
   if (mode %in% MIIC_TEMPORAL_MODES)
     {
+    warn_wrong_lag <- function (wrongs, text_singular, text_plural)
+      {
+      if ( any (wrongs) )
+        {
+        if (sum (wrongs) == 1)
+          {
+          if (mode == "TS")
+            miic_warning (df_name, text_singular,
+              " The row ", df[wrongs, 1], " - ", df[wrongs, 2],
+              " lag ", df[wrongs, 3], " will be ignored.")
+          else
+            miic_warning (df_name, text_singular,
+              " The row ", df[wrongs, 1], " lag ", df[wrongs, 2],
+              " - ", df[wrongs, 3], " lag ", df[wrongs, 4],
+              " will be ignored.")
+          }
+        else
+          miic_warning (df_name, text_plural, " ", sum (wrongs),
+                        " rows will be ignored.")
+        }
+      }
+    #
+    # Check of lags differs between stationary and non stationary modes
+    #
     if (mode == "TS")
       {
-      # Temporal stationnary, we expect a 3col with integer >= 0
+      # Check that 3rd column (lags) contains integer >= 0 or NAs
       #
       test_wrong_lag <- function(x)
         {
@@ -866,7 +933,7 @@ check_other_df <- function (input_data, state_order, df, df_name, mode)
         else
           return (FALSE)                                       # OK
         }
-      wrong_lags <- unlist (lapply (df[,3], FUN=test_wrong_lag) )
+      wrong_rows <- unlist (lapply (df[,3], FUN=test_wrong_lag) )
       }
     else
       {
@@ -889,82 +956,43 @@ check_other_df <- function (input_data, state_order, df, df_name, mode)
         }
       wrong_lags2 <- unlist (lapply (df[,2], FUN=test_wrong_lag) )
       wrong_lags4 <- unlist (lapply (df[,4], FUN=test_wrong_lag) )
-      wrong_lags <- wrong_lags2 | wrong_lags4
+      wrong_rows <- wrong_lags2 | wrong_lags4
       }
-    if ( any (wrong_lags) )
-      {
-      msg_str <- list_to_str (which(wrong_lags), n_max=10)
-      if (sum (wrong_lags) == 1)
-        miic_warning (df_name, "lag is incorrect at row ", msg_str,
-          ", this line will be ignored.")
-      else
-        miic_warning (df_name, "lag is incorrect for multiple rows (", msg_str,
-          "), these rows will be ignored.")
-      df <- df [!wrong_lags, , drop=F]
-      }
-    if (nrow(df) == 0)
-      {
-      miic_warning (df_name, "The provided dataframe is empty.")
-      return (NULL)
-      }
-    #
-    # Check that contextual lag are NA and no self loop on a contextual var
-    # in temporal stationary mode
-    #
-    wrongs_ctx <- rep ( F, nrow(df) )
-    wrongs_lagged <- rep ( F, nrow(df) )
-    wrongs_selfs_ctx <- rep ( F, nrow(df) )
+    warn_wrong_lag (wrong_rows, "incorrect lag.",
+                                "several lags are incorrect.")
 
     if (mode == "TS")
       {
+      # Check that lags for contextual variables are NA
+      #
       contextuals <- unlist ( apply ( df, MARGIN=1, FUN=function (x) {
-        # The state_order should have been checked before.
-        # So, it should never been NULL or empty. It should also contain an
-        # is_contextual column filled with a valid value for each variable
         orig_idx <- which (state_order$var_names == x[[1]])
         dest_idx <- which (state_order$var_names == x[[2]])
         return (  (state_order[orig_idx, "is_contextual"] == 1)
                || (state_order[dest_idx, "is_contextual"] == 1) ) } ) )
       wrongs_ctx <- ( contextuals & ( ! is.na (df[,3]) ) )
-      if ( any (wrongs_ctx) )
-        {
-        if (sum (wrongs_ctx) == 1)
-          miic_warning (df_name, "lags for contextual variables must be NA.",
-            " The line ", df[wrongs_ctx, 1], " - ", df[wrongs_ctx, 2], " lag ",
-            df[wrongs_ctx, 3], " will be ignored.")
-        else
-          miic_warning (df_name, "lags for contextual variables must be NAs. ",
-            sum (wrongs_ctx), " wrong lines will be ignored.")
-        }
+      wrongs_ctx[wrong_rows] <- F # 1 warning max per row
+      warn_wrong_lag (wrongs_ctx, "lag for contextual variables must be NA.",
+                                  "lags for contextual variables must be NAs.")
+      wrong_rows <- wrong_rows | wrongs_ctx
+      #
+      # Check that no self loop with a contextual variable
+      #
+      wrongs_selfs_ctx <- ( contextuals & (df[,1] == df[,2]) )
+      wrongs_selfs_ctx[wrong_rows] <- F # 1 warning max per row
+      warn_wrong_lag (wrongs_selfs_ctx,
+                      "no self loop possible for a contextual variable.",
+                      "no self loops possible for contextual variables.")
+      wrong_rows <- wrong_rows | wrongs_selfs_ctx
       #
       # Check that lag >= 0 if not contextual
       #
       wrongs_lagged <- ( (!contextuals) & is.na (df[,3]) )
-      if ( any (wrongs_lagged) )
-        {
-        if (sum (wrongs_lagged) == 1)
-          miic_warning (df_name, "lag for non contextual variables must be >= 0.",
-            " The line ", df[wrongs_lagged, 1], " - ", df[wrongs_lagged, 2], " lag ",
-            df[wrongs_lagged, 3], " will be ignored.")
-        else
-          miic_warning (df_name, "lags for non contextual variables must be >= 0. ",
-            sum (wrongs_lagged), " wrong lines will be ignored.")
-        }
-      #
-      # Check that no self loop with a contextual var
-      #
-      wrongs_selfs_ctx <- ( contextuals & (df[,1] == df[,2]) )
-      wrongs_selfs_ctx[wrongs_ctx | wrongs_lagged] <- F
-      if ( any (wrongs_selfs_ctx) )
-        {
-        if (sum (wrongs_selfs_ctx) == 1)
-          miic_warning (df_name, "no self loop possible for a contextual variable.",
-            " The line ", df[wrongs_selfs_ctx, 1], " - ", df[wrongs_selfs_ctx, 2], " lag ",
-            df[wrongs_selfs_ctx, 3], " will be ignored.")
-        else
-          miic_warning (df_name, "no self loops possible for contextual variables. ",
-            sum (wrongs_selfs_ctx), " wrong lines will be ignored.")
-        }
+      wrongs_lagged[wrong_rows] <- F # 1 warning max per row
+      warn_wrong_lag (wrongs_lagged,
+                      "lag for non contextual variables must be >= 0.",
+                      "lags for non contextual variables must be >= 0.")
+      wrong_rows <- wrong_rows | wrongs_lagged
       }
     #
     # The self loops need a lag > 0
@@ -973,50 +1001,55 @@ check_other_df <- function (input_data, state_order, df, df_name, mode)
       wrongs_selfs <- ( (!contextuals) & (df[,1] == df[,2]) & (df[,3] == 0) )
     else
       wrongs_selfs <- ( (df[,1] == df[,3]) & (df[,2] == df[,4]) )
-    wrongs_selfs [wrongs_ctx | wrongs_lagged | wrongs_selfs_ctx] <- F
-    if ( any (wrongs_selfs) )
-      {
-      if (sum (wrongs_selfs) == 1)
-        miic_warning (df_name, "lag for self loops must be > 0.",
-          " The line ", df[wrongs_selfs, 1], " - ", df[wrongs_selfs, 2], " lag ",
-          df[wrongs_selfs, 3], " will be ignored.")
-      else
-        miic_warning (df_name, "lags for self loops must be > 0. ",
-          sum (wrongs_selfs), " wrong lines will be ignored.")
-      }
+    wrongs_selfs[wrong_rows] <- F # 1 warning max per row
+    warn_wrong_lag (wrongs_selfs, "lag for self loops must be > 0.",
+                                  "lags for self loops must be > 0.")
+    wrong_rows <- (wrong_rows | wrongs_selfs)
 
-    df <- df [ (!wrongs_ctx) & (!wrongs_lagged) & (!wrongs_selfs_ctx) & (!wrongs_selfs), , drop=F]
+    df <- df [ (!wrong_rows), , drop=F]
     if (nrow(df) == 0)
       {
-      miic_warning (df_name, "The provided dataframe is empty.")
+      miic_warning (df_name, "the provided data frame is empty.")
       return (NULL)
       }
     #
     # Ensure the lags are integer types
     #
     if (mode == "TS")
-      df[,3] = as.integer (df[,3])
+      df[,3] <- as.integer (df[,3])
     else # TNS
       {
-      df[,2] = as.integer (df[,2])
-      df[,4] = as.integer (df[,4])
+      df[,2] <- as.integer (df[,2])
+      df[,4] <- as.integer (df[,4])
       }
     }
   #
-  # Remove duplicate row
+  # Remove duplicate rows
   #
-  n_rows_sav = nrow(df)
+  n_rows_sav <- nrow(df)
+  df <- unique (df)
+  if ( n_rows_sav != nrow(df) )
+    {
+    if (n_rows_sav - nrow(df) == 1)
+      miic_warning (df_name, "1 row is duplicated. Only one instance",
+        " of the row will be used.")
+    else
+      miic_warning (df_name, n_rows_sav - nrow(df), " rows are duplicated.",
+        " Only one instance of these rows will be used.")
+    }
+  if (nrow(df) == 0)
+    {
+    miic_warning (df_name, "the provided data frame is empty.")
+    return (NULL)
+    }
   #
-  # Equal rows
-  #
-  df = unique (df)
-  rownames(df) = NULL
-  #
-  # We remove equal rows but with variable names swapped
+  # We are going to remove also equal rows but with variable names swapped
   # as edges in black box are not oriented and, for true edges,
-  # the post-processing will not be able to process opposite edges
+  # the miic post-processing will not be able to process opposite edges
   #
-  rows_kept = rep (T, nrow(df))
+  n_rows_sav <- nrow(df)
+  rownames(df) <- NULL
+  rows_kept <- rep (T, nrow(df))
   for (i in 1:nrow(df))
     {
     if ( ! rows_kept[[i]] )
@@ -1027,22 +1060,22 @@ check_other_df <- function (input_data, state_order, df, df_name, mode)
       #
       if ( (!is.na(df[i,3])) && (df[i,3] != 0) )
         next
-      dup_inverse = ( (df[,1] == df[i,2])
-                    & (df[,2] == df[i,1])
-                    & (rownames(df) != i)
-                    & (is.na(df[,3]) | (df[,3] == 0)) )
+      dup_inverse <- ( (df[,1] == df[i,2])
+                     & (df[,2] == df[i,1])
+                     & (rownames(df) != i)
+                     & (is.na(df[,3]) | (df[,3] == 0)) )
       }
     else if (mode == "TNS")
-      dup_inverse = ( (df[,1] == df[i,3])
-                    & (df[,2] == df[i,4])
-                    & (df[,3] == df[i,1])
-                    & (df[,4] == df[i,2])
-                    & (rownames(df) != i) )
+      dup_inverse <- ( (df[,1] == df[i,3])
+                     & (df[,2] == df[i,4])
+                     & (df[,3] == df[i,1])
+                     & (df[,4] == df[i,2])
+                     & (rownames(df) != i) )
     else # non temporal
-      dup_inverse = ( (df[,1] == df[i,2])
-                    & (df[,2] == df[i,1])
-                    & (rownames(df) != i) )
-    rows_kept = rows_kept & (!dup_inverse)
+      dup_inverse <- ( (df[,1] == df[i,2])
+                     & (df[,2] == df[i,1])
+                     & (rownames(df) != i) )
+    rows_kept <- rows_kept & (!dup_inverse)
     }
   df <- df[rows_kept, , drop=F]
   if ( n_rows_sav != nrow(df) )
@@ -1056,51 +1089,86 @@ check_other_df <- function (input_data, state_order, df, df_name, mode)
     else
       {
       if (n_rows_sav - nrow(df) == 1)
-        miic_warning (df_name, "1 row is duplicated. Only one instance",
-          " of the row will be used.")
+        miic_warning (df_name, "1 row is duplicated with swapped variable",
+        " names. Only one instance will be used.")
       else
-        miic_warning (df_name, n_rows_sav - nrow(df), " rows are duplicated.",
+        miic_warning (df_name, n_rows_sav - nrow(df),
+          " rows are duplicated with swapped variable names.",
           " Only one instance of these rows will be used.")
       }
     }
-
   if (nrow(df) == 0)
     {
-    miic_warning (df_name, "The provided data frame is empty.")
+    miic_warning (df_name, "the provided data frame is empty.")
     return (NULL)
     }
   return (df)
   }
 
 #-------------------------------------------------------------------------------
+# test_param_wrong_string
+#-------------------------------------------------------------------------------
+# Utility function to detect wrong string value
+# Params:
+# - value: the value to check
+# - possibles: the list of possible values. 1st is the default.
+# Return: TRUE if the parameter value is wrong, FALSE if it pass the checks
+#-------------------------------------------------------------------------------
+test_param_wrong_string <- function (value, possibles)
+  {
+  return (  is.null(value)
+         || (length (value) != 1)
+         || is.na(value)
+         || (!is.character(value))
+         || (!(value %in% possibles)) )
+  }
+
+#-------------------------------------------------------------------------------
 # check_param_string
 #-------------------------------------------------------------------------------
-# Utility function to check a string parameter
-# Parameters:
-# - value: the parameter to check
+# Utility function to check a string parameter value
+# Params:
+# - value: the parameter value to check
 # - name: the name of the parameter
-# - list: the possible values, 1st value is the default
+# - possibles: the list of possible values. 1st is the default.
 # Return: the checked parameter, eventually reset to its default value
 #-------------------------------------------------------------------------------
 check_param_string <- function (value, name, possibles)
   {
-  if (  is.null(value)
-     || (length (value) != 1)
-     || is.na(value)
-     || (!is.character(value))
-     || (!(value %in% possibles)) )
+  if ( test_param_wrong_string (value, possibles) )
     {
     msg_str = paste0 (paste0 ("'", possibles, "'"), collapse=", ")
     if ( is.null (value) )
       val_str = "NULL"
     else
-      val_str = list_to_str (value)
-    miic_warning ("parameters", "supplied value '", val_str,
-      "' for the ", name, " parameter is invalid. Possible values are: ",
+      {
+      if ( is.character(value) )
+        val_str = paste (paste0 ("'", value, "'"), collapse=", ")
+      else
+        val_str = list_to_str (value)
+      }
+    miic_warning ("parameters", "supplied value ", val_str,
+      " for the ", name, " parameter is invalid. Possible values are: ",
       msg_str, ". The default value ('", possibles[[1]], "') will be used.")
     value <- possibles[[1]]
     }
   return (value)
+  }
+
+#-------------------------------------------------------------------------------
+# test_param_wrong_logical
+#-------------------------------------------------------------------------------
+# Utility function to detect wrong logical value
+# Params:
+# - value: the value to check
+# Return: TRUE if the parameter value is wrong, FALSE if it pass the checks
+#-------------------------------------------------------------------------------
+test_param_wrong_logical <- function (value)
+  {
+  return (  is.null (value)
+         || (length (value) != 1)
+         || is.na (value)
+         || (!is.logical(value)) )
   }
 
 #-------------------------------------------------------------------------------
@@ -1115,10 +1183,7 @@ check_param_string <- function (value, name, possibles)
 #-------------------------------------------------------------------------------
 check_param_logical <- function (value, name, default)
   {
-  if ( is.null (value)
-    || (length (value) != 1)
-    || is.na (value)
-    || (!is.logical(value)) )
+  if ( test_param_wrong_logical (value) )
     {
     if ( is.null (value) )
       val_str = "NULL"
@@ -1135,11 +1200,11 @@ check_param_logical <- function (value, name, default)
 #-------------------------------------------------------------------------------
 # test_param_wrong_int
 #-------------------------------------------------------------------------------
-# Utility function to detect a wrong int
-# Parameters:
+# Utility function to detect a wrong int value
+# Params:
 # - value: the parameter to check
-# - min: the min value, NA if none
-# - max: the max values, NA if none
+# - min: the min value, NA if none, int is valid if value >= min
+# - max: the max values, NA if none, int is valid if value <= max
 # Return: TRUE if the value is not an int or not in the range, FALSE otherwise
 #-------------------------------------------------------------------------------
 test_param_wrong_int <- function (value, min=NA, max=NA)
@@ -1157,18 +1222,18 @@ test_param_wrong_int <- function (value, min=NA, max=NA)
 # check_param_int
 #-------------------------------------------------------------------------------
 # Utility function to check an int parameter
-# Parameters:
-# - value: the parameter to check
+# Params:
+# - value: the parameter value to check
 # - name: the name of the parameter
-# - min_max: a tuple with min and max values. NA if no min and/or no max
 # - default: the default value
+# - min: min value, inclusive, NA if no min
+# - max: max value, inclusive, NA if no max
 # Return: the checked parameter, eventually reset to its default value
 #-------------------------------------------------------------------------------
 check_param_int <- function (value, name, default, min=NA, max=NA)
   {
   if ( test_param_wrong_int (value, min, max) )
     {
-    msg_str = " It must be an integer."
     if ( (!is.na(min)) && (!is.na(max)) )
       msg_str = paste0 (" It must be an integer in the range [",
                         min, ", ", max, "].")
@@ -1176,6 +1241,8 @@ check_param_int <- function (value, name, default, min=NA, max=NA)
       msg_str = paste0 (" It must be an integer >= ", min, ".")
     else if ( ! is.na (max) )
       msg_str = paste0 (" It must be an integer <= ", max, ".")
+    else
+      msg_str = " It must be an integer."
     if ( is.null (value) )
       val_str = "NULL"
     else
@@ -1191,36 +1258,101 @@ check_param_int <- function (value, name, default, min=NA, max=NA)
 #-------------------------------------------------------------------------------
 # test_param_wrong_float
 #-------------------------------------------------------------------------------
-# Utility function to detect a wrong float
-# Parameters:
-# - value: the parameter to check
+# Utility function to detect a wrong float value
+# Params:
+# - value: the value to check
 # - min: the min value, NA if none
+# - exclusive_min: if TRUE, value must be > min to pass the check.
+#   if FALSE, value must be >= min to pass the check.
 # - max: the max values, NA if none
-# - strict_min: if TRUE, value must be < min. if FALSE, value must be <= min
-# TODO Revoir strict_min pas clair
+# - exclusive_max: if TRUE, value must be < max to pass the check.
+#   if FALSE, value must be <= max to pass the check.
 # Return: TRUE if the value is not a float or not in the range, FALSE otherwise
 #-------------------------------------------------------------------------------
-test_param_wrong_float <- function (value, min=NA, strict_min=T, max=NA)
+test_param_wrong_float <- function (
+  value, min=NA, exclusive_min=F, max=NA, exclusive_max=F)
   {
   return (  is.null (value)
          || (length (value) != 1)
          || is.na (value)
          || (!is.numeric(value))
-         || ((!is.na (min)) && strict_min && (value < min))
-         || ((!is.na (min)) && (!strict_min) && (value <= min))
-         || ((!is.na (max)) && (value > max)) )
+         || ((!is.na (min)) && ( exclusive_min) && (value <= min))
+         || ((!is.na (min)) && (!exclusive_min) && (value <  min))
+         || ((!is.na (max)) && ( exclusive_max) && (value >= max))
+         || ((!is.na (max)) && (!exclusive_max) && (value >  max)) )
+  }
+
+#-------------------------------------------------------------------------------
+# check_param_float
+#-------------------------------------------------------------------------------
+# Utility function to check a float parameter
+# Params:
+# - value: the parameter value to check
+# - name: the name of the parameter
+# - default: the default value
+# - min: the min value, NA if none
+# - exclusive_min: if TRUE, value must be > min to pass the check.
+#   if FALSE, value must be >= min to pass the check.
+# - max: the max values, NA if none
+# - exclusive_max: if TRUE, value must be < max to pass the check.
+#   if FALSE, value must be <= max to pass the check.
+# Return: the checked parameter, eventually reset to its default value
+#-------------------------------------------------------------------------------
+check_param_float <- function (
+    value, name, default, min=NA, exclusive_min=F, max=NA, exclusive_max=F)
+  {
+  if ( test_param_wrong_float (value, min, exclusive_min, max, exclusive_max) )
+    {
+    if ( (!is.na(min)) && (!is.na(max)) )
+      {
+      msg_str = " It must be a float in the range "
+      if (exclusive_min)
+        msg_str = paste0 (msg_str, "]", min)
+      else
+        msg_str = paste0 (msg_str, "[", min)
+      if (exclusive_max)
+        msg_str = paste0 (msg_str, ",", max, "[.")
+      else
+        msg_str = paste0 (msg_str, ",", max, "].")
+      }
+    else if ( ! is.na (min) )
+      {
+      if (exclusive_min)
+        msg_str = paste0 (" It must be a float > ", min, ".")
+      else
+        msg_str = paste0 (" It must be a float >= ", min, ".")
+      }
+    else if ( ! is.na (max) )
+      {
+      if (exclusive_max)
+        msg_str = paste0 (" It must be a float < ", max, ".")
+      else
+        msg_str = paste0 (" It must be a float <= ", max, ".")
+      }
+    else
+      msg_str = " It must be a float."
+    if ( is.null (value) )
+      val_str = "NULL"
+    else
+      val_str = list_to_str (value)
+    miic_warning ("parameters", "supplied value ", val_str,
+      " for the ", name, " parameter is invalid." , msg_str,
+      " The default value (", default, ") will be used.")
+    value = default
+    }
+  return (value)
   }
 
 #-------------------------------------------------------------------------------
 # check_parameters
 #-------------------------------------------------------------------------------
 # Check all input parameters that are not data frames and not specific to a mode
-# Parameters:
-# - input_data: a data frame with input data
-# - all possible parameters not specific to a mode of MIIC method
+# Params:
+# - input_data: a data frame containing the input data
+# - all parameters that are not data frames and are common to the different
+#   miic modes
 # Return: a list with all the parameters, eventually modified or initialized
 #-------------------------------------------------------------------------------
-# REVIEW strict_min
 check_parameters <- function (input_data, n_threads, cplx,
   orientation, ort_proba_ratio, ort_consensus_ratio, propagation, latent,
   n_eff, n_shuffles, conf_threshold, sample_weights, test_mar,
@@ -1228,29 +1360,20 @@ check_parameters <- function (input_data, n_threads, cplx,
   negative_info, mode, verbose)
   {
   list_ret <- list ("mode" = mode)
-  list_ret$n_threads <- check_param_int (n_threads, "n_threads", 1, min=1, max=NA)
+  list_ret$n_threads <- check_param_int (n_threads, "n_threads", 1, min=1)
   list_ret$cplx <- check_param_string (cplx, "complexity", c("nml", "bic"))
   list_ret$orientation <- check_param_logical (orientation, "orientation", TRUE)
-
-  if ( test_param_wrong_float (ort_proba_ratio, min=0, strict_min=F, max=1) )
-    {
-    miic_warning ("parameters", "supplied value ", list_to_str (ort_proba_ratio),
-      " for the orientation probability ratio parameter is invalid.",
-      " It must be a floating point between 0 and 1.",
-      # TODO 2.0.3 >=0 vs lmiic > 0 " It must be a floating point in the range ]0,1].",
-      " The default value (1) will be used.")
-    ort_proba_ratio = 1
-    }
-  list_ret$ort_proba_ratio <- ort_proba_ratio
+  list_ret$ort_proba_ratio <- check_param_float (
+    ort_proba_ratio, "orientation probability ratio", 1, min=0, max=1)
 
   if ( is.null (ort_consensus_ratio) )
     ort_consensus_ratio <-list_ret$ort_proba_ratio
-  else if ( test_param_wrong_float (ort_consensus_ratio, min=0, strict_min=F, max=1) )
+  else if ( test_param_wrong_float (ort_consensus_ratio, min=0, max=1) )
     {
-    miic_warning ("parameters", "supplied value ", list_to_str (ort_consensus_ratio),
+    miic_warning ("parameters",
+      "supplied value ", list_to_str (ort_consensus_ratio),
       " for the orientation concensus ratio parameter is invalid.",
-      " It must be a floating point between 0 and 1.",
-      # TODO check if >0 " It must be a floating point in the range ]0,1].",
+      " It must be a float between 0 and 1.",
       " The default value (same as orientation probabilty ratio: ",
       ort_proba_ratio, ") will be used.")
     ort_consensus_ratio <- list_ret$ort_proba_ratio
@@ -1272,30 +1395,32 @@ check_parameters <- function (input_data, n_threads, cplx,
     }
   list_ret$n_eff <- n_eff
 
-  n_shuffles <- check_param_int (n_shuffles, "number of shufflings", 0, min=0, max=NA)
+  n_shuffles <- check_param_int (n_shuffles, "number of shufflings", 0, min=0)
   if (n_shuffles == 0)
     {
     if (  (length(conf_threshold) > 1)
        || (  (!is.null (conf_threshold))
           && (!is.na (conf_threshold))
           && (conf_threshold != 0) ) )
-      miic_warning ("parameters", "supplied value ", list_to_str (conf_threshold),
+      miic_warning ("parameters",
+        "supplied value ", list_to_str (conf_threshold),
         " for the confidence threshold parameter will be ignored",
         " as the number of shufflings is set to 0.",
         " To activate the confidencence cut, both the number of shufflings",
-        " and the confidence threshold must be > 0 (i.e.: n_shuffles = 100",
+        " and the confidence threshold must be > 0 (e.g. n_shuffles = 100",
         " and conf_threshold = 0.01).")
     conf_threshold <- 0
     }
   else
     {
-    if ( test_param_wrong_float (conf_threshold, min=0, max=NA) )
+    if ( test_param_wrong_float (conf_threshold, min=0) )
       {
-      miic_warning ("parameters", "supplied value ", list_to_str (conf_threshold),
+      miic_warning ("parameters",
+        "supplied value ", list_to_str (conf_threshold),
         " for the confidence threshold parameter is invalid.",
         " When confidence cut is activated (when n_shuffles > 0),",
-        " the confidence threshold must be a floating point > 0. The",
-        " confidence cut will be desactivated and default values will be used",
+        " the confidence threshold must be a float > 0. The confidence cut",
+        " will be desactivated and default values will be used",
         " for the number of shufflings (0) and the confidence threshold (0).")
       n_shuffles <- 0
       conf_threshold <- 0
@@ -1306,7 +1431,7 @@ check_parameters <- function (input_data, n_threads, cplx,
         " but it must be > 0 when confidence cut is activated",
         " (when n_shuffles > 0). The confidence cut will be desactivated.",
         " To activate the confidencence cut, both the number of shufflings",
-        " and the confidence threshold must be > 0 (i.e.: n_shuffles = 100",
+        " and the confidence threshold must be > 0 (e.g. n_shuffles = 100",
         " and conf_threshold = 0.01).")
       n_shuffles <- 0
       }
@@ -1321,9 +1446,10 @@ check_parameters <- function (input_data, n_threads, cplx,
         || (any(sample_weights < 0))
         || (any(sample_weights > 1)) ) )
     {
-    miic_warning ("parameters", "supplied value for the sample_weights parameter",
-      " is invalid. It must be a vector of the same size as the number of",
-      " samples in the input data and all weights must be floating points",
+    miic_warning ("parameters",
+      "supplied value for the sample_weights parameter is invalid.",
+      " It must be a vector of the same size as the number of samples",
+      " in the input data and all weights must be float",
       " in the [0,1] range. The parameter will be ignored.")
     sample_weights <- NULL
     }
@@ -1346,16 +1472,18 @@ check_parameters <- function (input_data, n_threads, cplx,
        || (  (!is.null (consensus_threshold))
           && (!is.na (consensus_threshold))
           && (consensus_threshold != 0.8) ) )
-      miic_warning ("parameters", "Supplied value ", list_to_str(consensus_threshold),
+      miic_warning ("parameters",
+        "supplied value ", list_to_str(consensus_threshold),
         " for the consensus threshold parameter will not be used",
         " as consistency is off.")
     consensus_threshold <- 0.8
     }
   else # Consistency on
     {
-    if ( test_param_wrong_int (max_iteration, min=1, max=NA) )
+    if ( test_param_wrong_int (max_iteration, min=1) )
       {
-      miic_warning ("parameters", "supplied value ", list_to_str (max_iteration),
+      miic_warning ("parameters",
+        "supplied value ", list_to_str (max_iteration),
         " for the maximum iteration parameter is invalid.",
         " It must be a stricly positive integer when consistency is activated.",
         " The default value (100) will be used.")
@@ -1363,9 +1491,10 @@ check_parameters <- function (input_data, n_threads, cplx,
       }
     if ( test_param_wrong_float (consensus_threshold, min=0.5, max=1) )
       {
-      miic_warning ("parameters", "supplied value ", list_to_str (consensus_threshold),
+      miic_warning ("parameters",
+        "supplied value ", list_to_str (consensus_threshold),
         " for the consensus threshold parameter is invalid.",
-        " It must be a floating point between 0.5 and 1 when consistency is",
+        " It must be a float between 0.5 and 1 when consistency is",
         " activated. The default value (0.8) will be used.")
       consensus_threshold <- 0.8
       }
@@ -1375,7 +1504,8 @@ check_parameters <- function (input_data, n_threads, cplx,
 
   list_ret$negative_info <- check_param_logical (negative_info,
     "allowing/disallowing negative shifted mutual information", FALSE)
-  list_ret$verbose <- check_param_logical (verbose, "verbose", FALSE)
+  # verbose should have been already checked but does not hurt
+  list_ret$verbose <- check_param_int (verbose, "verbose", 1, min=0, max=2)
 
   return (list_ret)
   }
@@ -1421,7 +1551,7 @@ check_cross_inputs <- function (list_in)
 # => In temporal mode, as the list must be usable directly by the C++ part, the
 # input_data, state_order, black_box and true_edges items are the lagged ones
 #
-# Parameters:
+# Params:
 # All possible parameters of the miic method. Default values are the same as the
 # miic function to allow a call to this function only to check/fix parameters
 #
@@ -1445,8 +1575,8 @@ prepare_inputs <- function (input_data,
                             n_threads = 1,
                             cplx = "nml",
                             orientation = TRUE,
-                            ori_proba_ratio = 1,
-                            ori_consensus_ratio = NULL,
+                            ort_proba_ratio = 1,
+                            ort_consensus_ratio = NULL,
                             propagation = FALSE,
                             latent = "orientation",
                             n_eff = -1,
@@ -1461,39 +1591,37 @@ prepare_inputs <- function (input_data,
                             mode = "S",
                             n_layers = NULL,
                             delta_t = NULL,
-                            movavg = NULL,
+                            mov_avg = NULL,
                             keep_max_data = FALSE,
                             max_nodes = 50,
                             var_interest = NULL,
                             var_interest_condition = NULL,
                             window_position = "start",
-                            verbose = FALSE)
+                            verbose = 1)
   {
   if ( is.null(mode) || ( ! (mode %in% MIIC_VALID_MODES) ) )
-    miic_error ("parameters check", "invalid mode ", mode,
-      ". Possible modes are S (Standard), TS (Temporal Stationnary),",
+    miic_error ("parameters check", "invalid mode '", mode,
+      "'. Possible modes are S (Standard), TS (Temporal Stationnary),",
       " TNS (Temporal Non Stationnary).")
 
-  if ( ! is.null(verbose) )
+  if ( (!is.null(verbose) ) && is.logical(verbose) )
     {
-    if ( is.logical(verbose) )
-      {
-      verbose <- as.integer ( check_param_logical (verbose, "verbose", FALSE) ) + 1
-      miic_warning ("parameters", " type expected for verbose is now integer.")
-      }
-    else
-      verbose <- check_param_int (verbose, "verbose", 1, min=0, max=2)
+    verbose <- as.integer (verbose) + 1
+    deprecate_warn ("2.1.0", paste0 ("miic(verbose = 'verbose is now",
+      " expected to be an integer between 0 and 2')") )
     }
+  verbose <- check_param_int (verbose, "verbose", 1, min=0, max=2)
+
   if (verbose >= 1)
     {
     if (mode == "TS")
-      miic_msg ("Start MIIC in temporal stationary mode")
+      miic_msg ("Start MIIC in temporal stationary mode ...")
     else if (mode == "TNS")
-      miic_msg ("Start MIIC in temporal non stationary mode")
+      miic_msg ("Start MIIC in temporal non stationary mode ...")
     else if (mode == "L")
-      miic_msg ("Start MIIC in layered mode")
+      miic_msg ("Start MIIC in layered mode ...")
     else
-      miic_msg ("Start MIIC...")
+      miic_msg ("Start MIIC ...")
     }
   #
   # Basic checks applicable with few differences between the different modes.
@@ -1505,14 +1633,14 @@ prepare_inputs <- function (input_data,
   # - other optional data frames (black box and true edges) checked against the
   #   variables in the input data.
   #
-  list_ret <- list()
+  list_ret = list()
   list_ret$input_data <- check_input_data (input_data, mode)
   list_ret$params <- check_parameters (input_data = list_ret$input_data,
                                        n_threads = n_threads,
                                        cplx = cplx,
                                        orientation = orientation,
-                                       ori_proba_ratio = ori_proba_ratio,
-                                       ori_consensus_ratio = ori_consensus_ratio,
+                                       ort_proba_ratio = ort_proba_ratio,
+                                       ort_consensus_ratio = ort_consensus_ratio,
                                        propagation = propagation,
                                        latent = latent,
                                        n_eff = n_eff,
@@ -1528,9 +1656,9 @@ prepare_inputs <- function (input_data,
                                        verbose = verbose)
   list_ret$state_order <- check_state_order (
     list_ret$input_data, state_order, list_ret$params$mode)
-  list_ret$black_box <- check_other_df (list_ret$input_data,
+  list_ret$black_box <- check_bb_te (list_ret$input_data,
     list_ret$state_order, black_box, "black box", list_ret$params$mode)
-  list_ret$true_edges <- check_other_df (list_ret$input_data,
+  list_ret$true_edges <- check_bb_te (list_ret$input_data,
     list_ret$state_order, true_edges, "true edges", list_ret$params$mode)
   #
   # Extra checks needing several inputs
@@ -1546,7 +1674,7 @@ prepare_inputs <- function (input_data,
   list_ret <- tmiic_prepare_inputs (list_in = list_ret,
                                     n_layers = n_layers,
                                     delta_t = delta_t,
-                                    movavg = movavg,
+                                    mov_avg = mov_avg,
                                     keep_max_data = keep_max_data,
                                     max_nodes = max_nodes,
                                     var_interest = var_interest,
@@ -1557,6 +1685,7 @@ prepare_inputs <- function (input_data,
   #
   if (list_ret$params$mode == "TNS")
     list_ret = tmiic_tns_to_ml (list_ret)
+
   return (list_ret)
   }
 

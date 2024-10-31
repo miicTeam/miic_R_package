@@ -12,8 +12,10 @@
 # tmiic_check_parameters_not_temporal
 #-------------------------------------------------------------------------------
 # Raise warnings if some temporal parameters are used in non temporal mode
-# Parameters: all possible parameters specific to  temporal modes
-# Returns: none
+# Params: all possible parameters specific to  temporal modes
+# Return: none
+# TODO: this function is only useful if we have one big miic function with
+# all parameters, so drop this function if we go for one function per mode
 #-------------------------------------------------------------------------------
 tmiic_check_parameters_not_temporal <- function (n_layers, delta_t, mov_avg,
   keep_max_data, max_nodes, var_interest, var_interest_condition, window_position)
@@ -50,30 +52,30 @@ tmiic_check_parameters_not_temporal <- function (n_layers, delta_t, mov_avg,
 #-------------------------------------------------------------------------------
 # tmiic_check_parameters
 #-------------------------------------------------------------------------------
-# Checks on parameters for temporal mode
+# Check parameters for temporal mode
 #
 # The "simple" temporal parameters, having one value not tuned per variable,
 # are added in the list of parameters. For the parameters that can be different
 # per variable: n_layers, delta_t and mov_avg, if these variables are supplied
-# as parameters (!= NULL) and not already in the state_order, (otherwise the
+# as parameters (!= NULL) and not already in the state_order (otherwise the
 # parameters are ignored), these parameters are moved into the state_order.
-# The move into the state_order is tuned for each variable, i.e.: mov_avg is
-# applied on continuous variables but not on discrete, or, in stationary mode,
-# the contextual variables have n_layers=1, delta_t=0.
+# The move into the state_order is tuned for each variable, e.g. mov_avg is
+# applied on continuous variables but not on discrete.
 #
-# Parameters:
+# Params:
 # - list_in: the list of inputs prepared by the tmiic_check_inputs.
 #   The list has 2 items: params and non_lagged.
 #   non_lagged is a nested list with non lagged inputs : input_data,
 #   state_order and eventually black box, true edges
-# - all possible parameters specific to  temporal modes
-# Returns: the updated list of inputs, 2 items can be modified:
+# - all possible parameters specific to temporal modes
+# Return: the updated list of inputs, 2 items can be modified:
 # - non_lagged$state_order: n_layers, delta_t, mov_avg can be added as new
 #   columns in the non lagged state_order:
 # - params: the list of parameters will include checked temporal parameters
 #-------------------------------------------------------------------------------
-tmiic_check_parameters <- function (list_in, n_layers, delta_t, mov_avg,
-  keep_max_data, max_nodes, var_interest, var_interest_condition, window_position)
+tmiic_check_parameters <- function (list_in,
+  n_layers, delta_t, mov_avg, keep_max_data, max_nodes,
+  var_interest, var_interest_condition, window_position)
   {
   # Start with parameters not moved to the state order
   #
@@ -250,16 +252,16 @@ tmiic_check_parameters <- function (list_in, n_layers, delta_t, mov_avg,
         " is also provided in the state_order.")
     else
       {
-      if ( test_param_wrong_int (delta_t, min=1, max=NA) )
+      if ( test_param_wrong_int (delta_t, min=1) )
         miic_warning ("parameters", "supplied value ", list_to_str (delta_t),
           " for the delta t parameter is invalid.",
           " If not NULL, it must be an integer >= 1.",
           " The delta t will be determined from the data.")
       else # valid delta_t
         {
-        list_in$non_lagged$state_order$delta_t <- delta_t
+        list_in$non_lagged$state_order$delta_t <- as.integer (delta_t)
         if (list_in$params$mode == "TS")
-          list_in$non_lagged$state_order$delta_t[list_in$non_lagged$state_order$is_contextual == 1] <- 0
+          list_in$non_lagged$state_order$delta_t[list_in$non_lagged$state_order$is_contextual == 1] <- as.integer (0)
         }
       }
     }
@@ -274,7 +276,7 @@ tmiic_check_parameters <- function (list_in, n_layers, delta_t, mov_avg,
         " is also provided in the state_order.")
     else
       {
-      if (   test_param_wrong_int (mov_avg, min=0, max=NA)
+      if (   test_param_wrong_int (mov_avg, min=0)
          || (mov_avg == 1) )
         miic_warning ("parameters", "supplied value ", list_to_str (mov_avg),
           " for the moving average parameter is invalid.",
@@ -282,22 +284,22 @@ tmiic_check_parameters <- function (list_in, n_layers, delta_t, mov_avg,
           " The moving average parameter will be ignored.")
       else
         {
-        # Valid mov_avg
+        # Valid mov_avg parameter
         #
-        list_in$non_lagged$state_order$mov_avg <- mov_avg
+        list_in$non_lagged$state_order$mov_avg <- as.integer (mov_avg)
         #
         # No mov_avg on discrete
         #
-        list_in$non_lagged$state_order$mov_avg[list_in$non_lagged$state_order$var_type == 0] <- 0
+        list_in$non_lagged$state_order$mov_avg[list_in$non_lagged$state_order$var_type == 0] <- as.integer (0)
         #
         # No mov_avg on contextual vars (constant in stationary
         # and expected to be not 'averageable' in non stationary,
-        # i.e.: addition of treatment, cell division, temperature threshold
+        # e.g. addition of treatment, cell division, temperature threshold
         # NB: in non stationary, if the user wants a moving average on a
         # contextual variable, it is possible by specifying the mov_avg in
         # the state_order
         #
-        list_in$non_lagged$state_order$mov_avg[list_in$non_lagged$state_order$is_contextual == 1] <- 0
+        list_in$non_lagged$state_order$mov_avg[list_in$non_lagged$state_order$is_contextual == 1] <- as.integer (0)
         }
       }
     }
@@ -305,24 +307,6 @@ tmiic_check_parameters <- function (list_in, n_layers, delta_t, mov_avg,
   return (list_in)
   }
 
-# TODO review
-#-------------------------------------------------------------------------------
-# tmiic_check_state_order
-#-------------------------------------------------------------------------------
-# This function performs the first part checks of the state order columns
-# specific to temporal mode: n_layers, delta_t and mov_avg.
-#
-# In most cases, these columns will not be present at this stage,
-# as these information will be likely provided as parameters
-# (cf tmiic_check_parameters to see how the n_layers, delta_t and mov_avg
-# parameters are moved into the state_order).
-#
-# Parameters:
-# - state_order: a data frame, the state order returned by check_state_order
-# - mode : the temporal mode ("TS" or "TNS")
-# Return:
-# - state_order: the state_order, with temporal parameters eventually modified
-#-------------------------------------------------------------------------------
 #-------------------------------------------------------------------------------
 # tmiic_check_state_order
 #-------------------------------------------------------------------------------
@@ -336,11 +320,11 @@ tmiic_check_parameters <- function (list_in, n_layers, delta_t, mov_avg,
 # check/fix the values against the var_type and is_contextual information.
 #
 # Params:
-# - state_order: a data frame, the state order returned by tmiic_check_parameters
-# - params: the list of parameters (needed to know the mode)
-# Returns: a list with 2 items:
-# - state_order: the state_order, with temporal parameters eventually modified
-# - params: the list of parameters eventually modified
+# - list_in: the list of inputs returned by the tmiic_check_parameters
+#   The list has 2 items: params and non_lagged.
+#   non_lagged is a nested list with non lagged inputs : input_data,
+#   state_order and eventually black box, true edges
+# Returns: the input list with the non lagged state_order checked/modified
 #-------------------------------------------------------------------------------
 tmiic_check_state_order <- function (list_in)
   {
@@ -499,7 +483,7 @@ tmiic_check_state_order <- function (list_in)
       # For remaining vars with n_layers equal to NA:
       # - if no other var has a n_layers, go for automatic estimate
       # - if there is an unique n_layers, apply this value to all
-      # - if there is multiple n_layers values,
+      # - if there are multiple n_layers values,
       #   * In stationary, can't decide, stop
       #   * In non stationary, go for automatic estimate
       #
@@ -549,7 +533,8 @@ tmiic_check_state_order <- function (list_in)
         }
       }
     #
-    # Warning if multiple values of n_layers (excluding contextual in stationary)
+    # Warning if multiple values of n_layers (excluding contextual variables
+    # in stationary)
     #
     uniq_vals <- unique ( list_in$non_lagged$state_order$n_layers[
         (!is.na (list_in$non_lagged$state_order$n_layers))
@@ -620,12 +605,12 @@ tmiic_check_state_order <- function (list_in)
     {
     # delta_t is in the state_order and some values != NA, check values
     #
-    # NB: delta_t has been turned into character and initial NA have been
+    # NB: delta_t can have been turned into character and initial NA have been
     # turned into "NA" by the check_state_order function
     # => "NA" must raise warning, as initial NA is not a valid delta_t
     # => true NAs don't raise warnings as they are rows added because the
-    #    varible name was missing in the state_order and these true NAs
-    #    indicates "will be automatically estimated or determined"
+    #    variable name was missing in the state_order and these true NAs
+    #    indicates "will be automatically determined"
     #
     wrongs <- unlist (lapply (list_in$non_lagged$state_order$delta_t,
                               FUN=function(x) {
@@ -681,7 +666,7 @@ tmiic_check_state_order <- function (list_in)
       # For remaining vars with delta_t equal to NA:
       # - if no other var has a delta_t, go for automatic estimate
       # - if there is an unique delta_t, apply this value to all
-      # - if there is multiple delta_t values, in stationary, stop
+      # - if there are multiple delta_t values, in stationary, stop
       #
       uniq_vals <- unique ( list_in$non_lagged$state_order$delta_t[
                               (!na_in_so) & (!are_contextual) ] )
@@ -761,7 +746,7 @@ tmiic_check_state_order <- function (list_in)
   if (  ( ! ("mov_avg" %in% colnames(list_in$non_lagged$state_order)) )
      || all(is.na(list_in$non_lagged$state_order$mov_avg)) )
     {
-    # Add mov_avg column with 0 for all vars
+    # No mov_avg column or full of NA, add/set mov_avg with 0 for all vars
     #
     list_in$non_lagged$state_order$mov_avg <- 0
     }
@@ -906,12 +891,13 @@ tmiic_check_state_order <- function (list_in)
 #-------------------------------------------------------------------------------
 # tmiic_mov_avg_onecol
 #-------------------------------------------------------------------------------
-# Utility function to a apply a moving average over a list
-# params:
-# - x: the list
+# Utility function to a apply a moving average over a vector
+# Params:
+# - x: the vector
 # - w: the length of the window
 # This moving average is centered, so the first (w-1) %/% 2 and the last
 # (w-1) - low_shift items will be filled with NA_real_
+# TODO: test na.rm
 #-------------------------------------------------------------------------------
 tmiic_mov_avg_onecol <- function (x, w)
   {
@@ -919,23 +905,16 @@ tmiic_mov_avg_onecol <- function (x, w)
   high_shift <- (w-1) - low_shift
   ret <- rep(-1, length(x))
   ret[1:low_shift] <- NA_real_
-  # print (head (ret))
 
   start_idx <- low_shift+1
   end_idx <- length(x) - high_shift
-  # i <- start_idx + 1
-  # i <- start_idx
   for (i in start_idx:end_idx)
     {
     idx_low <- i - low_shift
     idx_high <- i + high_shift
-    # TODO VOIR 2.0.3: ret[i] <- mean (x[idx_low:idx_high], na.rm=TRUE)
-    ret[i] <- mean (x[idx_low:idx_high], na.action=na.omit)
+    ret[i] <- mean (x[idx_low:idx_high], na.rm=TRUE)
     }
-  # print (head (ret))
-  # print (tail (ret))
   ret[(end_idx+1):length(ret)] <- NA_real_
-  # print (tail (ret))
   return (ret)
   }
 
@@ -943,41 +922,41 @@ tmiic_mov_avg_onecol <- function (x, w)
 # tmiic_mov_avg
 #-------------------------------------------------------------------------------
 # Apply moving averages on data
+# Params:
 # - list_traj: a list of data frames, each item representing a trajectory.
 #   Each data frame must contain the time step information in the 1st column
 #   and the variables in the other columns.
 # - mov_avg: the list of moving average to be applied, optional, NULL by defaut.
-#   The length of the mov_avg list is the number of columns of the data frames - 1
-#   (because the 1st column in data frames is the time step).
+#   The length of the mov_avg list is the number of columns of the data
+#   frames - 1 (because the 1st column in data frames is the time step).
 #   When the mov_avg item value is >= 2, a moving average using this value as
 #   window size is applied on the corresponding column: mov_avg item 1 is
 #   applied to data column 2, mov_avg item 2 to data column 3, ...
 # - keep_max_data: boolean flag, optional, FALSE by default
 #   When FALSE, the rows containing NA introduced by the moving average(s)
 #   are deleted, otherwise when TRUE, the rows are kept
-# - verbose_level: integer in the range [0,2], 1 by default. The level of
+# - verbose: integer in the range [0,2], 0 by default. The level of
 #   verbosity: 0 = no display, 1 = summary display, 2 = maximum display.
 # Returns:
 # - list_traj: the list trajectories with moving averages applied
 #-------------------------------------------------------------------------------
-tmiic_mov_avg <- function (list_traj, mov_avg=NULL, keep_max_data=F, verbose_level=0)
+tmiic_mov_avg <- function (list_traj, mov_avg=NULL, keep_max_data=F, verbose=0)
   {
   if ( is.null (mov_avg) || all (mov_avg < 2) )
     return (list_traj)
-  if (verbose_level >= 1)
-    miic_msg ("Applying moving averages...")
+  if (verbose >= 1)
+    miic_msg ("Applying moving averages ...")
   #
   # Apply mov_avg on each trajectory and variable of the dataset
   #
-  n_vars <- ncol(list_traj[[1]])-1
+  n_vars <- ncol (list_traj[[1]]) - 1
   var_names <- colnames (list_traj[[1]])[-1]
   for (i in 1:length(list_traj) )
     for (j in 1:n_vars)
       if (mov_avg[[j]] >= 2)
         {
-        # print (paste0 (j, " => mov_avg = ", mov_avg[[j]]))
         list_traj[[i]][,j+1] <- tmiic_mov_avg_onecol (list_traj[[i]][,j+1], mov_avg[[j]])
-        if (verbose_level >= 2)
+        if (verbose >= 2)
           miic_msg ("- ", var_names[[j]], ": moving average of window size ",
                     mov_avg[[j]], " applied")
         }
@@ -992,7 +971,6 @@ tmiic_mov_avg <- function (list_traj, mov_avg=NULL, keep_max_data=F, verbose_lev
     start_idx <- 1
     if (low_shift > 0)
       start_idx <- start_idx + low_shift
-    # i <- 1
     for (i in 1:length(list_traj) )
       {
       end_idx <- nrow(list_traj[[i]]) - high_shift
@@ -1065,10 +1043,10 @@ tmiic_check_data_after_lagging <- function (lagged_data, lagged_so)
 # as some numerical lagged variables can have less unique values
 # and will/can not be any more considered as continuous
 #
-# Params :
+# Params:
 # - lagged_data: a data frame, the lagged input data
 # - lagged_so: a data frame, the lagged state order
-# Returns:
+# Return:
 # - a data frame: the lagged state_order, modified if needed
 #-------------------------------------------------------------------------------
 tmiic_check_state_order_after_lagging <- function (lagged_data, lagged_so)
@@ -1112,20 +1090,20 @@ tmiic_check_state_order_after_lagging <- function (lagged_data, lagged_so)
   }
 
 #-------------------------------------------------------------------------------
-# tmiic_check_other_df_after_lagging
+# tmiic_check_bb_te_after_lagging
 #-------------------------------------------------------------------------------
-# Check the optional data frame true edges or black box after lagging.
+# Check the optional data frame black box or true edges after lagging.
 # It complements the previous checks by verifying that lagged edges in these
 # data frames exist in the lagged data
 #
-# Params :
+# Params:
 # - var_names: a list, the list of lagged variables names
 # - lagged_df: a data frame, the lagged true edges or black box
 # - df_name: the data frame name, "true edges" or "black box"
-# Returns:
-# - a data frame: the lagged data frame, eventually modified
+# Return:
+# - a data frame: the lagged data frame, modified
 #-------------------------------------------------------------------------------
-tmiic_check_other_df_after_lagging <- function (var_names, lagged_df, df_name)
+tmiic_check_bb_te_after_lagging <- function (var_names, lagged_df, df_name)
   {
   if ( is.null(lagged_df) )
     return (lagged_df)
@@ -1154,7 +1132,7 @@ tmiic_check_other_df_after_lagging <- function (var_names, lagged_df, df_name)
 #-------------------------------------------------------------------------------
 # Extra steps to check and prepare the inputs in temporal mode
 #
-# Params :
+# Params:
 # - list_in: the list of inputs, after non temporal checks done
 # - all temporal parameters
 #
@@ -1233,9 +1211,8 @@ tmiic_prepare_inputs <- function (list_in,
   # Prepare trajectories
   #
   list_traj <- tmiic_extract_trajectories (list_ret$non_lagged$input_data)
-  verbose_level <- ifelse (list_ret$params$verbose, 2, 1)
   list_traj <- tmiic_mov_avg (list_traj, list_ret$non_lagged$state_order$mov_avg,
-    keep_max_data=list_ret$params$keep_max_data, verbose_level=verbose_level)
+    keep_max_data=list_ret$params$keep_max_data, verbose=list_ret$params$verbose)
   #
   # The way we estimate the temporal window and the lagging depend on the
   # stationary or non stationary mode
@@ -1246,7 +1223,7 @@ tmiic_prepare_inputs <- function (list_in,
     #
     list_ret$non_lagged$state_order <- tmiic_stat_estimate_dynamic (list_traj,
       list_ret$non_lagged$state_order, max_nodes=list_ret$params$max_nodes,
-      verbose_level=verbose_level)
+      verbose=list_ret$params$verbose)
     #
     # Lag inputs according to n layers and delta t
     #
@@ -1331,9 +1308,9 @@ tmiic_prepare_inputs <- function (list_in,
   #
   # For other df, check that the lagged variables are in the lagged data
   #
-  list_ret$true_edges <- tmiic_check_other_df_after_lagging (
+  list_ret$true_edges <- tmiic_check_bb_te_after_lagging (
     list_ret$state_order$var_names, list_ret$true_edges, "true edges")
-  list_ret$black_box <- tmiic_check_other_df_after_lagging (
+  list_ret$black_box <- tmiic_check_bb_te_after_lagging (
     list_ret$state_order$var_names, list_ret$black_box, "black box")
   #
   # In stationary, adjust n_eff if delta_t > 1 and no eff supplied by the user
@@ -1344,9 +1321,10 @@ tmiic_prepare_inputs <- function (list_in,
     if (avg_delta_t > 1)
       {
       list_ret$params$n_eff <- round (nrow (list_ret$input_data) / avg_delta_t, 0)
-      miic_msg ("Note : the n_eff has been set to ", list_ret$params$n_eff,
-                " (nb lagged samples= ", nrow (list_ret$input_data),
-                " / delta_t=", round(avg_delta_t, 2), ").")
+      if (list_ret$params$verbose >= 1)
+        miic_msg ("Note : the n_eff has been set to ", list_ret$params$n_eff,
+                  " (nb lagged samples= ", nrow (list_ret$input_data),
+                  " / delta_t=", round(avg_delta_t, 2), ").")
       }
     }
   #
