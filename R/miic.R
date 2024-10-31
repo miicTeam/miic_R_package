@@ -380,9 +380,14 @@
 #' The default is 50 to produce quick runs and can be increased up to 200
 #' or 300 on recent computers to produce more precise results.
 #'
-#' @param verbose [a boolean value, optional, FALSE by default]
+#' @param verbose [an integer value, optional, 1 by default]
 #'
-#' If TRUE, debugging output is printed.
+#' Define the level of verbosity, possible values are:
+#' \itemize{
+#' \item{ \emph{0:} no display excepted warnings and errors if any}
+#' \item{ \emph{1:} synthetic display with progress status}
+#' \item{ \emph{1:} debug display}
+#' }
 #'
 #' @return A \emph{miic-like} object that contains:
 #' \itemize{
@@ -721,190 +726,97 @@ miic <- function(input_data,
                  mov_avg = NULL,
                  keep_max_data = FALSE,
                  max_nodes = 50,
-                 verbose = FALSE)
+                 verbose = 1)
   {
   miic_start = Sys.time()
-  if (verbose)
-    miic_msg ("Start MIIC...")
-  if ( is.null(mode) || ( ! (mode %in% MIIC_VALID_MODES) ) )
-    miic_error ("parameters check", "invalid mode ", mode,
-      ". Possible modes are S (Standard), TS (Temporal Stationnary).")
-  if (mode %in% MIIC_TEMPORAL_MODES)
-      miic_msg ("Using temporal mode of MIIC")
   #
-  # Check base inputs
+  # Check and prepare all inputs for the C++ part
   #
-  input_data = check_input_data (input_data, mode)
-  params = check_parameters (input_data = input_data,
-                              n_threads = n_threads,
-                              cplx = cplx,
-                              orientation = orientation,
-                              ort_proba_ratio = ort_proba_ratio,
-                              ort_consensus_ratio = ort_consensus_ratio,
-                              propagation = propagation,
-                              latent = latent,
-                              n_eff = n_eff,
-                              n_shuffles = n_shuffles,
-                              conf_threshold = conf_threshold,
-                              sample_weights = sample_weights,
-                              test_mar = test_mar,
-                              consistent = consistent,
-                              max_iteration = max_iteration,
-                              consensus_threshold = consensus_threshold,
-                              mode = mode,
-                              negative_info = negative_info,
-                              verbose = verbose)
-  state_order = check_state_order (input_data, state_order, params$mode)
-  black_box = check_other_df (input_data, state_order,
-                              black_box, "black box", params$mode)
-  true_edges = check_other_df (input_data, state_order,
-                               true_edges, "true edges", params$mode)
-  #
-  # Extra steps depending on the mode
-  #
-  if (! (mode %in% MIIC_TEMPORAL_MODES) )
-    non_lagged_state_order = NULL
-  else
-    {
-    # Check temporal parameters and state_order
-    #
-    state_order = tmiic_check_state_order_part1 (state_order)
-    list_ret = tmiic_check_parameters (state_order = state_order,
-                                       params = params,
-                                       n_layers = n_layers,
-                                       delta_t = delta_t,
-                                       mov_avg = mov_avg,
-                                       keep_max_data = keep_max_data,
-                                       max_nodes = max_nodes)
-    params = list_ret$params
-    state_order = tmiic_check_state_order_part2 (list_ret$state_order)
-    list_ts = tmiic_extract_trajectories (input_data)
-    list_ts = tmiic_mov_avg (list_ts, state_order$mov_avg,
-                             keep_max_data=params$keep_max_data,
-                             verbose_level=ifelse (params$verbose, 2, 1) )
-    state_order = tmiic_estimate_dynamic (list_ts, state_order,
-                            max_nodes=params$max_nodes,
-                            verbose_level=ifelse (params$verbose, 2, 1) )
-    #
-    # Lag data and other inputs accordingly
-    #
-    non_lagged_state_order = state_order
-    non_lagged_true_edges = true_edges
-    non_lagged_black_box = black_box
-    state_order = tmiic_lag_state_order (non_lagged_state_order)
-    true_edges = tmiic_lag_other_df (non_lagged_state_order, true_edges)
-    true_edges = tmiic_check_other_df_after_lagging (state_order$var_names,
-                                                     true_edges, "true edges")
-    black_box = tmiic_lag_other_df (non_lagged_state_order, black_box)
-    black_box = tmiic_check_other_df_after_lagging (state_order$var_names,
-                                                     black_box, "black box")
-    list_ts = tmiic_lag_input_data (list_ts, state_order,
-                                    keep_max_data=params$keep_max_data)
-    input_data = tmiic_group_trajectories (list_ts)
-    #
-    # Check number of unique values per variable and review discrete/continuous
-    # after lagging as some columns may have less number of unique values
-    #
-    state_order = tmiic_check_after_lagging (input_data, state_order)
-    #
-    # Adjust n_eff if delta_t > 1 and no eff supplied by the user
-    #
-    avg_delta_t = mean (state_order$delta_t[state_order$is_contextual == 0])
-    if ( (avg_delta_t > 1) && (params$n_eff == -1) )
-      {
-      params$n_eff = trunc (nrow (input_data) / avg_delta_t)
-      miic_msg ("Note : the n_eff has been set to ", params$n_eff,
-                " (nb lagged samples= ", nrow (input_data),
-                " / delta_t=", round(avg_delta_t, 2), ").")
-      }
-    }
-  #
-  # Convert discrete vars as factors
-  #
-  for ( i in 1:nrow(state_order) )
-    if (state_order[i, "var_type"] == 0)
-      input_data[, i] <- factor (input_data[, i])
+  list_inputs = prepare_inputs (input_data = input_data,
+                                state_order = state_order,
+                                true_edges = true_edges,
+                                black_box = black_box,
+                                n_threads = n_threads,
+                                cplx = cplx,
+                                orientation = orientation,
+                                ort_proba_ratio = ort_proba_ratio,
+                                ort_consensus_ratio = ort_consensus_ratio,
+                                propagation = propagation,
+                                latent = latent,
+                                n_eff = n_eff,
+                                n_shuffles = n_shuffles,
+                                conf_threshold = conf_threshold,
+                                sample_weights = sample_weights,
+                                test_mar = test_mar,
+                                consistent = consistent,
+                                max_iteration = max_iteration,
+                                consensus_threshold = consensus_threshold,
+                                negative_info = negative_info,
+                                mode = mode,
+                                n_layers = n_layers,
+                                delta_t = delta_t,
+                                mov_avg = mov_avg,
+                                keep_max_data = keep_max_data,
+                                max_nodes = max_nodes,
+                                verbose = verbose)
   #
   # Call C++ reconstruction
   #
-  if (verbose)
-    miic_msg ("-> Start reconstruction...")
+  if (list_inputs$params$verbose >= 1)
+    miic_msg ("-> Start reconstruction ...")
   pre_end = Sys.time()
-  res <- miic.reconstruct (input_data = input_data,
-                           n_threads = params$n_threads,
-                           cplx = params$cplx,
-                           latent = params$latent,
-                           n_eff = params$n_eff,
-                           black_box = black_box,
-                           n_shuffles = params$n_shuffles,
-                           orientation = params$orientation,
-                           ort_proba_ratio = params$ort_proba_ratio,
-                           propagation = params$propagation,
-                           conf_threshold = params$conf_threshold,
-                           verbose = params$verbose,
-                           is_contextual = state_order$is_contextual,
-                           is_consequence = state_order$is_consequence,
-                           is_continuous = state_order$var_type,
-                           sample_weights = params$sample_weights,
-                           test_mar = params$test_mar,
-                           consistent = params$consistent,
-                           mode = params$mode,
-                           n_layers = non_lagged_state_order$n_layers,
-                           delta_t = non_lagged_state_order$delta_t,
-                           max_iteration = params$max_iteration,
-                           negative_info = params$negative_info)
+  res <- miic.reconstruct (list_inputs)
   if (res$interrupted)
     stop("Interupted by user")
-  if (verbose)
-    miic_msg ("-> End reconstruction...")
+  if (list_inputs$params$verbose >= 1)
+    miic_msg ("-> End reconstruction ...")
   #
   # Post-traitment
   #
   post_start = Sys.time()
   res$summary <- summarizeResults (
-    observations = input_data,
+    observations = list_inputs$input_data,
     results = res,
-    true_edges = true_edges,
-    state_order = state_order,
-    consensus_threshold = params$consensus_threshold,
-    ort_consensus_ratio = params$ort_consensus_ratio,
-    latent = (params$latent != "no"),
-    propagation = params$propagation)
+    true_edges = list_inputs$true_edges,
+    state_order = list_inputs$state_order,
+    consensus_threshold = list_inputs$params$consensus_threshold,
+    ort_consensus_ratio = list_inputs$params$ort_consensus_ratio,
+    latent = (list_inputs$params$latent != "no"),
+    propagation = list_inputs$params$propagation)
 
   if (!is.null (true_edges))
     {
-    tp = sum (res$summary$type == "TP")
-    fp = sum (res$summary$type == "FP")
-    fn = sum (res$summary$type == "FN")
-    precision = tp / (tp + fp)
-    recall = tp / (tp + fn)
-    fscore = (2 * (precision * recall) ) / (precision + recall)
-    res$scores = c ("tp"=tp, "fp"=fp, "fn"=fn, "precision"=round (precision, 4),
-                    "recall"=round (recall, 4), "fscore"=round (fscore, 4) )
+    tp <- sum (res$summary$type == "TP")
+    fp <- sum (res$summary$type == "FP")
+    fn <- sum (res$summary$type == "FN")
+    precision <- tp / (tp + fp)
+    recall <- tp / (tp + fn)
+    fscore <- (2 * (precision * recall) ) / (precision + recall)
+    res$scores <- c ("tp"=tp, "fp"=fp, "fn"=fn, "precision"=round (precision, 4),
+                     "recall"=round (recall, 4), "fscore"=round (fscore, 4) )
     }
 
-  res$params = params
-  if (! (mode %in% MIIC_TEMPORAL_MODES) )
+  res$params <- list_inputs$params
+  if (! (list_inputs$params$mode %in% MIIC_TEMPORAL_MODES) )
     {
     class(res) <- "miic"
-    res$state_order = state_order
-    res$black_box = black_box
-    res$true_edges = true_edges
+    res$input_data <- list_inputs$input_data
+    res$state_order <- list_inputs$state_order
+    res$black_box <- list_inputs$black_box
+    res$true_edges <- list_inputs$true_edges
     }
   else
     {
     class(res) <- "tmiic"
+    res$input_data <- list_inputs$non_lagged$input_data
+    res$state_order <- list_inputs$non_lagged$state_order
+    res$black_box <- list_inputs$non_lagged$black_box
+    res$true_edges <- list_inputs$non_lagged$true_edges
     #
-    # clean state_order structure to remove extra columns used internally
+    # Clean state_order structure to remove extra columns used internally
     #
-    non_lagged_state_order = non_lagged_state_order[,
-      colnames(non_lagged_state_order) %in% STATE_ORDER_TEMPORAL_VALID_COLUMNS]
-    res$state_order = non_lagged_state_order
-    res$black_box = non_lagged_black_box
-    res$true_edges = non_lagged_true_edges
-
-    state_order = state_order[,
-        colnames(state_order) %in% STATE_ORDER_TEMPORAL_VALID_COLUMNS]
+    res$state_order = res$state_order[,
+        colnames(res$state_order) %in% STATE_ORDER_TEMPORAL_VALID_COLUMNS]
     #
     # The output of the reconstruction is the "raw" temporal graph, without
     # edges identical by stationarity. To have the "real" temporal graph,
@@ -912,9 +824,10 @@ miic <- function(input_data,
     # graph is stored the "stationarity" data frame.
     #
     edges_dup_stat = tmiic_repeat_edges_over_history (res)
-    res$tmiic <- list (lagged_state_order = state_order,
-                       lagged_black_box = black_box,
-                       lagged_true_edges = true_edges,
+    res$tmiic <- list (lagged_input_data = list_inputs$input_data,
+                       lagged_state_order = list_inputs$state_order,
+                       lagged_black_box = list_inputs$black_box,
+                       lagged_true_edges = list_inputs$true_edges,
                        stationarity = edges_dup_stat)
     }
 

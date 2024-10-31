@@ -1,3 +1,11 @@
+# Development
+
+## Fixes and improvements
+
+* Improved parameter checks.
+
+* Redesign of inputs processing to prepare the addition of new modes.
+
 # v2.0.3
 
 ## Features
