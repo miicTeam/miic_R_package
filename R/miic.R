@@ -817,6 +817,9 @@ miic <- function(input_data,
     #
     res$state_order = res$state_order[,
         colnames(res$state_order) %in% STATE_ORDER_TEMPORAL_VALID_COLUMNS]
+    list_inputs$state_order = list_inputs$state_order[,
+        colnames(list_inputs$state_order) %in% STATE_ORDER_TEMPORAL_VALID_COLUMNS]
+    print (list_inputs$state_order)
     #
     # The output of the reconstruction is the "raw" temporal graph, without
     # edges identical by stationarity. To have the "real" temporal graph,

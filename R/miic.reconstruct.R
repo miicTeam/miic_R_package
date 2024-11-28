@@ -103,13 +103,13 @@ miic.reconstruct <- function (list_in)
   if ( ! is.null (list_in$params$sample_weights) )
     arg_list[["sample_weights"]] <- list_in$params$sample_weights
   if ( ! is.null (list_in$state_order$is_contextual) )
-    arg_list[["is_contextual"]] <- as.numeric(list_in$state_order$is_contextual)
+    arg_list[["is_contextual"]] <- list_in$state_order$is_contextual
   if ( ! is.null (list_in$state_order$is_consequence) )
-    arg_list[["is_consequence"]] <- as.numeric(list_in$state_order$is_consequence)
+    arg_list[["is_consequence"]] <- list_in$state_order$is_consequence
   if ( ! is.null (list_in$state_order$n_layers) )
-    arg_list[["n_layers"]] <- as.numeric(list_in$non_lagged$state_order$n_layers)
+    arg_list[["n_layers"]] <- list_in$non_lagged$state_order$n_layers
   if ( ! is.null (list_in$state_order$delta_t) )
-    arg_list[["delta_t"]] <- as.numeric(list_in$non_lagged$state_order$delta_t)
+    arg_list[["delta_t"]] <- list_in$non_lagged$state_order$delta_t
 
   cpp_input <- list ("factor" = input_factor, "double" = input_double,
                      "order" = input_order)

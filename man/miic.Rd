@@ -31,7 +31,7 @@ miic(
   mov_avg = NULL,
   keep_max_data = FALSE,
   max_nodes = 50,
-  verbose = FALSE
+  verbose = 1
 )
 }
 \arguments{
@@ -354,9 +354,14 @@ of nodes in the final time-unfolded graph to compute \emph{n_layers} and/or \emp
 The default is 50 to produce quick runs and can be increased up to 200
 or 300 on recent computers to produce more precise results.}
 
-\item{verbose}{[a boolean value, optional, FALSE by default]
+\item{verbose}{[an integer value, optional, 1 by default]
 
-If TRUE, debugging output is printed.}
+Define the level of verbosity, possible values are:
+\itemize{
+\item{ \emph{0:} no display excepted warnings and errors if any}
+\item{ \emph{1:} synthetic display with progress status}
+\item{ \emph{1:} debug display}
+}}
 }
 \value{
 A \emph{miic-like} object that contains:

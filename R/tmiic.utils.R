@@ -18,7 +18,7 @@
 # all parameters, so drop this function if we go for one function per mode
 #-------------------------------------------------------------------------------
 tmiic_check_parameters_not_temporal <- function (n_layers, delta_t, mov_avg,
-  keep_max_data, max_nodes, var_interest, var_interest_condition, window_position)
+  keep_max_data, max_nodes)
   {
   if ( ! is.null (n_layers) )
     miic_warning ("parameters", "the n_layers parameter ", n_layers,
@@ -619,7 +619,6 @@ tmiic_mov_avg_onecol <- function (x, w)
     idx_low <- i - low_shift
     idx_high <- i + high_shift
     ret[i] <- mean (x[idx_low:idx_high], na.rm=TRUE)
-    # ret[i] <- mean (x[idx_low:idx_high])
     }
   ret[(end_idx+1):length(ret)] <- NA_real_
   return (ret)

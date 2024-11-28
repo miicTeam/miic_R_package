@@ -115,7 +115,9 @@ struct Environment {
   // (e.g.  variables: x_lag0, ctx_var, y_lag0, x_lag1, y_lag1
   //  => nodes_shifts:   3   ,    0   ,   2   ,   0   ,   0)
   vector<int> nodes_shifts;
-
+  //
+  // Constructors
+  //
   Environment(int n_samples, int n_nodes, vector<int> vec_numeric,
       vector<int> vec_index, vector<int> is_continuous_, vector<int> levels_);
   Environment() = default;
