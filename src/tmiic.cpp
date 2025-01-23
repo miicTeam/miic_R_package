@@ -1,9 +1,9 @@
 //*****************************************************************************
 // Filename   : tmiic.cpp                           Creation date: 07 may 2020
 //
-// Description: Store functions for temporal mode of miic (tmiic)
-//
 // Author     : Franck SIMON
+//
+// Description: Store functions for temporal mode of miic (tmiic)
 //*****************************************************************************
 
 //=============================================================================

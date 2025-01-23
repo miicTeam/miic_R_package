@@ -1,14 +1,11 @@
 #' Style writing function for the miic network
-#' @description This function writes the  miic style for a correct
-#' visualization using the cytoscape tool (http://www.cytoscape.org/).
+#' @description This function writes the  miic style for a correct visualization using the cytoscape tool (http://www.cytoscape.org/).
 #' @details The style is written in the xml file format.
-#' @param file [a string] The file path of the output file (containing the
-#' file name without extension).
-#' @return None
+#' @param file [a string] The file path of the output file (containing the file name without extension).
 #' @export
 #' @useDynLib miic
 
-writeCytoscapeStyle <- function(file) {
+miic.write.style.cytoscape <- function(file) {
   if (missing(file)) {
     cat("The file path is necessary")
   } else {

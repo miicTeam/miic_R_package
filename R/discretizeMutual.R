@@ -1,89 +1,63 @@
-#*******************************************************************************
-# Filename   : discretizeMutual.R
-#
-# Description: Optimal discretization to compute (conditional) mutual
-#              information
-#*******************************************************************************
-
-#===============================================================================
-# FUNCTIONS
-#===============================================================================
-# discretizeMutual
-#-------------------------------------------------------------------------------
-#' Iterative dynamic programming for (conditional) mutual information through
-#' optimized discretization.
+#' Iterative dynamic programming for (conditional) mutual information through optimized discretization.
+#' @description This function chooses cutpoints in the input distributions by maximizing the mutual
+#' information minus a complexity cost (computed as BIC or with the Normalized Maximum Likelihood). The
+#' (conditional) mutual information computed on the optimized discretized distributions effectively approaches
+#' the mutual information computed on the original continuous variables.
 #'
-#' @description This function chooses cutpoints in the input distributions by
-#' maximizing the mutual information minus a complexity cost
-#' (computed as BIC or with the Normalized Maximum Likelihood).
-#' The (conditional) mutual information computed on the optimized discretized
-#' distributions effectively estimates the mutual information of the original
-#' continuous variables.
+#' @details For a pair of variables \eqn{X} and \eqn{Y}, the algorithm will in turn choose cutpoints on \eqn{X}
+#' then on \eqn{Y}, maximizing \eqn{I(X_{d};Y_{d}) - cplx(X_{d};Y_{d})} where \eqn{cplx(X_{d};Y_{d})} is the
+#' complexity cost of the considered discretizations of \eqn{X} and \eqn{Y} (see Affeldt 2016 and Cabeli 2020).
+#' When the value \eqn{I(X_{d};Y_{d})} is stable between two iterations the discretization scheme of
+#' \eqn{X_{d}} and \eqn{Y_{d}} is returned as well as \eqn{I(X_{d};Y_{d})} and \eqn{I(X_{d};Y_{d})-cplx(X_{d};Y_{d})}.
 #'
-#' @details For a pair of continuous variables \eqn{X} and \eqn{Y},
-#' the algorithm will iteratively choose cutpoints on \eqn{X} then on \eqn{Y},
-#' maximizing \eqn{I(X_{d};Y_{d}) - cplx(X_{d};Y_{d})} where
-#' \eqn{cplx(X_{d};Y_{d})} is the complexity cost of the considered
-#' discretizations of \eqn{X} and \eqn{Y} (see Cabeli 2020).
-#' Upon convergence, the discretization scheme of \eqn{X_{d}} and \eqn{Y_{d}}
-#' is returned as well as \eqn{I(X_{d};Y_{d})}
-#' and \eqn{I(X_{d};Y_{d})-cplx(X_{d};Y_{d})}.
-#'
-#' With a set of conditioning variables \eqn{U}, the discretization scheme
-#' maximizes each term of the sum
+#' With a set of conditioning variables \eqn{U}, the discretization scheme maximizes each term of the sum
 #' \eqn{I(X;Y|U) \sim 0.5*(I(X_{d};Y_{d}, U_{d}) - I(X_{d};U_{d}) + I(Y_{d};X_{d}, U_{d}) - I(Y_{d};U_{d}))}.
 #'
 #' Discrete variables can be passed as factors and will be used "as is" to maximize each term.
 #'
+#'
 #' @references
 #' \itemize{
-#' \item Cabeli \emph{et al.}, PLoS Comput. Biol. 2020, \href{https://journals.plos.org/ploscompbiol/article?id=10.1371/journal.pcbi.1007866}{Learning clinical networks from medical records based on information estimates in mixed-type data}
+#' \item Verny et al., \emph{PLoS Comp. Bio. 2017.}  https://doi.org/10.1371/journal.pcbi.1005662
+#' \item Cabeli et al., \emph{PLoS Comp. Bio. 2020.}  https://doi.org/10.1371/journal.pcbi.1007866
+#' \item Affeldt et al., \emph{Bioinformatics 2016}
 #' }
 #'
-#' @param x [a vector]
-#' The \eqn{X} vector that contains the observational data of the first variable.
-#' @param y [a vector]
-#' The \eqn{Y} vector that contains the observational data of the second variable.
+#' @param X [a vector]
+#' A vector that contains the observational data of the first variable.
+#' @param Y [a vector]
+#' A vector that contains the observational data of the second variable.
 #' @param matrix_u [a numeric matrix]
 #' The matrix with the observations of as many columns as conditioning variables.
 #' @param maxbins [an int]
 #' The maximum number of bins desired in the discretization. A lower number makes the computation faster, a higher
 #' number allows finer discretization (by default : 5 * cubic root of N).
 #' @param cplx [a string]
-#' The complexity used in the dynamic programming:
-#' \itemize{
-#' \item["bic"] Bayesian Information Criterion
-#' \item["nml"] Normalized Maximum Likelihood, more accurate complexity cost
-#' compared to BIC, especially on small sample size.
-#' }
+#' The complexity used in the dynamic programming. Either "mdl" for Minimum description Length or
+#' "nml" for Normalized Maximum Likelihood, which is less costly in the finite sample case and
+#' will allow more bins than mdl.
 #' @param n_eff [an int]
-#' @param n_eff [an integer]
-#' The effective number of samples. When there is significant autocorrelation
-#' between successive samples, you may want to specify an effective number of
-#' samples that is lower than the total number of samples.
+#' The number of effective samples. When there is significant autocorrelation in the samples you may
+#' want to specify a number of effective samples that is lower than the number of points in the distribution.
 #' @param sample_weights [a vector of floats]
-#' Individual weights for each sample, used for the same reason as the effective
-#' number of samples but with individual weights.
-#' @param is_continuous [a vector of booleans]
-#' Specify if each variable is to be treated as continuous (TRUE)
-#' or discrete (FALSE) in a logical vector of length ncol(matrix_u) + 2,
-#' in the order [X, Y, U1, U2...]. By default, factors and character vectors
-#' are treated as discrete, and numerical vectors as continuous.
+#' Individual weights for each sample, used for the same reason as the effective sample number but with individual
+#' precision.
+#' @param is_discrete [a vector of booleans]
+#' Specify if each variable is to be treated as discrete (TRUE) or continuous (FALSE) in a
+#' logical vector of length ncol(matrix_u) + 2, in the order [X, Y, U1, U2...]. By default,
+#' factors and character vectors are treated as discrete, and numerical vectors as continuous.
 #' @param plot [a boolean]
-#' Specify whether the resulting XY optimum discretization is to be plotted
-#' (requires `ggplot2` and `gridExtra`).
+#' Specify if the XY joint space with discretization scheme is to be plotted or not (requires
+#' ggplot2 and gridExtra).
 #'
 #' @return A list that contains :
 #' \itemize{
 #' \item{two vectors containing the cutpoints for each variable :
-#' \emph{cutpoints1} corresponds to \emph{x},
-#' \emph{cutpoints2} corresponds to \emph{y}.}
-#' \item{\emph{n_iterations} is the number of iterations performed before
-#' convergence of the (C)MI estimation.}
-#' \item{\emph{iteration1, iteration2, ...}, lists containing
-#' the cutpoint vectors for each iteration.}
-#' \item{\emph{info} and \emph{infok}, the estimated (C)MI value
-#' and (C)MI minus the complexity cost.}
+#' \emph{cutpoints1} corresponds to \emph{X},
+#' \emph{cutpoints2} corresponds to \emph{Y}.}
+#' \item{\emph{niterations} is the number of iterations performed before convergence of the (C)MI estimation.}
+#' \item{\emph{iterationN}, lists contatining the cutpoint vectors for each iteration.}
+#' \item{\emph{info} and \emph{infok}, the estimated (C)MI value and (C)MI minus the complexity cost.}
 #' \item{if \emph{plot} == TRUE, a plot object (requires ggplot2 and gridExtra).}
 #' }
 #' @export
@@ -109,7 +83,7 @@
 #' Y <- as.numeric(Z == 1) + as.numeric(Z == 2) + 0.2 * rnorm(N)
 #' res <- miic::discretizeMutual(X, Y, cplx = "nml")
 #' message("I(X;Y) = ", res$info)
-#' res <- miic::discretizeMutual(X, Y, matrix(Z, ncol = 1), is_continuous = c(TRUE, TRUE, FALSE))
+#' res <- miic::discretizeMutual(X, Y, matrix(Z, ncol = 1), is_discrete = c(FALSE, FALSE, TRUE))
 #' message("I(X;Y|Z) = ", res$info)
 #'
 #'
@@ -122,18 +96,18 @@
 #' res <- discretizeMutual(X, Y, matrix_u = matrix(Z, ncol = 1), plot = TRUE)
 #' message("I(X;Y|Z) = ", res$info)
 #' }
-#-------------------------------------------------------------------------------
-discretizeMutual <- function(x,
-                             y,
+#'
+discretizeMutual <- function(X,
+                             Y,
                              matrix_u = NULL,
                              maxbins = NULL,
                              cplx = "nml",
                              n_eff = NULL,
                              sample_weights = NULL,
-                             is_continuous = NULL,
+                             is_discrete = NULL,
                              plot = TRUE) {
-  nameDist1 <- deparse(substitute(x))
-  nameDist2 <- deparse(substitute(y))
+  nameDist1 <- deparse(substitute(X))
+  nameDist2 <- deparse(substitute(Y))
   # Check the input arguments
   if (is.null(matrix_u)) {
     nbrU <- 0
@@ -141,10 +115,10 @@ discretizeMutual <- function(x,
     nbrU <- ncol(matrix_u)
   }
 
-  if (is.null(is_continuous)) {
+  if (is.null(is_discrete)) {
     is_discrete <- c(
-      (is.character(x) || is.factor(x)),
-      (is.character(y) || is.factor(y))
+      (is.character(X) || is.factor(X)),
+      (is.character(Y) || is.factor(Y))
     )
     if (nbrU > 0) {
       for (z in 1:nbrU) {
@@ -152,54 +126,52 @@ discretizeMutual <- function(x,
           is.factor(matrix_u[, z])))
       }
     }
-    is_continuous <- (!is_discrete)
-  }
-  else
-    is_discrete <- (!is_continuous)
-  if (all(is_discrete[1:2])) {
-    stop("Either x or y must be continuous to be discretized.")
   }
 
-  if (!(is.vector(x) || is.factor(x)) ||
-    !(is.vector(y) || is.factor(y))) {
+  if (all(is_discrete[1:2])) {
+    stop("Either X or Y must be continuous to be discretized.")
+  }
+
+  if (!(is.vector(X) || is.factor(X)) ||
+    !(is.vector(Y) || is.factor(Y))) {
     stop(
       paste0(
-        "Please provide the two samples x and y as numerical vectors ",
+        "Please provide the two samples X and Y as numerical vectors ",
         "for continuous variables and factors or character vectors ",
         "for discrete variables."
       )
     )
   }
 
-  if (length(x) != length(y)) {
+  if (length(X) != length(Y)) {
     stop(
       paste0(
         "The two samples must have the same number of observation ",
         "(found ",
-        length(x),
+        length(X),
         " and ",
-        length(y),
+        length(Y),
         " )."
       )
     )
   }
 
   if ((!is.null(sample_weights)) &&
-    (length(sample_weights) != length(x))) {
+    (length(sample_weights) != length(X))) {
     stop(
       paste0(
         "The sample weight vector must be of the same length as the ",
         "number of observations (found ",
         length(sample_weights),
         " while there are ",
-        length(x),
+        length(X),
         " observations)."
       )
     )
   }
 
   if ((!is.null(matrix_u) && !is.matrix(matrix_u)) ||
-    (!is.null(matrix_u) && nrow(matrix_u) != length(x))) {
+    (!is.null(matrix_u) && nrow(matrix_u) != length(X))) {
     stop(
       paste0(
         "matrix_u is not a matrix or its number of rows differs from",
@@ -208,10 +180,10 @@ discretizeMutual <- function(x,
     )
   }
 
-  if (!is.null(is_continuous) && (length(is_continuous) != (2 + nbrU))) {
+  if (!is.null(is_discrete) && (length(is_discrete) != (2 + nbrU))) {
     stop(
       paste0(
-        "The vector passed as is_continuous argument must be the same",
+        "The vector passed as is_discrete argument must be the same",
         " length as the number of variables, which is ncol(matrix_u) ",
         "+ 2."
       )
@@ -220,9 +192,9 @@ discretizeMutual <- function(x,
 
   # Remove rows for which any input vector is NA
   matrix_u_NA <- matrix()
-  NArows <- logical(length(x))
-  NArows <- NArows | is.na(x)
-  NArows <- NArows | is.na(y)
+  NArows <- logical(length(X))
+  NArows <- NArows | is.na(X)
+  NArows <- NArows | is.na(Y)
   if (!is.null(matrix_u)) {
     for (k in 1:ncol(matrix_u)) {
       NArows <- NArows | is.na(matrix_u[, k])
@@ -236,8 +208,8 @@ discretizeMutual <- function(x,
       " rows with NAs in at least one of the inputs. Running on ",
       length(which(!NArows)), " samples."
     ))
-    x <- x[!NArows]
-    y <- y[!NArows]
+    X <- X[!NArows]
+    Y <- Y[!NArows]
   }
   if (length(which(!NArows)) < 3) {
     stop(paste0(
@@ -252,24 +224,24 @@ discretizeMutual <- function(x,
     }
   }
 
-  initbins <- min(30, round(length(x)**(1 / 3)))
+  initbins <- min(30, round(length(X)**(1 / 3)))
 
-  if (is.null(maxbins) || maxbins > length(x) || maxbins < initbins) {
-    maxbins <- min(length(x), 5 * initbins, 50)
+  if (is.null(maxbins) || maxbins > length(X) || maxbins < initbins) {
+    maxbins <- min(length(X), 5 * initbins, 50)
   }
 
   # Converting factors to discrete numerical variables
-  X_orig <- x
-  Y_orig <- y
+  X_orig <- X
+  Y_orig <- Y
   if (is_discrete[1]) {
-    x <- as.factor(x)
-    levels(x) <- 1:nlevels(x)
-    x <- as.numeric(x)
+    X <- as.factor(X)
+    levels(X) <- 1:nlevels(X)
+    X <- as.numeric(X)
   }
   if (is_discrete[2]) {
-    y <- as.factor(y)
-    levels(y) <- 1:nlevels(y)
-    y <- as.numeric(y)
+    Y <- as.factor(Y)
+    levels(Y) <- 1:nlevels(Y)
+    Y <- as.numeric(Y)
   }
   if (nbrU > 0) {
     for (l in 0:(nbrU - 1)) {
@@ -280,9 +252,10 @@ discretizeMutual <- function(x,
       }
     }
   }
+  is_continuous <- !is_discrete
 
   # Pass complexity parameter as int
-  if (cplx == "bic") {
+  if (cplx == "mdl") {
     intcplx <- 0
   } else if (cplx == "nml") {
     intcplx <- 1
@@ -290,7 +263,7 @@ discretizeMutual <- function(x,
     warning(
       paste0(
         "cplx parameter not understood, please specify either ",
-        "\'bic\' or \'nml\'. Running with the default option ",
+        "\'mdl\' or \'nml\'. Running with the default option ",
         "(nml)."
       )
     )
@@ -298,14 +271,14 @@ discretizeMutual <- function(x,
   }
 
   if (is.null(n_eff)) {
-    n_eff <- length(x)
+    n_eff <- length(X)
   }
 
   if (is.null(sample_weights)) {
     sample_weights <- numeric(0);
   }
 
-  input_data = data.frame(x,y)
+  input_data = data.frame(X,Y)
   if(!all(is.na(matrix_u_NA))) input_data = cbind(input_data, matrix_u_NA)
   n_samples <- nrow(input_data)
   n_nodes <- ncol(input_data)
@@ -348,8 +321,8 @@ discretizeMutual <- function(x,
   niterations <- nrow(rescpp$cutpointsmatrix) / maxbins
 
   result <- list()
-  epsilon <- min(c(sd(x), sd(y))) / 100
-  result$n_iterations <- niterations
+  epsilon <- min(c(sd(X), sd(Y))) / 100
+  result$niterations <- niterations
   for (i in 0:(niterations - 1)) {
     result[[paste0("iteration", i + 1)]] <- list()
     for (l in 1:2) {
@@ -358,10 +331,10 @@ discretizeMutual <- function(x,
           (1:maxbins)]
         clean_cutpoints <- clean_cutpoints[clean_cutpoints != -1]
         if (l == 1) {
-          data <- x
+          data <- X
         } else {
           if (l == 2) {
-            data <- y
+            data <- Y
           } else {
             data <- matrix_u[, l - 2]
           }
@@ -404,7 +377,7 @@ discretizeMutual <- function(x,
   if (plot) {
     if (base::requireNamespace("ggplot2", quietly = TRUE) & base::requireNamespace("gridExtra", quietly = TRUE)) {
       if (!any(is_discrete[1:2])) {
-        result$plot <- jointplot_hist(x, y, result, nameDist1, nameDist2)
+        result$plot <- jointplot_hist(X, Y, result, nameDist1, nameDist2)
       } else if (!all(is_discrete[1:2])) {
         result$plot <- barplot_disc(
           X_orig,
@@ -423,9 +396,8 @@ discretizeMutual <- function(x,
   result
 }
 
-#-------------------------------------------------------------------------------
 # Plot functions
-#-------------------------------------------------------------------------------
+
 axisprint <- function(x) {
   sprintf("%6s", x)
 }

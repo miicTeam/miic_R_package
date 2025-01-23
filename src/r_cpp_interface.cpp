@@ -14,6 +14,7 @@ constexpr double kMagnitudeTies = 0.00005;
 
 using namespace structure;
 using Rcpp::as;
+using Rcpp::Rcout;
 using std::vector;
 
 void setEnvironmentFromR(const Rcpp::List& input_data,
@@ -49,8 +50,8 @@ void setEnvironmentFromR(const Rcpp::List& input_data,
   if (arg_list.containsElementNamed("orientation"))
     environment.orientation = as<bool>(arg_list["orientation"]);
 
-  if (arg_list.containsElementNamed("ort_proba_ratio"))
-    environment.ort_proba_ratio = as<double>(arg_list["ort_proba_ratio"]);
+  if (arg_list.containsElementNamed("ori_proba_ratio"))
+    environment.ori_proba_ratio = as<double>(arg_list["ori_proba_ratio"]);
 
   if (arg_list.containsElementNamed("propagation"))
     environment.propagation = as<bool>(arg_list["propagation"]);
@@ -79,7 +80,7 @@ void setEnvironmentFromR(const Rcpp::List& input_data,
     environment.test_mar = as<bool>(arg_list["test_mar"]);
 
   if (arg_list.containsElementNamed("cplx")) {
-    if (as<std::string>(arg_list["cplx"]).compare("bic") == 0)
+    if (as<std::string>(arg_list["cplx"]).compare("mdl") == 0)
       environment.cplx = 0;
   }
 
@@ -116,7 +117,6 @@ void setEnvironmentFromR(const Rcpp::List& input_data,
           environment.edges(i, j).status = 0;
           environment.edges(i, j).status_init = 0;
           environment.edges(i, j).status_prev = 0;
-          environment.edges(i, j).proba_head = -1;
         }
   }
 
@@ -240,6 +240,13 @@ void setEnvironmentFromR(const Rcpp::List& input_data,
     auto black_box_vec = as<vector<int>>(arg_list["black_box"]);
     int n_pairs = black_box_vec.size() / 2;
     environment.readBlackbox(Grid2d<int>(n_pairs, 2, std::move(black_box_vec)));
+  }
+
+  if (arg_list.containsElementNamed("interact_edges")) {
+    auto interact_mat = as<vector<int>>(arg_list["interact_edges"]);
+    int n_pairs = interact_mat.size() / 2;
+    // int n_cols = interact_mat.size() ;
+    environment.createInteractEdges(Grid2d<int>( n_pairs, 2, std::move(interact_mat)));
   }
 }
 }  // namespace utility
