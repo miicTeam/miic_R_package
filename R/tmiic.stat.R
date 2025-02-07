@@ -122,11 +122,12 @@ tmiic_ajust_window_for_nb_samples <- function (list_traj, n_layers, delta_t,
 tmiic_estimate_dynamic <- function (list_traj, state_order, max_nodes=50,
                                          verbose=1)
   {
-  # If n_layers and delta_t all defined, nothing to do
+  # If n_layers and delta_t all defined, nothing to do (need only to return
+  # the state_order item as this case can only happen when called by tMiicStat)
   #
-  if (  (! any (is.na (state_order$n_layers) ) )
-     && (! any (is.na (state_order$delta_t ) ) ) )
-    return (state_order)
+  if (  ( ! any (is.na (state_order$n_layers) ) )
+     && ( ! any (is.na (state_order$delta_t ) ) ) )
+    return (list ("state_order" = state_order) )
   #
   # We are going to estimate to temporal dynamic because we need to fill out
   # the missing values in n_layers and/or delta_t.
@@ -167,9 +168,16 @@ tmiic_estimate_dynamic <- function (list_traj, state_order, max_nodes=50,
   var_names <- colnames(list_traj[[1]])
   length_to_test <- min (unlist (lapply (list_traj, FUN=function (x) {
     ifelse ( nrow(x) <= 1, NA, nrow(x) ) } ) ), na.rm=T)
-  alphas_per_var <- rep (NA, n_vars)
-  taus_per_var <- rep (NA, n_vars)
-  var_idx = 1
+  mat_lags_vanish <- matrix (NA_integer_, nrow=n_ts, ncol=n_vars)
+  colnames(mat_lags_vanish) <- var_names
+  mat_lags_4_alpha <- matrix (NA_integer_, nrow=n_ts, ncol=n_vars)
+  colnames(mat_lags_4_alpha) <- var_names
+  mat_alphas <- matrix (NA_real_, nrow=n_ts, ncol=n_vars)
+  colnames(mat_alphas) <- var_names
+  alphas_per_var <- rep (NA_real_, n_vars)
+  names(alphas_per_var) <- var_names
+  taus_per_var <- rep (NA_integer_, n_vars)
+  names(taus_per_var) <- var_names
   for (var_idx in 1:n_vars)
     {
     alphas_per_ts <- rep (NA, n_ts)
@@ -185,11 +193,12 @@ tmiic_estimate_dynamic <- function (list_traj, state_order, max_nodes=50,
       acf_vanish <- which (acf_res$acf[,1,1] < 0.05)
       if ( length (acf_vanish) == 0 )
         acf_vanish <- length_to_test
-      lag_vanish <- acf_res$lag[min (acf_vanish), 1, 1]
-      lag_4_alpha <- max ( 1, round (lag_vanish / 2) )
-      alphas_per_ts[[ts_idx]] <- acf_res$acf[lag_4_alpha+1,1,1] ^ (1/lag_4_alpha)
+      mat_lags_vanish[ts_idx, var_idx] <- acf_res$lag[min (acf_vanish), 1, 1]
+      mat_lags_4_alpha[ts_idx, var_idx] <- max ( 1, round (mat_lags_vanish[ts_idx, var_idx] / 2) )
+      mat_alphas[ts_idx, var_idx] <- acf_res$acf[
+        mat_lags_4_alpha[ts_idx, var_idx]+1,1,1] ^ (1/mat_lags_4_alpha[ts_idx, var_idx])
       }
-    alphas_per_var[[var_idx]] <- mean (alphas_per_ts, na.rm=T)
+    alphas_per_var[[var_idx]] <- mean (mat_alphas[,var_idx], na.rm=T)
     taus_per_var[[var_idx]] <- round ( (1+alphas_per_var[[var_idx]])
                                      / (1-alphas_per_var[[var_idx]]) )
     }
@@ -202,16 +211,6 @@ tmiic_estimate_dynamic <- function (list_traj, state_order, max_nodes=50,
   #
   # Compute alphas range and deduce taus range
   #
-  # TODO return intermediate values
-  # print ("alphas_per_var")
-  # print (alphas_per_var)
-  # print ("taus")
-  # print (unlist (lapply (alphas_per_var, FUN=function(x) {
-  #   return ( (1+x) / (1-x) ) })))
-  # print ("mean taus")
-  # print (mean (unlist (lapply (alphas_per_var, FUN=function(x) {
-  #   return ( (1+x) / (1-x) ) })), na.rm=T))
-
   tau_min  <- max ( 1, min (taus_per_var, na.rm=T) )
   tau_mean <- max ( 1, round (mean (taus_per_var, na.rm=T), 0) )
   tau_max  <- min ( length_to_test, max  (taus_per_var, na.rm=T) )
@@ -226,6 +225,8 @@ tmiic_estimate_dynamic <- function (list_traj, state_order, max_nodes=50,
   # temporal discovery. Now estimate the number of layers 'n_layers'
   # and/or number of time steps between two layers 'delta_t'
   #
+  n_layers = NULL
+  delta_t = NULL
   if (  all (!is.na (state_order$n_layers)) ) # n_layers known => NAs in delta_t
     {
     state_order$delta_t[is.na(state_order$delta_t)] <- max ( 1,
@@ -330,7 +331,15 @@ tmiic_estimate_dynamic <- function (list_traj, state_order, max_nodes=50,
         ifelse (n_layers > 2, paste0 (", t-", tau), "") )
     }
 
-  return (state_order)
+  ret = list ("state_order" = state_order,
+              "n_layers" = n_layers,
+              "delta_t" = delta_t,
+              "lags_vanish" = mat_lags_vanish,
+              "lags_alphas" = mat_lags_4_alpha,
+              "alphas" =  mat_alphas,
+              "alphas_mean" = alphas_per_var,
+              "taus" = taus_per_var)
+  return (ret)
   }
 
 #-------------------------------------------------------------------------------
@@ -374,7 +383,6 @@ tmiic_lag_state_order <- function (state_order)
   n_layers_back_idx <- 1
   for (n_layers_back_idx in 1:n_layers_back_max)
     {
-    var_idx = 1
     for (var_idx in 1:n_vars)
       {
       n_layers_back_of_var <- state_lagged[var_idx, "n_layers"]  - 1
@@ -569,14 +577,14 @@ tmiic_lag_input_data <- function (list_traj, state_order, keep_max_data=FALSE)
 #===============================================================================
 # estimateTemporalDynamic
 #-------------------------------------------------------------------------------
-#' Estimation of the temporal causal discovery parameters
+#' Estimation of the temporal stationary causal discovery parameters.
 #'
 #' @description This function estimates the number of layers and number of
 #' time steps between each layer that are needed to cover the dynamic of a
-#' temporal dataset when reconstructing a temporal causal graph.
+#' stationary temporal dataset when reconstructing a temporal causal graph.
 #' Using autocorrelation decay, the function computes the average relaxation
-#' time of the variables and, based on a maximum number of nodes, deduces
-#' the number of layers and number of time steps between each layer to be used.
+#' time of the variables and, based on a maximum number of nodes, deduces the
+#' number of layers and number of time steps between each layer to be used.
 #'
 #' @param input_data [a data frame]
 #' A data frame containing the observational data.\cr
@@ -614,10 +622,11 @@ tmiic_lag_input_data <- function (list_traj, state_order, keep_max_data=FALSE)
 #'
 #' @param mov_avg [an integer] Optional, NULL by default.\cr
 #' When an integer>= 2 is supplied, a moving average operation is applied
-#' to all the non discrete and not contextual variables. If no \emph{state_order}
-#' is provided, the discrete/continuous variables are deduced from the input
-#' data. If you want to apply a moving average only on specific columns,
-#' consider to use a \emph{mov_avg} column in the \emph{state_order} parameter.
+#' to all the non discrete and not contextual variables.
+#' If no \emph{state_order} is provided, the discrete/continuous variables
+#' are deduced from the input data.
+#' If you want to apply a moving average only on specific columns, consider
+#' to use a \emph{mov_avg} column in the \emph{state_order} parameter.
 #'
 #' @param max_nodes [a positive integer] The maximum number of nodes in the
 #' final time-unfolded causal graph. The more nodes allowed in the temporal
@@ -628,45 +637,539 @@ tmiic_lag_input_data <- function (list_traj, state_order, keep_max_data=FALSE)
 #' input data).
 #'
 #' @param verbose [an integer value in the range [0,2], 1 by default]
-#' The level of verbosity: 0 = no display, 1 = summary display, 2 = full display.
+#' The level of verbosity: 0 = no display, 1 = summary display, 2 = full
+#' display.
 #'
-#' @return A named list with two items:
+#' @return A named list with :
 #' \itemize{
-#'  \item{\emph{n_layers}: the number of layers}
-#'  \item{\emph{delta_t}: the number of time steps between the layers}
+#'  \item{\emph{n_layers}: the number of layers. }
+#'  \item{\emph{delta_t}: the number of time steps between the layers. }
+#' }
+#'
+#' These extra items are also available for more details on how \emph{n_layers}
+#' and \emph{delta_t} have been estimated:
+#'
+#' \itemize{
+#'  \item{\emph{lags_vanish}: the matrix (trajectories * variables) of lags
+#'  where autocorrelaton vanishes. }
+#'  \item{\emph{lags_alphas}: the matrix (trajectories * variables) of lags
+#'  used to estimate the alphas. }
+#'  \item{\emph{alphas}: the matrix (trajectories * variables) of alphas. }
+#'  \item{\emph{alphas_mean}: the mean of alphas for each variable. }
+#'  \item{\emph{taus}: the relaxation time for each variable. }
 #' }
 #'
 #' @export
 #-------------------------------------------------------------------------------
-# TODO add lags, alpha and tau in returned values
-estimateTemporalDynamic <- function (input_data, state_order=NULL, mov_avg=NULL,
-                                     max_nodes=50, verbose=1)
+estimateTemporalDynamic <- function (input_data, state_order=NULL,
+                                     mov_avg=NULL, max_nodes=50, verbose=1)
   {
-  input_data <- check_input_data (input_data, "TS")
-  state_order <- check_state_order (input_data, state_order, "TS")
+  # We check/prepare the data almost as prepare_inputs and tmiic_prepare_inputs
+  # would do until we get the list of trajectories from the input_data
+  #
+  list_ret = list()
+  list_ret$input_data <- check_input_data (input_data, "TS")
+  list_ret$params <- check_parameters (input_data = list_ret$input_data,
+                                       n_threads = 1,
+                                       cplx = "nml",
+                                       orientation = TRUE,
+                                       ort_proba_ratio = 1,
+                                       ort_consensus_ratio = NULL,
+                                       propagation = FALSE,
+                                       latent = "orientation",
+                                       n_eff = -1,
+                                       n_shuffles = 0,
+                                       conf_threshold = 0,
+                                       sample_weights = NULL,
+                                       test_mar = TRUE,
+                                       consistent = "no",
+                                       max_iteration = 100,
+                                       consensus_threshold = 0.8,
+                                       negative_info = FALSE,
+                                       mode = "TS",
+                                       verbose = verbose)
+
+  list_ret$state_order <- check_state_order (
+    list_ret$input_data, state_order, list_ret$params$mode)
   state_order$n_layers <- NULL
   state_order$delta_t <- NULL
-  # TODO review part1/2
-  state_order <- tmiic_check_state_order_part1 (state_order)
-  list_ret <- tmiic_check_parameters (state_order = state_order,
-                                     params = list(),
-                                     n_layers = NULL,
-                                     delta_t = NULL,
-                                     mov_avg = mov_avg,
-                                     keep_max_data = F,
-                                     max_nodes = max_nodes)
-  state_order <- tmiic_check_state_order_part2 (list_ret$state_order)
+  #
+  # Extra checks needing several inputs
+  #
+  list_ret = check_cross_inputs (list_ret)
+  #
+  # Still as prepare_inputs to avoid any issue with the functions called
+  # =>  move the non lagged inputs into a nested list 'non_lagged',
+  #
+  list_ret <- list ("params" = list_ret$params, "non_lagged" = list_ret)
+  list_ret$non_lagged$params = NULL
+  #
+  # Check the temporal params with layer and delta_t not defined
+  #
+  list_ret <- tmiic_check_parameters (
+    list_in = list_ret,
+    n_layers = NULL,
+    delta_t = NULL,
+    mov_avg = mov_avg,
+    keep_max_data = F,
+    max_nodes = max_nodes)
+  #
+  # Still as prepare_inputs to avoid any issue with the functions called
+  # Init / check (/ harmonize if possible) n_layers, delta_t and mov_avg
+  #
+  list_ret <- tmiic_check_state_order (list_in = list_ret)
+  #
+  # Prepare trajectories
+  #
+  list_traj <- tmiic_extract_trajectories (list_ret$non_lagged$input_data)
+  list_traj <- tmiic_mov_avg (list_traj, list_ret$non_lagged$state_order$mov_avg,
+    keep_max_data=list_ret$params$keep_max_data, verbose=list_ret$params$verbose)
+  #
+  # We have the trajectories, we can estimate the dynamic
+  #
+  ret <- tmiic_estimate_dynamic (list_traj,
+    list_ret$non_lagged$state_order, max_nodes=list_ret$params$max_nodes,
+    verbose=list_ret$params$verbose)
 
-  list_traj <- tmiic_extract_trajectories (input_data)
-  list_traj <- tmiic_mov_avg (list_traj, state_order$mov_avg, verbose=verbose)
+  return ( ret [c ("n_layers", "delta_t", "lags_vanish", "lags_alphas",
+                   "alphas", "alphas_mean", "taus") ] )
 
-  state_order <- tmiic_estimate_dynamic (list_traj, state_order,
-    max_nodes=max_nodes, verbose=verbose)
-  n_layers <- unique (state_order$n_layers[ (state_order$var_type == 1)
-                                         & (state_order$is_contextual == 0) ])
-  delta_t <- unique (state_order$delta_t[ (state_order$var_type == 1)
-                                         & (state_order$is_contextual == 0) ])
+  }
 
-  return ( list ("n_layers"=n_layers, "delta_t"=delta_t))
+#-------------------------------------------------------------------------------
+# tMiicStat
+#-------------------------------------------------------------------------------
+#' tMiicStat, temporal version of miic to learn temporal causal networks
+#' including latent variables from stationary time series.
+#'
+#' @description tMiicStat extends the miic method (Multivariate
+#' Information-based Inductive Causation) to stationary time series.
+#' It combines constraint-based, information-theoretic approaches and
+#' temporality to disentangle direct from indirect effects amongst correlated
+#' contemporaneous or lagged variables, including cause-effect relationships
+#' and the effect of unobserved latent causes.
+#'
+#' @details tMiicStat reorganizes the dataset using the \emph{n_layers} and
+#' \emph{delta_t} parameters (that are estimated automatically if not
+#' supplied) to transform the time steps into lagged samples.
+#' As starting point, a lagged graph is created with only edges having at
+#' least one node laying on the last time step.
+#' Then, miic standard algorithm is applied to remove dispensable edges.
+#' The remaining edges are then duplicated to ensure time invariance
+#' (stationary dynamic) and oriented using the temporality and the
+#' signature of causality in observational data. The use of temporal mode
+#' is presented in Simon 2024.
+#'
+#' tMiicStat is mostly compatible with the classsical miic method and, as of,
+#' it relies on information theoretic principles which replace (conditional)
+#' independence tests as described in Affeldt 2015, Cabeli 2020,
+#' Cabeli 2021 and Ribeiro-Dantas 2024. It deals with both categorical and
+#' continuous variables by performing optimal context-dependent discretization.
+#' As such, the input data frame may contain both numerical columns which will
+#' be treated as continuous, or character / factor columns which will be treated
+#' as categorical. For further details on the optimal discretization method and
+#' the conditional independence test, see the function discretizeMutual.
+#' The user may also choose to run tMiicStat with scheme presented in Li 2019
+#' and Ribeiro-Dantas 2024 to improve the end result's interpretability
+#' by ensuring consistent separating sets.
+#'
+#' As tMiicStat provides the same optional features as miic, most of the miic
+#' parameters can be used exactly in the same way and are not described
+#' extensively here. Detailed information about the common parameters is
+#' available in the \code{\link{miic}} documentation.
+#'
+#' @seealso \code{\link{miic}} for the non temporal method
+#' and \code{\link{discretizeMutual}} for optimal discretization and
+#' (conditional) independence test.
+#'
+#' @references
+#' \itemize{
+#' \item Simon \emph{et al.}, eLife 2024, \href{https://www.biorxiv.org/content/10.1101/2024.02.06.579177v1.abstract}{CausalXtract: a flexible pipeline to extract causal effects from live-cell time-lapse imaging data}
+#' \item Ribeiro-Dantas \emph{et al.}, iScience 2024, \href{https://arxiv.org/pdf/2303.06423}{Learning interpretable causal networks from very large datasets, application to 400,000 medical records of breast cancer patients}
+#' \item Cabeli \emph{et al.}, NeurIPS 2021, \href{https://why21.causalai.net/papers/WHY21_24.pdf}{Reliable causal discovery based on mutual information supremum principle for finite dataset}
+#' \item Cabeli \emph{et al.}, PLoS Comput. Biol. 2020, \href{https://journals.plos.org/ploscompbiol/article?id=10.1371/journal.pcbi.1007866}{Learning clinical networks from medical records based on information estimates in mixed-type data}
+#' \item Li \emph{et al.}, NeurIPS 2019, \href{http://papers.nips.cc/paper/9573-constraint-based-causal-structure-learning-with-consistent-separating-sets.pdf}{Constraint-based causal structure learning with consistent separating sets}
+#' \item Verny \emph{et al.}, PLoS Comput. Biol. 2017, \href{https://journals.plos.org/ploscompbiol/article?id=10.1371/journal.pcbi.1005662}{Learning causal networks with latent variables from multivariate information in genomic data}
+#' \item Affeldt \emph{et al.}, UAI 2015, \href{https://auai.org/uai2015/proceedings/papers/293.pdf}{Robust Reconstruction of Causal Graphical Models based on Conditional 2-point and 3-point Information}
+#' }
+#'
+#' @param input_data [a data frame, required]
+#'
+#' A n*(1+d) data frame (n samples, 1 column for the time steps, d variables)
+#' that contains the observational data.
+#'
+#' The expected data frame layout is variables as columns
+#' and time series/time steps as rows.
+#' The time step information must be supplied in the first column and,
+#' for each time series, be consecutive and in ascending order (increment of 1).
+#' Multiple trajectories can be provided, tMiicStat will consider that a new
+#' trajectory starts each time a smaller time step than the one of the
+#' previous row is encountered.
+#'
+#' Each extra column after the first corresponds to one variable.
+#' The column names correspond to the names of the observed variables.
+#' By default, after the lagging step, numeric columns with at least 5
+#' distinct values will be treated as continuous whilst numeric columns
+#' with less than 5 distinct values, factors and characters will be
+#' considered as categorical.
+#'
+#' @param state_order [a data frame, optional, NULL by default]
+#'
+#' A data frame providing extra information for variables. It is expected to
+#' have d rows where d is the number of input variables and possible columns
+#' are described below. If some variables are missing and, for optional columns,
+#' if they are not provided or contain missing values, default values suitable
+#' for \emph{input_data} will be used.
+#'
+#' \emph{"var_names"} (required) contains the name of each variable as specified
+#' by colnames(input_data)[2:(d+1)]. The time steps column is not considered
+#' as a variable and should not be mentioned in the variables list.
+#'
+#' \emph{"var_type"} (optional) contains a binary value that specifies if each
+#' variable is to be considered as discrete (0) or continuous (1).
+#'
+#' \emph{"levels_increasing_order"} (optional) contains a single character
+#' string with all of the unique levels of the ordinal variable in
+#' increasing order, delimited by comma ','. It will be used during
+#' the post-processing to compute the sign of an edge using Spearman's rank
+#' correlation. If a variable is continuous or is categorical but not ordinal,
+#' this column should be NA.
+#'
+#' \emph{"is_contextual"} (optional) contains a binary value that specifies
+#' if a variable is to be considered as a contextual variable (1) or not (0).
+#' Contextual variables cannot be the child node of any other variable (cannot
+#' have edge with arrowhead pointing to them).
+#'
+#' \emph{"is_consequence"} (ignored) the consequence prior is not compatible
+#' with tMiicStat, such column will be ignored with a warning.
+#'
+#' Several other columns are possible in temporal mode:
+#'
+#' \emph{"n_layers"} (optional) contains an integer value that specifies the
+#' number of layers to be considered for the variable.
+#' Note that if a \emph{"n_layers"} column is present in the \emph{state_order},
+#' its values will overwrite the function parameter.
+#'
+#' \emph{"delta_t"} (optional) contains an integer value that specifies the
+#' number of time steps between each layer for the variable.
+#' Note that if a \emph{"delta_t"} column is present in the \emph{state_order},
+#' its values will overwrite the function parameter.
+#'
+#' \emph{"mov_avg"} (optional) contains an integer value that specifies the size
+#' of the moving average window to be applied to the variable.
+#' Note that if \emph{"mov_avg"} column is present in the \emph{state_order},
+#' its values will overwrite the function parameter.
+#'
+#' @param true_edges [a data frame, optional, NULL by default]
+#'
+#' A data frame containing the edges of the true graph for computing
+#' performance after the run.\cr
+#' The expected layout is a three columns data frame,
+#' with the first two columns being variable names and the third the lag.
+#' Variables names must exist in the \emph{input_data} data frame and the lag
+#' must be valid in the time unfolded graph. e.g. a row var1, var2, 3 is valid
+#' with \emph{n_layers} = 4 + \emph{delta_t} = 1 or
+#' \emph{n_layers} = 2 + \emph{delta_t} = 3
+#' but not for \emph{n_layers} = 2 + \emph{delta_t} = 2 as there is no matching
+#' edge in the time unfolded graph.\cr
+#' Please note that the order is important: "var1 var2 3" is interpreted as
+#' var1_lag3 -> var2_lag0.
+#' Please note also that, for contextual variables that are not lagged,
+#' the expected value in the third column for the time lag is NA.
+#'
+#' @param black_box [a data frame, optional, NULL by default]
+#'
+#' A data frame containing pairs of variables that will be considered
+#' as independent during the network reconstruction. In practice, these edges
+#' will not be included in the skeleton initialization and cannot be part of
+#' the final result.\cr
+#' The expected layout is a three columns data frame,
+#' with the first two columns being variable names and the third the lag.
+#' Variables names must exist in the \emph{input_data} data frame and the lag
+#' must be valid in the time unfolded graph. e.g. a row var1, var2, 3 is valid
+#' with \emph{n_layers} = 4 + \emph{delta_t} = 1 or
+#' \emph{n_layers} = 2 + \emph{delta_t} = 3
+#' but not for \emph{n_layers} = 2 + \emph{delta_t} = 2 as there is no matching
+#' edge in the time unfolded graph.\cr
+#' Please note that the order is important: var1, var2, 3 is interpreted as
+#' var1_lag3 - var2_lag0.
+#' Please note also that, for contextual variables that are not lagged,
+#' the expected value in the third column for the time lag is NA.
+#'
+#' @param n_threads [a positive integer, optional, 1 by default, see \code{\link{miic}}]
+#' @param cplx [a string, optional, "nml" by default, possible values:
+#' "nml", "bic", see \code{\link{miic}}]
+#' @param orientation [a boolean value, optional, TRUE by default, see \code{\link{miic}}]
+#' @param ort_proba_ratio [a floating point between 0 and 1, optional,
+#' 1 by default, see \code{\link{miic}}]
+#' @param ort_consensus_ratio [a floating point between 0 and 1, optional,
+#' NULL by default, see \code{\link{miic}}]
+#' @param propagation [a boolean value, optional, FALSE by default, see \code{\link{miic}}]
+#' @param latent [a string, optional, "orientation" by default, possible
+#' values: "orientation", "no", "yes", see \code{\link{miic}}]
+#' @param n_shuffles [a positive integer, optional, 0 by default, see \code{\link{miic}}]
+#' @param conf_threshold [a positive floating point, optional, 0 by default, see \code{\link{miic}}]
+#' @param test_mar [a boolean value, optional, TRUE by default, see \code{\link{miic}}]
+#' @param max_iteration [a positive integer, optional, 100 by default, see \code{\link{miic}}]
+#' @param negative_info [a boolean value, optional, FALSE by default, see \code{\link{miic}}]
+#' @param verbose [an integer value, optional, 1 by default, see \code{\link{miic}}]
+#'
+#' @param n_eff [a positive integer, optional, -1 by default]
+#'
+#' The \emph{n_eff}  parameter has a specific usage in tMiicStat.
+#' In non temporal miic, \emph{n_eff} is the number of effective
+#' samples and can be provided when dealing with correlated samples.
+#' In temporal datasets, samples are expected to be correlated as the past of
+#' each variable is likely correlated with its value of the next time step.
+#' However, there is no correction to apply has the temporal autocorrelation
+#' is taken into account during the lagged network reconstruction.
+#' So, the typically case of use of the \emph{n_eff} parameter in temporal mode
+#' is not the auto-correlation but, when the \emph{delta_t} value is > 1,
+#' as the number of effective samples is divided by \emph{delta_t}
+#' after the lagging process.
+#' When set to its default (-1), tMiicStat will automatically adjust this value
+#' to the total number of time steps / \emph{delta_t}.
+#'
+#' @param n_layers [an integer, optional, NULL by default, must be >= 2
+#' if supplied]
+#'
+#' \emph{n_layers} defines the number of layers
+#' that will be considered for the variables in the time unfolded graph.
+#' The layers will be distant of \emph{delta_t} time steps.
+#' If not supplied, the number of layers is estimated from the dynamic of the
+#' dataset and the maximum number of nodes \emph{max_nodes} allowed in the
+#' final lagged graph.
+#'
+#' @param delta_t [an integer, optional, NULL by default, must be >= 1
+#' if supplied]
+#'
+#' \emph{delta_t} defines the number of time steps between each layer.
+#' e.g. on 1000 time steps with \emph{n_layers} = 3 and \emph{delta_t} = 7,
+#' the time steps kept for the samples conversion will be 1, 8, 15
+#' for the first sample, the next sample will use 2, 9, 16 and so on.
+#' If not supplied, the number of time steps between layers is estimated
+#' from the dynamic of the dataset and the number of layers.
+#'
+#' @param mov_avg [an integer, optional, NULL by default, must be >= 2
+#' if supplied]
+#'
+#' When supplied, a moving average operation is applied to all integer
+#' and numeric variables that are not contextual variables.
+#' If the moving average should only be applied on a part of the numeric
+#' variables, the moving average can be specified in the \emph{state_order}
+#' per variable.
+#'
+#' @param keep_max_data [a boolean value, optional, FALSE by default]
+#'
+#' If TRUE, rows where some NAs have been introduced during the moving averages
+#' and lagging will be kept whilst they will be dropped if FALSE.
+#'
+#' @param max_nodes [an integer, optional, 50 by default]
+#'
+#' Used only if the \emph{n_layers} or \emph{delta_t}
+#' parameters are not supplied. \emph{max_nodes} is used as the maximum number
+#' of nodes in the final time-unfolded graph to compute \emph{n_layers}
+#' and/or \emph{delta_t}.
+#' The default is 50 to produce quick runs and can be increased up to 200
+#' or 300 on recent computers to produce more precise results.
+#'
+#' @return As tMiicStat is the extension of miic to stationary time series,
+#' the object returned is a \emph{miic-like} object enriched with
+#' extra information.
+#'
+#' These following items describe the time unfolded network inferred by
+#' tMiicStat. As they are identical to the ones returned by \emph{miic},
+#' please refer to \code{\link{miic}} for their description:
+#'
+#' \itemize{
+#'  \item{\emph{summary:} a data frame with information about the
+#'  relationship between relevant pair of variables. }
+#'
+#'  \item{\emph{edges:} a data frame with the raw edges output coming from
+#'  the C++ core function. }
+#'
+#'  \item{\emph{triples:} this data frame lists the orientation
+#'  probabilities of the two edges of all unshielded triples of the
+#'  reconstructed network. }
+#'
+#'  \item {\emph{adj_matrix:} the adjacency matrix is a square matrix used to
+#'  represent the inferred graph. }
+#'
+#'  \item {\emph{proba_adj_matrix:} the probability adjacency matrix is
+#'  a square matrix used to represent the orientation probabilities associated
+#'  to the edges tips. }
+#'
+#'  \item {\emph{adj_matrices:} present only when consistency is activated.
+#'  The list of the adjacency matrices, one for each graph
+#'  which is part of the resulting cycle of graphs. }
+#'
+#'  \item {\emph{proba_adj_matrices:} present only when consistency is
+#'  activated. The list of the probability adjacency matrices,
+#'  one for each graph which is part of the resulting cycle of graphs. }
+#'
+#'  \item {\emph{proba_adj_average:} present only when consistency is activated.
+#'  The average probability adjacency matrix is a square matrix used to
+#'  represent the orientation probabilities associated to the edges tips
+#'  of the consensus graph. }
+#'
+#'  \item {\emph{is_consistent:} present only when consistency is activated.
+#'  TRUE if the returned graph is consistent, FALSE otherwise. }
+#'
+#'  \item {\emph{time:} execution time of the different steps and total run-time
+#'  of the causal graph reconstruction. }
+#'
+#'  \item {\emph{interrupted:} TRUE if causal graph reconstruction has been
+#'  interrupted, FALSE otherwise. }
+#'
+#'  \item {\emph{scores:} present only when true edges have been supplied.
+#'  Contains the scores of the returned graph in regard of the ground truth. }
+#'
+#'  \item {\emph{params:} the list of parameters used for the network
+#'  reconstruction. The parameters not supplied are initialized to their default
+#'  values. Otherwise, the parameters are checked and corrected if necessary. }
+#' }
+#'
+#' These following items are similar to the ones returned by miic,
+#' but with a specific organization for tMiicStat:
+#'
+#' \itemize{
+#'  \item {\emph{input_data:} the input data before the lagging process,
+#'  checked and corrected if necessary.
+#'  Please note that these input data correspond to the ones supplied
+#'  as parameter of the tMiicStat function but is not the data used internally
+#'  for the network reconstruction as it is not lagged.
+#'  The lagged input data are available in the \emph{tmiic} sub list. }
+#'
+#'  \item {\emph{state_order:} the state order used before the lagging process.
+#'  If no state order is supplied, it is generated by using default values.
+#'  Otherwise, it is the state order checked and corrected if necessary.
+#'  Please note that this state order layout corresponds to the one supplied
+#'  (or can be supply) as parameter to the tMiicStat function but is not
+#'  the state order used internally for the network reconstruction
+#'  as it is not lagged.
+#'  The lagged stater order is available in the \emph{tmiic} sub list. }
+#'
+#'  \item {\emph{black_box:} present only if a black box has been supplied,
+#'  the black box, before the lagging process, checked and corrected
+#'  if necessary.
+#'  Please note that this black box layout corresponds to the one supplied
+#'  as parameter to the tMiicStat function but is not the black box used
+#'  internally for the network reconstruction as it is not lagged.
+#'  The lagged black box is available in the \emph{tmiic} sub list. }
+#'
+#'  \item {\emph{true_edges:} present only if the true edges have been supplied,
+#'  the true edges, before the lagging process, checked and corrected
+#'  if necessary.
+#'  Please note that this true edges layout corresponds to the one supplied
+#'  as parameter to the tMiicStat function but is not the true edges used
+#'  internally for the network reconstruction as it is not lagged.
+#'  The lagged true edges are available in the \emph{tmiic} sub list. }
+#' }
+#'
+#' In addition, tMiicStat provides extra information dedicated to the network
+#' inferrence in temporal mode:
+#'
+#' \itemize{
+#'   \item {\emph{tmiic:} named list containing:
+#'   \itemize{
+#'     \item {\emph{input_data:} the lagged data
+#'     used internally to perform the time unfolded graph reconstruction. }
+#'     \item {\emph{state_order:} the lagged state order
+#'     used internally to perform the time unfolded graph reconstruction. }
+#'     \item {\emph{black_box:} if a black box has been supplied, the lagged
+#'     version used internally to perform the time unfolded graph
+#'     reconstruction. }
+#'     \item {\emph{true_edges:} if true edges have been supplied, the lagged
+#'     version used internally to perform the time unfolded graph
+#'     reconstruction. }
+#'     \item {\emph{stationary:} the inferred network with the list of edges
+#'     completed by stationarity. }
+#'     }
+#'   }
+#' }
+#'
+#' @export
+#' @useDynLib miic
+#' @import Rcpp
+#'
+#' @examples
+#' library(miic)
+#'
+#' # Example on Covid cases (time series toy demo)
+#'
+#' data(covidCases)
+#' # execute MIIC (reconstruct graph in temporal mode)
+#' tmiic_obj <- tMiicStat (input_data = covidCases,
+#' n_layers = 3, delta_t = 1, mov_avg = 14)
+#'
+#' # to plot the default graph (compact)
+#' if(require(igraph)) {
+#'  plot(tmiic_obj)
+#' }
+#'
+#' # to plot the raw temporal network (lagged)
+#' if(require(igraph)) {
+#'   plot(tmiic_obj, display="raw")
+#' }
+#'
+#' # to plot the full temporal network  (lagged and completed by stationarity)
+#' if(require(igraph)) {
+#'   plot(tmiic_obj, display="lagged")
+#' }
+#-------------------------------------------------------------------------------
+tMiicStat <- function (input_data,
+                       state_order = NULL,
+                       true_edges = NULL,
+                       black_box = NULL,
+                       n_threads = 1,
+                       cplx = "nml",
+                       orientation = TRUE,
+                       ort_proba_ratio = 1,
+                       ort_consensus_ratio = NULL,
+                       propagation = FALSE,
+                       latent = "orientation",
+                       n_eff = -1,
+                       n_shuffles = 0,
+                       conf_threshold = 0,
+#                       sample_weights = NULL,
+                       test_mar = TRUE,
+                       consistent = "no",
+                       max_iteration = 100,
+                       consensus_threshold = 0.8,
+                       negative_info = FALSE,
+                       n_layers = NULL,
+                       delta_t = NULL,
+                       mov_avg = NULL,
+                       keep_max_data = FALSE,
+                       max_nodes = 50,
+                       verbose = 1)
+  {
+  return (miic_private (input_data = input_data,
+                        state_order = state_order,
+                        true_edges = true_edges,
+                        black_box = black_box,
+                        n_threads = n_threads,
+                        cplx = cplx,
+                        orientation = orientation,
+                        ort_proba_ratio = ort_proba_ratio,
+                        ort_consensus_ratio = ort_consensus_ratio,
+                        propagation = propagation,
+                        latent = latent,
+                        n_eff = n_eff,
+                        n_shuffles = n_shuffles,
+                        conf_threshold = conf_threshold,
+                        sample_weights = NULL,
+                        test_mar = test_mar,
+                        consistent = consistent,
+                        max_iteration = max_iteration,
+                        consensus_threshold = consensus_threshold,
+                        negative_info = negative_info,
+                        mode = "TS",
+                        n_layers = n_layers,
+                        delta_t = delta_t,
+                        mov_avg = mov_avg,
+                        keep_max_data = keep_max_data,
+                        max_nodes = max_nodes,
+                        verbose = verbose) )
   }
 

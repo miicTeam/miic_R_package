@@ -5,6 +5,10 @@
 
 #include "computation_cache.h"
 #include "structure.h"
+//
+// Verbosity levels: no display, synthetic progress or debug
+//
+enum Verbosity {NONE, PROGRESS, DEBUG};
 
 namespace miic {
 namespace structure {
@@ -92,8 +96,10 @@ struct Environment {
   ExecutionTime exec_time;
   int n_threads = 1;
   CompCache cache;
-
-  bool verbose = false;
+  //
+  // Verbosity level, synthetic progress by default
+  //
+  Verbosity verbose = PROGRESS;
   //
   // Temporal mode
   //

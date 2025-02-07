@@ -152,13 +152,13 @@ bool setBestContributingNode(
 #pragma omp atomic
 #endif
       ++n_jobs_done;
-      if (threadnum == 0 && !environment.verbose)
+      if ( (threadnum == 0) && (environment.verbose == PROGRESS) )
         printProgress(static_cast<double>(n_jobs_done) / n_jobs_total,
             loop_start_time, progress_percentile);
     }
   }  // omp parallel
   if (interrupt) return false;
-  if (!environment.verbose) {
+  if (environment.verbose == PROGRESS) {
     printProgress(1.0, loop_start_time, progress_percentile);  // finish
     Rcerr << '\n';
   }
@@ -179,7 +179,7 @@ bool setBestContributingNode(
 bool searchForConditionalIndependence(Environment& environment) {
   auto& unsettled_list = environment.unsettled_list;
 
-  if (environment.verbose)
+  if (environment.verbose == DEBUG)
     Rcout << "Number of unsettled edges: " << unsettled_list.size() << "\n";
 
   int iter_count = 0;
@@ -219,7 +219,7 @@ bool searchForConditionalIndependence(Environment& environment) {
     top_info->Ixy_ui = res.I;
     top_info->kxy_ui = res.k;
 
-    if (environment.verbose) {
+    if (environment.verbose == DEBUG) {
       Rcout << "Edge " << iter_count << ": " << environment.nodes[X].name
             << " -- " << environment.nodes[Y].name << ":\n";
       Rcout << "ui: {";
@@ -241,7 +241,7 @@ bool searchForConditionalIndependence(Environment& environment) {
       // Search for next candidate separating node
       searchForBestContributingNode(environment, X, Y, /* parallel */ true);
 
-      if (environment.verbose) {
+      if (environment.verbose == DEBUG) {
         int top_z = top_info->top_z;
         Rcout << "Edge " << environment.nodes[X].name << " -- "
               << environment.nodes[Y].name << ", best contributing node: ";
@@ -255,11 +255,11 @@ bool searchForConditionalIndependence(Environment& environment) {
         top_info->connected = 1;
       }
     }
-    if (!environment.verbose)
+    if (environment.verbose == PROGRESS)
       printProgress(1.0 * (n_jobs_total - unsettled_list.size()) / n_jobs_total,
           loop_start_time, progress_percentile);
   }
-  if (!environment.verbose) Rcerr << "\n";
+  if (environment.verbose == PROGRESS) Rcerr << "\n";
 
   std::sort(begin(environment.connected_list), end(environment.connected_list));
   return true;

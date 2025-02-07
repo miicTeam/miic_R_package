@@ -252,34 +252,35 @@ vector<vector<string>> orientationProbability(Environment& environment) {
         if ( proba_lagged_it != proba_map.end() )
           {
           double proba_lag = proba_lagged_it->second;
-          string str_warn = "";
-          if (  ((it->second - 0.5 < 0) && (proba_lag - 0.5 > 0))
-             || ((it->second - 0.5 > 0) && (proba_lag - 0.5 < 0)) )
+          string str_out = "";
+          if (  (environment.verbose == DEBUG)
+             && (  ((it->second - 0.5 < 0) && (proba_lag - 0.5 > 0))
+                || ((it->second - 0.5 > 0) && (proba_lag - 0.5 < 0)) ) )
             {
-            str_warn = "Warning: Discrepancy when computing orientation of "
-                       + environment.nodes[node1_pos].name
-                       + " - " + environment.nodes[node2_pos].name
-                       + ": proba=" + std::to_string (it->second) + "\n";
+            str_out = "Discrepancy when computing orientation of "
+                    + environment.nodes[node1_pos].name
+                    + " - " + environment.nodes[node2_pos].name
+                    + ": proba=" + std::to_string (it->second) + "\n";
             int node1_lagged = (proba_lagged_it->first).first;
             int node2_lagged = (proba_lagged_it->first).second;
-            str_warn += "         -> Found conflict with lagged edge "
-                        + environment.nodes[node1_lagged].name
-                        + " - " + environment.nodes[node2_lagged].name
-                        +  ": proba=" + std::to_string (proba_lag) + "\n";
+            str_out += "-> Found conflict with lagged edge "
+                    + environment.nodes[node1_lagged].name
+                    + " - " + environment.nodes[node2_lagged].name
+                    +  ": proba=" + std::to_string (proba_lag) + "\n";
             }
           if (fabs(it->second - 0.5) < fabs(proba_lag - 0.5))
             {
             it->second = proba_lag;
-            if (str_warn.length() > 0)
-              str_warn += "         -> Probability updated to=" + std::to_string (it->second) + "\n";
+            if (str_out.length() > 0)
+              str_out += "-> Probability updated to=" + std::to_string (it->second) + "\n";
             }
           else
             {
-            if (str_warn.length() > 0)
-              str_warn += "         -> Initial probability kept (no update)\n";
+            if (str_out.length() > 0)
+              str_out += "-> Initial probability kept (no update)\n";
             }
-          if ( (environment.verbose) && (str_warn.length() > 0) )
-            Rcpp::warning (str_warn);
+          if ( (environment.verbose == DEBUG) && (str_out.length() > 0) )
+            Rcpp::Rcout << str_out;
           }
         }
       }

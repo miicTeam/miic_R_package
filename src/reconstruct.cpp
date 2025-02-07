@@ -50,7 +50,8 @@ List reconstruct(List input_data, List arg_list) {
 
   // Start reconstruction
   auto lap_start = getLapStartTime();
-  Rcout << "Search all pairs for unconditional independence relations...\n";
+  if ( (environment.verbose == PROGRESS) || (environment.verbose == DEBUG) )
+    Rcout << "Search all pairs for unconditional independence relations...\n";
   // Initialize skeleton, find unconditional independence
   if (!initializeSkeleton(environment)) return empty_results();
   environment.exec_time.init += getLapInterval(lap_start);
@@ -82,12 +83,14 @@ List reconstruct(List input_data, List arg_list) {
       }
     }
     lap_start = getLapStartTime();
-    Rcout << "Search for candidate separating nodes...\n";
+    if ( (environment.verbose == PROGRESS) || (environment.verbose == DEBUG) )
+      Rcout << "Search for candidate separating nodes...\n";
     // If interrupted
     if (!setBestContributingNode(environment, bcc)) return empty_results();
 
     if (!environment.unsettled_list.empty()) {
-      Rcout << "Search for conditional independence relations...\n";
+      if ( (environment.verbose == PROGRESS) || (environment.verbose == DEBUG) )
+        Rcout << "Search for conditional independence relations...\n";
       // If interrupted
       if (!searchForConditionalIndependence(environment))
         return (empty_results());
@@ -96,17 +99,20 @@ List reconstruct(List input_data, List arg_list) {
 
     if (environment.n_shuffles > 0) {
       lap_start = getLapStartTime();
-      Rcout << "Compute confidence cut with permutations..." << std::flush;
+      if ( (environment.verbose == PROGRESS) || (environment.verbose == DEBUG) )
+        Rcout << "Compute confidence cut with permutations..." << std::flush;
       setConfidence(environment);
       size_t n_connected = environment.connected_list.size();
       confidenceCut(environment);
-      Rcout << n_connected - environment.connected_list.size()
-            << " edges cut.\n";
+      if ( (environment.verbose == PROGRESS) || (environment.verbose == DEBUG) )
+        Rcout << n_connected - environment.connected_list.size()
+              << " edges cut.\n";
       environment.exec_time.cut += getLapInterval(lap_start);
     }
     if (environment.orientation && !environment.connected_list.empty()) {
       lap_start = getLapStartTime();
-      Rcout << "Search for edge directions...\n";
+      if ( (environment.verbose == PROGRESS) || (environment.verbose == DEBUG) )
+        Rcout << "Search for edge directions...\n";
       //
       // In temporal stationary mode, when latent variable discovery is activated,
       // we temporarily duplicate edges over history assuming stationarity to
@@ -119,16 +125,21 @@ List reconstruct(List input_data, List arg_list) {
           tmiic::dropPastEdges (environment);
       environment.exec_time.ori += getLapInterval(lap_start);
     }
-    if (environment.consistent != 0)
-      Rcout << "Iteration " << iter_count << ' ';
-    Rcout << "Number of edges: " << environment.connected_list.size() << '\n';
+    if ( (environment.verbose == PROGRESS) || (environment.verbose == DEBUG) )
+      {
+      if (environment.consistent != 0)
+        Rcout << "Iteration " << iter_count << ' ';
+      Rcout << "Number of edges: " << environment.connected_list.size() << '\n';
+      }
     is_consistent = cycle_tracker.hasCycle();
     if (is_consistent) {
-      Rcout << "cycle found of size " << cycle_tracker.getCycleSize() << '\n';
+      if ( (environment.verbose == PROGRESS) || (environment.verbose == DEBUG) )
+        Rcout << "cycle found of size " << cycle_tracker.getCycleSize() << '\n';
       break;
     }
     if (++iter_count > environment.max_iteration) {
-      Rcout << "Iteration limit " << environment.max_iteration << " reached.\n";
+      if ( (environment.verbose == PROGRESS) || (environment.verbose == DEBUG) )
+        Rcout << "Iteration limit " << environment.max_iteration << " reached.\n";
       break;
     }
   } while (environment.consistent != 0);

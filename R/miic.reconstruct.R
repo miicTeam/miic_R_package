@@ -1,3 +1,19 @@
+#*******************************************************************************
+# Filename   : miic.reconstruct.R
+#
+# Description: interface between the R and C++ of the miic package
+#*******************************************************************************
+
+#===============================================================================
+# FUNCTIONS
+#===============================================================================
+# miic.reconstruct
+#-------------------------------------------------------------------------------
+# miic.reconstruct takes as input as named list with input_data, params,
+# state_order and, if supplied, black_box (true_edges is not used here)
+# It will ensure the parsing of the inputs to the C++ core
+# and the parsing back of C++ structures returned into the R format
+#-------------------------------------------------------------------------------
 miic.reconstruct <- function (list_in)
   {
   n_samples <- nrow (list_in$input_data)
@@ -66,7 +82,7 @@ miic.reconstruct <- function (list_in)
     "max_iteration" = list_in$params$max_iteration,
     "negative_info" = list_in$params$negative_info,
     "mode" = list_in$params$mode,
-    "verbose" = F, # TODO list_in$params$verbose,
+    "verbose" = list_in$params$verbose,
     #
     # Parameters part of miic state order (can be defined by the user)
     #

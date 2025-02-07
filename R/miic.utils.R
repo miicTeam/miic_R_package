@@ -100,7 +100,7 @@ check_input_data <- function (input_data, mode)
   if ( ! is.data.frame (input_data) )
     miic_error ("input data", "the input data must be a data frame.")
   #
-  # Ensure we have a true data frame (i.e.: not a tibble) with data
+  # Ensure we have a true data frame (e.g.: not a tibble) with data
   #
   input_data = as.data.frame (input_data)
   if (nrow (input_data) == 0)
@@ -679,7 +679,7 @@ check_state_order <- function (input_data, state_order, mode)
       # It will avoid issues when comparing TRUE/FALSE with T/F or 1.0 with 1
       # If the values coming from the state_order can not be converted,
       # leave the value unchanged to display a warning about the value later
-      # i.e.: ["T","A","FALSE"] for a logical column in the data will be
+      # e.g. ["T","A","FALSE"] for a logical column in the data will be
       # converted into [TRUE, NA, FALSE] and then to ["TRUE","A","FALSE"]
       # => "T" will not raise a warning and "A" will
       #
@@ -1285,6 +1285,8 @@ check_param_float <- function (
 # check_parameters
 #-------------------------------------------------------------------------------
 # Check all input parameters that are not data frames and not specific to a mode
+# NB: no check on mode as this parameter can only be set by the function
+# called by the user (miic() => "S", tMiicStat() => "TS", ...)
 # Params:
 # - input_data: a data frame containing the input data
 # - all parameters that are not data frames and are common to the different
@@ -1534,23 +1536,13 @@ prepare_inputs <- function (input_data,
                             max_nodes = 50,
                             verbose = 1)
   {
-  if ( is.null(mode) || ( ! (mode %in% MIIC_VALID_MODES) ) )
-    miic_error ("parameters check", "invalid mode '", mode,
-      "'. Possible modes are 'S' (Standard) and 'TS' (Temporal Stationnary).")
-
-  if ( (!is.null(verbose) ) && is.logical(verbose) )
-    {
-    verbose <- as.integer (verbose) + 1
-    deprecate_warn ("2.1.0", paste0 ("miic(verbose = 'verbose is now",
-      " expected to be an integer between 0 and 2')") )
-    }
   verbose <- check_param_int (verbose, "verbose", 1, min=0, max=2)
   if (verbose >= 1)
     {
     if (mode == "TS")
-      miic_msg ("Start MIIC in temporal mode ...")
+      miic_msg ("Start MIIC v", packageVersion("miic"), " in temporal mode ...")
     else
-      miic_msg ("Start MIIC ...")
+      miic_msg ("Start MIIC v", packageVersion("miic"), "...")
     }
   #
   # Basic checks applicable with few differences between the different modes.
@@ -1598,7 +1590,15 @@ prepare_inputs <- function (input_data,
   #
   # NB: these functions are always called whatever the mode. If some parameters
   # specific to a mode are set but for the wrong mode, it will raise a warning.
-  # i.e.: number of layers, specific to temporal mode supplied in standard mode
+  # e.g. number of layers, specific to temporal mode supplied in standard mode
+  #
+  # TODO: For future releases after v2.1.0: there should be no need to always
+  # call the mode specific functions as there can not be any mistmatch between
+  # the mode and the specific parameters to a mode (e.g. miic() called => mode
+  # can only be "S" and no temporal parameter possible in miic() function).
+  # => Call and warnings for inappropriate parameters in regard of the mode
+  # are kept as part of deprecation process: during this intermediate period,
+  # miic() can still be called with temporal parameters, but to be dropped.
   #
   list_ret <- tmiic_prepare_inputs (list_in = list_ret,
                                     n_layers = n_layers,

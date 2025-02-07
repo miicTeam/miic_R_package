@@ -2,7 +2,7 @@
 % Please edit documentation in R/tmiic.stat.R
 \name{estimateTemporalDynamic}
 \alias{estimateTemporalDynamic}
-\title{Estimation of the temporal causal discovery parameters}
+\title{Estimation of the temporal stationary causal discovery parameters.}
 \usage{
 estimateTemporalDynamic(
   input_data,
@@ -49,10 +49,11 @@ its values will overwrite the function parameter.}
 
 \item{mov_avg}{[an integer] Optional, NULL by default.\cr
 When an integer>= 2 is supplied, a moving average operation is applied
-to all the non discrete and not contextual variables. If no \emph{state_order}
-is provided, the discrete/continuous variables are deduced from the input
-data. If you want to apply a moving average only on specific columns,
-consider to use a \emph{mov_avg} column in the \emph{state_order} parameter.}
+to all the non discrete and not contextual variables.
+If no \emph{state_order} is provided, the discrete/continuous variables
+are deduced from the input data.
+If you want to apply a moving average only on specific columns, consider
+to use a \emph{mov_avg} column in the \emph{state_order} parameter.}
 
 \item{max_nodes}{[a positive integer] The maximum number of nodes in the
 final time-unfolded causal graph. The more nodes allowed in the temporal
@@ -63,20 +64,34 @@ possible (depending on the number of trajectories and time steps in the
 input data).}
 
 \item{verbose}{[an integer value in the range [0,2], 1 by default]
-The level of verbosity: 0 = no display, 1 = summary display, 2 = full display.}
+The level of verbosity: 0 = no display, 1 = summary display, 2 = full
+display.}
 }
 \value{
-A named list with two items:
+A named list with :
 \itemize{
- \item{\emph{n_layers}: the number of layers}
- \item{\emph{delta_t}: the number of time steps between the layers}
+ \item{\emph{n_layers}: the number of layers. }
+ \item{\emph{delta_t}: the number of time steps between the layers. }
+}
+
+These extra items are also available for more details on how \emph{n_layers}
+and \emph{delta_t} have been estimated:
+
+\itemize{
+ \item{\emph{lags_vanish}: the matrix (trajectories * variables) of lags
+ where autocorrelaton vanishes. }
+ \item{\emph{lags_alphas}: the matrix (trajectories * variables) of lags
+ used to estimate the alphas. }
+ \item{\emph{alphas}: the matrix (trajectories * variables) of alphas. }
+ \item{\emph{alphas_mean}: the mean of alphas for each variable. }
+ \item{\emph{taus}: the relaxation time for each variable. }
 }
 }
 \description{
 This function estimates the number of layers and number of
 time steps between each layer that are needed to cover the dynamic of a
-temporal dataset when reconstructing a temporal causal graph.
+stationary temporal dataset when reconstructing a temporal causal graph.
 Using autocorrelation decay, the function computes the average relaxation
-time of the variables and, based on a maximum number of nodes, deduces
-the number of layers and number of time steps between each layer to be used.
+time of the variables and, based on a maximum number of nodes, deduces the
+number of layers and number of time steps between each layer to be used.
 }

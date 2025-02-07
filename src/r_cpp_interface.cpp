@@ -164,7 +164,7 @@ void setEnvironmentFromR(const Rcpp::List& input_data,
     environment.negative_info = as<bool>(arg_list["negative_info"]);
 
   if (arg_list.containsElementNamed("verbose"))
-    environment.verbose = as<bool>(arg_list["verbose"]);
+    environment.verbose = static_cast<Verbosity> (as<int>(arg_list["verbose"]) );
 
   if (arg_list.containsElementNamed("black_box"))
     {

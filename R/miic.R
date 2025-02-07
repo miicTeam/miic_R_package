@@ -1,20 +1,180 @@
 #*******************************************************************************
 # Filename   : miic.R
 #
-# Description: main function of the miic the package (user front-end)
+# Description: main functions of the miic package
 #*******************************************************************************
 
 #===============================================================================
 # FUNCTIONS
 #===============================================================================
+# miic_private
+#-------------------------------------------------------------------------------
+# miic_private is the base R function to launch a network reconstruction.
+# It takes as inputs all the possible inputs of all miic functions accessible
+# to the users: miic(), tMiicStat(), ...
+# Each function is associated to a mode (miic() = "S", tMiicStat() = "TS")
+# that is used to adapt the pre and post processing.
+#-------------------------------------------------------------------------------
+miic_private <- function(input_data,
+                         state_order = NULL,
+                         true_edges = NULL,
+                         black_box = NULL,
+                         n_threads = 1,
+                         cplx = "nml",
+                         orientation = TRUE,
+                         ort_proba_ratio = 1,
+                         ort_consensus_ratio = NULL,
+                         propagation = FALSE,
+                         latent = "orientation",
+                         n_eff = -1,
+                         n_shuffles = 0,
+                         conf_threshold = 0,
+                         sample_weights = NULL,
+                         test_mar = TRUE,
+                         consistent = "no",
+                         max_iteration = 100,
+                         consensus_threshold = 0.8,
+                         negative_info = FALSE,
+                         mode = "S",
+                         n_layers = NULL,
+                         delta_t = NULL,
+                         mov_avg = NULL,
+                         keep_max_data = F,
+                         max_nodes = 50,
+                         verbose = 1)
+  {
+  miic_start = Sys.time()
+  #
+  # Check and prepare all inputs for the C++ part
+  #
+  list_inputs = prepare_inputs (input_data = input_data,
+                                state_order = state_order,
+                                true_edges = true_edges,
+                                black_box = black_box,
+                                n_threads = n_threads,
+                                cplx = cplx,
+                                orientation = orientation,
+                                ort_proba_ratio = ort_proba_ratio,
+                                ort_consensus_ratio = ort_consensus_ratio,
+                                propagation = propagation,
+                                latent = latent,
+                                n_eff = n_eff,
+                                n_shuffles = n_shuffles,
+                                conf_threshold = conf_threshold,
+                                sample_weights = sample_weights,
+                                test_mar = test_mar,
+                                consistent = consistent,
+                                max_iteration = max_iteration,
+                                consensus_threshold = consensus_threshold,
+                                negative_info = negative_info,
+                                mode = mode,
+                                n_layers = n_layers,
+                                delta_t = delta_t,
+                                mov_avg = mov_avg,
+                                keep_max_data = keep_max_data,
+                                max_nodes = max_nodes,
+                                verbose = verbose)
+  #
+  # Call C++ reconstruction
+  #
+  if (list_inputs$params$verbose >= 1)
+    miic_msg ("-> Start reconstruction ...")
+  pre_end = Sys.time()
+  res <- miic.reconstruct (list_inputs)
+  if (res$interrupted)
+    stop("Interupted by user")
+  if (list_inputs$params$verbose >= 1)
+    miic_msg ("-> Post-processing ...")
+  #
+  # Post-traitment
+  #
+  post_start = Sys.time()
+  res$summary <- summarizeResults (
+    observations = list_inputs$input_data,
+    results = res,
+    true_edges = list_inputs$true_edges,
+    state_order = list_inputs$state_order,
+    consensus_threshold = list_inputs$params$consensus_threshold,
+    ort_consensus_ratio = list_inputs$params$ort_consensus_ratio,
+    latent = (list_inputs$params$latent != "no"),
+    propagation = list_inputs$params$propagation)
+
+  if (!is.null (true_edges))
+    {
+    tp <- sum (res$summary$type == "TP")
+    fp <- sum (res$summary$type == "FP")
+    fn <- sum (res$summary$type == "FN")
+    precision <- tp / (tp + fp)
+    recall <- tp / (tp + fn)
+    fscore <- (2 * (precision * recall) ) / (precision + recall)
+    res$scores <- c ("tp"=tp, "fp"=fp, "fn"=fn, "precision"=round (precision, 4),
+                     "recall"=round (recall, 4), "fscore"=round (fscore, 4) )
+    }
+
+  res$params <- list_inputs$params
+  if (! (list_inputs$params$mode %in% MIIC_TEMPORAL_MODES) )
+    {
+    class(res) <- "miic"
+    res$input_data <- list_inputs$input_data
+    res$state_order <- list_inputs$state_order
+    res$black_box <- list_inputs$black_box
+    res$true_edges <- list_inputs$true_edges
+    }
+  else
+    {
+    class(res) <- "tmiic"
+    res$input_data <- list_inputs$non_lagged$input_data
+    res$state_order <- list_inputs$non_lagged$state_order
+    res$black_box <- list_inputs$non_lagged$black_box
+    res$true_edges <- list_inputs$non_lagged$true_edges
+    #
+    # Clean state_order structure to remove extra columns used internally
+    #
+    res$state_order = res$state_order[,
+        colnames(res$state_order) %in% STATE_ORDER_TEMPORAL_VALID_COLUMNS]
+    list_inputs$state_order = list_inputs$state_order[,
+        colnames(list_inputs$state_order) %in% STATE_ORDER_TEMPORAL_VALID_COLUMNS]
+    #
+    # The output of the reconstruction is the "raw" temporal graph, without
+    # edges identical by stationarity. To have the "real" temporal graph,
+    # we duplicate the edges using the stationary assumption and this "real"
+    # graph is stored the "stationarity" data frame.
+    #
+    edges_dup_stat = tmiic_repeat_edges_over_history (res)
+    #
+    # Graph completed by statonarity and lagged inputs are grouped into tmiic
+    # item
+    #
+    res$tmiic <- list (lagged_input_data = list_inputs$input_data,
+                       lagged_state_order = list_inputs$state_order,
+                       lagged_black_box = list_inputs$black_box,
+                       lagged_true_edges = list_inputs$true_edges,
+                       stationarity = edges_dup_stat)
+    }
+
+  if (list_inputs$params$verbose >= 1)
+    miic_msg ("-> End reconstruction ...")
+  miic_end = Sys.time()
+  pre_duration = as.numeric (pre_end - miic_start, units="secs")
+  post_duration = as.numeric (miic_end - post_start, units="secs")
+  miic_duration = as.numeric (miic_end - miic_start, units="secs")
+  res$time = c ("pre"=pre_duration, res$time,
+                "post"=post_duration, "total"=miic_duration)
+
+  return(res)
+  }
+
+#===============================================================================
+# FUNCTIONS (exported)
+#===============================================================================
 # miic
 #-------------------------------------------------------------------------------
 #' MIIC, causal network learning algorithm including latent variables
 #'
-#' @description MIIC (Multivariate Information-based Inductive Causation) combines
-#' constraint-based and information-theoretic approaches to disentangle direct
-#' from indirect effects amongst correlated variables, including cause-effect
-#' relationships and the effect of unobserved latent causes.
+#' @description MIIC (Multivariate Information-based Inductive Causation)
+#' combines constraint-based and information-theoretic approaches to disentangle
+#' direct from indirect effects amongst correlated variables, including
+#' cause-effect relationships and the effect of unobserved latent causes.
 #'
 #' @details Starting from a complete graph, the method iteratively removes
 #' dispensable edges, by uncovering significant information contributions from
@@ -24,16 +184,6 @@
 #' (with both reliable arrow heads and tails) from putative causal edges (with
 #' one reliable arrow head only) and latent causal edges (with both reliable
 #' arrow heads). (see Ribeiro-Dantas 2024)
-#'
-#' In temporal mode, miic reorganizes the dataset using the \emph{n_layers} and
-#' \emph{delta_t} parameters to transform the time steps into lagged samples.
-#' As starting point, a lagged graph is created with only edges having at
-#' least one node laying on the last time step.
-#' Then, miic standard algorithm is applied to remove dispensable edges.
-#' The remaining edges are then duplicated to ensure time invariance
-#' (stationary dynamic) and oriented using the temporality and the
-#' signature of causality in observational data. The use of temporal mode
-#' is presented in Simon 2024.
 #'
 #' The method relies on information theoretic principles which replace
 #' (conditional) independence tests as described in Affeldt 2015, Cabeli 2020,
@@ -47,12 +197,15 @@
 #' and Ribeiro-Dantas 2024 to improve the end result's interpretability
 #' by ensuring consistent separating sets.
 #'
-#' @seealso \code{\link{discretizeMutual}} for optimal discretization and
+#' The temporal mode have been moved to a separate function,
+#' use \code{\link{tMiicStat}} for times series.
+#'
+#' @seealso \code{\link{tMiicStat}} for causal discovery on stationary
+#' time series, \code{\link{discretizeMutual}} for optimal discretization and
 #' (conditional) independence test.
 #'
 #' @references
 #' \itemize{
-#' \item Simon \emph{et al.}, eLife 2024, \href{https://www.biorxiv.org/content/10.1101/2024.02.06.579177v1.abstract}{CausalXtract: a flexible pipeline to extract causal effects from live-cell time-lapse imaging data}
 #' \item Ribeiro-Dantas \emph{et al.}, iScience 2024, \href{https://arxiv.org/pdf/2303.06423}{Learning interpretable causal networks from very large datasets, application to 400,000 medical records of breast cancer patients}
 #' \item Cabeli \emph{et al.}, NeurIPS 2021, \href{https://why21.causalai.net/papers/WHY21_24.pdf}{Reliable causal discovery based on mutual information supremum principle for finite dataset}
 #' \item Cabeli \emph{et al.}, PLoS Comput. Biol. 2020, \href{https://journals.plos.org/ploscompbiol/article?id=10.1371/journal.pcbi.1007866}{Learning clinical networks from medical records based on information estimates in mixed-type data}
@@ -65,19 +218,12 @@
 #'
 #' A n*d data frame (n samples, d variables) that contains the observational data.
 #'
-#' In standard mode, each column corresponds to one variable and each row is a
+#' Each column corresponds to one variable and each row is a
 #' sample that gives the values for all the observed variables.
 #' The column names correspond to the names of the observed variables.
 #' Numeric columns with at least 5 distinct values will be treated as continuous
 #' by default whilst numeric columns with less than 5 distinct values, factors
 #' and characters will be considered as categorical.
-#'
-#' In temporal mode, the expected data frame layout is variables as columns
-#' and time series/time steps as rows.
-#' The time step information must be supplied in the first column and,
-#' for each time series, be consecutive and in ascending order (increment of 1).
-#' Multiple trajectories can be provided, miic will consider that a new trajectory
-#' starts each time a smaller time step than the one of the previous row is encountered.
 #'
 #' @param state_order [a data frame, optional, NULL by default]
 #'
@@ -87,8 +233,7 @@
 #' values, default values suitable for \emph{input_data} will be used.
 #'
 #' \emph{"var_names"} (required) contains the name of each variable as specified
-#' by colnames(input_data). In temporal mode, the time steps column should
-#' not be mentioned in the variables list.
+#' by colnames(input_data).
 #'
 #' \emph{"var_type"} (optional) contains a binary value that specifies if each
 #' variable is to be considered as discrete (0) or continuous (1).
@@ -111,43 +256,15 @@
 #' contributors. Edges between a non consequence and consequence variables
 #' are pre-oriented toward the consequence.
 #'
-#' Several other columns are possible in temporal mode:
-#'
-#' \emph{"n_layers"} (optional) contains an integer value that specifies the
-#' number of layers to be considered for the variable.
-#' Note that if a \emph{"n_layers"} column is present in the \emph{state_order},
-#' its values will overwrite the function parameter.
-#'
-#' \emph{"delta_t"} (optional) contains an integer value that specifies the number
-#' of time steps between each layer for the variable.
-#' Note that if a \emph{"delta_t"} column is present in the \emph{state_order},
-#' its values will overwrite the function parameter.
-#'
-#' \emph{"mov_avg"} (optional) contains an integer value that specifies the size
-#' of the moving average window to be applied to the variable.
-#' Note that if \emph{"mov_avg"} column is present in the \emph{state_order},
-#' its values will overwrite the function parameter.
-#'
 #' @param true_edges [a data frame, optional, NULL by default]
 #'
 #' A data frame containing the edges of the true graph for
 #' computing performance after the run.\cr
-#' In standard mode, the expected layout is a two columns data frame, each row
+#' The expected layout is a two columns data frame, each row
 #' representing a true edge with in each column, the variable names.
 #' Variables names must exist in the \emph{input_data} data frame.\cr
-#' In temporal mode, the expected layout is a three columns data frame,
-#' with the first two columns being variable names and the third the lag.
-#' Variables names must exist in the \emph{input_data} data frame and the lag
-#' must be valid in the time unfolded graph. e.g. a row var1, var2, 3 is valid
-#' with \emph{n_layers} = 4 + \emph{delta_t} = 1 or
-#' \emph{n_layers} = 2 + \emph{delta_t} = 3
-#' but not for \emph{n_layers} = 2 + \emph{delta_t} = 2 as there is no matching
-#' edge in the time unfolded graph.\cr
-#' Please note that the order is important: in standard mode, "var1 var2" will
-#' be interpreted as var1 -> var2 and in temporal mode, "var1 var2 3" is
-#' interpreted as var1_lag3 -> var2_lag0. Please note also that, in temporal
-#' mode, for contextual variables that are not lagged, the expected value in the
-#' third column for the time lag is NA.
+#' Please note that the order is important: "var1 var2" will be interpreted
+#' as var1 -> var2.
 #'
 #' @param black_box [a data frame, optional, NULL by default]
 #'
@@ -155,20 +272,9 @@
 #' as independent during the network reconstruction. In practice, these edges
 #' will not be included in the skeleton initialization and cannot be part of
 #' the final result.\cr
-#' In standard mode, the expected layout is a two columns data frame, each row
+#' The expected layout is a two columns data frame, each row
 #' representing a forbidden edge with in each column, the variable names.
 #' Variables names must exist in the \emph{input_data} data frame.\cr
-#' In temporal mode, the expected layout is a three columns data frame,
-#' with the first two columns being variable names and the third the lag.
-#' Variables names must exist in the \emph{input_data} data frame and the lag
-#' must be valid in the time unfolded graph. e.g. a row var1, var2, 3 is valid
-#' with \emph{n_layers} = 4 + \emph{delta_t} = 1 or
-#' \emph{n_layers} = 2 + \emph{delta_t} = 3
-#' but not for \emph{n_layers} = 2 + \emph{delta_t} = 2 as there is no matching
-#' edge in the time unfolded graph. Please note that the order is important:
-#' var1, var2, 3 is interpreted as var1_lag3 - var2_lag0. Please note also that,
-#' for contextual variables that are not lagged, the expected value in the
-#' third column for the time lag is NA.
 #'
 #' @param n_threads [a positive integer, optional, 1 by default]
 #'
@@ -192,7 +298,7 @@
 #'
 #' The miic network skeleton can be partially directed by orienting
 #' edge directions, based on the sign and magnitude of the conditional
-#' 3-point information of unshielded triples and, in temporal mode, using time.
+#' 3-point information of unshielded triples.
 #' If set to FALSE, the orientation step is not performed.
 #'
 #' @param ort_proba_ratio [a floating point between 0 and 1, optional,
@@ -241,7 +347,7 @@
 #'
 #' @param n_eff [a positive integer, optional, -1 by default]
 #'
-#' In standard mode, the n samples given in the \emph{input_data} data frame are
+#' The n samples given in the \emph{input_data} data frame are
 #' expected to be independent. In case of correlated samples such as in
 #' Monte Carlo sampling approaches, the effective number of independent samples
 #' \emph{n_eff} can be estimated using the decay of the autocorrelation function
@@ -331,54 +437,20 @@
 #' By contrast, keeping this parameter as FALSE is more conservative and leads
 #' to more reliable orientations (see Cabeli 2021 and Ribeiro-Dantas 2024).
 #'
-#' @param mode [a string, optional, "S" by default, possible values are
-#' "S": Standard (non temporal data) or "TS": Temporal Stationary data]
+#' @param mode [deprecated, use tMiicStat() for time series]
 #'
-#' When temporal mode is activated, the time information must be provided
-#' in the first column of \emph{input_data}. For more details about temporal
-#' stationary mode (see Simon 2024).
+#' Since v2.1.0, miic() is reserved for non temporal datasets, corresponding
+#' to the standard mode (the default) of earlier version.
 #'
-#' @param n_layers [an integer, optional, NULL by default, must be >= 2
-#' if supplied]
+#' @param n_layers [deprecated, use tMiicStat() for time series]
 #'
-#' Used only in temporal mode, \emph{n_layers} defines the number of layers
-#' that will be considered for the variables in the time unfolded graph.
-#' The layers will be distant of \emph{delta_t} time steps.
-#' If not supplied, the number of layers is estimated from the dynamic of the
-#' dataset and the maximum number of nodes \emph{max_nodes} allowed in the
-#' final lagged graph.
+#' @param delta_t [deprecated, use tMiicStat() for time series]
 #'
-#' @param delta_t [an integer, optional, NULL by default, must be >= 1
-#' if supplied]
+#' @param mov_avg [deprecated, use tMiicStat() for time series]
 #'
-#' Used only in temporal mode, \emph{delta_t} defines the number of time steps
-#' between each layer.
-#' i.e. on 1000 time steps with \emph{n_layers} = 3 and \emph{delta_t} = 7,
-#' the time steps kept for the samples conversion will be 1, 8, 15
-#' for the first sample, the next sample will use 2, 9, 16 and so on.
-#' If not supplied, the number of time steps between layers is estimated
-#' from the dynamic of the dataset and the number of layers.
+#' @param keep_max_data [deprecated, use tMiicStat() for time series]
 #'
-#' @param mov_avg [an integer, optional, NULL by default, must be >= 2
-#' if supplied]
-#'
-#' Used only in temporal mode. When supplied, a moving average operation is
-#' applied to all integer and numeric variables that are not contextual
-#' variables.
-#'
-#' @param keep_max_data [a boolean value, optional, FALSE by default]
-#'
-#' Used only in temporal mode. If TRUE, rows where some NAs have been
-#' introduced during the moving averages and lagging will be kept
-#' whilst they will be dropped if FALSE.
-#'
-#' @param max_nodes [an integer, optional, 50 by default]
-#'
-#' Used only in temporal mode and if the \emph{n_layers} or \emph{delta_t}
-#' parameters are not supplied. \emph{max_nodes} is used as the maximum number
-#' of nodes in the final time-unfolded graph to compute \emph{n_layers} and/or \emph{delta_t}.
-#' The default is 50 to produce quick runs and can be increased up to 200
-#' or 300 on recent computers to produce more precise results.
+#' @param max_nodes [deprecated, use tMiicStat() for time series]
 #'
 #' @param verbose [an integer value, optional, 1 by default]
 #'
@@ -610,6 +682,9 @@
 #'  }
 #'  }
 #'
+#'  \item {\emph{input_data:} the data used for the network
+#'  reconstruction, checked and and corrected if necessary.}
+#'
 #'  \item {\emph{params:} the list of parameters used for the network
 #'  reconstruction. The parameters not supplied are initialized to their default
 #'  values. Otherwise, the parameters are checked and corrected if necessary. }
@@ -627,10 +702,8 @@
 #' the true edges, checked and corrected if necessary, used for the network
 #' evaluation.}
 #'
-#'  \item {\emph{tmiic:} present only in temporal mode.
-#'  Named list containing the full list of edges completed by stationarity,
-#'  the lagged state order and, if a black box or true edges have been supplied,
-#'  the lagged versions of these inputs.}
+#'  \item {\emph{tmiic:} deprecated. Specific information in temporal mode.
+#'  use tMiicStat() for time series. }
 #' }
 #'
 #' @export
@@ -677,29 +750,8 @@
 #' # write graph to graphml format. Note that to correctly visualize
 #' # the network we created the miic style for Cytoscape (http://www.cytoscape.org/).
 #' writeCytoscapeNetwork(miic_obj, file = file.path(tempdir(), "temp"))
-#'
-#' # EXAMPLE COVID CASES (time series demo)
-#' data(covidCases)
-#' # execute MIIC (reconstruct graph in temporal mode)
-#' tmiic_obj <- miic(input_data = covidCases, mode = "TS", n_layers = 3, delta_t = 1, mov_avg = 14)
-#'
-#' # to plot the default graph (compact)
-#' if(require(igraph)) {
-#'  plot(tmiic_obj)
 #' }
-#'
-#' # to plot the raw temporal network
-#' if(require(igraph)) {
-#'   plot(tmiic_obj, display="raw")
-#' }
-#'
-#' # to plot the full temporal network
-#' if(require(igraph)) {
-#'   plot(tmiic_obj, display="lagged")
-#' }
-#'
-#' }
-#'
+#-------------------------------------------------------------------------------
 miic <- function(input_data,
                  state_order = NULL,
                  true_edges = NULL,
@@ -720,126 +772,89 @@ miic <- function(input_data,
                  max_iteration = 100,
                  consensus_threshold = 0.8,
                  negative_info = FALSE,
-                 mode = "S",
+                 mode = NULL,
                  n_layers = NULL,
                  delta_t = NULL,
                  mov_avg = NULL,
-                 keep_max_data = FALSE,
-                 max_nodes = 50,
+                 keep_max_data = NULL,
+                 max_nodes = NULL,
                  verbose = 1)
   {
-  miic_start = Sys.time()
+  # Compatibility with 2.0.3 version
   #
-  # Check and prepare all inputs for the C++ part
-  #
-  list_inputs = prepare_inputs (input_data = input_data,
-                                state_order = state_order,
-                                true_edges = true_edges,
-                                black_box = black_box,
-                                n_threads = n_threads,
-                                cplx = cplx,
-                                orientation = orientation,
-                                ort_proba_ratio = ort_proba_ratio,
-                                ort_consensus_ratio = ort_consensus_ratio,
-                                propagation = propagation,
-                                latent = latent,
-                                n_eff = n_eff,
-                                n_shuffles = n_shuffles,
-                                conf_threshold = conf_threshold,
-                                sample_weights = sample_weights,
-                                test_mar = test_mar,
-                                consistent = consistent,
-                                max_iteration = max_iteration,
-                                consensus_threshold = consensus_threshold,
-                                negative_info = negative_info,
-                                mode = mode,
-                                n_layers = n_layers,
-                                delta_t = delta_t,
-                                mov_avg = mov_avg,
-                                keep_max_data = keep_max_data,
-                                max_nodes = max_nodes,
-                                verbose = verbose)
-  #
-  # Call C++ reconstruction
-  #
-  if (list_inputs$params$verbose >= 1)
-    miic_msg ("-> Start reconstruction ...")
-  pre_end = Sys.time()
-  res <- miic.reconstruct (list_inputs)
-  if (res$interrupted)
-    stop("Interupted by user")
-  if (list_inputs$params$verbose >= 1)
-    miic_msg ("-> End reconstruction ...")
-  #
-  # Post-traitment
-  #
-  post_start = Sys.time()
-  res$summary <- summarizeResults (
-    observations = list_inputs$input_data,
-    results = res,
-    true_edges = list_inputs$true_edges,
-    state_order = list_inputs$state_order,
-    consensus_threshold = list_inputs$params$consensus_threshold,
-    ort_consensus_ratio = list_inputs$params$ort_consensus_ratio,
-    latent = (list_inputs$params$latent != "no"),
-    propagation = list_inputs$params$propagation)
-
-  if (!is.null (true_edges))
+  if ( !is.null (mode) )
     {
-    tp <- sum (res$summary$type == "TP")
-    fp <- sum (res$summary$type == "FP")
-    fn <- sum (res$summary$type == "FN")
-    precision <- tp / (tp + fp)
-    recall <- tp / (tp + fn)
-    fscore <- (2 * (precision * recall) ) / (precision + recall)
-    res$scores <- c ("tp"=tp, "fp"=fp, "fn"=fn, "precision"=round (precision, 4),
-                     "recall"=round (recall, 4), "fscore"=round (fscore, 4) )
+    lifecycle::deprecate_warn ("2.1.0", "miic(mode)",
+      details = "miic() is reserved to non temporal datasets. Use tMiicStat() for stationnary time series.")
+    if (mode == "TS")
+      return (tMiicStat (input_data = input_data,
+                         state_order = state_order,
+                         true_edges = true_edges,
+                         black_box = black_box,
+                         n_threads = n_threads,
+                         cplx = cplx,
+                         orientation = orientation,
+                         ort_proba_ratio = ort_proba_ratio,
+                         ort_consensus_ratio = ort_consensus_ratio,
+                         propagation = propagation,
+                         latent = latent,
+                         n_eff = n_eff,
+                         n_shuffles = n_shuffles,
+                         conf_threshold = conf_threshold,
+                         # sample_weights = sample_weights,
+                         test_mar = test_mar,
+                         consistent = consistent,
+                         max_iteration = max_iteration,
+                         consensus_threshold = consensus_threshold,
+                         negative_info = negative_info,
+                         n_layers = n_layers,
+                         delta_t = delta_t,
+                         mov_avg = mov_avg,
+                         keep_max_data = ifelse (is.null (keep_max_data), F, keep_max_data),
+                         max_nodes = ifelse (is.null (max_nodes), 50, max_nodes),
+                         verbose = verbose) )
     }
 
-  res$params <- list_inputs$params
-  if (! (list_inputs$params$mode %in% MIIC_TEMPORAL_MODES) )
+  if ( ! is.null (n_layers) )
+    lifecycle::deprecate_warn ("2.1.0", "miic(n_layers)", "tMiicStat()")
+  if ( ! is.null (delta_t) )
+    lifecycle::deprecate_warn ("2.1.0", "miic(delta_t)", "tMiicStat()")
+  if ( ! is.null (keep_max_data) )
+    lifecycle::deprecate_warn ("2.1.0", "miic(keep_max_data)", "tMiicStat()")
+  if ( ! is.null (max_nodes) )
+    lifecycle::deprecate_warn ("2.1.0", "miic(max_nodes)", "tMiicStat()")
+
+  if ( (!is.null(verbose) ) && is.logical(verbose) )
     {
-    class(res) <- "miic"
-    res$input_data <- list_inputs$input_data
-    res$state_order <- list_inputs$state_order
-    res$black_box <- list_inputs$black_box
-    res$true_edges <- list_inputs$true_edges
-    }
-  else
-    {
-    class(res) <- "tmiic"
-    res$input_data <- list_inputs$non_lagged$input_data
-    res$state_order <- list_inputs$non_lagged$state_order
-    res$black_box <- list_inputs$non_lagged$black_box
-    res$true_edges <- list_inputs$non_lagged$true_edges
-    #
-    # Clean state_order structure to remove extra columns used internally
-    #
-    res$state_order = res$state_order[,
-        colnames(res$state_order) %in% STATE_ORDER_TEMPORAL_VALID_COLUMNS]
-    list_inputs$state_order = list_inputs$state_order[,
-        colnames(list_inputs$state_order) %in% STATE_ORDER_TEMPORAL_VALID_COLUMNS]
-    print (list_inputs$state_order)
-    #
-    # The output of the reconstruction is the "raw" temporal graph, without
-    # edges identical by stationarity. To have the "real" temporal graph,
-    # we duplicate the edges using the stationary assumption and this "real"
-    # graph is stored the "stationarity" data frame.
-    #
-    edges_dup_stat = tmiic_repeat_edges_over_history (res)
-    res$tmiic <- list (lagged_input_data = list_inputs$input_data,
-                       lagged_state_order = list_inputs$state_order,
-                       lagged_black_box = list_inputs$black_box,
-                       lagged_true_edges = list_inputs$true_edges,
-                       stationarity = edges_dup_stat)
+    verbose <- as.integer (verbose) + 1
+    lifecycle::deprecate_warn ("2.1.0", "miic(verbose = 'is expected to be an integer between 0 and 2')")
     }
 
-  miic_end = Sys.time()
-  pre_duration = as.numeric (pre_end - miic_start, units="secs")
-  post_duration = as.numeric (miic_end - post_start, units="secs")
-  miic_duration = as.numeric (miic_end - miic_start, units="secs")
-  res$time = c ("pre"=pre_duration, res$time,
-                "post"=post_duration, "total"=miic_duration)
-
-  return(res)
+  return (miic_private (input_data = input_data,
+                        state_order = state_order,
+                        true_edges = true_edges,
+                        black_box = black_box,
+                        n_threads = n_threads,
+                        cplx = cplx,
+                        orientation = orientation,
+                        ort_proba_ratio = ort_proba_ratio,
+                        ort_consensus_ratio = ort_consensus_ratio,
+                        propagation = propagation,
+                        latent = latent,
+                        n_eff = n_eff,
+                        n_shuffles = n_shuffles,
+                        conf_threshold = conf_threshold,
+                        sample_weights = sample_weights,
+                        test_mar = test_mar,
+                        consistent = consistent,
+                        max_iteration = max_iteration,
+                        consensus_threshold = consensus_threshold,
+                        negative_info = negative_info,
+                        mode = "S",
+                        n_layers = n_layers,
+                        delta_t = delta_t,
+                        mov_avg = mov_avg,
+                        keep_max_data = ifelse (is.null (keep_max_data), F, keep_max_data),
+                        max_nodes = ifelse (is.null (max_nodes), 50, max_nodes),
+                        verbose = verbose) )
   }

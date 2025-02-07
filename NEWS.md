@@ -1,10 +1,18 @@
 # Development
 
+## Features
+
+* new tMiicStat() for causal discovery on stationary time series. 
+  
+* miic() is restricted to non temporal datasets. 
+  The mode and associated temporal parameters are deprecated.
+
 ## Fixes and improvements
 
-* Improved parameter checks.
+* miic() verbosity extended with no display level 
+  and parameter checks reviewed.
 
-* Redesign of inputs processing to prepare the addition of new modes.
+* estimateTemporalDynamic(), more detailed returned value.
 
 # v2.0.3
 

@@ -169,7 +169,7 @@ tmiic_check_parameters <- function (list_in,
 #-------------------------------------------------------------------------------
 # Check and prepare the state order for temporal modes.
 #
-# This function is designed to be called once the check_parameters_temporal
+# This function is designed to be called once the tmiic_check_parameters
 # function has moved (if needed) the n_layers, delta_t and mov_avg parameters
 # into the state_order.
 # This function check n_layers, delta_t and mov_avg in term of possible types
@@ -217,7 +217,7 @@ tmiic_check_state_order <- function (list_in)
       if  (is.na (x))
         return (FALSE)
       #
-      # Only an unique int is acceptable
+      # Only an int is acceptable
       #
       if ( is.na ( suppressWarnings (as.numeric(x)) ) ) # Not num: KO
         return (TRUE)
@@ -866,6 +866,14 @@ tmiic_prepare_inputs <- function (list_in,
   # First of all, we check temporal parameters when not in temporal mode:
   # raise warnings if some temporal parameters are specified
   #
+  # TODO: For future releases after v2.1.0: there should be no need to always
+  # call the mode specific functions as there can not be any mistmatch between
+  # the mode and the specific parameters to a mode (e.g. miic() called => mode
+  # can only be "S" and no temporal parameter possible in miic() function).
+  # => Call and warnings for inappropriate parameters in regard of the mode
+  # are kept as part of deprecation process: during this intermediate period,
+  # miic() can still be called with temporal parameters, but to be dropped.
+  #
   if ( ! (list_in$params$mode %in% MIIC_TEMPORAL_MODES) )
     {
     tmiic_check_parameters_not_temporal (
@@ -913,9 +921,10 @@ tmiic_prepare_inputs <- function (list_in,
   #
   # Estimate dynamic (if n layers and delta t are not specified by the user)
   #
-  list_ret$non_lagged$state_order <- tmiic_estimate_dynamic (list_traj,
+  tmp_ret <- tmiic_estimate_dynamic (list_traj,
     list_ret$non_lagged$state_order, max_nodes=list_ret$params$max_nodes,
     verbose=list_ret$params$verbose)
+  list_ret$non_lagged$state_order = tmp_ret$state_order
   #
   # Lag inputs according to n layers and delta t
   #
