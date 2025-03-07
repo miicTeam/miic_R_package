@@ -277,19 +277,22 @@ selectFeatures <- function (input_data, n_features,
   # The mat_mis can contain more rows than the features to select
   # e.g. we computed the MI for all genes and now we want select only
   # the TFs. In this case, in input_data, the variables are only the TFs
-  # while mat_mis woould contain all genes.
-  #
-  mat_mis_filt = mat_mis[rownames(mat_mis) %in% colnames(input_data), , drop=F]
-  #
-  # Plot if requested
+  # while mat_mis would contain all genes. Same for the columns as
+  # we can have precomputed more variables of interest than the ones we use now
   #
   all_voi_names = unique (c (var_of_interest_names,
                              colnames(var_of_interest_values) ) )
   n_vois = length (all_voi_names)
+  mat_mis_filt = mat_mis[rownames(mat_mis) %in% colnames(input_data),
+                         colnames(mat_mis) %in% all_voi_names,
+                         drop=F]
+  #
+  # Plot if requested
+  #
   list_plots = list ()
   if (plot)
     for ( one_col in colnames (mat_mis_filt) )
-      list_plots[[one_col]] = plot_top_features (
+      list_plots[[one_col]] = miic:::plot_top_features (
         df_mis=mat_mis_filt, var_of_interest_name=one_col, ...)
   #
   # If no feature selection, can end here
@@ -319,7 +322,7 @@ selectFeatures <- function (input_data, n_features,
         " of interest to select the top ", n_features,
         ", returning all the ", length(uniq_poss_feats),
         " variables sharing information.")
-    return (uniq_poss_feats)
+    return (list ("features"=uniq_poss_feats, "mis"=mat_mis, "plots"=list_plots) )
     }
   #
   # Get top variables for each voi
