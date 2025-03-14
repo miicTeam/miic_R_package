@@ -95,7 +95,7 @@ compute_mi_batch <- function (input_data,
   if ( length(unique(colnames (input_data))) != ncol(input_data) )
     miic:::miic_error  ("parameters", "the input data have some column names duplicated.")
   #
-  # Check variables of interest and group their values into a data frame
+  # Check variables of interest
   #
   if ( is.null (var_of_interest_names) && is.null (var_of_interest_values) )
     miic:::miic_error  ("parameters", "the name of the variable(s) of interest",
@@ -214,10 +214,10 @@ compute_mi_batch <- function (input_data,
       ! ( all_voi_names %in% colnames (mat_mis) ) ]
     if (length (missing_col_names) > 0)
       {
-      n_cols_mis = ncol (mat_mis)
-      range_to_add = (n_cols_mis+1):(n_cols_mis+length(missing_col_names))
-      mat_mis[, range_to_add] = NA_real_
-      colnames (mat_mis)[range_to_add] = missing_col_names
+      mat_tmp = matrix (NA_real_,
+                        nrow=nrow(mat_mis), ncol=length (missing_col_names),
+                        dimnames=list (rownames(mat_mis), missing_col_names) )
+      mat_mis = cbind (mat_mis, mat_tmp)
       mat_mis = mat_mis[, order( colnames (mat_mis) ), drop=F]
       }
     }
@@ -246,15 +246,20 @@ compute_mi_batch <- function (input_data,
   max_voi_name = max (unlist (lapply (all_voi_names, FUN=nchar) ) )
   n_vars = ncol (input_data)
   time_start = Sys.time()
-  data_for_compute = input_data
-  one_voi_idx = 3
+  one_voi_idx = 1
   for (one_voi_idx in 1:n_all_vois)
     {
+    data_for_compute = input_data
     one_voi_name = all_voi_names[[one_voi_idx]]
     str_progress_start = paste0 ("Computing MI for ", one_voi_name,
       paste (rep ( ' ', max_voi_name - nchar(one_voi_name) ), collapse="" ), " : ")
     if (verbose >= 2)
       cat (paste0 (str_progress_start, "0 %\r") )
+
+    if (one_voi_name %in% var_of_interest_names)
+      one_voi_values = data_for_compute[, one_voi_name]
+    else
+      one_voi_values = var_of_interest_values[, one_voi_name]
 
     if (flag_mi_precomp)
       {
@@ -271,10 +276,6 @@ compute_mi_batch <- function (input_data,
       data_for_compute = input_data[, var_to_recomp, drop=F]
       n_vars = ncol (data_for_compute)
       }
-    if (one_voi_name %in% var_of_interest_names)
-      one_voi_values = data_for_compute[, one_voi_name]
-    else
-      one_voi_values = var_of_interest_values[, one_voi_name]
     #
     # Compute the mutual information by group of bin_size variables using miic
     #

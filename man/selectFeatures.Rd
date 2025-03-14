@@ -12,8 +12,8 @@ selectFeatures(
   skip_cheks = F,
   precomputed_mis = NULL,
   n_threads = 1,
-  plot = F,
   verbose = 3,
+  plot = F,
   ...
 )
 }
@@ -77,6 +77,11 @@ When set greater than 1, \emph{n_threads} parallel threads will be used for
 computation. Make sure your compiler is compatible with openmp
 if you wish to use multithreading.}
 
+\item{verbose}{[an integer, optional, 3 by default]
+
+Level of verbosity: 0=no display, 1=summary, 2=progress per variable of
+interest, 3=same as 2 with display of estimated time remaining.}
+
 \item{plot}{[a boolean, optional, FALSE by default]
 
 If set to TRUE, a plot with the top features for each variable of
@@ -96,16 +101,11 @@ Extra parameters can be used to customize the plot rendering:
 \item \emph{annotate}: a boolean, optional, TRUE by default,
   displays the remaining number of features with MI > 0 when activated.
 \item \emph{font_size}: an integer, optional, 11 by default, the font size.
-\item \emph{box_fill}: a string, optional, "steelblue" by default,
-  the filling color of the bar plot.
+\item \emph{box_fill}: a string, optional, "#1F78B4" by default
+  (darker blue of the Paired brewer palette), the bar plot filling color.
 \item \emph{box_text}: a string, optional, "white" by default,
   the text color of MI values in the bar plot.
 }}
-
-\item{verbose}{[an integer, optional, 3 by default]
-
-Level of verbosity: 0=no display, 1=summary, 2=progress per variable of
-interest, 3=same as 2 with display of estimated time remaining.}
 }
 \value{
 A named list with three items:
@@ -189,7 +189,8 @@ if ( require(ggplot2) && require(gridExtra) ) {
                          n_plots=10,
                          box_fill="lightgreen",
                          box_text="black")
-  do.call("grid.arrange", c(ret$plots, ncol=2))
+  do.call ("grid.arrange", c(ret$plots, ncol=2,
+    top="Top features on cosmicCancer dataset" ) )
 }
 
 }
