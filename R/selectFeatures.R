@@ -221,6 +221,14 @@ plot_top_features_dpi = function (dpis, couple, n_plots=20,
 #' in an experiment and a count matrix with the expression of genes
 #' in \emph{input_data}.
 #'
+#' @param complexity [a boolean, optional, TRUE by default]
+#'
+#' When set to TRUE, the mutual information values are corrected by subtracting
+#' a complexity term (computed with the Normalized Maximum Likelihood).
+#' For dataset having very few samples, the complexity term can have
+#' a disproportionate impact. Setting \emph{complexity} to FALSE switches
+#' to the use of non corrected mutual information.
+#'
 #' @param skip_cheks [a boolean, optional, FALSE by default]
 #'
 #' Before computing MI between the variable of interest and the features,
@@ -351,7 +359,7 @@ plot_top_features_dpi = function (dpis, couple, n_plots=20,
 #' @export
 #-------------------------------------------------------------------------------
 selectFeatures <- function (input_data, n_features,
-  var_of_interest_names=NULL, var_of_interest_values=NULL,
+  var_of_interest_names=NULL, var_of_interest_values=NULL, complexity=T,
   skip_cheks=F, precomputed_mis=NULL, n_threads=1, verbose=3, plot=F, ...)
   {
   n_features <- miic:::check_param_int (n_features, "number of features",
@@ -362,7 +370,8 @@ selectFeatures <- function (input_data, n_features,
   mat_mis = miic:::compute_mi_batch (input_data=input_data,
     var_of_interest_names=var_of_interest_names,
     var_of_interest_values=var_of_interest_values,
-    skip_cheks=skip_cheks, precomputed_mis=precomputed_mis,
+    complexity=complexity, skip_cheks=skip_cheks,
+    precomputed_mis=precomputed_mis,
     n_threads=n_threads, verbose=verbose)
   #
   # The mat_mis can contain more rows than the features to select
@@ -437,6 +446,10 @@ selectFeatures <- function (input_data, n_features,
     n_tops_to_sel = n_tops_to_sel + max (1, n_missing %/% n_vois)
     }
   #
+  # Prepare the last positions used per voi for future check and warning
+  #
+  last_pos_per_voi = rep (n_tops_to_sel, n_vois)
+  #
   # If a bit too much, select in the last features added those with highest MI
   #
   if (n_missing < 0)
@@ -452,7 +465,41 @@ selectFeatures <- function (input_data, n_features,
       ! (list_tops_to_test %in% list_tops_prec) ]
 
     n_missing = n_features - length (list_tops_prec)
-    list_tops = c (list_tops_prec, list_tops_to_test[1:n_missing])
+    tops_to_add = list_tops_to_test[1:n_missing]
+    list_tops = c (list_tops_prec, tops_to_add)
+    #
+    # Decrease the last position for the variable not added
+    #
+    col_added = unlist (lapply (list_mis_sorted,
+      FUN=function(x) { names(x)[n_tops_to_sel] %in% tops_to_add } ) )
+    last_pos_per_voi[!col_added] = last_pos_per_voi[!col_added] - 1
+    }
+  #
+  # Issue warnings if, after the last position, we have other variables
+  # with same MI
+  #
+  i = 1
+  for (i in 1:n_vois)
+    {
+    mis_sorted_voi = list_mis_sorted[[i]]
+    last_pos_voi = last_pos_per_voi[[i]]
+    last_mi = mis_sorted_voi[[last_pos_voi]]
+    if ( last_pos_voi >= length(mis_sorted_voi) )
+      next
+    have_same_mi_after = (mis_sorted_voi [(last_pos_voi+1):length(mis_sorted_voi)] == last_mi)
+    if (sum (have_same_mi_after) <= 0)
+      next
+    have_same_mi_before = (mis_sorted_voi [1:last_pos_voi] == last_mi)
+    warning (paste0 ("The last feature selected for variable of interest ",
+      all_voi_names[[i]], " has a MI of ", round(last_mi,4), ".\n",
+      sum (have_same_mi_before) + sum(have_same_mi_after),
+      " variables have the same MI ",
+      "but to respect the number of features requested,\n",
+      sum (have_same_mi_before), " have been selected while ",
+      sum (have_same_mi_after), " have been discarded.\n",
+      "You can check the returned MIs matrix to include the discarded ",
+      "equivalent features."
+      ) )
     }
   if (verbose >= 1)
     cat (paste0 (length(list_tops), " features selected.\n") )
@@ -522,6 +569,14 @@ selectFeatures <- function (input_data, n_features,
 #' @param var_of_interest_values_side2 [a data frame, optional, NULL by default]
 #'
 #' Same as \emph{var_of_interest_values_side1} for the second side of the path.
+#'
+#' @param complexity [a boolean, optional, TRUE by default]
+#'
+#' When set to TRUE, the mutual information values are corrected by subtracting
+#' a complexity term (computed with the Normalized Maximum Likelihood).
+#' For dataset having very few samples, the complexity term can have
+#' a disproportionate impact. Setting \emph{complexity} to FALSE switches
+#' to the use of non corrected mutual information.
 #'
 #' @param skip_cheks [a boolean, optional, FALSE by default]
 #'
@@ -665,7 +720,7 @@ selectFeatures <- function (input_data, n_features,
 selectFeaturesPath <- function (input_data, n_features,
   var_of_interest_names_side1=NULL, var_of_interest_values_side1=NULL,
   var_of_interest_names_side2=NULL, var_of_interest_values_side2=NULL,
-  skip_cheks=F, precomputed_mis=NULL, filter_v_struct=F,
+  complexity=T, skip_cheks=F, precomputed_mis=NULL, filter_v_struct=F,
   n_threads=1, verbose=3, plot=F, ...)
   {
   print ("TODO ? exlude voi from returned values ?")
@@ -843,7 +898,8 @@ selectFeaturesPath <- function (input_data, n_features,
   mat_mis = miic:::compute_mi_batch (input_data=input_data,
     var_of_interest_names=var_of_interest_names_all_sides,
     var_of_interest_values=var_of_interest_values_all_sides,
-    skip_cheks=skip_cheks, precomputed_mis=precomputed_mis,
+    complexity=complexity, skip_cheks=skip_cheks,
+    precomputed_mis=precomputed_mis,
     n_threads=n_threads, verbose=verbose)
   n_vois = length (all_voi_names)
   mat_mis_filt = mat_mis[rownames(mat_mis) %in% colnames(input_data),

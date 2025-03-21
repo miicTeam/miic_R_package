@@ -12,6 +12,7 @@ selectFeaturesPath(
   var_of_interest_values_side1 = NULL,
   var_of_interest_names_side2 = NULL,
   var_of_interest_values_side2 = NULL,
+  complexity = T,
   skip_cheks = F,
   precomputed_mis = NULL,
   filter_v_struct = F,
@@ -66,6 +67,14 @@ Same as \emph{var_of_interest_names_side1} for the second side of the path.}
 \item{var_of_interest_values_side2}{[a data frame, optional, NULL by default]
 
 Same as \emph{var_of_interest_values_side1} for the second side of the path.}
+
+\item{complexity}{[a boolean, optional, TRUE by default]
+
+When set to TRUE, the mutual information values are corrected by subtracting
+a complexity term (computed with the Normalized Maximum Likelihood).
+For dataset having very few samples, the complexity term can have
+a disproportionate impact. Setting \emph{complexity} to FALSE switches
+to the use of non corrected mutual information.}
 
 \item{skip_cheks}{[a boolean, optional, FALSE by default]
 

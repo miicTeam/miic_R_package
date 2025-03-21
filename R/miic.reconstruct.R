@@ -147,6 +147,7 @@ miic.reconstruct <- function (list_in)
   colnames(df) <- header
   df[df == "NA"] <- NA
   df$i_xy <- as.numeric(df$i_xy)
+  df$n_xy <- as.numeric(df$n_xy)
   df$i_xy_ai <- as.numeric(df$i_xy_ai)
   df$cplx <- as.numeric(df$cplx)
   df$r_xyz_ai <- as.numeric(df$r_xyz_ai)

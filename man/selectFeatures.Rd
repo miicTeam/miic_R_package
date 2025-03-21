@@ -9,6 +9,7 @@ selectFeatures(
   n_features,
   var_of_interest_names = NULL,
   var_of_interest_values = NULL,
+  complexity = T,
   skip_cheks = F,
   precomputed_mis = NULL,
   n_threads = 1,
@@ -53,6 +54,14 @@ Typically, such variables are metadata associated to samples but not
 stored in \emph{input_data}, e.g. a "Treatment" vs "Control" variable
 in an experiment and a count matrix with the expression of genes
 in \emph{input_data}.}
+
+\item{complexity}{[a boolean, optional, TRUE by default]
+
+When set to TRUE, the mutual information values are corrected by subtracting
+a complexity term (computed with the Normalized Maximum Likelihood).
+For dataset having very few samples, the complexity term can have
+a disproportionate impact. Setting \emph{complexity} to FALSE switches
+to the use of non corrected mutual information.}
 
 \item{skip_cheks}{[a boolean, optional, FALSE by default]
 

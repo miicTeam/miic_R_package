@@ -34,6 +34,14 @@
 # in an experiment and a count matrix with the expression of genes
 # in \emph{input_data}.
 #
+# @param complexity [a boolean, optional, TRUE by default]
+#
+# When set to TRUE, the mutual information values are corrected by subtracting
+# a complexity term (computed with the Normalized Maximum Likelihood).
+# For dataset having very few samples, the complexity term can have
+# a disproportionate impact. Setting \emph{complexity} to FALSE switches
+# to the use of non corrected mutual information.
+#
 # @param skip_cheks [a boolean, optional, FALSE by default]
 #
 # Before computing MI between the variable of interest and the features,
@@ -69,7 +77,7 @@
 # are added to the existing matrix.
 #-------------------------------------------------------------------------------
 compute_mi_batch <- function (input_data,
-  var_of_interest_names=NULL, var_of_interest_values=NULL,
+  var_of_interest_names=NULL, var_of_interest_values=NULL, complexity=T,
   skip_cheks=F, precomputed_mis=NULL, n_threads=1, verbose=3)
   {
   # LN_2 equivalent to constant for the function
@@ -225,6 +233,7 @@ compute_mi_batch <- function (input_data,
   #
   # Other parameters checks
   #
+  complexity <- miic:::check_param_logical (complexity, "complexity", T)
   skip_cheks <- miic:::check_param_logical (skip_cheks, "skip checks", F)
   n_threads <- miic:::check_param_int (n_threads, "number of threads", 1)
   verbose <- miic:::check_param_int (verbose, "verbose", 3, 0, 3)
@@ -356,8 +365,12 @@ compute_mi_batch <- function (input_data,
           miic_res[miic_res$x != "var_interest", "x"] )
         rownames (miic_res)[miic_res$y != "var_interest"] <- (
           miic_res[miic_res$y != "var_interest", "y"] )
-        mat_mis[rownames(miic_res), one_voi_name] = round (
-          (miic_res$info_shifted / miic_res$n_xy_ai) / LN_2, 6)
+        if (complexity)
+          mat_mis[rownames(miic_res), one_voi_name] = round (
+                    (miic_res$info_shifted / miic_res$n_xy_ai) / LN_2, 6)
+        else
+          mat_mis[rownames(miic_res), one_voi_name] = round (
+                    (miic_res$info / miic_res$n_xy) / LN_2, 6)
         }
       start_idx <- start_idx + bin_size
       }
