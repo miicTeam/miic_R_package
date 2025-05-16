@@ -15,7 +15,7 @@
 # @param input_data [a data frame or a matrix, required]
 #
 # Expected layout is samples as rows and variables as columns. Column names
-# must contain the names of the variables.
+# correspond to the names of the variables.
 #
 # @param var_of_interest_names [a string or vector of strings, optional,
 # NULL by default]
@@ -28,19 +28,36 @@
 # For the variables of interest that are not in \emph{input_data},
 # a data frame can be supplied. The column names are the names
 # of the variables of interest and rows are the samples
-# ordered in the same way as the \emph{input_data}.
-# Typically, such variables are metadata associated to samples but not stored
-# in \emph{input_data}, e.g. a "Treatment" vs "Control" variable
-# in an experiment and a count matrix with the expression of genes
+# ordered in the same way as in \emph{input_data}.
+# Typically, such variables are metadata associated to samples
+# but not stored in \emph{input_data}, e.g. a "Treatment" vs "Control"
+# variable in an experiment and a count matrix with the expression of genes
 # in \emph{input_data}.
 #
-# @param complexity [a boolean, optional, TRUE by default]
+# @param units [a string, optional, "log_conf" by default]
+#
+# Indicates the "unit" of MIs s returned.
+# Possible values are "log_conf" or "bits".
+#
+# @param corrected [a boolean, optional, TRUE by default]
 #
 # When set to TRUE, the mutual information values are corrected by subtracting
 # a complexity term (computed with the Normalized Maximum Likelihood).
 # For dataset having very few samples, the complexity term can have
-# a disproportionate impact. Setting \emph{complexity} to FALSE switches
+# a disproportionate impact. Setting \emph{corrected} to FALSE switches
 # to the use of non corrected mutual information.
+#
+# @param precomputed_mis [a matrix, optional, NULL by default]
+#
+# if MIs has been previously computed between some variables
+# in the \emph{input_data} and variable(s) of interest,
+# supplying these precomputed MIs will speed up the process as the existing
+# MIs (values present and different from NA) will not be recomputed.
+# This matrix must have variables names from the \emph{input_data}
+# as row names and variables of interest names as column names
+# (the layout is the same as the matrix returned).
+# To be valid, the pre-computed MI values must have been computed using
+# the same \emph{unit} and \emph{corrected} parameters.
 #
 # @param skip_cheks [a boolean, optional, FALSE by default]
 #
@@ -48,16 +65,6 @@
 # \emph{input_data} is checked to filter out constant features and rows full
 # of NAs. When the \emph{input_data} does not need such filtering,
 # these checks can be skipped to speed up the process.
-#
-# @param precomputed_mis [a matrix, optional, NULL by default]
-#
-# if MIs has been previously computed between some variables
-# in the \emph{input_data} and variable(s) of interest,
-# supplying these precomputed MIs will speed up the process as the existing
-# MIs (values different from NA) will not be recomputed.
-# This matrix must have variables names from the \emph{input_data}
-# as row names and variables of interest names as column names
-# (the layout is the same as the \emph{mis} matrix returned).
 #
 # @param n_threads [a positive integer, optional, 1 by default]
 #
@@ -70,150 +77,43 @@
 # Level of verbosity: 0=no display, 1=summary, 2=progress per variable of
 # interest, 3=same as 2 with display of estimated time remaining.
 #
-# @return A matrix with the MIs (in bits) between the variables in
-# \emph{input_data} (as rows) and the variable(s) of interest (as columns).
-# Row and column names are sorted alphabetically.\cr
-# If a precomputed MIs matrix was supplied, new values computed
-# are added to the existing matrix.
+# @return A matrix with the MI values between the variables in \emph{input_data}
+# as rows and variables of interest as columns. Row and column names are sorted
+# alphabetically.
+# Depending of the \emph{unit} parameter, the values can be expressed as
+# log confidence or bits
+# ( log confidence = MI in bits * number of complete samples * ln(2) )
+# and, depending on the \emph{corrected} parameter, include a correction or not.
+# When \emph{precomputed_mis} is supplied, newly computed values are added
+# to the matrix.
+# }
 #-------------------------------------------------------------------------------
 compute_mi_batch <- function (input_data,
-  var_of_interest_names=NULL, var_of_interest_values=NULL, complexity=T,
-  skip_cheks=F, precomputed_mis=NULL, n_threads=1, verbose=3)
+  var_of_interest_names=NULL, var_of_interest_values=NULL, unit="log_conf",
+  corrected=T, precomputed_mis=NULL, skip_cheks=F, n_threads=1, verbose=3)
   {
-  # LN_2 equivalent to constant for the function
-  #
   LN_2 <- log(2)
+  all_voi_names = c ( var_of_interest_names, colnames (var_of_interest_values) )
   #
-  # Check input_data
+  # MIs matrix preparation
   #
-  if (  ( ! is.data.frame (input_data) )
-     && ( ! is.matrix(input_data) )
-     && ( ! inherits(input_data, "Matrix") ) )
-    miic:::miic_error  ("parameters",
-      "the input data must be a data frame or a matrix.")
-  if ( (ncol (input_data) <= 0) || (nrow (input_data) <= 0) )
-    miic:::miic_error  ("parameters", "the input data is empty.")
-  if ( is.data.frame (input_data) )
-    # Ensure we have a true data frame, e.g. not a tibble
-    # TODO evaluate run time impact on very large data frames
-    # (let matrices unchanged to avoid warnings on large memory allocation)
-    input_data <- as.data.frame (input_data)
-  if ( is.null (colnames (input_data) ) )
-    miic:::miic_error  ("parameters", "the input data must have column names.")
-  if ( length(unique(colnames (input_data))) != ncol(input_data) )
-    miic:::miic_error  ("parameters", "the input data have some column names duplicated.")
-  #
-  # Check variables of interest
-  #
-  if ( is.null (var_of_interest_names) && is.null (var_of_interest_values) )
-    miic:::miic_error  ("parameters", "the name of the variable(s) of interest",
-      " or a data frame with the variable(s) of interest values must be supplied.")
-
-  if (is.null (var_of_interest_names) )
-    var_of_interest_names <- c()
-  else
-    {
-    for (one_var_name in var_of_interest_names)
-      if ( miic:::test_param_wrong_string (one_var_name, colnames(input_data) ) )
-        miic:::miic_error ("parameters",  "Some of the variable of interest",
-                           " names are incorrect or not in the input_data.")
-    }
-
-  extra_voi_names <- c()
-  if ( ! is.null (var_of_interest_values) )
-    {
-    if ( ! is.data.frame (var_of_interest_values) )
-      miic:::miic_error  ("parameters",
-        "the var_of_interest_values must be a data frame.")
-    # Ensure we have a true data frame, i.e. not a tibble
-    var_of_interest_values <- as.data.frame (var_of_interest_values)
-    if (ncol (var_of_interest_values) <= 0)
-      {
-      miic:::miic_warning  ("parameters",
-        "the var_of_interest_values data frame has been supplied but is empty.")
-      var_of_interest_values <- NULL
-      }
-    else if ( nrow (var_of_interest_values) != nrow (input_data) )
-      miic:::miic_error  ("parameters",
-        "the variable of interest values does not match the number of samples.")
-    else
-      {
-      # Data frame OK, checks variables names not in data
-      #
-      extra_voi_names <- colnames (var_of_interest_values)
-      #
-      # Error or warning if voi requested as external in var_of_interest_values
-      # are present in the input data
-      #
-      poss_wrong_idx = which ( extra_voi_names %in% colnames(input_data) )
-      if (length (poss_wrong_idx) >= 1)
-        {
-        for (one_var_name in extra_voi_names[poss_wrong_idx])
-          {
-          one_var_voi_vals = var_of_interest_values[,one_var_name]
-          one_var_input_vals = input_data[,one_var_name]
-
-          if (any ( ( is.na (one_var_voi_vals) != is.na (one_var_input_vals) )
-                  | (one_var_voi_vals[ !is.na(one_var_voi_vals) ] != one_var_input_vals[ !is.na(one_var_input_vals) ]) ) )
-            miic:::miic_error  ("parameters",
-              "the variable ", one_var_name, " is supplied both in input data",
-              " and in variables of interest values.")
-          #
-          # Supplied in both in input data and in variables of interest values
-          # and with identical values => just a warning, use input_data
-          # and ignore variables of interest values
-          #
-          miic:::miic_warning  ("parameters",
-            "the variable ", one_var_name, " is supplied both in input data",
-            " and in variables of interest values.")
-          var_of_interest_names = unique (c (var_of_interest_names, one_var_name) )
-          var_of_interest_values[,one_var_name] = NULL
-          }
-        extra_voi_names <- colnames (var_of_interest_values)
-        }
-      }
-    }
-  all_voi_names <- unique ( c (var_of_interest_names, extra_voi_names) )
-  #
-  # Pre-computed MIs checks and preparation of returned value mat_mis
-  #
-  mat_mis = precomputed_mis
-  if ( ! is.null (mat_mis) )
-    {
-    if (  ( ! is.matrix(mat_mis) )
-       && ( ! inherits(mat_mis, "Matrix") ) )
-      miic:::miic_error  ("parameters",
-        "the precomputed MIs must be a matrix.")
-    # Ensure we have a true data frame. i.e. not a tibble
-    if ( is.null (colnames (mat_mis) ) )
-      miic:::miic_error  ("parameters",
-        "the precomputed MIs matrix has no column name.")
-    if ( is.null (rownames (mat_mis) ) )
-      miic:::miic_error  ("parameters",
-        "the precomputed MIs matrix has no row name.")
-    if ( (nrow (mat_mis) == 0) || (ncol (mat_mis) == 0) )
-      mat_mis <- NULL
-    }
-
-  flag_mi_precomp = F
-  if ( is.null (mat_mis) )
+  if ( is.null (precomputed_mis) )
     mat_mis = matrix (NA_real_,
-                     nrow = ncol (input_data),
-                     ncol = length (all_voi_names),
-                     dimnames = list ( sort (colnames (input_data)),
-                                       sort (all_voi_names) ) )
+                      nrow = ncol (input_data),
+                      ncol = length (all_voi_names),
+                      dimnames = list ( sort (colnames (input_data)),
+                                        sort (all_voi_names) ) )
   else
     {
-    flag_mi_precomp = T
+    # Add missing row / columns (these MIs needs to be computed)
     #
-    # Add missing row / columns
-    #
+    mat_mis = precomputed_mis
     missing_row_names = colnames (input_data)[
       ! ( colnames (input_data) %in% rownames (mat_mis) ) ]
     if (length (missing_row_names) > 0)
       {
-      n_rows_mis = nrow (mat_mis)
-      range_to_add = (n_rows_mi+1):(n_rows_mis+length(missing_row_names))
+      n_rows_mat = nrow (mat_mis)
+      range_to_add = (n_rows_mat+1):(n_rows_mat+length(missing_row_names))
       mat_mis[range_to_add, ] = NA_real_
       rownames (mat_mis)[range_to_add] = missing_row_names
       mat_mis = mat_mis[order( rownames (mat_mis) ), , drop=F]
@@ -223,20 +123,13 @@ compute_mi_batch <- function (input_data,
     if (length (missing_col_names) > 0)
       {
       mat_tmp = matrix (NA_real_,
-                        nrow=nrow(mat_mis), ncol=length (missing_col_names),
-                        dimnames=list (rownames(mat_mis), missing_col_names) )
+        nrow=nrow (mat_mis), ncol=length (missing_col_names),
+        dimnames=list ( rownames (mat_mis), missing_col_names) )
       mat_mis = cbind (mat_mis, mat_tmp)
       mat_mis = mat_mis[, order( colnames (mat_mis) ), drop=F]
       }
     }
   # print (mat_mis[1:5,1:4])
-  #
-  # Other parameters checks
-  #
-  complexity <- miic:::check_param_logical (complexity, "complexity", T)
-  skip_cheks <- miic:::check_param_logical (skip_cheks, "skip checks", F)
-  n_threads <- miic:::check_param_int (n_threads, "number of threads", 1)
-  verbose <- miic:::check_param_int (verbose, "verbose", 3, 0, 3)
   #
   # The bin size controls the number of features evaluated in one go
   #
@@ -270,25 +163,74 @@ compute_mi_batch <- function (input_data,
     else
       one_voi_values = var_of_interest_values[, one_voi_name]
 
-    if (flag_mi_precomp)
+    var_to_recomp = rownames (mat_mis) [is.na (mat_mis [, one_voi_name]) ]
+    #
+    # The MI matrix, if pre-computed, can contain more features (rows)
+    # than in input_data (columnsà). e.g. we computed MI with some voi
+    # on all genes and now we send only the TFs in input_data
+    #
+    var_to_recomp = var_to_recomp[var_to_recomp %in% colnames (input_data)]
+    #
+    # Exclude the voi itself
+    #
+    one_voi_name_in_recomp_idx = which (var_to_recomp == one_voi_name)
+    if (length (one_voi_name_in_recomp_idx) > 0)
+      var_to_recomp = var_to_recomp[ -one_voi_name_in_recomp_idx ]
+    #
+    # If several vois are also variables in input_data, the MI can have been
+    # already computed. e.g. 1st voi "Col3a1" computed for all genes, including
+    # "Tcf4", now we want to compute for the 2nd voi "Tcf4", the MI between
+    # "Col3a1" and "Tcf4" is known, no need to recompute
+    #
+    if (  (one_voi_name %in% var_of_interest_names)
+       && (length (var_to_recomp) > 0) )
       {
-      var_to_recomp = rownames(mat_mis) [ is.na (mat_mis[, one_voi_name]) ]
-      one_voi_name_in_recomp_idx = which(var_to_recomp == one_voi_name)
-      if (length (one_voi_name_in_recomp_idx) > 0)
-        var_to_recomp = var_to_recomp[ -one_voi_name_in_recomp_idx ]
-      if (length (var_to_recomp) == 0)
+      mis_for_the_voi = mat_mis[one_voi_name, ] # drop
+      mis_for_the_voi = mis_for_the_voi[ !is.na (mis_for_the_voi) ]
+      if (length (mis_for_the_voi) > 0)
         {
-        if (verbose >= 2)
-          cat (paste0 (str_progress_start, "already computed\n") )
-        next
+        # print ("case with MI already computed !!!")
+        # print (paste0 (length (var_to_recomp), " vars to recomp before (",
+        #                list_to_str(var_to_recomp, max=10), ")") )
+        # print ("mis_for_the_voi:")
+        # print (mis_for_the_voi)
+        # for (one_var in names (mis_for_the_voi))
+        #   if ( one_var %in% rownames (mat_mis) )
+        #     {
+        #     print (paste0 ("value in mat_mi before: ", mat_mis[one_var, one_voi_name]) )
+        #     print (paste0 ("value already computed: ", mat_mis[one_voi_name, one_var]) )
+        #     }
+        for ( one_var in names (mis_for_the_voi) )
+          if ( one_var %in% rownames (mat_mis) )
+            mat_mis[one_var, one_voi_name] = mis_for_the_voi[one_var]
+        # for ( one_var in names (mis_for_the_voi) )
+        #   if ( one_var %in% rownames (mat_mis) )
+        #     print (paste0 ("value in mat_mi after: ", mat_mis[one_var, one_voi_name]) )
+        var_to_recomp = var_to_recomp[ !(var_to_recomp %in% names (mis_for_the_voi)) ]
+        # print (paste0 (length (var_to_recomp), " vars to recomp after (",
+        #                list_to_str(var_to_recomp, max=10), ")") )
         }
-      data_for_compute = input_data[, var_to_recomp, drop=F]
-      n_vars = ncol (data_for_compute)
       }
+    #
+    # If all MIs known, done
+    #
+    if (length (var_to_recomp) == 0)
+      {
+      if (verbose >= 2)
+        cat (paste0 (str_progress_start, "already computed\n") )
+      next
+      }
+    #
+    # Init all the MIs to 0 (some variables with a 0 MI would not be set
+    # properly be looking at miic returned value as miic will not include
+    # in the summary the edges removed without conditioning)
+    #
+    data_for_compute = input_data[, var_to_recomp, drop=F]
+    n_vars = ncol (data_for_compute)
+    mat_mis [colnames(data_for_compute), one_voi_name] = 0
     #
     # Compute the mutual information by group of bin_size variables using miic
     #
-    mat_mis[colnames(data_for_compute), one_voi_name] = 0
     start_idx <- 1
     while (start_idx < n_vars)
       {
@@ -326,11 +268,12 @@ compute_mi_batch <- function (input_data,
         data_loop = as.data.frame (data_loop)
       if (one_voi_name %in% colnames (data_loop))
         {
+        stop ("can not occur")
         # print ("voi in data loop, before:")
         # pos_col = which (colnames (data_loop) == one_voi_name)
         # print (miic:::list_to_str (colnames (data_loop)[(pos_col-1):(pos_col+1)] ) )
         data_loop[ , one_voi_name] <- NULL
-        mat_mis[one_voi_name, one_voi_name] = NA_real_
+        mat_mis [one_voi_name, one_voi_name] = NA_real_
         # print ("passe voi in data loop, after:")
         # print (miic:::list_to_str (colnames (data_loop)[(pos_col-1):(pos_col+1)] ) )
         }
@@ -365,19 +308,27 @@ compute_mi_batch <- function (input_data,
           miic_res[miic_res$x != "var_interest", "x"] )
         rownames (miic_res)[miic_res$y != "var_interest"] <- (
           miic_res[miic_res$y != "var_interest", "y"] )
-        if (complexity)
-          mat_mis[rownames(miic_res), one_voi_name] = round (
-                    (miic_res$info_shifted / miic_res$n_xy_ai) / LN_2, 6)
+        if (unit == "bits")
+          {
+          if (corrected)
+            mis_vals = (miic_res$info_shifted / miic_res$n_xy_ai) / LN_2
+          else
+            mis_vals = (miic_res$info_shifted / miic_res$n_xy_ai) / LN_2
+          }
         else
-          mat_mis[rownames(miic_res), one_voi_name] = round (
-                    (miic_res$info / miic_res$n_xy) / LN_2, 6)
+          {
+          if (corrected)
+            mis_vals = miic_res$info_shifted
+          else
+            mis_vals = miic_res$info
+          }
+        mat_mis[rownames(miic_res), one_voi_name] = mis_vals
         }
       start_idx <- start_idx + bin_size
       }
     if (verbose >= 1)
       cat (paste0 (str_progress_start, "100 %                           \n") )
     }
-
   if (verbose >= 1)
     cat (paste0 (length (all_voi_names),
                  " variables of interest evaluated.\n") )

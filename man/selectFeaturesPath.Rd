@@ -2,21 +2,21 @@
 % Please edit documentation in R/selectFeatures.R
 \name{selectFeaturesPath}
 \alias{selectFeaturesPath}
-\title{Features selection on the path between two sets of variables of interest
-based on Mutual Information (MI)}
+\title{Features selection on the path between variables of interest}
 \usage{
 selectFeaturesPath(
   input_data,
-  n_features,
   var_of_interest_names_side1 = NULL,
   var_of_interest_values_side1 = NULL,
   var_of_interest_names_side2 = NULL,
   var_of_interest_values_side2 = NULL,
-  complexity = T,
-  skip_cheks = F,
+  method = "score",
+  n_selected = 10,
+  corrected = T,
   precomputed_mis = NULL,
-  filter_v_struct = F,
+  skip_cheks = F,
   n_threads = 1,
+  depth_max = 10,
   verbose = 3,
   plot = F,
   ...
@@ -27,20 +27,6 @@ selectFeaturesPath(
 
 Expected layout is samples as rows and variables as columns. Column names
 must contain the names of the variables.}
-
-\item{n_features}{[an integer, required]
-
-The total number of features to select, must be in the range [0, number
-of variables in \emph{input_data}]. If several variables of interest
-are supplied, the function will try to select an equal number of features
-per variable.
-
-When \emph{n_features} is 0, no feature selection will be performed
-but the MIs between the variables in \emph{input_data} and the variable(s)
-of interest will be computed and returned.
-This can be used to compute once for all the MIs and perform several
-features selection at a later stage, supplying MIs matrix in the
-\emph{precomputed_mis} parameter.}
 
 \item{var_of_interest_names_side1}{[a string or vector of strings, optional,
 NULL by default]
@@ -68,13 +54,40 @@ Same as \emph{var_of_interest_names_side1} for the second side of the path.}
 
 Same as \emph{var_of_interest_values_side1} for the second side of the path.}
 
-\item{complexity}{[a boolean, optional, TRUE by default]
+\item{method}{[a string, optional, "score" by default,  possible values: "score", "dpi"]
 
-When set to TRUE, the mutual information values are corrected by subtracting
-a complexity term (computed with the Normalized Maximum Likelihood).
+When set to "score", the variables selection is performed using a score
+combining DPI and 3 points information (see Affeldt 2015).
+By turning it to "dpi", the selection is based only on the DPI,
+which speeds up the process but is less discriminating.}
+
+\item{n_selected}{[a positive integer, optional, 10 by default]
+
+The number of features selected at each step of the recursion.
+Decreasing this value speeds up the process while reducing the number
+of features selected. Increasing it has opposite effect, more features
+at the cost of an increased processing time.}
+
+\item{corrected}{[a boolean, optional, TRUE by default]
+
+When set to TRUE, the mutual information and 3 points information
+are corrected by subtracting a complexity term
+(computed with the Normalized Maximum Likelihood).
 For dataset having very few samples, the complexity term can have
-a disproportionate impact. Setting \emph{complexity} to FALSE switches
+a disproportionate impact. Setting \emph{corrected} to FALSE switches
 to the use of non corrected mutual information.}
+
+\item{precomputed_mis}{[a matrix, optional, NULL by default]
+
+if MIs have been previously computed between some variables
+in the \emph{input_data} and variable(s) of interest,
+supplying these precomputed MIs speeds up the process as the existing MIs
+(values present and different from NA) are not recomputed.
+This matrix must have variables names from the \emph{input_data}
+as row names and variables of interest names as column names
+(the layout is the same as the \emph{mis} matrix returned).
+To be valid, the pre-computed MI values must have been computed using
+the same \emph{corrected} parameter.}
 
 \item{skip_cheks}{[a boolean, optional, FALSE by default]
 
@@ -83,104 +96,89 @@ Before computing MI between the variable of interest and the features,
 of NAs. When the \emph{input_data} does not need such filtering,
 these checks can be skipped to speed up the process.}
 
-\item{precomputed_mis}{[a matrix, optional, NULL by default]
-
-if MIs has been previously computed between some variables
-in the \emph{input_data} and variable(s) of interest,
-supplying these precomputed MIs will speed up the process as the existing
-MIs (values different from NA) will not be recomputed.
-This matrix must have variables names from the \emph{input_data}
-as row names and variables of interest names as column names
-(the layout is the same as the \emph{mis} matrix returned).}
-
-\item{filter_v_struct}{[a boolean, optional, FALSE by default]
-
-If set to TRUE, the features passing the DPI test are filtered
-out if they form a v-structure with the couple of variables of interest.}
-
 \item{n_threads}{[a positive integer, optional, 1 by default]
 
-When set greater than 1, \emph{n_threads} parallel threads will be used for
+When set greater than 1, \emph{n_threads} parallel threads are used for
 computation. Make sure your compiler is compatible with openmp
 if you wish to use multithreading.}
 
+\item{depth_max}{[a positive integer, optional, 10 by default]
+
+The maximum depth of the recursion.}
+
 \item{verbose}{[an integer, optional, 3 by default]
 
-Level of verbosity: 0=no display, 1=summary, 2=progress per variable of
-interest, 3=same as 2 with display of estimated time remaining.}
+Level of verbosity: 0=no display, 1=summary, 2=progress per couple of
+variable of interest, 3=include more detail on the progress during
+the recursion.}
 
 \item{plot}{[a boolean, optional, FALSE by default]
 
-If set to TRUE, a plot with the top features for each couple of variables of
-interest will be generated.
+If set to TRUE, a plot with the top features is generated.
 
-Extra parameters can be used to customize the plot rendering:
+Please note on the plot rendering that positions are indicative with
+a tendancy to be displayed to the left side: a feature can appear multiple
+times during the recursion, but couples already investigated are skipped
+to speed up the process. For the plotting, the rule applied to select the
+position of each feature is (from the positions returned by the recursion),
+to pick the one corresponding to the minimal depth.}
+
+\item{...}{If plotting is requested, extra parameters can be used to customize the plot
+rendering:
 
 \itemize{
-\item \emph{n_plots}: an integer, optional, 25 by default, the number of
-  features to plot.
-\item \emph{x_lab}: a string, optional, "Top features for
-  variable_of_interest_1-variable_of_interest_2" by default,
+\item \emph{x_lab}: a string, optional, "Features for
+  variables_of_interest_side1-variables_of_interest_side2" by default,
   the X axis label.
-\item \emph{y_lab}: a string, optional, "MI (bits)" by default,
-  the Y axis label.
-\item \emph{values}: a boolean, optional, TRUE by default,
-  displays the MI values of each feature when activated.
+\item \emph{depth_plot}: an integer, optional, 4 by default,
+  maximal depth used for the plot.
 \item \emph{annotate}: a boolean, optional, TRUE by default,
-  displays the total number of features passing the DPI test
-  when activated.
-\item \emph{threshold}: a boolean, optional, TRUE by default,
-  displays the MI threshold of the DPI test when activated.
+  When activated, displays the maximal depth of the recursion
+  and the number of features not displayed on the plot.
 \item \emph{font_size}: an integer, optional, 11 by default, the font size.
-\item \emph{box_fill}: a vector, optional, c("#A6CEE3", "#1F78B4") by
-  default (paired blues of brewer palette), the bar plot filling colors.
-\item \emph{box_text}: a string, optional, "white" by default,
-  the text color of MI values in the bar plot.
 }}
 }
 \value{
-A named list with six items:
+A named list with five items:
 
 \itemize{
 \item \emph{features}: a vector with the features selected.
-\item \emph{mis}: a matrix with the MIs (in bits) between the variables in
+\item \emph{mis}: a matrix with the MIs between the variables in
   \emph{input_data} (as rows) and the variable(s) of interest (as columns).
   Row and column names are sorted alphabetically.\cr
-  If a precomputed MIs matrix was supplied, new values computed
+  The MIs can be corrected or not, depending on the \emph{corrected}
+  parameters.
+  If a pre-computed MIs matrix was supplied, new values computed
   are added to the existing matrix.
-\item \emph{couples}: a data frames with the MIs of each couple of variables
-  of interest used as threshold for the DPI test.
-\item \emph{dpis}: a list if data frames with the MIs (in bits) used for the
-  DPI tests. Each item corresponds to a couple of variables of interest.
-  The row names of the data frames are the features passing the DPI test
-  and data frames are ordered by sum of MIs with the variables of interest
-  descending.
-\item \emph{plots}: when the \emph{plot} parameter is turned to TRUE,
-  a list of plots with the top features for each couple of variables of
-  interest. The list is empty if the \emph{plot} parameter is set to FALSE.
-\item \emph{ais}: when the \emph{filter_v_struct} parameter is turned to
-  TRUE, a list with the separating set for each couple of variables of
-  interest.
-  The list is empty if the \emph{filter_v_struct} parameter is set to FALSE.
-\item \emph{v_struct_excluded}: the \emph{filter_v_struct} parameter is
-  turned to TRUE, a list with the features excluded (because forming a
-  v-structure) for each couple of variables of interest.
-  The list is empty if the \emph{filter_v_struct} parameter is set to FALSE.
+\item \emph{couples}: a data frames with, at each depth, the couples
+  of variables used with their MIs and features selected.
+  Please note that couples already encountered are not included
+  as no recursion is performed on duplicates.
+\item \emph{scores}: a data frame with the information about all pairs of
+  variables passing the dpi test, containing the depth, the MI values,
+  the DPI test and, if \emph{method} is "score", the 3 points information
+  and score.
+\item \emph{plot}: when the \emph{plot} parameter is turned to TRUE,
+  a plot with the features of the top levels of recursion, NULL otherwise.
 }
 }
 \description{
-Select features by using data propagation inequality (DPI)
-to select the set of variables that are the most likely to be in the path
+Select the variables that are the most likely to be in the path
 between two set of variable(s) of interest.
-When multiple variables of interest are supplied in one or both sides of
-the path, the function will try to select an equal number of features
-per couple (one of each side) of variables of interest .
-
-Variables not sharing information at all (MI = 0) or not in the path
-between the set of variables considering the DPI can not be selected
-as features. So the number of features returned globally or linked to a
-set of variables of interest can be lower than requested. This can also
-lead to unbalanced number of features per couple of variables of interest.
+Variables selection can be performed using a score combining Data Processing
+inequality (DPI) and 3 points information or only using the DPI.\cr
+The search is recursive by dichotomy: in the first round, a set of features
+on the path between the main variables of interest is selected.
+From then, the path is splitted in two parts:
+\itemize{
+  \item variables of interest of side 1 + set of features selected
+  \item set of features selected + variables of interest of side 2
+  }
+Each part of the path is investigated with the same principle:
+finding a set of features in the path subsection, splitting the path in two,
+and so on.
+The recursion ends when no feature can be found
+or when the maximum level of recursion is reached.
 }
 \examples{
 library(miic)
@@ -192,9 +190,8 @@ df_external_meta <- data.frame ("Ploidy" = cosmicCancer$Ploidy)
 df_data <- cosmicCancer[ , ! (colnames(cosmicCancer) == "Ploidy") ]
 ret <- selectFeaturesPath (df_data,
                            var_of_interest_values_side1=df_external_meta,
-                           var_of_interest_names_side2="TP53",
-                           n_features=10)
-message ("Tops 10 features = ", paste (ret$features, collapse=", ") )
+                           var_of_interest_names_side2="TP53")
+message ("Features selected = ", paste (ret$features, collapse=", ") )
 
 # Same features selection with reuse of the MIs computed above and plot
 if ( require(ggplot2) ) {
@@ -202,30 +199,28 @@ if ( require(ggplot2) ) {
                              var_of_interest_values_side1=df_external_meta,
                              var_of_interest_names_side2="TP53",
                              precomputed_mis=ret$mis,
-                             n_features=10,
                              plot=TRUE)
-  print (ret$plots[[1]])
+  print (ret$plot)
 }
 
 # Features selection using multiple variables on each side
 ret <- selectFeaturesPath (cosmicCancer,
   var_of_interest_names_side1=c("TP53", "Ploidy"),
-  var_of_interest_names_side2=c("FOXM1", "AURKA"),
-  n_features=10)
-message ("Tops 10 features = ", paste (ret$features, collapse=", ") )
+  var_of_interest_names_side2=c("FOXM1", "AURKA") )
+message ("Features selected = ", paste (ret$features, collapse=", ") )
 
 # Same features selection with plotting using a customized rendering
-if ( require(ggplot2) && require(gridExtra) ) {
+if ( require(ggplot2) ) {
   ret <- selectFeaturesPath (cosmicCancer,
-                             var_of_interest_names_side1=c("TP53", "Ploidy"),
-                             var_of_interest_names_side2=c("FOXM1", "AURKA"),
-                             n_features=10,
-                             plot=TRUE,
-                             n_plots=10,
-                             box_fill=c("lawngreen", "limegreen"),
-                             box_text="black")
-  do.call ("grid.arrange", c(ret$plots, ncol=2,
-    top="Top features on cosmicCancer dataset") )
+                            var_of_interest_names_side1=c("TP53", "Ploidy"),
+                            var_of_interest_names_side2=c("FOXM1", "AURKA"),
+                            plot=TRUE, depth_plot=6, font_size=9)
+  print (ret$plot)
 }
 
+}
+\references{
+\itemize{
+\item Affeldt \emph{et al.}, UAI 2015, \href{https://auai.org/uai2015/proceedings/papers/293.pdf}{Robust Reconstruction of Causal Graphical Models based on Conditional 2-point and 3-point Information}
+}
 }

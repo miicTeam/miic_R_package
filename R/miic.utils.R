@@ -1185,9 +1185,13 @@ check_param_int <- function (value, name, default, min=NA, max=NA)
       val_str = "NULL"
     else
       val_str = list_to_str (value)
+    if ( is.null (default) )
+      default_str = "NULL"
+    else
+      default_str = default
     miic_warning ("parameters", "supplied value ", val_str,
       " for the ", name, " parameter is invalid." , msg_str,
-      " The default value (", default, ") will be used.")
+      " The default value (", default_str, ") will be used.")
     value = default
     }
   return (value)

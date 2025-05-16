@@ -9,9 +9,10 @@ selectFeatures(
   n_features,
   var_of_interest_names = NULL,
   var_of_interest_values = NULL,
-  complexity = T,
-  skip_cheks = F,
+  unit = "log_conf",
+  corrected = T,
   precomputed_mis = NULL,
+  skip_cheks = F,
   n_threads = 1,
   verbose = 3,
   plot = F,
@@ -21,21 +22,21 @@ selectFeatures(
 \arguments{
 \item{input_data}{[a data frame or a matrix, required]
 
-Expected layout is samples as rows and variables as columns. Column names
-must contain the names of the variables.}
+Expected layout is samples as rows and variables as columns.
+Column names must contain the names of the variables.}
 
 \item{n_features}{[an integer, required]
 
-The total number of features to select, must be in the range [0, number
-of variables in \emph{input_data}]. If several variables of interest
-are supplied, the function will try to select an equal number of features
-per variable.
+The total number of features to select, must be in the range
+[0, number of variables in \emph{input_data}].
+If several variables of interest are supplied,
+the function tries to select an equal number of features per variable.
 
-When \emph{n_features} is 0, no feature selection will be performed
+When \emph{n_features} is 0, no feature selection is performed
 but the MIs between the variables in \emph{input_data} and the variable(s)
-of interest will be computed and returned.
+of interest are computed and returned.
 This can be used to compute once for all the MIs and perform several
-features selection at a later stage, supplying MIs matrix in the
+features selection at a later stage, supplying the MIs matrix in the
 \emph{precomputed_mis} parameter.}
 
 \item{var_of_interest_names}{[a string or vector of strings, optional,
@@ -49,40 +50,47 @@ you should supply their names here.}
 For the variables of interest that are not in \emph{input_data},
 a data frame can be supplied. The column names are the names
 of the variables of interest and rows are the samples
-ordered in the same way as the \emph{input_data}.
+ordered in the same way as \emph{input_data}.
 Typically, such variables are metadata associated to samples but not
 stored in \emph{input_data}, e.g. a "Treatment" vs "Control" variable
 in an experiment and a count matrix with the expression of genes
 in \emph{input_data}.}
 
-\item{complexity}{[a boolean, optional, TRUE by default]
+\item{unit}{[a string, optional, "log_conf" by default]
+
+Indicates the "unit" of MIs returned and used for plotting if requested.
+Possible values are "log_conf" or "bits".}
+
+\item{corrected}{[a boolean, optional, TRUE by default]
 
 When set to TRUE, the mutual information values are corrected by subtracting
 a complexity term (computed with the Normalized Maximum Likelihood).
-For dataset having very few samples, the complexity term can have
-a disproportionate impact. Setting \emph{complexity} to FALSE switches
+For datasets having very few samples, the complexity term can have
+a disproportionate impact. Setting \emph{corrected} to FALSE switches
 to the use of non corrected mutual information.}
+
+\item{precomputed_mis}{[a matrix, optional, NULL by default]
+
+if MIs have been previously computed between some variables
+in the \emph{input_data} and variable(s) of interest,
+supplying these precomputed MIs speeds up the process as the existing MIs
+(values present and different from NA) are not recomputed.
+This matrix must have variables names from the \emph{input_data}
+as row names and variables of interest names as column names
+(the layout is the same as the \emph{mis} matrix returned).
+To be valid, the pre-computed MIs must have been computed using
+the same \emph{unit} and \emph{corrected} parameters.}
 
 \item{skip_cheks}{[a boolean, optional, FALSE by default]
 
-Before computing MI between the variable of interest and the features,
+Before computing MIs between the variable(s) of interest and the features,
 \emph{input_data} is checked to filter out constant features and rows full
 of NAs. When the \emph{input_data} does not need such filtering,
 these checks can be skipped to speed up the process.}
 
-\item{precomputed_mis}{[a matrix, optional, NULL by default]
-
-if MIs has been previously computed between some variables
-in the \emph{input_data} and variable(s) of interest,
-supplying these precomputed MIs will speed up the process as the existing
-MIs (values different from NA) will not be recomputed.
-This matrix must have variables names from the \emph{input_data}
-as row names and variables of interest names as column names
-(the layout is the same as the \emph{mis} matrix returned).}
-
 \item{n_threads}{[a positive integer, optional, 1 by default]
 
-When set greater than 1, \emph{n_threads} parallel threads will be used for
+When set greater than 1, \emph{n_threads} parallel threads are used for
 computation. Make sure your compiler is compatible with openmp
 if you wish to use multithreading.}
 
@@ -94,21 +102,22 @@ interest, 3=same as 2 with display of estimated time remaining.}
 \item{plot}{[a boolean, optional, FALSE by default]
 
 If set to TRUE, a plot with the top features for each variable of
-interest will be generated.
+interest is generated.}
 
-Extra parameters can be used to customize the plot rendering:
+\item{...}{If plotting is requested, extra parameters can be used to customize the plot
+rendering:
 
 \itemize{
 \item \emph{n_plots}: an integer, optional, 25 by default, the number of
   features to plot.
 \item \emph{x_lab}: a string, optional, "Top features for
   variable_of_interest_name" by default, the X axis label.
-\item \emph{y_lab}: a string, optional, "MI (bits)" by default,
-  the Y axis label.
+\item \emph{y_lab}: a string, optional, determined from the \emph{unit}
+  and \emph{corrected} parameters by default, the Y axis label.
 \item \emph{values}: a boolean, optional, TRUE by default,
   displays the MI of each feature when activated.
 \item \emph{annotate}: a boolean, optional, TRUE by default,
-  displays the remaining number of features with MI > 0 when activated.
+  displays the shown/total number of features with MI > 0 when activated.
 \item \emph{font_size}: an integer, optional, 11 by default, the font size.
 \item \emph{box_fill}: a string, optional, "#1F78B4" by default
   (darker blue of the Paired brewer palette), the bar plot filling color.
@@ -121,9 +130,12 @@ A named list with three items:
 
 \itemize{
 \item \emph{features}: a vector with the features selected.
-\item \emph{mis}: a matrix with the MIs (in bits) between the variables in
+\item \emph{mis}: a matrix with the MIs between the variables in
   \emph{input_data} (as rows) and the variable(s) of interest (as columns).
   Row and column names are sorted alphabetically.\cr
+  The MIs can be expressed, depending on the \emph{unit} parameter, as
+  log confidence or in bits and, depending on the \emph{corrected} parameter,
+  include a correction or not.\cr
   If a precomputed MIs matrix was supplied, new values computed
   are added to the existing matrix.
 \item \emph{plots}: when the \emph{plot} parameter is turned to TRUE,
@@ -132,11 +144,11 @@ A named list with three items:
 }
 }
 \description{
-Select features by selecting the set of variables having
-the highest MIs with the variable(s) of interest. When multiple variables
-of interest are supplied, the function will try to select an equal
-number of features per variable of interest.
+Select features by retrieving the set of variables having
+the highest MIs with the variable(s) of interest.
 
+When multiple variables of interest are supplied, the function tries
+to select an equal number of features per variable of interest.
 Variables not sharing information at all (MI = 0) can not be selected
 as features, so the number of features returned globally or for a variable
 of interest can be lower than requested. This can also lead to
@@ -168,7 +180,7 @@ ret <- selectFeatures (df_data,
                        n_features=10)
 message ("Tops 10 features = ", paste (ret$features, collapse=", ") )
 
-# Same features selection with plot of the result
+# Same features selection with plotting of the result
 if ( require(ggplot2) ) {
   ret <- selectFeatures (df_data,
                          var_of_interest_values=df_external_meta,
@@ -185,15 +197,15 @@ df_data <- cosmicCancer[ , ! (colnames(cosmicCancer) == "Ploidy") ]
 ret <- selectFeatures (df_data,
                        var_of_interest_names=c("TP53", "tp53"),
                        var_of_interest_values=df_external_meta,
-                       n_features=30)
-message ("Tops 30 features = ", paste (ret$features, collapse=", ") )
+                       n_features=20)
+message ("Tops 20 features = ", paste (ret$features, collapse=", ") )
 
 # Same features selection with plotting using a customized rendering
 if ( require(ggplot2) && require(gridExtra) ) {
   ret <- selectFeatures (df_data,
                          var_of_interest_names=c("TP53", "tp53"),
                          var_of_interest_values=df_external_meta,
-                         n_features=30,
+                         n_features=20,
                          plot=TRUE,
                          n_plots=10,
                          box_fill="lightgreen",
