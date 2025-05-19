@@ -77,6 +77,7 @@ License: GPL (>= 2)
 URL: https://github.com/miicTeam/miic_R_package
 BugReports: https://github.com/miicTeam/miic_R_package/issues
 Imports:
+    lifecycle,
     ppcor,
     Rcpp,
     scales,

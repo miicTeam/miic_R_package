@@ -706,9 +706,12 @@ miic_private <- function(input_data,
 #'  use tMiicStat() for time series. }
 #' }
 #'
-#' @export
-#' @useDynLib miic
 #' @import Rcpp
+#' @importFrom lifecycle deprecate_warn
+#'
+#' @export
+#'
+#' @useDynLib miic
 #'
 #' @examples
 #' library(miic)

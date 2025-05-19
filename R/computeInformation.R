@@ -271,11 +271,11 @@ compute_mi_batch <- function (input_data,
         stop ("can not occur")
         # print ("voi in data loop, before:")
         # pos_col = which (colnames (data_loop) == one_voi_name)
-        # print (miic:::list_to_str (colnames (data_loop)[(pos_col-1):(pos_col+1)] ) )
+        # print (list_to_str (colnames (data_loop)[(pos_col-1):(pos_col+1)] ) )
         data_loop[ , one_voi_name] <- NULL
         mat_mis [one_voi_name, one_voi_name] = NA_real_
         # print ("passe voi in data loop, after:")
-        # print (miic:::list_to_str (colnames (data_loop)[(pos_col-1):(pos_col+1)] ) )
+        # print (list_to_str (colnames (data_loop)[(pos_col-1):(pos_col+1)] ) )
         }
 
       if (!skip_cheks)

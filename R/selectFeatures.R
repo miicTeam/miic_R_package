@@ -26,17 +26,17 @@ sf_check_input_data <- function (input_data)
   if (  ( ! is.data.frame (input_data) )
      && ( ! is.matrix(input_data) )
      && ( ! inherits(input_data, "Matrix") ) )
-    miic:::miic_error  ("parameters",
+    miic_error  ("parameters",
       "the input data must be a data frame or a matrix.")
   if ( (ncol (input_data) <= 0) || (nrow (input_data) <= 0) )
-    miic:::miic_error  ("parameters", "the input data is empty.")
+    miic_error  ("parameters", "the input data is empty.")
   if ( is.data.frame (input_data) )
     # Ensure we have a true data frame, e.g. not a tibble
     # (but let matrices unchanged to avoid warnings on large memory allocation)
     # TODO evaluate run time impact on very large data frames
     input_data <- as.data.frame (input_data)
   if ( is.null (colnames (input_data) ) )
-    miic:::miic_error  ("parameters", "the input data must have column names.")
+    miic_error  ("parameters", "the input data must have column names.")
   return (input_data)
   }
 
@@ -57,7 +57,7 @@ sf_check_precomputed_mis <- function (precomputed_mis)
 
   if ( ( ! is.matrix(precomputed_mis) )
     && ( ! inherits(precomputed_mis, "Matrix") ) )
-    miic:::miic_error  ("parameters",
+    miic_error  ("parameters",
       "the precomputed MIs items must be a matrices.")
   #
   # NB: colum names can be other variables of interest
@@ -68,10 +68,10 @@ sf_check_precomputed_mis <- function (precomputed_mis)
   # => No cross check with input_data or variables of interest
   #
   if ( is.null (colnames (precomputed_mis) ) )
-    miic:::miic_error  ("parameters",
+    miic_error  ("parameters",
       "the precomputed MIs matrix must have column names")
   if ( is.null (rownames (precomputed_mis) ) )
-    miic:::miic_error  ("parameters",
+    miic_error  ("parameters",
       "the precomputed MIs matrixes must have row names")
   if ( (nrow (precomputed_mis) == 0) || (ncol (precomputed_mis) == 0) )
     return (NULL)
@@ -104,7 +104,7 @@ sfo_check_vois <- function (
   input_data, var_of_interest_names, var_of_interest_values)
   {
   if ( is.null (var_of_interest_names) && is.null (var_of_interest_values) )
-    miic:::miic_error  ("parameters", "the name of the variable(s) of interest",
+    miic_error  ("parameters", "the name of the variable(s) of interest",
       " or a data frame with the variable(s) of interest values must be supplied.")
 
   if (is.null (var_of_interest_names) )
@@ -112,8 +112,8 @@ sfo_check_vois <- function (
   else
     {
     for (one_var_name in var_of_interest_names)
-      if ( miic:::test_param_wrong_string (one_var_name, colnames(input_data)) )
-        miic:::miic_error ("parameters",  "Some of the variable of interest",
+      if ( test_param_wrong_string (one_var_name, colnames(input_data)) )
+        miic_error ("parameters",  "Some of the variable of interest",
                            " names are incorrect or not in the input_data.")
     }
 
@@ -121,18 +121,18 @@ sfo_check_vois <- function (
   if ( ! is.null (var_of_interest_values) )
     {
     if ( ! is.data.frame (var_of_interest_values) )
-      miic:::miic_error  ("parameters",
+      miic_error  ("parameters",
         "the var_of_interest_values must be a data frame.")
     # Ensure we have a true data frame, i.e. not a tibble
     var_of_interest_values <- as.data.frame (var_of_interest_values)
     if (ncol (var_of_interest_values) <= 0)
       {
-      miic:::miic_warning  ("parameters",
+      miic_warning  ("parameters",
         "the var_of_interest_values data frame has been supplied but is empty.")
       var_of_interest_values <- NULL
       }
     else if ( nrow (var_of_interest_values) != nrow (input_data) )
-      miic:::miic_error  ("parameters",
+      miic_error  ("parameters",
         "the variable of interest values does not match the number of samples.")
     else
       {
@@ -153,7 +153,7 @@ sfo_check_vois <- function (
 
           if (any ( ( is.na (one_var_voi_vals) != is.na (one_var_input_vals) )
                   | (one_var_voi_vals[ !is.na(one_var_voi_vals) ] != one_var_input_vals[ !is.na(one_var_input_vals) ]) ) )
-            miic:::miic_error  ("parameters",
+            miic_error  ("parameters",
               "the variable ", one_var_name, " is supplied both in input data",
               " and in variables of interest values.")
           #
@@ -161,7 +161,7 @@ sfo_check_vois <- function (
           # and with identical values => just a warning, use input_data
           # and ignore variables of interest values
           #
-          miic:::miic_warning  ("parameters",
+          miic_warning  ("parameters",
             "the variable ", one_var_name, " is supplied both in input data",
             " and in variables of interest values.")
           var_of_interest_names = unique (c (var_of_interest_names, one_var_name) )
@@ -271,7 +271,7 @@ sfo_get_tops <- function (n_features, list_sorted, verbose=3)
       " the discarded equivalent features.") )
     }
   if (verbose >= 1)
-    miic:::miic_msg (length(list_tops), " features selected.")
+    miic_msg (length(list_tops), " features selected.")
   return (list_tops)
   }
 
@@ -303,7 +303,7 @@ sfo_plot = function (mis, var_of_interest_name, n_plots=25,
   # Check the parameters that can have been supplied by the user
   # (passed by the ... extra params of selectFeatures function)
   #
-  n_plots <- miic:::check_param_int (
+  n_plots <- check_param_int (
     n_plots, "number of features to plot", default=25, min=1)
   if ( is.null (x_lab) )
     x_lab <- paste0 ("Top features for ", var_of_interest_name)
@@ -319,9 +319,9 @@ sfo_plot = function (mis, var_of_interest_name, n_plots=25,
     }
   else
     y_lab <- as.character (y_lab)
-  values <- miic:::check_param_logical (values, "plotting of values", default=T)
-  annotate <- miic:::check_param_logical (annotate, "plotting of annotation", default=T)
-  font_size <- miic:::check_param_int (font_size, "font size",
+  values <- check_param_logical (values, "plotting of values", default=T)
+  annotate <- check_param_logical (annotate, "plotting of annotation", default=T)
+  font_size <- check_param_int (font_size, "font size",
                                        default=11, min=1)
   # TODO: add a function for color checking
   if ( is.null (box_fill) )
@@ -339,29 +339,30 @@ sfo_plot = function (mis, var_of_interest_name, n_plots=25,
     df = df[1:n_plots, , drop=F]
   mi_min = min(df[,"MI"])
 
-  p <- ggplot(data=df, aes(x=Features, y=MI)) +
-    geom_bar (stat="identity", fill=box_fill) +
-    scale_x_discrete (limits = df$Features ) +
-    theme_classic() +
-    theme ( text=element_text(size=font_size) ) +
-    theme ( axis.text.x=element_text (angle=30, vjust =1, hjust=1) ) +
-    xlab (x_lab) +
-    ylab (y_lab)
+  # With trick to avoid note in r checks on use aes with data
+  p <- with (df, {
+    ggplot2::ggplot (df, mapping=ggplot2::aes(x=Features, y=MI)) +
+      ggplot2::geom_bar (stat="identity", fill=box_fill) +
+      ggplot2::scale_x_discrete (limits = df$Features ) +
+      ggplot2::theme_classic() +
+      ggplot2::theme ( text = ggplot2::element_text(size=font_size),
+        axis.text.x = ggplot2::element_text (angle=30, vjust =1, hjust=1) ) +
+      ggplot2::xlab (x_lab) +
+      ggplot2::ylab (y_lab)
+    } )
 
   if (values)
     {
     if (mi_min < 0.1)
-      p = p + geom_text(aes(label=round(MI, 3)), color=box_text,
-                        vjust=1.6, size=font_size*0.8/.pt )
+      values_rounded = round (df$MI, 3)
     else if (mi_min < 1)
-      p = p + geom_text(aes(label=round(MI, 2)), color=box_text,
-                        vjust=1.6, size=font_size*0.8/.pt )
+      values_rounded = round (df$MI, 2)
     else if (mi_min < 10)
-      p = p + geom_text(aes(label=round(MI, 1)), color=box_text,
-                        vjust=1.6, size=font_size*0.8/.pt )
+      values_rounded = round (df$MI, 1)
     else
-      p = p + geom_text(aes(label=round(MI, 0)), color=box_text,
-                        vjust=1.6, size=font_size*0.8/.pt )
+      values_rounded = round (df$MI, 0)
+    p = p + ggplot2::geom_text (ggplot2::aes (label=values_rounded),
+      color=box_text, vjust=1.6, size=font_size*0.8/ggplot2::.pt )
     }
 
   if (annotate)
@@ -372,8 +373,13 @@ sfo_plot = function (mis, var_of_interest_name, n_plots=25,
     else
       label_text = paste0 (length(v_mis), " features with MI > 0")
     annotation <- data.frame (x = nrow(df), y = max(df$MI), label = label_text)
-    p = p + geom_text (data=annotation, aes( x=x, y=y, label=label),
-                       size=font_size*0.8/.pt, hjust=1, vjust=1)
+
+    # With needed to avoid notes in r checks
+    p <- with (annotation, {
+      p + ggplot2::geom_text (annotation,
+        mapping=ggplot2::aes( x=x, y=y, label=label),
+        size=font_size*0.8/ggplot2::.pt, hjust=1, vjust=1)
+      } )
     }
   return (p)
   }
@@ -437,7 +443,7 @@ sfp_check_vois <- function (input_data,
     # Same kind of tests as compute_mi_batch
     #
     if ( is.null (var_of_interest_names) && is.null (var_of_interest_values) )
-      miic:::miic_error  ("parameters", "the name of the variable(s) of",
+      miic_error  ("parameters", "the name of the variable(s) of",
         " interest or a data frame with the variable(s) of interest values",
         " must be supplied for side ", i, ".")
 
@@ -446,8 +452,8 @@ sfp_check_vois <- function (input_data,
     else
       {
       for (one_var_name in var_of_interest_names)
-        if ( miic:::test_param_wrong_string (one_var_name, colnames(input_data) ) )
-          miic:::miic_error ("parameters",  "Some of the variable of interest",
+        if ( test_param_wrong_string (one_var_name, colnames(input_data) ) )
+          miic_error ("parameters",  "Some of the variable of interest",
             " names for side ", i, " are incorrect or not in the input_data.")
       }
 
@@ -455,19 +461,19 @@ sfp_check_vois <- function (input_data,
     if ( ! is.null (var_of_interest_values) )
       {
       if ( ! is.data.frame (var_of_interest_values) )
-        miic:::miic_error  ("parameters",
+        miic_error  ("parameters",
           "the var_of_interest_values for side ", i, " must be a data frame.")
       # Ensure we have a true data frame, i.e. not a tibble
       var_of_interest_values <- as.data.frame (var_of_interest_values)
       if (ncol (var_of_interest_values) <= 0)
         {
-        miic:::miic_warning  ("parameters",
+        miic_warning  ("parameters",
           "the var_of_interest_values data frame for side ", i,
           " has been supplied but is empty.")
         var_of_interest_values <- NULL
         }
       else if ( nrow (var_of_interest_values) != nrow (input_data) )
-        miic:::miic_error  ("parameters",
+        miic_error  ("parameters",
           "the variable of interest values for side ", i,
           " does not match the number of samples.")
       else
@@ -489,7 +495,7 @@ sfp_check_vois <- function (input_data,
 
             if (any ( ( is.na (one_var_voi_vals) != is.na (one_var_input_vals) )
                     | (one_var_voi_vals[ !is.na(one_var_voi_vals) ] != one_var_input_vals[ !is.na(one_var_input_vals) ]) ) )
-              miic:::miic_error  ("parameters",
+              miic_error  ("parameters",
                 "the variable ", one_var_name, " is supplied both in input data",
                 " and in variables of interest values of side ", i, ".")
             #
@@ -497,7 +503,7 @@ sfp_check_vois <- function (input_data,
             # and with identical values => just a warning, use input_data
             # and ignore variables of interest values
             #
-            miic:::miic_warning  ("parameters",
+            miic_warning  ("parameters",
               "the variable ", one_var_name, " is supplied both in input data",
               " and in variables of interest values of side ", i, ".")
             var_of_interest_names = unique (c (var_of_interest_names, one_var_name) )
@@ -520,9 +526,9 @@ sfp_check_vois <- function (input_data,
                      vois[[2]]$var_of_interest_names, vois[[2]]$extra_voi_names)
   are_duplicated =  duplicated (all_voi_names)
   if (any (are_duplicated))
-    miic:::miic_error  ("parameters",
+    miic_error  ("parameters",
       "Some variable(s) have been supplied in both side: ",
-      miic:::list_to_str (all_voi_names[are_duplicated], n_max=10), ".")
+      list_to_str (all_voi_names[are_duplicated], n_max=10), ".")
   #
   # Create variables that store the vois of both sides
   #
@@ -567,6 +573,7 @@ sfp_check_vois <- function (input_data,
 #-------------------------------------------------------------------------------
 sfp_prepare_couples = function (vois, mis, unit, corrected)
   {
+  LN_2 <- log (2)
   vois_side1 = c (vois[["side1"]]$var_of_interest_names,
                   vois[["side1"]]$extra_voi_names)
   vois_side2 = c (vois[["side2"]]$var_of_interest_names,
@@ -586,10 +593,10 @@ sfp_prepare_couples = function (vois, mis, unit, corrected)
       "voi2" = vois[["side2"]]$var_of_interest_values[ , x[[2]] ])
     are_continuous = unlist (lapply (list_vois_vals, FUN=function(y) {
       return (  is.numeric (y)
-        && (length (unique (y[!is.na(y)]) ) >= miic:::MIIC_CONTINUOUS_TRESHOLD) )
+        && (length (unique (y[!is.na(y)]) ) >= MIIC_CONTINUOUS_TRESHOLD) )
       } ) )
-    ret = miic::computeMutualInfo (list_vois_vals[[1]], list_vois_vals[[2]],
-                                   is_continuous=are_continuous, plot=F)
+    ret = computeMutualInfo (list_vois_vals[[1]], list_vois_vals[[2]],
+                             is_continuous=are_continuous, plot=F)
     if (unit == "bits")
       {
       nb_completes_samples = sum ( (!is.na (list_vois_vals[[1]]))
@@ -607,7 +614,7 @@ sfp_prepare_couples = function (vois, mis, unit, corrected)
   if ( any(couples_mi_0_test) )
     {
     couples_mi_0 = couples[couples_mi_0_test, , drop=F]
-    miic:::miic_warning ("path feature selection", "MI = 0 for ",
+    miic_warning ("path feature selection", "MI = 0 for ",
       paste ( apply (couples_mi_0, MARGIN=1, FUN=function(x) {
                 paste0 (x[[1]], "-", x[[2]]) } ), collapse=", "),
       ", no feature selection possible on these couple(s)." )
@@ -661,7 +668,7 @@ sfp_recurs <- function (input_data,
   if (depth > depth_max)
     return (list ("mis"=precomputed_mis, "couples"=all_couples,
                   "scores"=all_scores, "plot"=plot) )
-  vois <- miic:::sfp_check_vois (input_data=input_data,
+  vois <- sfp_check_vois (input_data=input_data,
     var_of_interest_names_side1=var_of_interest_names_side1,
     var_of_interest_values_side1=var_of_interest_values_side1,
     var_of_interest_names_side2=var_of_interest_names_side2,
@@ -677,7 +684,7 @@ sfp_recurs <- function (input_data,
       str_disp2 = paste0 (substr(str_disp2, 1, 27), "...")
     str_display = paste0 ("Depth ", depth, ", ", str_disp1, "-", str_disp2)
     if (depth == 1)
-      miic:::miic_msg (str_display, ", computing MIs...")
+      miic_msg (str_display, ", computing MIs...")
     else if ( (progress == 0) && (verbose >= 3) )
       cat (paste0 (str_display, ", progress ", round (progress, 2), " %...",
                    paste (rep(" ", 40), collapse=""), "\r") )
@@ -685,7 +692,7 @@ sfp_recurs <- function (input_data,
   #
   # Compute MIs
   #
-  mat_mis = miic:::compute_mi_batch (input_data=input_data,
+  mat_mis = compute_mi_batch (input_data=input_data,
     var_of_interest_names=vois[["all"]]$var_of_interest_names,
     var_of_interest_values=vois[["all"]]$var_of_interest_values,
     unit="log_conf", corrected=corrected, precomputed_mis=precomputed_mis,
@@ -706,8 +713,8 @@ sfp_recurs <- function (input_data,
   # For each, pick or compute the MI between the vois
   #
   if ( (verbose >= 2) && (depth == 1) )
-    miic:::miic_msg (str_display, ", evaluate couples...")
-  couples = miic:::sfp_prepare_couples (
+    miic_msg (str_display, ", evaluate couples...")
+  couples = sfp_prepare_couples (
     vois=vois, mis=mat_mis_filt, unit="log_conf", corrected=corrected)
   couples$depth = depth
   couples$features = NA_character_
@@ -750,7 +757,7 @@ sfp_recurs <- function (input_data,
     x_name = couples[i, "x"]
     y_name = couples[i, "y"]
     if (  (verbose >= 2) && (depth == 1) )
-      miic:::miic_msg ("Depth ", depth, ", ", x_name, "-", y_name,
+      miic_msg ("Depth ", depth, ", ", x_name, "-", y_name,
                        ", computing DPIs...")
     #
     # basic DPI check : keep only features z when Ixz > Ixy and Iyz > Ixy
@@ -796,21 +803,21 @@ sfp_recurs <- function (input_data,
     if (method == "score")
       {
       if (  (verbose >= 2) && (depth == 1) )
-        miic:::miic_msg ("Depth ", depth, ", ", x_name, "-", y_name,
+        miic_msg ("Depth ", depth, ", ", x_name, "-", y_name,
                          ", computing scores...")
       if (x_name %in% vois$all$var_of_interest_names)
         x = input_data[ , x_name]
       else
         x = vois$all$var_of_interest_values[ , x_name]
       x_continuous = ( is.numeric (x)
-        && (length (unique (x[!is.na(x)]) ) >= miic:::MIIC_CONTINUOUS_TRESHOLD) )
+        && (length (unique (x[!is.na(x)]) ) >= MIIC_CONTINUOUS_TRESHOLD) )
 
       if (y_name %in% vois$all$var_of_interest_names)
         y = input_data[ , y_name]
       else
         y = vois$all$var_of_interest_values[ , y_name]
       y_continuous = ( is.numeric (y)
-        && (length (unique (y[!is.na(y)]) ) >= miic:::MIIC_CONTINUOUS_TRESHOLD) )
+        && (length (unique (y[!is.na(y)]) ) >= MIIC_CONTINUOUS_TRESHOLD) )
       #
       # Compute NI3 for all remaining features
       #
@@ -827,10 +834,10 @@ sfp_recurs <- function (input_data,
           return (NA_real_)
 
         z_continuous = ( is.numeric (z)
-          && (length (unique (z[!is.na(z)]) ) >= miic:::MIIC_CONTINUOUS_TRESHOLD) )
+          && (length (unique (z[!is.na(z)]) ) >= MIIC_CONTINUOUS_TRESHOLD) )
         are_continuous = c (x_continuous, y_continuous, z_continuous)
-        ret_ni3 = miic::computeThreePointInfo (x=df_tmp$x, y=df_tmp$y, z=df_tmp$z,
-                                               is_continuous=are_continuous)
+        ret_ni3 = computeThreePointInfo (x=df_tmp$x, y=df_tmp$y, z=df_tmp$z,
+                                         is_continuous=are_continuous)
         ifelse (corrected, ret_ni3$i3k, ret_ni3$i3)
         } )
       df_scores$score = ifelse (df_scores$dpi < df_scores$i3,
@@ -897,7 +904,7 @@ sfp_recurs <- function (input_data,
   #               " => inc=", progress_inc, " min=", progress,
   #               " max=", progress + progress_inc * 2 * nrow (couples) ) )
   if ( (depth == 1) && (verbose == 2) )
-    miic:::miic_msg (str_display, ", recursing...")
+    miic_msg (str_display, ", recursing...")
   features = c()
   i = 1
   for ( i in 1:nrow (couples) )
@@ -1002,7 +1009,7 @@ sfp_recurs <- function (input_data,
         paste (rep(" ", 50), collapse=""), "\r") )
     }
   if ( (depth == 1) && (verbose >= 3) )
-    miic:::miic_msg (str_display, ", progress 100 %",
+    miic_msg (str_display, ", progress 100 %",
                      paste (rep(" ", 50), collapse="") )
 
   return (list ("features"=features, "mis"=mat_mis,
@@ -1026,15 +1033,15 @@ sfp_recurs <- function (input_data,
 sfp_plot <- function (vois, df_plots, depth_plot=4, annotate=T,
                       x_lab=NULL, font_size=11)
   {
-  depth_plot <- miic:::check_param_int (depth_plot, "plot depth", default=4, min=1)
-  annotate <- miic:::check_param_logical (annotate, "plotting of annotation", default=T)
+  depth_plot <- check_param_int (depth_plot, "plot depth", default=4, min=1)
+  annotate <- check_param_logical (annotate, "plotting of annotation", default=T)
   if ( is.null (x_lab) )
     xlab = paste0 ("Features for ",
                    paste (vois$side1$all_voi_names, collapse=", "), " - ",
                    paste (vois$side2$all_voi_names, collapse=", ") )
   else
     x_lab <- as.character (x_lab)
-  font_size <- miic:::check_param_int (font_size, "font size", default=11, min=1)
+  font_size <- check_param_int (font_size, "font size", default=11, min=1)
 
   depth_max = max(df_plots$depth)
   all_feats = unique (df_plots$features)
@@ -1046,18 +1053,20 @@ sfp_plot <- function (vois, df_plots, depth_plot=4, annotate=T,
 
   side1_names = paste (sort (vois$side1$all_voi_names), collapse="\n")
   side2_names = paste (sort (vois$side2$all_voi_names), collapse="\n")
-  g = ggplot() +
-    theme_classic() +
-    theme ( text=element_text(size=font_size),
-            axis.text.x=element_text (angle=30, vjust =1, hjust=1),
-            axis.line.y=element_blank(),
-            axis.text.y=element_blank(),
-            axis.ticks.y=element_blank() ) +
-    labs (x=xlab, y="") +
-    ylim (0, 1) +
-    geom_text (aes (x=c(0,1), y=y_feat, label=c(side1_names, side2_names) ),
-                    size=font_size*0.8/.pt, hjust=0.5, vjust=0.5, color="black") +
-    geom_vline ( xintercept=c(0,1), linewidth=0.5, linetype="dashed", color="darkgrey")
+  g = ggplot2::ggplot() +
+    ggplot2::theme_classic() +
+    ggplot2::theme ( text = ggplot2::element_text (size=font_size),
+     axis.text.x = ggplot2::element_text (angle=30, vjust =1, hjust=1),
+     axis.line.y = ggplot2::element_blank(),
+     axis.text.y = ggplot2::element_blank(),
+     axis.ticks.y = ggplot2::element_blank() ) +
+    ggplot2::labs (x=xlab, y="") +
+    ggplot2::ylim (0, 1) +
+    ggplot2::geom_text (ggplot2::aes (
+        x=c(0,1), y=y_feat, label=c(side1_names, side2_names) ),
+      size=font_size*0.8/ggplot2::.pt, hjust=0.5, vjust=0.5, color="black") +
+    ggplot2::geom_vline ( xintercept=c(0,1), linewidth=0.5,
+                          linetype="dashed", color="darkgrey")
   xticks_text = c ("0", "1")
   xticks_pos = c (0, 1)
   #
@@ -1088,16 +1097,17 @@ sfp_plot <- function (vois, df_plots, depth_plot=4, annotate=T,
       }
     }
   plot_positions = round (plot_positions / 100, 3)
-  g = g + geom_text (aes (x=plot_positions, y=y_feat, label=plot_texts),
-      size=font_size*0.8/.pt, hjust=0.5, vjust=0.5, color="black") +
-    geom_vline ( xintercept=plot_positions, linewidth=0.6,
-                 linetype="dotted", color="darkgrey")
+  g = g + ggplot2::geom_text (
+      ggplot2::aes (x=plot_positions, y=y_feat, label=plot_texts),
+      size=font_size*0.8/ggplot2::.pt, hjust=0.5, vjust=0.5, color="black") +
+    ggplot2::geom_vline ( xintercept=plot_positions, linewidth=0.6,
+                          linetype="dotted", color="darkgrey")
   xticks_text = c (xticks_text, as.character(plot_positions) )
   xticks_pos = c (xticks_pos, plot_positions)
   #
   # Set ticks
   #
-  g = g + scale_x_continuous (breaks=xticks_pos, label=xticks_text)
+  g = g + ggplot2::scale_x_continuous (breaks=xticks_pos, label=xticks_text)
   #
   # Add annotation if plot depth > depth search
   #
@@ -1117,8 +1127,8 @@ sfp_plot <- function (vois, df_plots, depth_plot=4, annotate=T,
       label_txt = paste0 (label_txt, ",\n", n_feat_not_shown,
                           " feature(s) not shown")
 
-    g = g + geom_text (aes (x=0.875, y=1, label=label_txt),
-                       size=font_size*0.8/.pt, hjust=0.5, vjust=1)
+    g = g + ggplot2::geom_text (ggplot2::aes (x=0.875, y=1, label=label_txt),
+      size=font_size*0.8/ggplot2::.pt, hjust=0.5, vjust=1)
     }
   return (g)
   }
@@ -1332,22 +1342,22 @@ selectFeatures <- function (input_data, n_features, var_of_interest_names=NULL,
   {
   # Check parameters
   #
-  input_data <- miic:::sf_check_input_data (input_data)
-  n_features <- miic:::check_param_int (
+  input_data <- sf_check_input_data (input_data)
+  n_features <- check_param_int (
     n_features, "number of features", default=0, min=0)
-  vois <- miic:::sfo_check_vois (input_data,
+  vois <- sfo_check_vois (input_data,
     var_of_interest_names, var_of_interest_values)
-  unit <- miic:::check_param_string (unit, "unit", c("log_conf", "bits") )
-  corrected <- miic:::check_param_logical (corrected, "corrected", T)
-  precompured_mis <- miic:::sf_check_precomputed_mis (precomputed_mis)
-  skip_cheks <- miic:::check_param_logical (skip_cheks, "skip checks", F)
-  n_threads <- miic:::check_param_int (n_threads, "number of threads", 1)
-  verbose <- miic:::check_param_int (verbose, "verbose", 3, 0, 3)
-  plot <- miic:::check_param_logical (plot, "plot", F)
+  unit <- check_param_string (unit, "unit", c("log_conf", "bits") )
+  corrected <- check_param_logical (corrected, "corrected", T)
+  precompured_mis <- sf_check_precomputed_mis (precomputed_mis)
+  skip_cheks <- check_param_logical (skip_cheks, "skip checks", F)
+  n_threads <- check_param_int (n_threads, "number of threads", 1)
+  verbose <- check_param_int (verbose, "verbose", 3, 0, 3)
+  plot <- check_param_logical (plot, "plot", F)
   #
   # Compute MIs
   #
-  mat_mis = miic:::compute_mi_batch (input_data=input_data,
+  mat_mis = compute_mi_batch (input_data=input_data,
     var_of_interest_names=vois$var_of_interest_names,
     var_of_interest_values=vois$var_of_interest_values,
     unit=unit, corrected=corrected, precomputed_mis=precomputed_mis,
@@ -1369,10 +1379,15 @@ selectFeatures <- function (input_data, n_features, var_of_interest_names=NULL,
   list_plots = list ()
   # one_col = colnames (mat_mis_filt)[[1]]
   if (plot)
-    for ( one_col in colnames (mat_mis_filt) )
-      list_plots[[one_col]] = miic:::sfo_plot (
-        mis=mat_mis_filt, var_of_interest_name=one_col,
-        unit=unit, corrected=corrected, ...)
+    {
+    if ( base::requireNamespace("ggplot2", quietly = TRUE) )
+      for ( one_col in colnames (mat_mis_filt) )
+        list_plots[[one_col]] = sfo_plot (
+          mis=mat_mis_filt, var_of_interest_name=one_col,
+          unit=unit, corrected=corrected, ...)
+    else
+      miic_warning ("Features selection", "Plotting requires ggplot2.")
+    }
   #
   # If no feature selection, can end here
   #
@@ -1396,7 +1411,7 @@ selectFeatures <- function (input_data, n_features, var_of_interest_names=NULL,
   if (n_features >= length(uniq_poss_feats) )
     {
     if (n_features > length(uniq_poss_feats) )
-      miic:::miic_warning ("features selection",
+      miic_warning ("features selection",
         "too few variables share information with the variable(s)",
         " of interest to select the top ", n_features,
         ", returning all the ", length(uniq_poss_feats),
@@ -1406,7 +1421,7 @@ selectFeatures <- function (input_data, n_features, var_of_interest_names=NULL,
   #
   # Select top features until we get enough or a bit too much
   #
-  list_tops = miic:::sfo_get_tops (n_features=n_features,
+  list_tops = sfo_get_tops (n_features=n_features,
     list_sorted=list_mis_sorted, verbose=verbose)
 
   return (list ("features"=list_tops, "mis"=mat_mis, "plots"=list_plots) )
@@ -1627,23 +1642,23 @@ selectFeaturesPath <- function (input_data,
   {
   # Check parameters
   #
-  input_data <- miic:::sf_check_input_data (input_data=input_data)
-  vois <- miic:::sfp_check_vois (input_data=input_data,
+  input_data <- sf_check_input_data (input_data=input_data)
+  vois <- sfp_check_vois (input_data=input_data,
     var_of_interest_names_side1=var_of_interest_names_side1,
     var_of_interest_values_side1=var_of_interest_values_side1,
     var_of_interest_names_side2=var_of_interest_names_side2,
     var_of_interest_values_side2=var_of_interest_values_side2)
-  method <- miic:::check_param_string ( method, "method", c("score", "dpi") )
-  n_selected <- miic:::check_param_int (n_selected,
+  method <- check_param_string ( method, "method", c("score", "dpi") )
+  n_selected <- check_param_int (n_selected,
     "number of selected feature per round", min=1, default=10)
-  corrected <- miic:::check_param_logical (corrected, "corrected", T)
-  precomputed_mis <- miic:::sf_check_precomputed_mis (precomputed_mis)
-  skip_cheks <- miic:::check_param_logical (skip_cheks, "skip checks", F)
-  n_threads <- miic:::check_param_int (n_threads, "number of threads", 1)
-  depth_max <- miic:::check_param_int (depth_max,
+  corrected <- check_param_logical (corrected, "corrected", T)
+  precomputed_mis <- sf_check_precomputed_mis (precomputed_mis)
+  skip_cheks <- check_param_logical (skip_cheks, "skip checks", F)
+  n_threads <- check_param_int (n_threads, "number of threads", 1)
+  depth_max <- check_param_int (depth_max,
     "maximum depth", min=1, default=10)
-  verbose <- miic:::check_param_int (verbose, "verbose", 3, 0, 3)
-  plot <- miic:::check_param_logical (plot, "plot", F)
+  verbose <- check_param_int (verbose, "verbose", 3, 0, 3)
+  plot <- check_param_logical (plot, "plot", F)
 
   all_couples <- data.frame ("depth"=integer(), "x"=character(), "y"=character(),
     "mi"=numeric(), "features"=character(), stringsAsFactors=F)
@@ -1658,7 +1673,7 @@ selectFeaturesPath <- function (input_data,
     df_plots = NULL
 
   if (verbose >= 1)
-    miic:::miic_msg ("Selecting features on path between ",
+    miic_msg ("Selecting features on path between ",
      paste0 (vois$side1$all_voi_names, collapse=","),
      " and ", paste0 (vois$side2$all_voi_names, collapse=","), "...")
 
@@ -1675,10 +1690,15 @@ selectFeaturesPath <- function (input_data,
     all_couples=all_couples, all_scores=all_scores)
 
   if (plot)
-    ret_recurs$plot = sfp_plot (vois, unique (ret_recurs$plot), ...)
+    {
+    if ( base::requireNamespace("ggplot2", quietly = TRUE) )
+      ret_recurs$plot = sfp_plot (vois, unique (ret_recurs$plot), ...)
+    else
+      miic_warning ("Path features selection", "Plotting requires ggplot2.")
+    }
 
   if (verbose >= 1)
-    miic:::miic_msg (length (ret_recurs$features), " features selected.")
+    miic_msg (length (ret_recurs$features), " features selected.")
   return (ret_recurs)
   }
 

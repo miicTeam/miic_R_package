@@ -186,8 +186,8 @@ tmiic_estimate_dynamic <- function (list_traj, state_order, max_nodes=50,
       {
       if (nrow (list_traj[[ts_idx]]) == 1)
         next
-      acf_res <- acf (list_traj[[ts_idx]][,(var_idx)], na.action=na.pass,
-                      lag.max=length_to_test-1, plot=F)
+      acf_res <- stats::acf (list_traj[[ts_idx]][,(var_idx)], na.action=stats::na.pass,
+                             lag.max=length_to_test-1, plot=F)
       if ( all (is.na(acf_res$acf) ) )
         next
       acf_vanish <- which (acf_res$acf[,1,1] < 0.05)
@@ -896,22 +896,34 @@ estimateTemporalDynamic <- function (input_data, state_order=NULL,
 #' Please note also that, for contextual variables that are not lagged,
 #' the expected value in the third column for the time lag is NA.
 #'
-#' @param n_threads [a positive integer, optional, 1 by default, see \code{\link{miic}}]
+#' @param n_threads [a positive integer, optional, 1 by default,
+#' see \code{\link{miic}}]
 #' @param cplx [a string, optional, "nml" by default, possible values:
 #' "nml", "bic", see \code{\link{miic}}]
-#' @param orientation [a boolean value, optional, TRUE by default, see \code{\link{miic}}]
+#' @param orientation [a boolean value, optional, TRUE by default,
+#' see \code{\link{miic}}]
 #' @param ort_proba_ratio [a floating point between 0 and 1, optional,
 #' 1 by default, see \code{\link{miic}}]
 #' @param ort_consensus_ratio [a floating point between 0 and 1, optional,
 #' NULL by default, see \code{\link{miic}}]
-#' @param propagation [a boolean value, optional, FALSE by default, see \code{\link{miic}}]
-#' @param latent [a string, optional, "orientation" by default, possible
-#' values: "orientation", "no", "yes", see \code{\link{miic}}]
-#' @param n_shuffles [a positive integer, optional, 0 by default, see \code{\link{miic}}]
-#' @param conf_threshold [a positive floating point, optional, 0 by default, see \code{\link{miic}}]
-#' @param test_mar [a boolean value, optional, TRUE by default, see \code{\link{miic}}]
-#' @param max_iteration [a positive integer, optional, 100 by default, see \code{\link{miic}}]
-#' @param negative_info [a boolean value, optional, FALSE by default, see \code{\link{miic}}]
+#' @param propagation [a boolean value, optional, FALSE by default,
+#' see \code{\link{miic}}]
+#' @param latent [a string, optional, "orientation" by default, possible values:
+#' "orientation", "no", "yes", see \code{\link{miic}}]
+#' @param n_shuffles [a positive integer, optional, 0 by default,
+#' see \code{\link{miic}}]
+#' @param conf_threshold [a positive floating point, optional, 0 by default,
+#' see \code{\link{miic}}]
+#' @param test_mar [a boolean value, optional, TRUE by default,
+#' see \code{\link{miic}}]
+#' @param consistent [a string, optional, "no" by default, possible values:
+#' "no", "orientation", "skeleton", see \code{\link{miic}}]
+#' @param max_iteration [a positive integer, optional, 100 by default,
+#' see \code{\link{miic}}]
+#' @param consensus_threshold [a floating point between 0.5 and 1.0, optional,
+#' 0.8 by default, see \code{\link{miic}}]
+#' @param negative_info [a boolean value, optional, FALSE by default,
+#' see \code{\link{miic}}]
 #' @param verbose [an integer value, optional, 1 by default, see \code{\link{miic}}]
 #'
 #' @param n_eff [a positive integer, optional, -1 by default]

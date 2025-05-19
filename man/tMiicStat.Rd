@@ -137,12 +137,14 @@ var1_lag3 - var2_lag0.
 Please note also that, for contextual variables that are not lagged,
 the expected value in the third column for the time lag is NA.}
 
-\item{n_threads}{[a positive integer, optional, 1 by default, see \code{\link{miic}}]}
+\item{n_threads}{[a positive integer, optional, 1 by default,
+see \code{\link{miic}}]}
 
 \item{cplx}{[a string, optional, "nml" by default, possible values:
 "nml", "bic", see \code{\link{miic}}]}
 
-\item{orientation}{[a boolean value, optional, TRUE by default, see \code{\link{miic}}]}
+\item{orientation}{[a boolean value, optional, TRUE by default,
+see \code{\link{miic}}]}
 
 \item{ort_proba_ratio}{[a floating point between 0 and 1, optional,
 1 by default, see \code{\link{miic}}]}
@@ -150,10 +152,11 @@ the expected value in the third column for the time lag is NA.}
 \item{ort_consensus_ratio}{[a floating point between 0 and 1, optional,
 NULL by default, see \code{\link{miic}}]}
 
-\item{propagation}{[a boolean value, optional, FALSE by default, see \code{\link{miic}}]}
+\item{propagation}{[a boolean value, optional, FALSE by default,
+see \code{\link{miic}}]}
 
-\item{latent}{[a string, optional, "orientation" by default, possible
-values: "orientation", "no", "yes", see \code{\link{miic}}]}
+\item{latent}{[a string, optional, "orientation" by default, possible values:
+"orientation", "no", "yes", see \code{\link{miic}}]}
 
 \item{n_eff}{[a positive integer, optional, -1 by default]
 
@@ -171,15 +174,26 @@ after the lagging process.
 When set to its default (-1), tMiicStat will automatically adjust this value
 to the total number of time steps / \emph{delta_t}.}
 
-\item{n_shuffles}{[a positive integer, optional, 0 by default, see \code{\link{miic}}]}
+\item{n_shuffles}{[a positive integer, optional, 0 by default,
+see \code{\link{miic}}]}
 
-\item{conf_threshold}{[a positive floating point, optional, 0 by default, see \code{\link{miic}}]}
+\item{conf_threshold}{[a positive floating point, optional, 0 by default,
+see \code{\link{miic}}]}
 
-\item{test_mar}{[a boolean value, optional, TRUE by default, see \code{\link{miic}}]}
+\item{test_mar}{[a boolean value, optional, TRUE by default,
+see \code{\link{miic}}]}
 
-\item{max_iteration}{[a positive integer, optional, 100 by default, see \code{\link{miic}}]}
+\item{consistent}{[a string, optional, "no" by default, possible values:
+"no", "orientation", "skeleton", see \code{\link{miic}}]}
 
-\item{negative_info}{[a boolean value, optional, FALSE by default, see \code{\link{miic}}]}
+\item{max_iteration}{[a positive integer, optional, 100 by default,
+see \code{\link{miic}}]}
+
+\item{consensus_threshold}{[a floating point between 0.5 and 1.0, optional,
+0.8 by default, see \code{\link{miic}}]}
+
+\item{negative_info}{[a boolean value, optional, FALSE by default,
+see \code{\link{miic}}]}
 
 \item{n_layers}{[an integer, optional, NULL by default, must be >= 2
 if supplied]

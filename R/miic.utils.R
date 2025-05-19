@@ -1544,9 +1544,9 @@ prepare_inputs <- function (input_data,
   if (verbose >= 1)
     {
     if (mode == "TS")
-      miic_msg ("Start MIIC v", packageVersion("miic"), " in temporal mode ...")
+      miic_msg ("Start MIIC v", utils::packageVersion("miic"), " in temporal mode ...")
     else
-      miic_msg ("Start MIIC v", packageVersion("miic"), "...")
+      miic_msg ("Start MIIC v", utils::packageVersion("miic"), "...")
     }
   #
   # Basic checks applicable with few differences between the different modes.
