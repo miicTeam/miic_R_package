@@ -162,23 +162,23 @@ library(miic)
 ret <- selectFeatures (cosmicCancer,
                        var_of_interest_names=c("TP53", "tp53"),
                        n_features=10)
-message ("Tops 10 features = ", paste (ret$features, collapse=", ") )
+message ("Tops 10 features: ", paste (ret$features, collapse=", ") )
 
 # Features selection with reuse of above computed MIs
 ret <- selectFeatures (cosmicCancer,
                        var_of_interest_names=c("TP53", "tp53"),
                        n_features=20,
                        precomputed_mis=ret$mis)
-message ("Tops 20 features = ", paste (ret$features, collapse=", ") )
+message ("Tops 20 features: ", paste (ret$features, collapse=", ") )
 
 # Features selection using an external metadata "Ploidy"
 # (simulation by extracting "Ploidy" out of the dataset)
-df_external_meta <- data.frame ("Ploidy" = cosmicCancer$Ploidy)
+df_external_meta <- data.frame ("Ploidy"=cosmicCancer$Ploidy)
 df_data <- cosmicCancer[ , ! (colnames(cosmicCancer) == "Ploidy") ]
 ret <- selectFeatures (df_data,
                        var_of_interest_values=df_external_meta,
                        n_features=10)
-message ("Tops 10 features = ", paste (ret$features, collapse=", ") )
+message ("Tops 10 features: ", paste (ret$features, collapse=", ") )
 
 # Same features selection with plotting of the result
 if ( require(ggplot2) ) {
@@ -192,13 +192,13 @@ if ( require(ggplot2) ) {
 # Features selection using variables of interest coming both from
 # the dataset ("tp53", "TP53") and an external metadata ("Ploidy")
 # (simulation by extracting "Ploidy" out of the dataset)
-df_external_meta <- data.frame ("Ploidy" = cosmicCancer$Ploidy)
+df_external_meta <- data.frame ("Ploidy"=cosmicCancer$Ploidy)
 df_data <- cosmicCancer[ , ! (colnames(cosmicCancer) == "Ploidy") ]
 ret <- selectFeatures (df_data,
                        var_of_interest_names=c("TP53", "tp53"),
                        var_of_interest_values=df_external_meta,
                        n_features=20)
-message ("Tops 20 features = ", paste (ret$features, collapse=", ") )
+message ("Tops 20 features: ", paste (ret$features, collapse=", ") )
 
 # Same features selection with plotting using a customized rendering
 if ( require(ggplot2) && require(gridExtra) ) {

@@ -26,17 +26,17 @@ sf_check_input_data <- function (input_data)
   if (  ( ! is.data.frame (input_data) )
      && ( ! is.matrix(input_data) )
      && ( ! inherits(input_data, "Matrix") ) )
-    miic_error  ("parameters",
+    miic_error ("parameters",
       "the input data must be a data frame or a matrix.")
   if ( (ncol (input_data) <= 0) || (nrow (input_data) <= 0) )
-    miic_error  ("parameters", "the input data is empty.")
+    miic_error ("parameters", "the input data is empty.")
   if ( is.data.frame (input_data) )
     # Ensure we have a true data frame, e.g. not a tibble
     # (but let matrices unchanged to avoid warnings on large memory allocation)
     # TODO evaluate run time impact on very large data frames
     input_data <- as.data.frame (input_data)
   if ( is.null (colnames (input_data) ) )
-    miic_error  ("parameters", "the input data must have column names.")
+    miic_error ("parameters", "the input data must have column names.")
   return (input_data)
   }
 
@@ -57,8 +57,7 @@ sf_check_precomputed_mis <- function (precomputed_mis)
 
   if ( ( ! is.matrix(precomputed_mis) )
     && ( ! inherits(precomputed_mis, "Matrix") ) )
-    miic_error  ("parameters",
-      "the precomputed MIs items must be a matrices.")
+    miic_error ("parameters", "the precomputed MIs items must be a matrix.")
   #
   # NB: colum names can be other variables of interest
   # and row names can be on variables not present for this round
@@ -68,10 +67,10 @@ sf_check_precomputed_mis <- function (precomputed_mis)
   # => No cross check with input_data or variables of interest
   #
   if ( is.null (colnames (precomputed_mis) ) )
-    miic_error  ("parameters",
+    miic_error ("parameters",
       "the precomputed MIs matrix must have column names")
   if ( is.null (rownames (precomputed_mis) ) )
-    miic_error  ("parameters",
+    miic_error ("parameters",
       "the precomputed MIs matrixes must have row names")
   if ( (nrow (precomputed_mis) == 0) || (ncol (precomputed_mis) == 0) )
     return (NULL)
@@ -104,8 +103,8 @@ sfo_check_vois <- function (
   input_data, var_of_interest_names, var_of_interest_values)
   {
   if ( is.null (var_of_interest_names) && is.null (var_of_interest_values) )
-    miic_error  ("parameters", "the name of the variable(s) of interest",
-      " or a data frame with the variable(s) of interest values must be supplied.")
+    miic_error ("parameters", "the name of the variable(s) of interest or a",
+      " data frame with the variable(s) of interest values must be supplied.")
 
   if (is.null (var_of_interest_names) )
     var_of_interest_names <- c()
@@ -113,26 +112,26 @@ sfo_check_vois <- function (
     {
     for (one_var_name in var_of_interest_names)
       if ( test_param_wrong_string (one_var_name, colnames(input_data)) )
-        miic_error ("parameters",  "Some of the variable of interest",
-                           " names are incorrect or not in the input_data.")
+        miic_error ("parameters", "Some of the variable of interest",
+                    " names are incorrect or not in the input_data.")
     }
 
   extra_voi_names <- c()
   if ( ! is.null (var_of_interest_values) )
     {
     if ( ! is.data.frame (var_of_interest_values) )
-      miic_error  ("parameters",
+      miic_error ("parameters",
         "the var_of_interest_values must be a data frame.")
     # Ensure we have a true data frame, i.e. not a tibble
     var_of_interest_values <- as.data.frame (var_of_interest_values)
     if (ncol (var_of_interest_values) <= 0)
       {
-      miic_warning  ("parameters",
+      miic_warning ("parameters",
         "the var_of_interest_values data frame has been supplied but is empty.")
       var_of_interest_values <- NULL
       }
     else if ( nrow (var_of_interest_values) != nrow (input_data) )
-      miic_error  ("parameters",
+      miic_error ("parameters",
         "the variable of interest values does not match the number of samples.")
     else
       {
@@ -143,17 +142,17 @@ sfo_check_vois <- function (
       # Error or warning if voi requested as external in var_of_interest_values
       # are present in the input data
       #
-      poss_wrong_idx = which ( extra_voi_names %in% colnames(input_data) )
+      poss_wrong_idx <- which ( extra_voi_names %in% colnames(input_data) )
       if (length (poss_wrong_idx) >= 1)
         {
         for (one_var_name in extra_voi_names[poss_wrong_idx])
           {
-          one_var_voi_vals = var_of_interest_values[,one_var_name]
-          one_var_input_vals = input_data[,one_var_name]
+          one_var_voi_vals <- var_of_interest_values[,one_var_name]
+          one_var_input_vals <- input_data[,one_var_name]
 
           if (any ( ( is.na (one_var_voi_vals) != is.na (one_var_input_vals) )
                   | (one_var_voi_vals[ !is.na(one_var_voi_vals) ] != one_var_input_vals[ !is.na(one_var_input_vals) ]) ) )
-            miic_error  ("parameters",
+            miic_error ("parameters",
               "the variable ", one_var_name, " is supplied both in input data",
               " and in variables of interest values.")
           #
@@ -161,11 +160,12 @@ sfo_check_vois <- function (
           # and with identical values => just a warning, use input_data
           # and ignore variables of interest values
           #
-          miic_warning  ("parameters",
+          miic_warning ("parameters",
             "the variable ", one_var_name, " is supplied both in input data",
             " and in variables of interest values.")
-          var_of_interest_names = unique (c (var_of_interest_names, one_var_name) )
-          var_of_interest_values[,one_var_name] = NULL
+          var_of_interest_names <- unique (c (var_of_interest_names,
+                                              one_var_name) )
+          var_of_interest_values[,one_var_name] <- NULL
           }
         extra_voi_names <- colnames (var_of_interest_values)
         }
@@ -201,65 +201,64 @@ sfo_get_tops <- function (n_features, list_sorted, verbose=3)
   #
   # Select top features until we get enough or a bit too much
   #
-  list_tops = c()
-  list_tops_prec = c()
-  n_vois = length (list_sorted)
-  n_tops_to_sel = n_features %/% n_vois
+  list_tops <- c()
+  list_tops_prec <- c()
+  n_vois <- length (list_sorted)
+  n_tops_to_sel <- n_features %/% n_vois
   while (T)
     {
-    list_tops = unique (unlist (lapply (list_sorted, FUN=function(x) {
+    list_tops <- unique (unlist (lapply (list_sorted, FUN=function(x) {
       names(x)[1:n_tops_to_sel] } ) ) )
-    n_missing = n_features - length (list_tops)
+    n_missing <- n_features - length (list_tops)
     if (n_missing <= 0)
       break
-    list_tops_prec = list_tops
-    n_tops_to_sel = n_tops_to_sel + max (1, n_missing %/% n_vois)
+    list_tops_prec <- list_tops
+    n_tops_to_sel <- n_tops_to_sel + max (1, n_missing %/% n_vois)
     }
   #
   # Prepare the last positions used per voi for future check and warning
   #
-  last_pos_per_voi = rep (n_tops_to_sel, n_vois)
+  last_pos_per_voi <- rep (n_tops_to_sel, n_vois)
   #
   # If a bit too much, select in the last features added those with highest MI
   #
   if (n_missing < 0)
     {
-    list_tops_to_test = unlist (lapply (list_sorted,
+    list_tops_to_test <- unlist (lapply (list_sorted,
       FUN=function(x) { names(x)[n_tops_to_sel] } ) )
-    list_vals_to_test = unlist (lapply (list_sorted,
+    list_vals_to_test <- unlist (lapply (list_sorted,
       FUN=function(x) { x[n_tops_to_sel] } ) )
-    list_tops_to_test = list_tops_to_test[order (list_vals_to_test,
+    list_tops_to_test <- list_tops_to_test[order (list_vals_to_test,
                                                   decreasing=T)]
-    list_tops_to_test = unique (list_tops_to_test)
-    list_tops_to_test = list_tops_to_test[
+    list_tops_to_test <- unique (list_tops_to_test)
+    list_tops_to_test <- list_tops_to_test[
       ! (list_tops_to_test %in% list_tops_prec) ]
 
-    n_missing = n_features - length (list_tops_prec)
-    tops_to_add = list_tops_to_test[1:n_missing]
-    list_tops = c (list_tops_prec, tops_to_add)
+    n_missing <- n_features - length (list_tops_prec)
+    tops_to_add <- list_tops_to_test[1:n_missing]
+    list_tops <- c (list_tops_prec, tops_to_add)
     #
     # Decrease the last position for the variable not added
     #
-    col_added = unlist (lapply (list_sorted,
+    col_added <- unlist (lapply (list_sorted,
       FUN=function(x) { names(x)[n_tops_to_sel] %in% tops_to_add } ) )
-    last_pos_per_voi[!col_added] = last_pos_per_voi[!col_added] - 1
+    last_pos_per_voi[!col_added] <- last_pos_per_voi[!col_added] - 1
     }
   #
   # Issue warnings if, after the last position, we have other variables
   # with same MI
   #
-  i = 1
   for (i in 1:n_vois)
     {
-    vals_sorted_voi = list_sorted[[i]]
-    last_pos_voi = last_pos_per_voi[[i]]
-    last_val = vals_sorted_voi[[last_pos_voi]]
+    vals_sorted_voi <- list_sorted[[i]]
+    last_pos_voi <- last_pos_per_voi[[i]]
+    last_val <- vals_sorted_voi[[last_pos_voi]]
     if ( last_pos_voi >= length(vals_sorted_voi) )
       next
-    have_same_val_after = (vals_sorted_voi [(last_pos_voi+1):length(vals_sorted_voi)] == last_val)
+    have_same_val_after <- (vals_sorted_voi [(last_pos_voi+1):length(vals_sorted_voi)] == last_val)
     if (sum (have_same_val_after) <= 0)
       next
-    have_same_val_before = (vals_sorted_voi [1:last_pos_voi] == last_val)
+    have_same_val_before <- (vals_sorted_voi [1:last_pos_voi] == last_val)
     warning (paste0 ("The last feature selected for variable of interest ",
       names(list_sorted)[[i]], " has a MI of ", round(last_val,4), ".\n",
       sum (have_same_val_before) + sum(have_same_val_after),
@@ -296,7 +295,7 @@ sfo_get_tops <- function (n_features, list_sorted, verbose=3)
 # - box_text: a string, default "white", the box text color
 # Return: a ggplot2 barplot
 #-------------------------------------------------------------------------------
-sfo_plot = function (mis, var_of_interest_name, n_plots=25,
+sfo_plot <- function (mis, var_of_interest_name, n_plots=25,
   x_lab=NULL, y_lab=NULL, unit="log_conf", corrected=T, values=T, annotate=T,
   font_size=11, box_fill="#1F78B4", box_text="white")
   {
@@ -320,10 +319,11 @@ sfo_plot = function (mis, var_of_interest_name, n_plots=25,
   else
     y_lab <- as.character (y_lab)
   values <- check_param_logical (values, "plotting of values", default=T)
-  annotate <- check_param_logical (annotate, "plotting of annotation", default=T)
-  font_size <- check_param_int (font_size, "font size",
-                                       default=11, min=1)
-  # TODO: add a function for color checking
+  annotate <- check_param_logical (
+    annotate, "plotting of annotation", default=T)
+  font_size <- check_param_int (font_size, "font size", default=11, min=1)
+
+  # TODO? add a function for color checking
   if ( is.null (box_fill) )
     box_fill <- "#1F78B4"
   if ( is.null (box_text) )
@@ -331,55 +331,49 @@ sfo_plot = function (mis, var_of_interest_name, n_plots=25,
   #
   # Extract and order desc the MIs for the var of interest to plot
   #
-  v_mis = mis[, var_of_interest_name, drop=T]
-  v_mis = v_mis[ (!is.na (v_mis)) & (v_mis > 0) ]
-  v_mis = sort (v_mis, decreasing=T)
-  df = data.frame ("Features" = names(v_mis), "MI" = v_mis)
+  v_mis <- mis[, var_of_interest_name, drop=T]
+  v_mis <- v_mis[ (!is.na (v_mis)) & (v_mis > 0) ]
+  v_mis <- sort (v_mis, decreasing=T)
+  df <- data.frame ("Features"=names(v_mis), "MI"=v_mis)
   if (nrow (df) > n_plots)
-    df = df[1:n_plots, , drop=F]
-  mi_min = min(df[,"MI"])
+    df <- df[1:n_plots, , drop=F]
+  mi_min <- min(df[,"MI"])
 
-  # With trick to avoid note in r checks on use aes with data
-  p <- with (df, {
-    ggplot2::ggplot (df, mapping=ggplot2::aes(x=Features, y=MI)) +
+  p <- ggplot2::ggplot (df, mapping=ggplot2::aes_string (x="Features", y="MI")) +
       ggplot2::geom_bar (stat="identity", fill=box_fill) +
-      ggplot2::scale_x_discrete (limits = df$Features ) +
+      ggplot2::scale_x_discrete (limits=df$Features ) +
       ggplot2::theme_classic() +
-      ggplot2::theme ( text = ggplot2::element_text(size=font_size),
-        axis.text.x = ggplot2::element_text (angle=30, vjust =1, hjust=1) ) +
+      ggplot2::theme ( text=ggplot2::element_text(size=font_size),
+        axis.text.x=ggplot2::element_text (angle=30, vjust=1, hjust=1) ) +
       ggplot2::xlab (x_lab) +
       ggplot2::ylab (y_lab)
-    } )
 
   if (values)
     {
     if (mi_min < 0.1)
-      values_rounded = round (df$MI, 3)
+      values_rounded <- round (df$MI, 3)
     else if (mi_min < 1)
-      values_rounded = round (df$MI, 2)
+      values_rounded <- round (df$MI, 2)
     else if (mi_min < 10)
-      values_rounded = round (df$MI, 1)
+      values_rounded <- round (df$MI, 1)
     else
-      values_rounded = round (df$MI, 0)
-    p = p + ggplot2::geom_text (ggplot2::aes (label=values_rounded),
+      values_rounded <- round (df$MI, 0)
+    p <- p + ggplot2::geom_text (ggplot2::aes (label=values_rounded),
       color=box_text, vjust=1.6, size=font_size*0.8/ggplot2::.pt )
     }
 
   if (annotate)
     {
     if (length(v_mis) > n_plots)
-      label_text = paste0 ("Top ", n_plots, " shown of ",
-                           length(v_mis), " features with MI > 0")
+      label_text <- paste0 ("Top ", n_plots, " shown of ",
+                            length(v_mis), " features with MI > 0")
     else
-      label_text = paste0 (length(v_mis), " features with MI > 0")
-    annotation <- data.frame (x = nrow(df), y = max(df$MI), label = label_text)
+      label_text <- paste0 (length(v_mis), " features with MI > 0")
+    annotation <- data.frame (x=nrow(df), y=max(df$MI), label=label_text)
 
-    # With needed to avoid notes in r checks
-    p <- with (annotation, {
-      p + ggplot2::geom_text (annotation,
-        mapping=ggplot2::aes( x=x, y=y, label=label),
+    p <- p + ggplot2::geom_text (annotation,
+        mapping=ggplot2::aes_string( x="x", y="y", label="label"),
         size=font_size*0.8/ggplot2::.pt, hjust=1, vjust=1)
-      } )
     }
   return (p)
   }
@@ -410,11 +404,11 @@ sfo_plot = function (mis, var_of_interest_name, n_plots=25,
 # - "extra_voi_names": a vector with the names of the vois not in input_data
 # - "all_voi_names": a vector with the name of all vois (in + not in input_data)
 # "all" is a nested list with:
-# - "all_voi_names" = a vector with all the voi names (in + not in input_data)
+# - "all_voi_names: a vector with all the voi names (in + not in input_data)
 #   from all sides
-# - "var_of_interest_names" = a vector with the names of vois in input_data
+# - "var_of_interest_names": a vector with the names of vois in input_data
 #   from all sides
-# - "extra_voi_names" = a vector with the names of the vois not in input_data
+# - "extra_voi_names": a vector with the names of the vois not in input_data
 #   from all sides
 #-------------------------------------------------------------------------------
 sfp_check_vois <- function (input_data,
@@ -423,27 +417,26 @@ sfp_check_vois <- function (input_data,
   {
   # Check VOIs of each side
   #
-  vois = list ( "side1"= list(), "side2"=list(), "all"=list() )
-  i = 1
-  vois[["side1"]]$extra_voi_names = c()
-  vois[["side2"]]$extra_voi_names = c()
+  vois <- list ( "side1"=list(), "side2"=list(), "all"=list() )
+  vois[["side1"]]$extra_voi_names <- c()
+  vois[["side2"]]$extra_voi_names <- c()
   for (i in 1:2)
     {
     if (i == 1)
       {
-      var_of_interest_names = var_of_interest_names_side1
-      var_of_interest_values = var_of_interest_values_side1
+      var_of_interest_names <- var_of_interest_names_side1
+      var_of_interest_values <- var_of_interest_values_side1
       }
     else
       {
-      var_of_interest_names = var_of_interest_names_side2
-      var_of_interest_values = var_of_interest_values_side2
+      var_of_interest_names <- var_of_interest_names_side2
+      var_of_interest_values <- var_of_interest_values_side2
       }
     #
     # Same kind of tests as compute_mi_batch
     #
     if ( is.null (var_of_interest_names) && is.null (var_of_interest_values) )
-      miic_error  ("parameters", "the name of the variable(s) of",
+      miic_error ("parameters", "the name of the variable(s) of",
         " interest or a data frame with the variable(s) of interest values",
         " must be supplied for side ", i, ".")
 
@@ -461,19 +454,19 @@ sfp_check_vois <- function (input_data,
     if ( ! is.null (var_of_interest_values) )
       {
       if ( ! is.data.frame (var_of_interest_values) )
-        miic_error  ("parameters",
+        miic_error ("parameters",
           "the var_of_interest_values for side ", i, " must be a data frame.")
       # Ensure we have a true data frame, i.e. not a tibble
       var_of_interest_values <- as.data.frame (var_of_interest_values)
       if (ncol (var_of_interest_values) <= 0)
         {
-        miic_warning  ("parameters",
+        miic_warning ("parameters",
           "the var_of_interest_values data frame for side ", i,
           " has been supplied but is empty.")
         var_of_interest_values <- NULL
         }
       else if ( nrow (var_of_interest_values) != nrow (input_data) )
-        miic_error  ("parameters",
+        miic_error ("parameters",
           "the variable of interest values for side ", i,
           " does not match the number of samples.")
       else
@@ -485,17 +478,17 @@ sfp_check_vois <- function (input_data,
         # Error or warning if voi requested as external in
         # var_of_interest_values are present in the input data
         #
-        poss_wrong_idx = which ( extra_voi_names %in% colnames(input_data) )
+        poss_wrong_idx <- which ( extra_voi_names %in% colnames(input_data) )
         if (length (poss_wrong_idx) >= 1)
           {
           for (one_var_name in extra_voi_names[poss_wrong_idx])
             {
-            one_var_voi_vals = var_of_interest_values[,one_var_name]
-            one_var_input_vals = input_data[,one_var_name]
+            one_var_voi_vals <- var_of_interest_values[,one_var_name]
+            one_var_input_vals <- input_data[,one_var_name]
 
             if (any ( ( is.na (one_var_voi_vals) != is.na (one_var_input_vals) )
                     | (one_var_voi_vals[ !is.na(one_var_voi_vals) ] != one_var_input_vals[ !is.na(one_var_input_vals) ]) ) )
-              miic_error  ("parameters",
+              miic_error ("parameters",
                 "the variable ", one_var_name, " is supplied both in input data",
                 " and in variables of interest values of side ", i, ".")
             #
@@ -503,54 +496,55 @@ sfp_check_vois <- function (input_data,
             # and with identical values => just a warning, use input_data
             # and ignore variables of interest values
             #
-            miic_warning  ("parameters",
+            miic_warning ("parameters",
               "the variable ", one_var_name, " is supplied both in input data",
               " and in variables of interest values of side ", i, ".")
-            var_of_interest_names = unique (c (var_of_interest_names, one_var_name) )
-            var_of_interest_values[,one_var_name] = NULL
+            var_of_interest_names <- unique (c (var_of_interest_names,
+                                                one_var_name) )
+            var_of_interest_values[,one_var_name] <- NULL
             }
           extra_voi_names <- colnames (var_of_interest_values)
           }
         }
       }
 
-    vois[[i]]$var_of_interest_names = var_of_interest_names
-    vois[[i]]$var_of_interest_values = var_of_interest_values
-    vois[[i]]$extra_voi_names = extra_voi_names
-    vois[[i]]$all_voi_names = c(var_of_interest_names, extra_voi_names)
+    vois[[i]]$var_of_interest_names <- var_of_interest_names
+    vois[[i]]$var_of_interest_values <- var_of_interest_values
+    vois[[i]]$extra_voi_names <- extra_voi_names
+    vois[[i]]$all_voi_names <- c(var_of_interest_names, extra_voi_names)
     }
   #
   # Test on each side done, now test one side against the other
   #
-  all_voi_names = c (vois[[1]]$var_of_interest_names, vois[[1]]$extra_voi_names,
+  all_voi_names <- c(vois[[1]]$var_of_interest_names, vois[[1]]$extra_voi_names,
                      vois[[2]]$var_of_interest_names, vois[[2]]$extra_voi_names)
-  are_duplicated =  duplicated (all_voi_names)
+  are_duplicated <- duplicated (all_voi_names)
   if (any (are_duplicated))
-    miic_error  ("parameters",
+    miic_error ("parameters",
       "Some variable(s) have been supplied in both side: ",
       list_to_str (all_voi_names[are_duplicated], n_max=10), ".")
   #
   # Create variables that store the vois of both sides
   #
-  var_of_interest_names_all_sides = unique (c(vois[[1]]$var_of_interest_names,
-                                              vois[[2]]$var_of_interest_names))
+  var_of_interest_names_all_sides <- unique (c(vois[[1]]$var_of_interest_names,
+                                               vois[[2]]$var_of_interest_names))
   if (  is.null (vois[[1]]$var_of_interest_values)
      && is.null (vois[[2]]$var_of_interest_values) )
-    var_of_interest_values_all_sides = NULL
+    var_of_interest_values_all_sides <- NULL
   else if (  is.null (vois[[1]]$var_of_interest_values) )
-    var_of_interest_values_all_sides = vois[[2]]$var_of_interest_values
+    var_of_interest_values_all_sides <- vois[[2]]$var_of_interest_values
   else if (  is.null (vois[[2]]$var_of_interest_values) )
-    var_of_interest_values_all_sides = vois[[1]]$var_of_interest_values
+    var_of_interest_values_all_sides <- vois[[1]]$var_of_interest_values
   else
-    var_of_interest_values_all_sides = cbind (vois[[1]]$var_of_interest_values,
-                                              vois[[2]]$var_of_interest_values)
-  extra_voi_names_all_sides = unique (c (vois[[1]]$extra_voi_names,
-                                         vois[[2]]$extra_voi_names) )
+    var_of_interest_values_all_sides <- cbind (vois[[1]]$var_of_interest_values,
+                                               vois[[2]]$var_of_interest_values)
+  extra_voi_names_all_sides <- unique (c (vois[[1]]$extra_voi_names,
+                                          vois[[2]]$extra_voi_names) )
 
-  vois[["all"]]$all_voi_names = all_voi_names
-  vois[["all"]]$var_of_interest_names = var_of_interest_names_all_sides
-  vois[["all"]]$var_of_interest_values = var_of_interest_values_all_sides
-  vois[["all"]]$extra_voi_names = extra_voi_names_all_sides
+  vois[["all"]]$all_voi_names <- all_voi_names
+  vois[["all"]]$var_of_interest_names <- var_of_interest_names_all_sides
+  vois[["all"]]$var_of_interest_values <- var_of_interest_values_all_sides
+  vois[["all"]]$extra_voi_names <- extra_voi_names_all_sides
   return (vois)
   }
 
@@ -571,16 +565,16 @@ sfp_check_vois <- function (input_data,
 # - a data frame with all the couples as rows. Information available are
 #   "x" (first side of the couple), "y" (first side) and "mi"
 #-------------------------------------------------------------------------------
-sfp_prepare_couples = function (vois, mis, unit, corrected)
+sfp_prepare_couples <- function (vois, mis, unit, corrected)
   {
   LN_2 <- log (2)
-  vois_side1 = c (vois[["side1"]]$var_of_interest_names,
-                  vois[["side1"]]$extra_voi_names)
-  vois_side2 = c (vois[["side2"]]$var_of_interest_names,
-                  vois[["side2"]]$extra_voi_names)
+  vois_side1 <- c (vois[["side1"]]$var_of_interest_names,
+                   vois[["side1"]]$extra_voi_names)
+  vois_side2 <- c (vois[["side2"]]$var_of_interest_names,
+                   vois[["side2"]]$extra_voi_names)
   couples <- expand.grid (vois_side1, vois_side2, stringsAsFactors=F)
-  colnames (couples) <- c("x", "y")
-  couples$mi = unlist (apply (couples, MARGIN=1, function (x) {
+  colnames (couples) <- c ("x", "y")
+  couples$mi <- unlist (apply (couples, MARGIN=1, function (x) {
     if ( ! (x[[2]] %in% vois[["side2"]]$extra_voi_names) )
       return (mis[ x[[2]], x[[1]] ])
     if ( ! (x[[1]] %in% vois[["side1"]]$extra_voi_names) )
@@ -588,19 +582,19 @@ sfp_prepare_couples = function (vois, mis, unit, corrected)
     #
     # 2 variables given as metadata => the MI has not been computed
     #
-    list_vois_vals = list (
-      "voi1" = vois[["side1"]]$var_of_interest_values[ , x[[1]] ],
-      "voi2" = vois[["side2"]]$var_of_interest_values[ , x[[2]] ])
-    are_continuous = unlist (lapply (list_vois_vals, FUN=function(y) {
+    list_vois_vals <- list (
+      "voi1"=vois[["side1"]]$var_of_interest_values[ , x[[1]] ],
+      "voi2"=vois[["side2"]]$var_of_interest_values[ , x[[2]] ])
+    are_continuous <- unlist (lapply (list_vois_vals, FUN=function(y) {
       return (  is.numeric (y)
         && (length (unique (y[!is.na(y)]) ) >= MIIC_CONTINUOUS_TRESHOLD) )
       } ) )
-    ret = computeMutualInfo (list_vois_vals[[1]], list_vois_vals[[2]],
+    ret <- computeMutualInfo (list_vois_vals[[1]], list_vois_vals[[2]],
                              is_continuous=are_continuous, plot=F)
     if (unit == "bits")
       {
-      nb_completes_samples = sum ( (!is.na (list_vois_vals[[1]]))
-                                 & (!is.na (list_vois_vals[[2]])) )
+      nb_completes_samples <- sum ( (!is.na (list_vois_vals[[1]]))
+                                  & (!is.na (list_vois_vals[[2]])) )
       mi_val <- ifelse (corrected,
                         (ret$infok / nb_completes_samples) / LN_2,
                         (ret$info  / nb_completes_samples) / LN_2)
@@ -610,10 +604,10 @@ sfp_prepare_couples = function (vois, mis, unit, corrected)
     return (mi_val)
     } ) )
 
-  couples_mi_0_test = (couples$mi <= 0)
+  couples_mi_0_test <- (couples$mi <= 0)
   if ( any(couples_mi_0_test) )
     {
-    couples_mi_0 = couples[couples_mi_0_test, , drop=F]
+    couples_mi_0 <- couples[couples_mi_0_test, , drop=F]
     miic_warning ("path feature selection", "MI = 0 for ",
       paste ( apply (couples_mi_0, MARGIN=1, FUN=function(x) {
                 paste0 (x[[1]], "-", x[[2]]) } ), collapse=", "),
@@ -676,23 +670,24 @@ sfp_recurs <- function (input_data,
 
   if (verbose >= 2)
     {
-    str_disp1 = paste (vois$side1$all_voi_names, collapse=",")
+    str_disp1 <- paste (vois$side1$all_voi_names, collapse=",")
     if (nchar (str_disp1) > 30)
-      str_disp1 = paste0 (substr(str_disp1, 1, 27), "...")
-    str_disp2 = paste (vois$side2$all_voi_names, collapse=",")
+      str_disp1 <- paste0 (substr(str_disp1, 1, 27), "...")
+    str_disp2 <- paste (vois$side2$all_voi_names, collapse=",")
     if (nchar (str_disp2) > 30)
-      str_disp2 = paste0 (substr(str_disp2, 1, 27), "...")
-    str_display = paste0 ("Depth ", depth, ", ", str_disp1, "-", str_disp2)
+      str_disp2 <- paste0 (substr(str_disp2, 1, 27), "...")
+    str_display <- paste0 ("Depth ", depth, ", ", str_disp1, "-", str_disp2)
     if (depth == 1)
       miic_msg (str_display, ", computing MIs...")
     else if ( (progress == 0) && (verbose >= 3) )
       cat (paste0 (str_display, ", progress ", round (progress, 2), " %...",
+                   # TODO other way to get 40 spaces ?
                    paste (rep(" ", 40), collapse=""), "\r") )
     }
   #
   # Compute MIs
   #
-  mat_mis = compute_mi_batch (input_data=input_data,
+  mat_mis <- compute_mi_batch (input_data=input_data,
     var_of_interest_names=vois[["all"]]$var_of_interest_names,
     var_of_interest_values=vois[["all"]]$var_of_interest_values,
     unit="log_conf", corrected=corrected, precomputed_mis=precomputed_mis,
@@ -705,7 +700,7 @@ sfp_recurs <- function (input_data,
   # while mat_mis would contain all genes. Same for the columns as
   # we can have precomputed more variables of interest than the ones we use now
   #
-  mat_mis_filt = mat_mis[rownames(mat_mis) %in% colnames(input_data),
+  mat_mis_filt <- mat_mis[rownames(mat_mis) %in% colnames(input_data),
                          colnames(mat_mis) %in% vois[["all"]]$all_voi_names,
                          drop=F]
   #
@@ -714,89 +709,82 @@ sfp_recurs <- function (input_data,
   #
   if ( (verbose >= 2) && (depth == 1) )
     miic_msg (str_display, ", evaluate couples...")
-  couples = sfp_prepare_couples (
+  couples <- sfp_prepare_couples (
     vois=vois, mis=mat_mis_filt, unit="log_conf", corrected=corrected)
-  couples$depth = depth
-  couples$features = NA_character_
-  couples = couples[, colnames(all_couples), drop=F]
+  couples$depth <- depth
+  couples$features <- NA_character_
+  couples <- couples[, colnames(all_couples), drop=F]
   #
   # Filter out couple already done, update all_couples
   #
-  couples_done = apply (couples, MARGIN=1, FUN=function(one_row) {
+  couples_done <- apply (couples, MARGIN=1, FUN=function(one_row) {
     any ( (all_couples$x == one_row[["x"]])
         & (all_couples$y == one_row[["y"]]) )
     } )
-  couples = couples[ ! couples_done, , drop=F]
-  all_couples = rbind (all_couples, couples)
+  couples <- couples[ ! couples_done, , drop=F]
+  all_couples <- rbind (all_couples, couples)
   #
   # For the next steps, keep only couples with MI > 0
   #
-  couples = couples[couples$mi > 0, , drop=F]
+  couples <- couples[couples$mi > 0, , drop=F]
   if (nrow (couples) <= 0)
     return (list ("mis"=mat_mis, "couples"=all_couples,
                   "scores"=all_scores, "plot"=plot) )
   #
   # For each voi requested, filter variables on MI > 0
   #
-  list_mis_sup_0 = list()
+  list_mis_sup_0 <- list()
   for (one_voi in vois[["all"]]$all_voi_names)
     {
-    mis_tmp = mat_mis_filt[, one_voi]
-    mis_tmp = mis_tmp[ ( ! is.na (mis_tmp) ) & ( mis_tmp > 0) ]
-    list_mis_sup_0[[one_voi]] = mis_tmp
+    mis_tmp <- mat_mis_filt[, one_voi]
+    mis_tmp <- mis_tmp[ ( ! is.na (mis_tmp) ) & (mis_tmp > 0) ]
+    list_mis_sup_0[[one_voi]] <- mis_tmp
     }
   #
   # For each couple, filter variables passsing the basic DPI test:
   # for a pair xy, all z so that MI xz >= MI xy and MI zy >= MI xy
-  # Then compute a DPI value and, if method = "score", the NI3 and score
+  # Then compute a DPI value and, if method is "score", the NI3 and score
   #
-  list_scores_sorted = list()
-  i = 1
+  list_scores_sorted <- list()
   for ( i in 1:nrow (couples) )
     {
-    x_name = couples[i, "x"]
-    y_name = couples[i, "y"]
+    x_name <- couples[i, "x"]
+    y_name <- couples[i, "y"]
     if (  (verbose >= 2) && (depth == 1) )
       miic_msg ("Depth ", depth, ", ", x_name, "-", y_name,
                        ", computing DPIs...")
     #
-    # basic DPI check : keep only features z when Ixz > Ixy and Iyz > Ixy
+    # Basic DPI check : keep only features z when Ixz > Ixy and Iyz > Ixy
     #
-    feat_voi1 = list_mis_sup_0[[ x_name ]]
-    feat_voi2 = list_mis_sup_0[[ y_name ]]
-    # if (depth == 1)
-    #  print (paste0 ("bef filt feat voi1: ", length (feat_voi1),
-    #                 "feat voi2: ", length (feat_voi2) ))
-    mi_threshold = couples[i, "mi"]
-    feat_voi1 = feat_voi1[feat_voi1 >= mi_threshold]
-    feat_voi2 = feat_voi2[feat_voi2 >= mi_threshold]
-    # if (depth == 1)
-    #   print (paste0 ("after filt feat voi1: ", length (feat_voi1),
-    #                  "feat voi2: ", length (feat_voi2) ))
+    feat_voi1 <- list_mis_sup_0[[ x_name ]]
+    feat_voi2 <- list_mis_sup_0[[ y_name ]]
+    mi_threshold <- couples[i, "mi"]
+    feat_voi1 <- feat_voi1[feat_voi1 >= mi_threshold]
+    feat_voi2 <- feat_voi2[feat_voi2 >= mi_threshold]
 
-    feat_kept = names(feat_voi1) [names(feat_voi1) %in% names(feat_voi2)]
-    feat_kept = feat_kept[ ! (feat_kept %in% c(x_name, y_name) ) ]
+    feat_kept <- names(feat_voi1) [names(feat_voi1) %in% names(feat_voi2)]
+    feat_kept <- feat_kept[ ! (feat_kept %in% c(x_name, y_name) ) ]
 
-    df_scores = all_scores[FALSE, , drop=F]
+    df_scores <- all_scores[FALSE, , drop=F]
     if (length (feat_kept) <= 0)
       {
-      list_scores_sorted[[i]] = df_scores
+      list_scores_sorted[[i]] <- df_scores
       next
       }
-    df_scores[feat_kept, "z"] = feat_kept
-    rownames(df_scores) = feat_kept
-    df_scores[, c("depth", "x", "y", "mi_xy")] = list (
+    df_scores[feat_kept, "z"] <- feat_kept
+    rownames(df_scores) <- feat_kept
+    df_scores[, c("depth", "x", "y", "mi_xy")] <- list (
       depth, x_name, y_name, couples[i, "mi"])
     #
     # Store values explaining DPI test
     #
-    df_scores [feat_kept, "mi_xz"] = mat_mis_filt[feat_kept, x_name]
-    df_scores [feat_kept, "mi_zy"] = mat_mis_filt[feat_kept, y_name]
-    xz = df_scores$mi_xz - df_scores$mi_xy
-    zy = df_scores$mi_zy - df_scores$mi_xy
-    df_scores$dpi = ifelse (xz < zy, xz, zy)
+    df_scores [feat_kept, "mi_xz"] <- mat_mis_filt[feat_kept, x_name]
+    df_scores [feat_kept, "mi_zy"] <- mat_mis_filt[feat_kept, y_name]
+    xz <- df_scores$mi_xz - df_scores$mi_xy
+    zy <- df_scores$mi_zy - df_scores$mi_xy
+    df_scores$dpi <- ifelse (xz < zy, xz, zy)
     # TODO: check why this term ? To be comparable with NI3 ?
-    df_scores$dpi = df_scores$dpi - log1p ( exp ( -abs (xz - zy) ) )
+    df_scores$dpi <- df_scores$dpi - log1p ( exp ( -abs (xz - zy) ) )
     #
     # Refine with ni3 if method is "score"
     #
@@ -804,83 +792,80 @@ sfp_recurs <- function (input_data,
       {
       if (  (verbose >= 2) && (depth == 1) )
         miic_msg ("Depth ", depth, ", ", x_name, "-", y_name,
-                         ", computing scores...")
+                  ", computing scores...")
       if (x_name %in% vois$all$var_of_interest_names)
-        x = input_data[ , x_name]
+        x <- input_data[ , x_name]
       else
-        x = vois$all$var_of_interest_values[ , x_name]
-      x_continuous = ( is.numeric (x)
+        x <- vois$all$var_of_interest_values[ , x_name]
+      x_continuous <- ( is.numeric (x)
         && (length (unique (x[!is.na(x)]) ) >= MIIC_CONTINUOUS_TRESHOLD) )
 
       if (y_name %in% vois$all$var_of_interest_names)
-        y = input_data[ , y_name]
+        y <- input_data[ , y_name]
       else
-        y = vois$all$var_of_interest_values[ , y_name]
-      y_continuous = ( is.numeric (y)
+        y <- vois$all$var_of_interest_values[ , y_name]
+      y_continuous <- ( is.numeric (y)
         && (length (unique (y[!is.na(y)]) ) >= MIIC_CONTINUOUS_TRESHOLD) )
       #
       # Compute NI3 for all remaining features
       #
-      df_scores [, "i3"] = apply (df_scores, MARGIN=1, FUN=function(one_row) {
-        z_name = one_row[["z"]]
-        z = input_data[ , z_name, drop=T]
+      df_scores [, "i3"] <- apply (df_scores, MARGIN=1, FUN=function(one_row) {
+        z_name <- one_row[["z"]]
+        z <- input_data[ , z_name, drop=T]
         #
         # Filter rows with 1 NA as computeThreePointInfo needs complete samples
         #
-        df_tmp = data.frame ("x" = x, "y"= y, "z"=z, stringsAsFactors=F)
-        has_na = apply (df_tmp, MARGIN=1, FUN=function(x) { anyNA(x) } )
-        df_tmp = df_tmp[ !has_na, , drop=F]
+        df_tmp <- data.frame ("x"=x, "y"=y, "z"=z, stringsAsFactors=F)
+        has_na <- apply (df_tmp, MARGIN=1, FUN=function(x) { anyNA(x) } )
+        df_tmp <- df_tmp[ !has_na, , drop=F]
         if (nrow (df_tmp) <= 0)
           return (NA_real_)
 
-        z_continuous = ( is.numeric (z)
-          && (length (unique (z[!is.na(z)]) ) >= MIIC_CONTINUOUS_TRESHOLD) )
-        are_continuous = c (x_continuous, y_continuous, z_continuous)
-        ret_ni3 = computeThreePointInfo (x=df_tmp$x, y=df_tmp$y, z=df_tmp$z,
+        z_continuous <- ( is.numeric (df_tmp$z)
+          && (length (unique (df_tmp$z[!is.na(df_tmp$z)]) ) >= MIIC_CONTINUOUS_TRESHOLD) )
+        are_continuous <- c (x_continuous, y_continuous, z_continuous)
+        ret_ni3 <- computeThreePointInfo (x=df_tmp$x, y=df_tmp$y, z=df_tmp$z,
                                          is_continuous=are_continuous)
         ifelse (corrected, ret_ni3$i3k, ret_ni3$i3)
         } )
-      df_scores$score = ifelse (df_scores$dpi < df_scores$i3,
-                                df_scores$dpi, df_scores$i3)
+      df_scores$score <- ifelse (df_scores$dpi < df_scores$i3,
+                                 df_scores$dpi, df_scores$i3)
       }
     #
     # Order and memorize scores/dpi for next round
     #
-    df_scores_sorted = df_scores[ ( ! is.na (df_scores[, method]) )
-                                & (df_scores[, method] > 0), , drop=F]
-    df_scores_sorted = df_scores_sorted[order (df_scores_sorted[, method],
-                                               decreasing=T), , drop=F]
-    list_scores_sorted[[i]] = df_scores_sorted
-    # print (head (df_scores_sorted))
+    df_scores_sorted <- df_scores[ ( ! is.na (df_scores[, method]) )
+                                 & (df_scores[, method] > 0), , drop=F]
+    df_scores_sorted <- df_scores_sorted[order (df_scores_sorted[, method],
+                                                decreasing=T), , drop=F]
+    list_scores_sorted[[i]] <- df_scores_sorted
     #
     # Align scores of this round to all_scores to be returned back
     #
-    rownames(df_scores) = NULL
-    all_scores = rbind (all_scores, df_scores)
+    rownames(df_scores) <- NULL
+    all_scores <- rbind (all_scores, df_scores)
     }
   #
   # DPIs or/and scores computed, select the variables that will be kept:
   # the most probable contributors (ais)
   #
-  # print ( paste0 ("------------------ select ", n_selected, " tops --------------------------------") )
-  list_ais_couples = list()
-  i = 1
+  list_ais_couples <- list()
   for ( i in 1:nrow (couples) )
     {
     if (nrow (list_scores_sorted[[i]]) <= 0)
       {
-      list_ais_couples[[i]] = NA_character_
+      list_ais_couples[[i]] <- NA_character_
       next
       }
-    x_name = couples[i, "x"]
-    y_name = couples[i, "y"]
-    list_ais = rownames (list_scores_sorted[[i]])[1:min (
+    x_name <- couples[i, "x"]
+    y_name <- couples[i, "y"]
+    list_ais <- rownames (list_scores_sorted[[i]])[1:min (
       n_selected, nrow(list_scores_sorted[[i]]) )]
     all_couples [ (all_couples$depth == depth)
                 & (all_couples$x == x_name)
                 & (all_couples$y == y_name),
-                "features" ] = paste (list_ais, collapse=",")
-    list_ais_couples[[i]] = list_ais
+                "features" ] <- paste (list_ais, collapse=",")
+    list_ais_couples[[i]] <- list_ais
     }
   #
   # Recursive calls with variables found to be in the path as new vois
@@ -896,51 +881,48 @@ sfp_recurs <- function (input_data,
   # As we can have several couples of variables, we divide also
   # by the number of couples.
   #
-  # progress_inc_sav = progress_inc
-  progress_inc = (progress_inc / 2) / nrow (couples)
-  plot_middle = (plot_start + plot_end) / 2
-  # print (paste0 ("depth=", depth, ", inc received=", progress_inc_sav,
-  #               " inc_base=", (2 ^ depth), " nb couples=", nrow (couples),
-  #               " => inc=", progress_inc, " min=", progress,
-  #               " max=", progress + progress_inc * 2 * nrow (couples) ) )
+  progress_inc <- (progress_inc / 2) / nrow (couples)
+  plot_middle <- (plot_start + plot_end) / 2
   if ( (depth == 1) && (verbose == 2) )
     miic_msg (str_display, ", recursing...")
-  features = c()
-  i = 1
+  features <- c()
   for ( i in 1:nrow (couples) )
     {
-    list_ais = list_ais_couples[[i]]
-    list_ais = list_ais[ !is.na (list_ais) ]
+    list_ais <- list_ais_couples[[i]]
+    list_ais <- list_ais[ !is.na (list_ais) ]
     if (length (list_ais) <= 0)
       {
-      progress = progress + progress_inc * 2
+      progress <- progress + progress_inc * 2
       next
       }
     if ( ! is.null(plot) )
       {
-      # of the progress portion. At depth 1: 50, at depth 2: 25 or 75, ...
+      # Add the most probable contributors as the features selected,
+      # Plot position is the middle of the recursion step:
+      # at depth 1: 50, at depth 2: 25 or 75, ...
       #
-      idxs = ( (nrow(plot)+1):(nrow(plot)+length(list_ais)) )
-      plot[idxs, ] = list (plot_middle, depth, list_ais)
+      idxs <- ( (nrow(plot)+1):(nrow(plot)+length(list_ais)) )
+      plot[idxs, ] <- list (plot_middle, depth, list_ais)
       }
-    features = unique (c (features, list_ais) )
+    features <- unique (c (features, list_ais) )
     #
     # Recurs with 1st voi and selected features (= the most probable contributors)
     #
-    x_name = couples[i, "x"]
-    var_of_interest_names_side1 = NULL
-    var_of_interest_values_side1 = NULL
+    x_name <- couples[i, "x"]
+    var_of_interest_names_side1 <- NULL
+    var_of_interest_values_side1 <- NULL
     if (x_name %in% vois[["side1"]]$var_of_interest_names)
-      var_of_interest_names_side1 = x_name
+      var_of_interest_names_side1 <- x_name
     else
-      var_of_interest_values_side1 = vois[["side1"]]$var_of_interest_values[
+      var_of_interest_values_side1 <- vois[["side1"]]$var_of_interest_values[
         , x_name, drop=F]
 
-    input_data_rec = input_data[,
-      unique ( c(var_of_interest_names_side1, rownames(list_scores_sorted[[i]])) ),
+    input_data_rec <- input_data[,
+      unique ( c (var_of_interest_names_side1,
+                  rownames(list_scores_sorted[[i]])) ),
       drop=F]
 
-    ret = sfp_recurs (input_data=input_data_rec,
+    ret <- sfp_recurs (input_data=input_data_rec,
       var_of_interest_names_side1=var_of_interest_names_side1,
       var_of_interest_values_side1=var_of_interest_values_side1,
       var_of_interest_names_side2=list_ais,
@@ -953,15 +935,13 @@ sfp_recurs <- function (input_data,
       plot=plot, plot_start=plot_start, plot_end=plot_middle,
       all_couples=all_couples, all_scores=all_scores)
 
-    features = unique (c( features, ret$features) )
-    mat_mis = ret$mis
-    all_couples = ret$couples
-    all_scores = ret$scores
-    plot = ret$plot
+    features <- unique ( c (features, ret$features) )
+    mat_mis <- ret$mis
+    all_couples <- ret$couples
+    all_scores <- ret$scores
+    plot <- ret$plot
 
-    # print (paste0 ("back 1: progress=", progress, " depth=", depth,
-    #                " inc=", progress_inc, " => new progress", progress + progress_inc) )
-    progress = progress + progress_inc
+    progress <- progress + progress_inc
     if (verbose >= 3)
       cat (paste0 ("Depth ", depth, ", ", x_name, "-", y_name,
         ", progress ", round (progress, 2), " %...",
@@ -970,18 +950,20 @@ sfp_recurs <- function (input_data,
     # Recurs with selected features (= the most probable ais)
     # and voi from the other side
     #
-    y_name = couples[i, "y"]
-    var_of_interest_names_side2 = NULL
-    var_of_interest_values_side2 = NULL
+    y_name <- couples[i, "y"]
+    var_of_interest_names_side2 <- NULL
+    var_of_interest_values_side2 <- NULL
     if (y_name %in% vois[["side2"]]$var_of_interest_names)
-      var_of_interest_names_side2 = y_name
+      var_of_interest_names_side2 <- y_name
     else
-      var_of_interest_values_side2 = vois[["side2"]]$var_of_interest_values[, y_name, drop=F]
+      var_of_interest_values_side2 <- vois[["side2"]]$var_of_interest_values[,
+        y_name, drop=F]
 
-    input_data_rec = input_data[,
-      unique ( c(var_of_interest_names_side2, rownames(list_scores_sorted[[i]])) ),
+    input_data_rec <- input_data[,
+      unique ( c (var_of_interest_names_side2,
+                  rownames(list_scores_sorted[[i]])) ),
       drop=F]
-    ret = sfp_recurs (input_data=input_data_rec,
+    ret <- sfp_recurs (input_data=input_data_rec,
       var_of_interest_names_side1=list_ais,
       var_of_interest_values_side1=NULL,
       var_of_interest_names_side2=var_of_interest_names_side2,
@@ -994,15 +976,13 @@ sfp_recurs <- function (input_data,
       plot=plot, plot_start=plot_middle, plot_end=plot_end,
       all_couples=all_couples, all_scores=all_scores)
 
-    features = unique (c( features, ret$features) )
-    mat_mis = ret$mis
-    all_couples = ret$couples
-    all_scores = ret$scores
-    plot = ret$plot
+    features <- unique ( c( features, ret$features) )
+    mat_mis <- ret$mis
+    all_couples <- ret$couples
+    all_scores <- ret$scores
+    plot <- ret$plot
 
-    # print (paste0 ("back 2: progress=", progress, " depth=", depth,
-    #               " inc=", progress_inc, " => new progress", progress + progress_inc) )
-    progress = progress + progress_inc
+    progress <- progress + progress_inc
     if (verbose >= 3)
       cat (paste0 ("Depth ", depth, ", ", x_name, "-", y_name,
         ", progress ", round (progress, 2), " %...",
@@ -1010,7 +990,7 @@ sfp_recurs <- function (input_data,
     }
   if ( (depth == 1) && (verbose >= 3) )
     miic_msg (str_display, ", progress 100 %",
-                     paste (rep(" ", 50), collapse="") )
+              paste (rep(" ", 50), collapse="") )
 
   return (list ("features"=features, "mis"=mat_mis,
                 "couples"=all_couples, "scores"=all_scores,
@@ -1036,98 +1016,96 @@ sfp_plot <- function (vois, df_plots, depth_plot=4, annotate=T,
   depth_plot <- check_param_int (depth_plot, "plot depth", default=4, min=1)
   annotate <- check_param_logical (annotate, "plotting of annotation", default=T)
   if ( is.null (x_lab) )
-    xlab = paste0 ("Features for ",
-                   paste (vois$side1$all_voi_names, collapse=", "), " - ",
-                   paste (vois$side2$all_voi_names, collapse=", ") )
+    x_lab <- paste0 ("Features for ",
+                     paste (vois$side1$all_voi_names, collapse=", "), " - ",
+                     paste (vois$side2$all_voi_names, collapse=", ") )
   else
     x_lab <- as.character (x_lab)
   font_size <- check_param_int (font_size, "font size", default=11, min=1)
 
-  depth_max = max(df_plots$depth)
-  all_feats = unique (df_plots$features)
-  df_plots = df_plots[df_plots$depth <= depth_plot, , drop=F]
-  df_plots$depth = NULL
-  df_plots = unique (df_plots)
+  depth_max <- max(df_plots$depth)
+  all_feats <- unique (df_plots$features)
+  df_plots <- df_plots[df_plots$depth <= depth_plot, , drop=F]
+  df_plots$depth <- NULL
+  df_plots <- unique (df_plots)
 
-  y_feat = 0.5
+  y_feat <- 0.5
 
-  side1_names = paste (sort (vois$side1$all_voi_names), collapse="\n")
-  side2_names = paste (sort (vois$side2$all_voi_names), collapse="\n")
-  g = ggplot2::ggplot() +
+  side1_names <- paste (sort (vois$side1$all_voi_names), collapse="\n")
+  side2_names <- paste (sort (vois$side2$all_voi_names), collapse="\n")
+  g <- ggplot2::ggplot() +
     ggplot2::theme_classic() +
-    ggplot2::theme ( text = ggplot2::element_text (size=font_size),
-     axis.text.x = ggplot2::element_text (angle=30, vjust =1, hjust=1),
-     axis.line.y = ggplot2::element_blank(),
-     axis.text.y = ggplot2::element_blank(),
-     axis.ticks.y = ggplot2::element_blank() ) +
-    ggplot2::labs (x=xlab, y="") +
+    ggplot2::theme ( text=ggplot2::element_text (size=font_size),
+      axis.text.x=ggplot2::element_text (angle=30, vjust=1, hjust=1),
+      axis.line.y=ggplot2::element_blank(),
+      axis.text.y=ggplot2::element_blank(),
+      axis.ticks.y=ggplot2::element_blank() ) +
+    ggplot2::labs (x=x_lab, y="") +
     ggplot2::ylim (0, 1) +
     ggplot2::geom_text (ggplot2::aes (
         x=c(0,1), y=y_feat, label=c(side1_names, side2_names) ),
       size=font_size*0.8/ggplot2::.pt, hjust=0.5, vjust=0.5, color="black") +
-    ggplot2::geom_vline ( xintercept=c(0,1), linewidth=0.5,
-                          linetype="dashed", color="darkgrey")
-  xticks_text = c ("0", "1")
-  xticks_pos = c (0, 1)
+    ggplot2::geom_vline (xintercept=c(0,1), linewidth=0.5,
+                         linetype="dashed", color="darkgrey")
+  xticks_text <- c ("0", "1")
+  xticks_pos <- c (0, 1)
   #
   # Pick the features position at the highest depth
   #
-  plot_positions = c()
-  plot_texts = c()
-  feats_displayed = c() # Do not exclude user vois as some can be features
-  i = 1
+  plot_positions <- c()
+  plot_texts <- c()
+  feats_displayed <- c()
   for (i in 1:depth_plot)
     {
-    pos_inc = 100 / (2 ^ i)
-    # print (pos_inc)
+    pos_inc <- 100 / (2 ^ i)
     for ( one_pos in seq (from=pos_inc, to=100-pos_inc, by=pos_inc) )
       {
       if (! (one_pos %in% df_plots$pos) )
         next
       if (one_pos %in% plot_positions)
         next
-      # print (one_pos)
-      feats_to_add = unique (df_plots$features[df_plots$pos == one_pos])
-      feats_to_add = feats_to_add[ ! (feats_to_add %in% feats_displayed)]
+      feats_to_add <- unique (df_plots$features[df_plots$pos == one_pos])
+      feats_to_add <- feats_to_add[ ! (feats_to_add %in% feats_displayed)]
       if (length(feats_to_add) <= 0)
         next
-      plot_positions = c (plot_positions, one_pos)
-      plot_texts = c (plot_texts, paste (sort (feats_to_add), collapse="\n") )
-      feats_displayed = c(feats_displayed, feats_to_add)
+      plot_positions <- c (plot_positions, one_pos)
+      plot_texts <- c (plot_texts, paste (sort (feats_to_add), collapse="\n") )
+      feats_displayed <- c(feats_displayed, feats_to_add)
       }
     }
-  plot_positions = round (plot_positions / 100, 3)
-  g = g + ggplot2::geom_text (
+  plot_positions <- round (plot_positions / 100, 3)
+  g <- g +
+    ggplot2::geom_text (
       ggplot2::aes (x=plot_positions, y=y_feat, label=plot_texts),
       size=font_size*0.8/ggplot2::.pt, hjust=0.5, vjust=0.5, color="black") +
     ggplot2::geom_vline ( xintercept=plot_positions, linewidth=0.6,
                           linetype="dotted", color="darkgrey")
-  xticks_text = c (xticks_text, as.character(plot_positions) )
-  xticks_pos = c (xticks_pos, plot_positions)
+  xticks_text <- c (xticks_text, as.character(plot_positions) )
+  xticks_pos <- c (xticks_pos, plot_positions)
   #
   # Set ticks
   #
-  g = g + ggplot2::scale_x_continuous (breaks=xticks_pos, label=xticks_text)
+  g <- g + ggplot2::scale_x_continuous (breaks=xticks_pos, label=xticks_text)
   #
   # Add annotation if plot depth > depth search
   #
   if (annotate)
     {
     if (depth_max > depth_plot)
-      label_txt = paste0 (depth_plot,  " levels shown of ", depth_max)
+      label_txt <- paste0 (depth_plot,  " levels shown of ", depth_max)
     else
-      label_txt = paste0 ("All ", depth_max,  " levels shown")
+      label_txt <- paste0 ("All ", depth_max,  " levels shown")
 
-    shown_feats = unique (df_plots$features)
-    n_feat_not_shown = sum ( ! (all_feats %in% shown_feats) )
+    shown_feats <- unique (df_plots$features)
+    n_feat_not_shown <- sum ( ! (all_feats %in% shown_feats) )
     if (n_feat_not_shown <= 0)
-      label_txt = paste0 (label_txt, ",\nall ", length(shown_feats),
-                          " features shown")
+      label_txt <- paste0 (label_txt, ",\nall ", length(shown_feats),
+                           " features shown")
     else
-      label_txt = paste0 (label_txt, ",\n", n_feat_not_shown,
-                          " feature(s) not shown")
+      label_txt <- paste0 (label_txt, ",\n", n_feat_not_shown,
+                           " feature(s) not shown")
 
-    g = g + ggplot2::geom_text (ggplot2::aes (x=0.875, y=1, label=label_txt),
+    g <- g + ggplot2::geom_text (ggplot2::aes (x=0.875, y=1, label=label_txt),
       size=font_size*0.8/ggplot2::.pt, hjust=0.5, vjust=1)
     }
   return (g)
@@ -1282,23 +1260,23 @@ sfp_plot <- function (vois, df_plots, depth_plot=4, annotate=T,
 #' ret <- selectFeatures (cosmicCancer,
 #'                        var_of_interest_names=c("TP53", "tp53"),
 #'                        n_features=10)
-#' message ("Tops 10 features = ", paste (ret$features, collapse=", ") )
+#' message ("Tops 10 features: ", paste (ret$features, collapse=", ") )
 #'
 #' # Features selection with reuse of above computed MIs
 #' ret <- selectFeatures (cosmicCancer,
 #'                        var_of_interest_names=c("TP53", "tp53"),
 #'                        n_features=20,
 #'                        precomputed_mis=ret$mis)
-#' message ("Tops 20 features = ", paste (ret$features, collapse=", ") )
+#' message ("Tops 20 features: ", paste (ret$features, collapse=", ") )
 #'
 #' # Features selection using an external metadata "Ploidy"
 #' # (simulation by extracting "Ploidy" out of the dataset)
-#' df_external_meta <- data.frame ("Ploidy" = cosmicCancer$Ploidy)
+#' df_external_meta <- data.frame ("Ploidy"=cosmicCancer$Ploidy)
 #' df_data <- cosmicCancer[ , ! (colnames(cosmicCancer) == "Ploidy") ]
 #' ret <- selectFeatures (df_data,
 #'                        var_of_interest_values=df_external_meta,
 #'                        n_features=10)
-#' message ("Tops 10 features = ", paste (ret$features, collapse=", ") )
+#' message ("Tops 10 features: ", paste (ret$features, collapse=", ") )
 #'
 #' # Same features selection with plotting of the result
 #' if ( require(ggplot2) ) {
@@ -1312,13 +1290,13 @@ sfp_plot <- function (vois, df_plots, depth_plot=4, annotate=T,
 #' # Features selection using variables of interest coming both from
 #' # the dataset ("tp53", "TP53") and an external metadata ("Ploidy")
 #' # (simulation by extracting "Ploidy" out of the dataset)
-#' df_external_meta <- data.frame ("Ploidy" = cosmicCancer$Ploidy)
+#' df_external_meta <- data.frame ("Ploidy"=cosmicCancer$Ploidy)
 #' df_data <- cosmicCancer[ , ! (colnames(cosmicCancer) == "Ploidy") ]
 #' ret <- selectFeatures (df_data,
 #'                        var_of_interest_names=c("TP53", "tp53"),
 #'                        var_of_interest_values=df_external_meta,
 #'                        n_features=20)
-#' message ("Tops 20 features = ", paste (ret$features, collapse=", ") )
+#' message ("Tops 20 features: ", paste (ret$features, collapse=", ") )
 #'
 #' # Same features selection with plotting using a customized rendering
 #' if ( require(ggplot2) && require(gridExtra) ) {
@@ -1357,7 +1335,7 @@ selectFeatures <- function (input_data, n_features, var_of_interest_names=NULL,
   #
   # Compute MIs
   #
-  mat_mis = compute_mi_batch (input_data=input_data,
+  mat_mis <- compute_mi_batch (input_data=input_data,
     var_of_interest_names=vois$var_of_interest_names,
     var_of_interest_values=vois$var_of_interest_values,
     unit=unit, corrected=corrected, precomputed_mis=precomputed_mis,
@@ -1370,19 +1348,19 @@ selectFeatures <- function (input_data, n_features, var_of_interest_names=NULL,
   # while mat_mis would contain all genes. Same for the columns as
   # we can have precomputed more variables of interest than the ones we use now
   #
-  mat_mis_filt = mat_mis[rownames(mat_mis) %in% colnames(input_data),
-                         colnames(mat_mis) %in% vois$all_voi_names,
-                         drop=F]
+  mat_mis_filt <- mat_mis[rownames(mat_mis) %in% colnames(input_data),
+                          colnames(mat_mis) %in% vois$all_voi_names,
+                          drop=F]
   #
   # Plot if requested
   #
-  list_plots = list ()
-  # one_col = colnames (mat_mis_filt)[[1]]
+  list_plots <- list ()
+  # one_col <- colnames (mat_mis_filt)[[1]]
   if (plot)
     {
-    if ( base::requireNamespace("ggplot2", quietly = TRUE) )
+    if ( base::requireNamespace("ggplot2", quietly=TRUE) )
       for ( one_col in colnames (mat_mis_filt) )
-        list_plots[[one_col]] = sfo_plot (
+        list_plots[[one_col]] <- sfo_plot (
           mis=mat_mis_filt, var_of_interest_name=one_col,
           unit=unit, corrected=corrected, ...)
     else
@@ -1396,14 +1374,14 @@ selectFeatures <- function (input_data, n_features, var_of_interest_names=NULL,
   #
   # For each voi requested, order mis decreasing and filter on MI' > 0
   #
-  list_mis_sorted = list()
-  uniq_poss_feats = c()
+  list_mis_sorted <- list()
+  uniq_poss_feats <- c()
   for (one_voi in vois$all_voi_names)
     {
-    list_mis_sup_0 = mat_mis_filt[, one_voi] [mat_mis_filt[, one_voi] > 0]
-    list_mis_sorted[[one_voi]] = sort (list_mis_sup_0, decreasing=T)
-    uniq_poss_feats = unique (c (uniq_poss_feats,
-                                 names(list_mis_sup_0) ) )
+    list_mis_sup_0 <- mat_mis_filt[, one_voi] [mat_mis_filt[, one_voi] > 0]
+    list_mis_sorted[[one_voi]] <- sort (list_mis_sup_0, decreasing=T)
+    uniq_poss_feats <- unique (c (uniq_poss_feats,
+                                  names(list_mis_sup_0) ) )
     }
   #
   # Check if too much features to select
@@ -1421,8 +1399,8 @@ selectFeatures <- function (input_data, n_features, var_of_interest_names=NULL,
   #
   # Select top features until we get enough or a bit too much
   #
-  list_tops = sfo_get_tops (n_features=n_features,
-    list_sorted=list_mis_sorted, verbose=verbose)
+  list_tops <- sfo_get_tops (
+    n_features=n_features, list_sorted=list_mis_sorted, verbose=verbose)
 
   return (list ("features"=list_tops, "mis"=mat_mis, "plots"=list_plots) )
   }
@@ -1438,7 +1416,7 @@ selectFeatures <- function (input_data, n_features, var_of_interest_names=NULL,
 #' inequality (DPI) and 3 points information or only using the DPI.\cr
 #' The search is recursive by dichotomy: in the first round, a set of features
 #' on the path between the main variables of interest is selected.
-#' From then, the path is splitted in two parts:
+#' From then, the path is split in two parts:
 #' \itemize{
 #'   \item variables of interest of side 1 + set of features selected
 #'   \item set of features selected + variables of interest of side 2
@@ -1485,7 +1463,8 @@ selectFeatures <- function (input_data, n_features, var_of_interest_names=NULL,
 #'
 #' Same as \emph{var_of_interest_values_side1} for the second side of the path.
 #'
-#' @param method [a string, optional, "score" by default,  possible values: "score", "dpi"]
+#' @param method [a string, optional, "score" by default,
+#' possible values: "score", "dpi"]
 #'
 #' When set to "score", the variables selection is performed using a score
 #' combining DPI and 3 points information (see Affeldt 2015).
@@ -1548,7 +1527,7 @@ selectFeatures <- function (input_data, n_features, var_of_interest_names=NULL,
 #' If set to TRUE, a plot with the top features is generated.
 #'
 #' Please note on the plot rendering that positions are indicative with
-#' a tendancy to be displayed to the left side: a feature can appear multiple
+#' a tendency to be displayed to the left side: a feature can appear multiple
 #' times during the recursion, but couples already investigated are skipped
 #' to speed up the process. For the plotting, the rule applied to select the
 #' position of each feature is (from the positions returned by the recursion),
@@ -1597,15 +1576,16 @@ selectFeatures <- function (input_data, n_features, var_of_interest_names=NULL,
 #' @examples
 #' library(miic)
 #'
+#' \donttest{
 #' # Features selection on the path between an external metadata "Ploidy"
 #' # (simulation by extracting "Ploidy" out of the dataset)
 #' # and the gene expression of TP53
-#' df_external_meta <- data.frame ("Ploidy" = cosmicCancer$Ploidy)
+#' df_external_meta <- data.frame ("Ploidy"=cosmicCancer$Ploidy)
 #' df_data <- cosmicCancer[ , ! (colnames(cosmicCancer) == "Ploidy") ]
 #' ret <- selectFeaturesPath (df_data,
 #'                            var_of_interest_values_side1=df_external_meta,
 #'                            var_of_interest_names_side2="TP53")
-#' message ("Features selected = ", paste (ret$features, collapse=", ") )
+#' message ("Features selected: ", paste (ret$features, collapse=", ") )
 #'
 #' # Same features selection with reuse of the MIs computed above and plot
 #' if ( require(ggplot2) ) {
@@ -1618,18 +1598,25 @@ selectFeatures <- function (input_data, n_features, var_of_interest_names=NULL,
 #' }
 #'
 #' # Features selection using multiple variables on each side
+#' # (reusing the MIs computed above and selecting only one feature per round
+#' # to speed up the example)
 #' ret <- selectFeaturesPath (cosmicCancer,
-#'   var_of_interest_names_side1=c("TP53", "Ploidy"),
-#'   var_of_interest_names_side2=c("FOXM1", "AURKA") )
-#' message ("Features selected = ", paste (ret$features, collapse=", ") )
+#'                            var_of_interest_names_side1=c("TP53", "Ploidy"),
+#'                            var_of_interest_names_side2=c("FOXM1", "AURKA"),
+#'                            n_selected=1, precomputed_mis=ret$mis)
+#' message ("Features selected: ", paste (ret$features, collapse=", ") )
 #'
-#' # Same features selection with plotting using a customized rendering
+#' # Similar features selection with plotting using a customized rendering
+#' # (reusing the MIs computed above and limiting the recursion depth
+#' # to speed up the example)
 #' if ( require(ggplot2) ) {
 #'   ret <- selectFeaturesPath (cosmicCancer,
-#'                             var_of_interest_names_side1=c("TP53", "Ploidy"),
-#'                             var_of_interest_names_side2=c("FOXM1", "AURKA"),
-#'                             plot=TRUE, depth_plot=6, font_size=9)
+#'                              var_of_interest_names_side1=c("TP53", "Ploidy"),
+#'                              var_of_interest_names_side2=c("FOXM1", "AURKA"),
+#'                              depth_max=2, plot=TRUE, font_size=12,
+#'                              x_lab="My features selection on CosmicCancer")
 #'   print (ret$plot)
+#' }
 #' }
 #'
 #' @export
@@ -1655,29 +1642,30 @@ selectFeaturesPath <- function (input_data,
   precomputed_mis <- sf_check_precomputed_mis (precomputed_mis)
   skip_cheks <- check_param_logical (skip_cheks, "skip checks", F)
   n_threads <- check_param_int (n_threads, "number of threads", 1)
-  depth_max <- check_param_int (depth_max,
-    "maximum depth", min=1, default=10)
+  depth_max <- check_param_int (
+    depth_max, "maximum depth", min=1, default=10)
   verbose <- check_param_int (verbose, "verbose", 3, 0, 3)
   plot <- check_param_logical (plot, "plot", F)
 
-  all_couples <- data.frame ("depth"=integer(), "x"=character(), "y"=character(),
+  all_couples <- data.frame (
+    "depth"=integer(), "x"=character(), "y"=character(),
     "mi"=numeric(), "features"=character(), stringsAsFactors=F)
-  all_scores <- data.frame ("depth"=integer(),
-    "x"=character(), "y"=character(), "z"=character(),
+  all_scores <- data.frame (
+    "depth"=integer(), "x"=character(), "y"=character(), "z"=character(),
     "mi_xy"=numeric(), "mi_xz"=numeric(), "mi_zy"=numeric(), "i3"=numeric(),
     "dpi"=numeric(),  "score"=numeric(), stringsAsFactors=F)
   if (plot)
-    df_plots = data.frame ("pos"=numeric(), "depth"=integer(), "features"=character(),
-                           stringsAsFactors=F)
+    df_plots <- data.frame ("pos"=numeric(), "depth"=integer(), "features"=character(),
+                            stringsAsFactors=F)
   else
-    df_plots = NULL
+    df_plots <- NULL
 
   if (verbose >= 1)
     miic_msg ("Selecting features on path between ",
-     paste0 (vois$side1$all_voi_names, collapse=","),
-     " and ", paste0 (vois$side2$all_voi_names, collapse=","), "...")
+      paste0 (vois$side1$all_voi_names, collapse=","),
+      " and ", paste0 (vois$side2$all_voi_names, collapse=","), "...")
 
-  ret_recurs = sfp_recurs (input_data=input_data,
+  ret_recurs <- sfp_recurs (input_data=input_data,
     var_of_interest_names_side1 =vois[["side1"]]$var_of_interest_names,
     var_of_interest_values_side1=vois[["side1"]]$var_of_interest_values,
     var_of_interest_names_side2 =vois[["side2"]]$var_of_interest_names,
@@ -1691,8 +1679,8 @@ selectFeaturesPath <- function (input_data,
 
   if (plot)
     {
-    if ( base::requireNamespace("ggplot2", quietly = TRUE) )
-      ret_recurs$plot = sfp_plot (vois, unique (ret_recurs$plot), ...)
+    if ( base::requireNamespace("ggplot2", quietly=TRUE) )
+      ret_recurs$plot <- sfp_plot (vois, unique (ret_recurs$plot), ...)
     else
       miic_warning ("Path features selection", "Plotting requires ggplot2.")
     }
@@ -1701,5 +1689,3 @@ selectFeaturesPath <- function (input_data,
     miic_msg (length (ret_recurs$features), " features selected.")
   return (ret_recurs)
   }
-
-

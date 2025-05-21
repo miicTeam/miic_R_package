@@ -79,7 +79,7 @@ and \emph{delta_t} have been estimated:
 
 \itemize{
  \item{\emph{lags_vanish}: the matrix (trajectories * variables) of lags
- where autocorrelaton vanishes. }
+ where autocorrelation vanishes. }
  \item{\emph{lags_alphas}: the matrix (trajectories * variables) of lags
  used to estimate the alphas. }
  \item{\emph{alphas}: the matrix (trajectories * variables) of alphas. }

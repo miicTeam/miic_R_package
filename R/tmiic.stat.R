@@ -651,7 +651,7 @@ tmiic_lag_input_data <- function (list_traj, state_order, keep_max_data=FALSE)
 #'
 #' \itemize{
 #'  \item{\emph{lags_vanish}: the matrix (trajectories * variables) of lags
-#'  where autocorrelaton vanishes. }
+#'  where autocorrelation vanishes. }
 #'  \item{\emph{lags_alphas}: the matrix (trajectories * variables) of lags
 #'  used to estimate the alphas. }
 #'  \item{\emph{alphas}: the matrix (trajectories * variables) of alphas. }
@@ -760,7 +760,7 @@ estimateTemporalDynamic <- function (input_data, state_order=NULL,
 #' signature of causality in observational data. The use of temporal mode
 #' is presented in Simon 2024.
 #'
-#' tMiicStat is mostly compatible with the classsical miic method and, as of,
+#' tMiicStat is mostly compatible with the classical miic method and, as of,
 #' it relies on information theoretic principles which replace (conditional)
 #' independence tests as described in Affeldt 2015, Cabeli 2020,
 #' Cabeli 2021 and Ribeiro-Dantas 2024. It deals with both categorical and
@@ -784,7 +784,7 @@ estimateTemporalDynamic <- function (input_data, state_order=NULL,
 #'
 #' @references
 #' \itemize{
-#' \item Simon \emph{et al.}, eLife 2024, \href{https://www.biorxiv.org/content/10.1101/2024.02.06.579177v1.abstract}{CausalXtract: a flexible pipeline to extract causal effects from live-cell time-lapse imaging data}
+#' \item Simon \emph{et al.}, eLife 2024, \href{https://elifesciences.org/articles/95485}{CausalXtract: a flexible pipeline to extract causal effects from live-cell time-lapse imaging data}
 #' \item Ribeiro-Dantas \emph{et al.}, iScience 2024, \href{https://arxiv.org/pdf/2303.06423}{Learning interpretable causal networks from very large datasets, application to 400,000 medical records of breast cancer patients}
 #' \item Cabeli \emph{et al.}, NeurIPS 2021, \href{https://why21.causalai.net/papers/WHY21_24.pdf}{Reliable causal discovery based on mutual information supremum principle for finite dataset}
 #' \item Cabeli \emph{et al.}, PLoS Comput. Biol. 2020, \href{https://journals.plos.org/ploscompbiol/article?id=10.1371/journal.pcbi.1007866}{Learning clinical networks from medical records based on information estimates in mixed-type data}
@@ -1079,7 +1079,7 @@ estimateTemporalDynamic <- function (input_data, state_order=NULL,
 #' }
 #'
 #' In addition, tMiicStat provides extra information dedicated to the network
-#' inferrence in temporal mode:
+#' inference in temporal mode:
 #'
 #' \itemize{
 #'   \item {\emph{tmiic:} named list containing:

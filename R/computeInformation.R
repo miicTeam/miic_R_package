@@ -86,47 +86,46 @@
 # and, depending on the \emph{corrected} parameter, include a correction or not.
 # When \emph{precomputed_mis} is supplied, newly computed values are added
 # to the matrix.
-# }
 #-------------------------------------------------------------------------------
 compute_mi_batch <- function (input_data,
   var_of_interest_names=NULL, var_of_interest_values=NULL, unit="log_conf",
   corrected=T, precomputed_mis=NULL, skip_cheks=F, n_threads=1, verbose=3)
   {
   LN_2 <- log(2)
-  all_voi_names = c ( var_of_interest_names, colnames (var_of_interest_values) )
+  all_voi_names <- c ( var_of_interest_names, colnames (var_of_interest_values) )
   #
   # MIs matrix preparation
   #
   if ( is.null (precomputed_mis) )
-    mat_mis = matrix (NA_real_,
-                      nrow = ncol (input_data),
-                      ncol = length (all_voi_names),
-                      dimnames = list ( sort (colnames (input_data)),
-                                        sort (all_voi_names) ) )
+    mat_mis <- matrix (NA_real_,
+                      nrow=ncol (input_data),
+                      ncol=length (all_voi_names),
+                      dimnames=list ( sort (colnames (input_data)),
+                                      sort (all_voi_names) ) )
   else
     {
     # Add missing row / columns (these MIs needs to be computed)
     #
-    mat_mis = precomputed_mis
-    missing_row_names = colnames (input_data)[
+    mat_mis <- precomputed_mis
+    missing_row_names <- colnames (input_data)[
       ! ( colnames (input_data) %in% rownames (mat_mis) ) ]
     if (length (missing_row_names) > 0)
       {
-      n_rows_mat = nrow (mat_mis)
-      range_to_add = (n_rows_mat+1):(n_rows_mat+length(missing_row_names))
-      mat_mis[range_to_add, ] = NA_real_
-      rownames (mat_mis)[range_to_add] = missing_row_names
-      mat_mis = mat_mis[order( rownames (mat_mis) ), , drop=F]
+      mat_tmp <- matrix (NA_real_,
+        nrow=length (missing_row_names), ncol=ncol (mat_mis),
+        dimnames=list (missing_row_names, colnames (mat_mis) ) )
+      mat_mis <- rbind (mat_mis, mat_tmp)
+      mat_mis <- mat_mis[order( rownames (mat_mis) ), , drop=F]
       }
-    missing_col_names = all_voi_names[
+    missing_col_names <- all_voi_names[
       ! ( all_voi_names %in% colnames (mat_mis) ) ]
     if (length (missing_col_names) > 0)
       {
-      mat_tmp = matrix (NA_real_,
+      mat_tmp <- matrix (NA_real_,
         nrow=nrow (mat_mis), ncol=length (missing_col_names),
         dimnames=list ( rownames (mat_mis), missing_col_names) )
-      mat_mis = cbind (mat_mis, mat_tmp)
-      mat_mis = mat_mis[, order( colnames (mat_mis) ), drop=F]
+      mat_mis <- cbind (mat_mis, mat_tmp)
+      mat_mis <- mat_mis[, order( colnames (mat_mis) ), drop=F]
       }
     }
   # print (mat_mis[1:5,1:4])
@@ -134,48 +133,47 @@ compute_mi_batch <- function (input_data,
   # The bin size controls the number of features evaluated in one go
   #
   if ( (ncol (input_data) < 750) || (nrow(input_data) <= 2000) )
-    bin_size = 100
+    bin_size <- 100
   else if (nrow(input_data) <= 4000)
-    bin_size = 75
+    bin_size <- 75
   else if (nrow(input_data) <= 7000)
-    bin_size = 50
+    bin_size <- 50
   else
-    bin_size = 20
+    bin_size <- 20
   #
   # For each variable of interest (voi), compute MI
   #
-  n_all_vois = length (all_voi_names)
-  max_voi_name = max (unlist (lapply (all_voi_names, FUN=nchar) ) )
-  n_vars = ncol (input_data)
-  time_start = Sys.time()
-  one_voi_idx = 1
+  n_all_vois <- length (all_voi_names)
+  max_voi_name <- max (unlist (lapply (all_voi_names, FUN=nchar) ) )
+  n_vars <- ncol (input_data)
+  time_start <- Sys.time()
   for (one_voi_idx in 1:n_all_vois)
     {
-    data_for_compute = input_data
-    one_voi_name = all_voi_names[[one_voi_idx]]
-    str_progress_start = paste0 ("Computing MI for ", one_voi_name,
+    data_for_compute <- input_data
+    one_voi_name <- all_voi_names[[one_voi_idx]]
+    str_progress_start <- paste0 ("Computing MI for ", one_voi_name,
       paste (rep ( ' ', max_voi_name - nchar(one_voi_name) ), collapse="" ), " : ")
     if (verbose >= 2)
       cat (paste0 (str_progress_start, "0 %\r") )
 
     if (one_voi_name %in% var_of_interest_names)
-      one_voi_values = data_for_compute[, one_voi_name]
+      one_voi_values <- data_for_compute[, one_voi_name]
     else
-      one_voi_values = var_of_interest_values[, one_voi_name]
+      one_voi_values <- var_of_interest_values[, one_voi_name]
 
-    var_to_recomp = rownames (mat_mis) [is.na (mat_mis [, one_voi_name]) ]
+    var_to_recomp <- rownames (mat_mis) [is.na (mat_mis [, one_voi_name]) ]
     #
     # The MI matrix, if pre-computed, can contain more features (rows)
     # than in input_data (columnsà). e.g. we computed MI with some voi
     # on all genes and now we send only the TFs in input_data
     #
-    var_to_recomp = var_to_recomp[var_to_recomp %in% colnames (input_data)]
+    var_to_recomp <- var_to_recomp[var_to_recomp %in% colnames (input_data)]
     #
     # Exclude the voi itself
     #
-    one_voi_name_in_recomp_idx = which (var_to_recomp == one_voi_name)
+    one_voi_name_in_recomp_idx <- which (var_to_recomp == one_voi_name)
     if (length (one_voi_name_in_recomp_idx) > 0)
-      var_to_recomp = var_to_recomp[ -one_voi_name_in_recomp_idx ]
+      var_to_recomp <- var_to_recomp[ -one_voi_name_in_recomp_idx ]
     #
     # If several vois are also variables in input_data, the MI can have been
     # already computed. e.g. 1st voi "Col3a1" computed for all genes, including
@@ -185,8 +183,8 @@ compute_mi_batch <- function (input_data,
     if (  (one_voi_name %in% var_of_interest_names)
        && (length (var_to_recomp) > 0) )
       {
-      mis_for_the_voi = mat_mis[one_voi_name, ] # drop
-      mis_for_the_voi = mis_for_the_voi[ !is.na (mis_for_the_voi) ]
+      mis_for_the_voi <- mat_mis[one_voi_name, ] # drop
+      mis_for_the_voi <- mis_for_the_voi[ !is.na (mis_for_the_voi) ]
       if (length (mis_for_the_voi) > 0)
         {
         # print ("case with MI already computed !!!")
@@ -202,11 +200,11 @@ compute_mi_batch <- function (input_data,
         #     }
         for ( one_var in names (mis_for_the_voi) )
           if ( one_var %in% rownames (mat_mis) )
-            mat_mis[one_var, one_voi_name] = mis_for_the_voi[one_var]
+            mat_mis[one_var, one_voi_name] <- mis_for_the_voi[one_var]
         # for ( one_var in names (mis_for_the_voi) )
         #   if ( one_var %in% rownames (mat_mis) )
         #     print (paste0 ("value in mat_mi after: ", mat_mis[one_var, one_voi_name]) )
-        var_to_recomp = var_to_recomp[ !(var_to_recomp %in% names (mis_for_the_voi)) ]
+        var_to_recomp <- var_to_recomp[ !(var_to_recomp %in% names (mis_for_the_voi)) ]
         # print (paste0 (length (var_to_recomp), " vars to recomp after (",
         #                list_to_str(var_to_recomp, max=10), ")") )
         }
@@ -225,9 +223,9 @@ compute_mi_batch <- function (input_data,
     # properly be looking at miic returned value as miic will not include
     # in the summary the edges removed without conditioning)
     #
-    data_for_compute = input_data[, var_to_recomp, drop=F]
-    n_vars = ncol (data_for_compute)
-    mat_mis [colnames(data_for_compute), one_voi_name] = 0
+    data_for_compute <- input_data[, var_to_recomp, drop=F]
+    n_vars <- ncol (data_for_compute)
+    mat_mis [colnames(data_for_compute), one_voi_name] <- 0
     #
     # Compute the mutual information by group of bin_size variables using miic
     #
@@ -236,26 +234,26 @@ compute_mi_batch <- function (input_data,
       {
       end_idx <- min (start_idx + bin_size - 1, n_vars)
       # print(paste0 ("From ", start_idx, " to ", end_idx, " (n_vars=", n_vars, ")") )
-      time_str = ""
+      time_str <- ""
       if (verbose >= 3)
         {
-        curr_time = Sys.time()
-        elapsed_time = as.numeric (curr_time - time_start, units="secs")
-        curr_progress = ( (one_voi_idx-1) + (start_idx - 1) / n_vars) / n_all_vois
+        curr_time <- Sys.time()
+        elapsed_time <- as.numeric (curr_time - time_start, units="secs")
+        curr_progress <- ( (one_voi_idx-1) + (start_idx - 1) / n_vars) / n_all_vois
         if (curr_progress > 0)
           {
-          remain_time = (elapsed_time / curr_progress) - elapsed_time
+          remain_time <- (elapsed_time / curr_progress) - elapsed_time
           if (remain_time >= 3600)
             {
-            time_str = paste0 (remain_time %/% 3600, "h " )
-            remain_time = remain_time - (remain_time %/% 3600) * 3600
+            time_str <- paste0 (remain_time %/% 3600, "h " )
+            remain_time <- remain_time - (remain_time %/% 3600) * 3600
             }
           if (remain_time >= 60)
             {
-            time_str = paste0 (time_str, remain_time %/% 60, "m " )
-            remain_time = remain_time - (remain_time %/% 60) * 60
+            time_str <- paste0 (time_str, remain_time %/% 60, "m " )
+            remain_time <- remain_time - (remain_time %/% 60) * 60
             }
-         time_str = paste0 (", ", time_str, round (remain_time), "s to go" )
+         time_str <- paste0 (", ", time_str, round (remain_time), "s to go" )
          }
         }
       if (verbose >= 2)
@@ -265,17 +263,12 @@ compute_mi_batch <- function (input_data,
 
       data_loop <- data_for_compute [, start_idx:end_idx, drop=FALSE]
       if ( ! is.data.frame(data_loop) )
-        data_loop = as.data.frame (data_loop)
+        data_loop <- as.data.frame (data_loop)
       if (one_voi_name %in% colnames (data_loop))
         {
-        stop ("can not occur")
-        # print ("voi in data loop, before:")
-        # pos_col = which (colnames (data_loop) == one_voi_name)
-        # print (list_to_str (colnames (data_loop)[(pos_col-1):(pos_col+1)] ) )
+        stop ("TODO can not occur")
         data_loop[ , one_voi_name] <- NULL
-        mat_mis [one_voi_name, one_voi_name] = NA_real_
-        # print ("passe voi in data loop, after:")
-        # print (list_to_str (colnames (data_loop)[(pos_col-1):(pos_col+1)] ) )
+        mat_mis [one_voi_name, one_voi_name] <- NA_real_
         }
 
       if (!skip_cheks)
@@ -283,12 +276,12 @@ compute_mi_batch <- function (input_data,
         # Remove rows full of NAs and constant variables
         # (would generate warnings if sent to miic function)
         #
-        count_vals = unlist (apply (data_loop, MARGIN=2, FUN=function (x) {
+        count_vals <- unlist (apply (data_loop, MARGIN=2, FUN=function (x) {
           length (unique (x[!is.na(x)] ) ) }) )
-        data_loop = data_loop[, count_vals >= 2, drop=F]
+        data_loop <- data_loop[, count_vals >= 2, drop=F]
 
-        count_nas = apply (data_loop, MARGIN=1, FUN=function(x) { sum (is.na(x) ) } )
-        data_loop = data_loop[ count_nas < ncol(data_loop), , drop=F]
+        count_nas <- apply (data_loop, MARGIN=1, FUN=function(x) { sum (is.na(x) ) } )
+        data_loop <- data_loop[ count_nas < ncol(data_loop), , drop=F]
         }
 
       # print (paste0 ("nrow: ", nrow (data_loop),
@@ -296,9 +289,9 @@ compute_mi_batch <- function (input_data,
       #
       if ( (nrow (data_loop) > 0) && (ncol (data_loop) > 0) )
         {
-        so <- data.frame ("var_names" = c (colnames(data_loop), "var_interest"),
-                          "is_consequence" = c (rep(1, ncol(data_loop)), 0),
-                          stringsAsFactors = FALSE)
+        so <- data.frame ("var_names"=c (colnames(data_loop), "var_interest"),
+                          "is_consequence"=c (rep(1, ncol(data_loop)), 0),
+                          stringsAsFactors=FALSE)
         data_loop$var_interest <- one_voi_values
         miic_res <- miic (data_loop, state_order=so,
           orientation=F, latent="no", n_threads=n_threads, verbose=0)
@@ -311,18 +304,18 @@ compute_mi_batch <- function (input_data,
         if (unit == "bits")
           {
           if (corrected)
-            mis_vals = (miic_res$info_shifted / miic_res$n_xy_ai) / LN_2
+            mis_vals <- (miic_res$info_shifted / miic_res$n_xy_ai) / LN_2
           else
-            mis_vals = (miic_res$info_shifted / miic_res$n_xy_ai) / LN_2
+            mis_vals <- (miic_res$info_shifted / miic_res$n_xy_ai) / LN_2
           }
         else
           {
           if (corrected)
-            mis_vals = miic_res$info_shifted
+            mis_vals <- miic_res$info_shifted
           else
-            mis_vals = miic_res$info
+            mis_vals <- miic_res$info
           }
-        mat_mis[rownames(miic_res), one_voi_name] = mis_vals
+        mat_mis[rownames(miic_res), one_voi_name] <- mis_vals
         }
       start_idx <- start_idx + bin_size
       }

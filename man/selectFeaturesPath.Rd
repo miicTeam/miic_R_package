@@ -54,7 +54,8 @@ Same as \emph{var_of_interest_names_side1} for the second side of the path.}
 
 Same as \emph{var_of_interest_values_side1} for the second side of the path.}
 
-\item{method}{[a string, optional, "score" by default,  possible values: "score", "dpi"]
+\item{method}{[a string, optional, "score" by default,
+possible values: "score", "dpi"]
 
 When set to "score", the variables selection is performed using a score
 combining DPI and 3 points information (see Affeldt 2015).
@@ -117,7 +118,7 @@ the recursion.}
 If set to TRUE, a plot with the top features is generated.
 
 Please note on the plot rendering that positions are indicative with
-a tendancy to be displayed to the left side: a feature can appear multiple
+a tendency to be displayed to the left side: a feature can appear multiple
 times during the recursion, but couples already investigated are skipped
 to speed up the process. For the plotting, the rule applied to select the
 position of each feature is (from the positions returned by the recursion),
@@ -169,7 +170,7 @@ Variables selection can be performed using a score combining Data Processing
 inequality (DPI) and 3 points information or only using the DPI.\cr
 The search is recursive by dichotomy: in the first round, a set of features
 on the path between the main variables of interest is selected.
-From then, the path is splitted in two parts:
+From then, the path is split in two parts:
 \itemize{
   \item variables of interest of side 1 + set of features selected
   \item set of features selected + variables of interest of side 2
@@ -183,15 +184,16 @@ or when the maximum level of recursion is reached.
 \examples{
 library(miic)
 
+\donttest{
 # Features selection on the path between an external metadata "Ploidy"
 # (simulation by extracting "Ploidy" out of the dataset)
 # and the gene expression of TP53
-df_external_meta <- data.frame ("Ploidy" = cosmicCancer$Ploidy)
+df_external_meta <- data.frame ("Ploidy"=cosmicCancer$Ploidy)
 df_data <- cosmicCancer[ , ! (colnames(cosmicCancer) == "Ploidy") ]
 ret <- selectFeaturesPath (df_data,
                            var_of_interest_values_side1=df_external_meta,
                            var_of_interest_names_side2="TP53")
-message ("Features selected = ", paste (ret$features, collapse=", ") )
+message ("Features selected: ", paste (ret$features, collapse=", ") )
 
 # Same features selection with reuse of the MIs computed above and plot
 if ( require(ggplot2) ) {
@@ -204,18 +206,25 @@ if ( require(ggplot2) ) {
 }
 
 # Features selection using multiple variables on each side
+# (reusing the MIs computed above and selecting only one feature per round
+# to speed up the example)
 ret <- selectFeaturesPath (cosmicCancer,
-  var_of_interest_names_side1=c("TP53", "Ploidy"),
-  var_of_interest_names_side2=c("FOXM1", "AURKA") )
-message ("Features selected = ", paste (ret$features, collapse=", ") )
+                           var_of_interest_names_side1=c("TP53", "Ploidy"),
+                           var_of_interest_names_side2=c("FOXM1", "AURKA"),
+                           n_selected=1, precomputed_mis=ret$mis)
+message ("Features selected: ", paste (ret$features, collapse=", ") )
 
-# Same features selection with plotting using a customized rendering
+# Similar features selection with plotting using a customized rendering
+# (reusing the MIs computed above and limiting the recursion depth
+# to speed up the example)
 if ( require(ggplot2) ) {
   ret <- selectFeaturesPath (cosmicCancer,
-                            var_of_interest_names_side1=c("TP53", "Ploidy"),
-                            var_of_interest_names_side2=c("FOXM1", "AURKA"),
-                            plot=TRUE, depth_plot=6, font_size=9)
+                             var_of_interest_names_side1=c("TP53", "Ploidy"),
+                             var_of_interest_names_side2=c("FOXM1", "AURKA"),
+                             depth_max=2, plot=TRUE, font_size=12,
+                             x_lab="My features selection on CosmicCancer")
   print (ret$plot)
+}
 }
 
 }
