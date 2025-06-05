@@ -3,6 +3,7 @@
 
 #include <array>
 #include <vector>
+#include <Rcpp.h>
 
 namespace miic {
 namespace reconstruction {
@@ -28,10 +29,11 @@ struct ProbaScore {
 };
 using ScoreArray = std::array<ProbaScore, 4>;
 
+// Ajout de is_perturbation
 std::vector<ProbaArray> getOriProbasList(const std::vector<Triple>&,
     const std::vector<double>& I3_list, const std::vector<int>& is_contextual,
-    const std::vector<int>& is_consequence, bool latent, bool degenerate,
-    bool propagation, bool half_v_structure,
+    const std::vector<int>& is_consequence,const std::vector<int>& is_perturbation,
+    bool latent, bool degenerate,bool propagation, bool half_v_structure,
     bool temporal, const std::vector<int>& nodes_lags);
 }  // namespace reconstruction
 }  // namespace miic
