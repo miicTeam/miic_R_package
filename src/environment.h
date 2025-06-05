@@ -2,6 +2,7 @@
 #define MIIC_ENVIRONMENT_H_
 
 #include <vector>
+#include <unordered_set>
 
 #include "computation_cache.h"
 #include "structure.h"
@@ -37,6 +38,14 @@ struct Environment {
   vector<int> is_contextual;
   // Identify if any node is marked as consequence
   bool any_consequence = false;
+  // NEW : for each node, contains either 0 (not perturbation), 1 (relax perturbation) or 2 (strict perturbation)
+  vector<int> is_perturbation;
+  // NEW : identify if any node is marked as perturbation
+  bool any_perturbation = false;
+  // NEW : Matrix of perturbation and their targets 
+  vector<int> var_perturbation;
+  // NEW : map of source and target for perturbation
+  //std::unordered_map<int, std::unordered_set<int>> allowed_targets;
   // For each node, contains 0 = not a consequence node or 1 = consequence node
   vector<int> is_consequence;
   vector<int> is_continuous;
