@@ -84,13 +84,15 @@ void completeOrientationUsingPrior (Environment& environment,
     {
     int posX = iter0->X, posY = iter0->Y;
     //
-    // If the edge has no variable tagged as contextual or consequence,
+    // If the edge has no variable tagged as contextual or consequence OR PERTURBATION
     // nothing to do
     //
     if (  (!environment.is_contextual[posX])
        && (!environment.is_contextual[posY])
        && (!environment.is_consequence[posX])
-       && (!environment.is_consequence[posY]) )
+       && (!environment.is_consequence[posY])
+       && (!environment.is_perturbation[posX])
+       && (!environment.is_perturbation[posY]))
       continue;
     //
     // If edge is in triple, head/tail probas have already been computed
@@ -109,9 +111,21 @@ void completeOrientationUsingPrior (Environment& environment,
     if (is_in_triple)
       continue;
     //
-    // The edge is not in open triples, has a contextual or consequence variable
+    // The edge is not in open triples, has a contextual, consequence OR PERTURBATION variable
     // => we need to update the probabilities
     //
+    // NEW : adding for perturbation on X node
+    if(environment.is_perturbation[posX] == 1 || environment.is_perturbation[posX] == 2)
+      {
+        updateAdj(environment,posX,posY,tail_proba,1);
+        continue;
+      }
+    // NEW : adding for perturbation on Y node
+    if(environment.is_perturbation[posY] == 1 || environment.is_perturbation[posY] == 2)
+    {
+      updateAdj(environment,posX,posY,1,tail_proba);
+      continue;
+    }
     if (environment.is_consequence[posY])
       {
       if (environment.is_contextual[posX])
@@ -207,9 +221,10 @@ vector<vector<string>> orientationProbability(Environment& environment) {
   // Compute the arrowhead probability of each edge endpoint
   vector<ProbaArray> probas_list = getOriProbasList(triples, I3_list,
           environment.is_contextual, environment.is_consequence,
-          environment.latent_orientation, environment.degenerate,
-          environment.propagation, environment.half_v_structure,
-          environment.temporal, environment.nodes_lags);
+          environment.is_perturbation,environment.latent_orientation, 
+          environment.degenerate,environment.propagation, 
+          environment.half_v_structure,environment.temporal, 
+          environment.nodes_lags);
 
   // update probas_list for possible inconsistencies
   class ProbaArrayMap : public std::map<std::pair<int, int>, double> {
