@@ -11,6 +11,7 @@ namespace miic {
 namespace reconstruction {
 
 using std::vector;
+using Rcpp::as;
 
 namespace {
 
@@ -113,8 +114,8 @@ void induceScore(
 // return vector<ProbaArray> Each ProbaArray is bound to an unshielded Triple
 vector<ProbaArray> getOriProbasList(const vector<Triple>& triples,
     const vector<double>& I3_list, const vector<int>& is_contextual,
-    const vector<int>& is_consequence, bool latent, bool degenerate,
-    bool propagation, bool half_v_structure,
+    const vector<int>& is_consequence, const std::vector<int>& is_perturbation,
+    bool latent, bool degenerate, bool propagation, bool half_v_structure,
     bool temporal, const vector<int>& nodes_lags) {
   // A score is a quantity almost proportional to abs(I3). All probabilities can
   // be expressed in the form of 1 / (1 + exp(-score)), and they suffer from
@@ -222,6 +223,27 @@ vector<ProbaArray> getOriProbasList(const vector<Triple>& triples,
       if (!latent) {
         scores[i][0] = ProbaScore{kScoreLowest, true};
         scores[i][3] = ProbaScore{kScoreLowest, true};
+      }
+    }
+    //
+    // Initialize scores of triples involving perturbation variables
+    //
+    if (is_perturbation[X] == 1 || is_perturbation[X] == 2) {  // X ->* Z, X cannot have parent
+      scores[i][1] = ProbaScore{kScoreMax, true};
+      if (!latent)
+        scores[i][0] = ProbaScore{kScoreLowest, true};
+    }
+    if (is_perturbation[Y] == 1 || is_perturbation[Y] == 2) {  // Z *-> Y, Y cannot have parent
+      scores[i][2] = ProbaScore{kScoreMax, true};
+      if (!latent)
+        scores[i][3] = ProbaScore{kScoreLowest, true};
+    }
+    if (is_perturbation[Z] == 1 || is_perturbation[Z] == 2) {  // X *-> Z <-* Y, Z cannot have parents
+      scores[i][0] = ProbaScore{kScoreMax, true};
+      scores[i][3] = ProbaScore{kScoreMax, true};
+      if (!latent) {
+        scores[i][1] = ProbaScore{kScoreLowest, true};
+        scores[i][2] = ProbaScore{kScoreLowest, true};
       }
     }
 
