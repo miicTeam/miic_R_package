@@ -2,6 +2,7 @@
 
 #ifdef _OPENMP
 #include <omp.h>
+#include "debug.h"
 #endif
 
 #include <string>
@@ -96,6 +97,82 @@ void setEnvironmentFromR(const Rcpp::List& input_data,
   }
   environment.any_contextual = std::any_of (environment.is_contextual.begin(),
     environment.is_contextual.end(), [](bool v) { return v; });
+  //  NEW
+  // Variables considered as perturbation only
+  //
+  if (arg_list.containsElementNamed("is_perturbation")) {
+    environment.is_perturbation = as<vector<int>>(arg_list["is_perturbation"]);
+  } else {
+    environment.is_perturbation.resize(n_nodes, 0);
+  }
+  environment.any_perturbation = std::any_of (environment.is_perturbation.begin(),
+                                              environment.is_perturbation.end(), 
+                                              [](int v) { return v == 1 || v == 2; }
+                                              );
+  
+  // NEW 
+  // Loading the var_perturbation matrix
+  //
+  if (arg_list.containsElementNamed("var_perturbation")) {
+    environment.var_perturbation = as<vector<int>>(arg_list["var_perturbation"]);
+    Rcpp::Rcout << "Var_perturabation vector :\n" << " (vect size=" << environment.var_perturbation.size() << ")";
+    for (std::size_t i = 0, vect_size = environment.var_perturbation.size(); i < vect_size; ++i)
+    {
+      if (i > 15)
+      {
+        Rcpp::Rcout << " ...";
+        break;
+      }
+      Rcpp::Rcout << " " << environment.var_perturbation[i];
+    }
+    Rcpp::Rcout << "\n";
+  }
+  // NEW
+  // Remove edges between perturbations variables  
+  // If is_perturbation = 2 remove all edges but the one between source of perturbation and its target
+  //
+  if (environment.any_perturbation) {
+    for (int i = 0; i < n_nodes; i++) {
+        for (int j = i+1; j < n_nodes; j++) {
+          if ((environment.is_perturbation[i] == 1 || environment.is_perturbation[i] == 2) &&
+              (environment.is_perturbation[j] == 1 || environment.is_perturbation[j] == 2)) {
+            environment.edges(i, j).status = 0;
+            environment.edges(i, j).status_init = 0;
+            environment.edges(i, j).status_prev = 0;
+            environment.edges(i, j).proba_head = -1;
+            environment.edges(j, i).status = 0;
+            environment.edges(j, i).status_init = 0;
+            environment.edges(j, i).status_prev = 0;
+            environment.edges(j, i).proba_head = -1;
+          }
+          if (environment.is_perturbation[i] == 2) {
+            if (environment.var_perturbation[i] != j) {
+              environment.edges(i, j).status = 0;
+              environment.edges(i, j).status_init = 0;
+              environment.edges(i, j).status_prev = 0;
+              environment.edges(i, j).proba_head = -1;
+              environment.edges(j, i).status = 0;
+              environment.edges(j, i).status_init = 0;
+              environment.edges(j, i).status_prev = 0;
+              environment.edges(j, i).proba_head = -1;
+            }
+          }
+          if (environment.is_perturbation[j] == 2) {
+            if (environment.var_perturbation[j] != i) {
+              environment.edges(i, j).status = 0;
+              environment.edges(i, j).status_init = 0;
+              environment.edges(i, j).status_prev = 0;
+              environment.edges(i, j).proba_head = -1;
+              environment.edges(j, i).status = 0;
+              environment.edges(j, i).status_init = 0;
+              environment.edges(j, i).status_prev = 0;
+              environment.edges(j, i).proba_head = -1;
+            }
+          }
+        }
+      }
+//        miic::debug::debugAdjacencyMatrix(environment, "Inspecting edges after perturbation\n");
+    }
   //
   // Variables considered as consequence only
   //
@@ -241,6 +318,7 @@ void setEnvironmentFromR(const Rcpp::List& input_data,
     int n_pairs = black_box_vec.size() / 2;
     environment.readBlackbox(Grid2d<int>(n_pairs, 2, std::move(black_box_vec)));
   }
+
 }
 }  // namespace utility
 }  // namespace miic
