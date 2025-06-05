@@ -15,9 +15,16 @@ MIIC_VALID_CONSISTENT <- c ("no", "orientation", "skeleton")
 
 MIIC_CONTINUOUS_TRESHOLD <- 5
 
+#
+# Ajout de 2 noms de colonnes standards : is_cause, var_cause
+# is_cause : O si ce n'est pas une cause, 1 si c'est une cause et on applique la version leniant (peut être avoir des arrêtes avec
+# les autres variables que celle dont elle est cause), 2 si c'est une cause et on applique la version strict (seulement connectée à 
+# la variable dont elle est la cause)
+# var_cause : nom de la variable qui est causée par la variable (var_names dans la même ligne)
+#
 STATE_ORDER_STANDARD_VALID_COLUMS <- c ("var_names", "var_type",
     "levels_increasing_order", "is_contextual", "is_consequence",
-    "group", "group_color")
+    "group", "group_color","is_perturbation","var_perturbation")
 STATE_ORDER_TEMPORAL_VALID_COLUMNS = c (STATE_ORDER_STANDARD_VALID_COLUMS,
                                         "n_layers", "delta_t", "mov_avg")
 
@@ -176,7 +183,7 @@ check_input_data <- function (input_data, mode)
 # Return: the checked and eventually generated or completed state order dataframe
 #-------------------------------------------------------------------------------
 check_state_order <- function (input_data, state_order, mode)
-  {
+{
   if (mode %in% MIIC_TEMPORAL_MODES)
     input_data <- input_data[,2:ncol(input_data)]
   data_var_names <- colnames (input_data)
@@ -187,11 +194,11 @@ check_state_order <- function (input_data, state_order, mode)
   if ( is.null (state_order) )
     state_order <- data.frame ("var_names"=data_var_names, stringsAsFactors=F)
   if ( ! is.data.frame(state_order) )
-    {
+  {
     miic_warning ("state order",
-      "the supplied state_order is not a dataframe and will be ignored.")
+                  "the supplied state_order is not a dataframe and will be ignored.")
     state_order <- data.frame ("var_names"=data_var_names, stringsAsFactors=F)
-    }
+  }
   #
   # Factors lead to wrong test results
   #
@@ -202,11 +209,11 @@ check_state_order <- function (input_data, state_order, mode)
   # Check content
   #
   if ( ! ("var_names" %in% colnames (state_order)) )
-    {
+  {
     miic_warning ("state order", "the column var_names is missing,",
                   " the supplied state_order will be ignored.")
     state_order <- data.frame ("var_names"=data_var_names, stringsAsFactors=F)
-    }
+  }
   #
   # Check if the state_order columns are valid
   #
@@ -216,16 +223,16 @@ check_state_order <- function (input_data, state_order, mode)
     valid_cols <- STATE_ORDER_STANDARD_VALID_COLUMS
   mismatch <- is.na (match (colnames (state_order), valid_cols))
   if ( any (mismatch) )
-    {
+  {
     msg_str <- list_to_str (colnames (state_order)[mismatch], n_max=10)
     if (sum (mismatch) == 1)
       miic_warning ("state order", "the column ", msg_str,
-        " is not valid and will be ignored.")
+                    " is not valid and will be ignored.")
     else
       miic_warning ("state order", sum (mismatch), " columns (", msg_str,
-        ") are not valid and will be ignored.")
+                    ") are not valid and will be ignored.")
     state_order <- state_order[, !mismatch, drop=FALSE]
-    }
+  }
   #
   # We ensure that the var_names column is the first
   #
@@ -238,16 +245,16 @@ check_state_order <- function (input_data, state_order, mode)
   #
   mismatch <- is.na (match (state_order$var_names, data_var_names))
   if ( any (mismatch) )
-    {
+  {
     msg_str <- list_to_str (state_order$var_names[mismatch], n_max=10)
     if (sum (mismatch) == 1)
       miic_warning ("state order", "the variable ", msg_str,
-        " does not match any name in input data and will be ignored.")
+                    " does not match any name in input data and will be ignored.")
     else
       miic_warning ("state order", sum (mismatch), " variables (", msg_str,
-        ") do not match any name in input data and will be ignored.")
+                    ") do not match any name in input data and will be ignored.")
     state_order <- state_order[!mismatch, ]
-    }
+  }
   #
   # Before checking variables in data not in the state_order
   # if var_type, is_contextual or is_consequence are present, we flag NA
@@ -261,43 +268,75 @@ check_state_order <- function (input_data, state_order, mode)
     state_order$is_contextual[ is.na (state_order$is_contextual) ] <- "NA"
   if ("is_consequence" %in% colnames (state_order) )
     state_order$is_consequence[ is.na (state_order$is_consequence) ] <- "NA"
+  # -> NEW
+  # Ajout des changement des NA en "NA" pour les colonnes is_perturbation et var_perturbation
+  #
+  if ("is_perturbation" %in% colnames (state_order) )
+    state_order$is_perturbation[ is.na (state_order$is_perturbation) ] <- "NA"
+  if ("var_perturbation" %in% colnames (state_order) )
+    state_order$var_perturbation[ is.na (state_order$var_perturbation) ] <- "NA"
   if (mode %in% MIIC_TEMPORAL_MODES)
-    {
+  {
     if ("n_layers" %in% colnames (state_order) )
       state_order$n_layers[ is.na (state_order$n_layers) ] <- "NA"
     if ("delta_t" %in% colnames (state_order) )
       state_order$delta_t[ is.na (state_order$delta_t) ] <- "NA"
     if ("mov_avg" %in% colnames (state_order) )
       state_order$mov_avg[ is.na (state_order$mov_avg) ] <- "NA"
-    }
+  }
   #
   # Check variable in data not in the state_order
   #
   not_found <- is.na (match (data_var_names, state_order$var_names))
   if ( any (not_found) )
-    {
+  {
     msg_str <- list_to_str (data_var_names[not_found], n_max=10)
     if ( sum (not_found) == 1)
       miic_warning ("state order", "the variables ", msg_str,
-        " in input data can not be found in the state order. Default values",
-        " will be used for this variable.")
+                    " in input data can not be found in the state order. Default values",
+                    " will be used for this variable.")
     else
       miic_warning ("state order", sum (not_found), " variables (", msg_str,
-        ") in input data can not be found in the state order. Default values",
-        " will be used for these variables.")
+                    ") in input data can not be found in the state order. Default values",
+                    " will be used for these variables.")
     #
     # Add missing variable names with NA in the other columns
     #
     na_vals <- rep (NA, ncol(state_order) - 1)
     for (i in which (not_found))
       state_order[nrow(state_order)+1,] <- c(data_var_names[i], na_vals)
-    }
+  }
   #
   # The state_order rows are ordered as the variables in the data
   #
   state_order <- state_order [order (match(state_order$var_names, data_var_names)),,
                               drop=FALSE]
   rownames (state_order) <- NULL
+  # NEW
+  # Verification des colonnes is_perturbation/var_perturbation
+  # Ajouter is_perturbation et var_perturbation à state_order
+  # is_perturbation prend des valeurs 0, 1 ou 2
+  # var_perturbation est une chaîne de caractères (ou NA si non spécifié)
+  if (!("is_perturbation" %in% colnames(state_order))) {
+    state_order$is_perturbation <- rep(0L, n_vars)
+  } else {
+    state_order$is_perturbation[is.na(state_order$is_perturbation)] <- 0
+    state_order$is_perturbation <- as.integer(state_order$is_perturbation)
+    # Vérification des valeurs autorisées
+    non_valid <- !(state_order$is_perturbation %in% c(0L, 1L, 2L))
+    if (any(non_valid)) {
+      msg_str <- list_to_str(state_order$var_names[non_valid], n_max=10)
+      miic_warning("state order", "les variables ", msg_str,
+                   " ont une valeur invalide pour is_perturbation. Valeur 0 utilisée par défaut.")
+      state_order$is_perturbation[non_valid] <- 0L
+    }
+  }
+  
+  if (!("var_perturbation" %in% colnames(state_order))) {
+    state_order$var_perturbation <- rep(NA_character_, n_vars)
+  } else {
+    state_order$var_perturbation <- as.character(state_order$var_perturbation)
+  }
   #
   # var_type (0=discrete / 1=continuous)
   #
@@ -306,43 +345,43 @@ check_state_order <- function (input_data, state_order, mode)
     length (unique (x[!is.na(x)] ) ) } ) )
   var_type_specified <- rep (F, n_vars)
   if ( ! ("var_type" %in% colnames (state_order) ) )
-    {
+  {
     state_order$var_type <- as.integer (data_is_num)
     #
     # Continuous Variables with less than MIIC_CONTINUOUS_TRESHOLD are
     # considered as discrete
     #
     state_order$var_type [ n_unique_vals < MIIC_CONTINUOUS_TRESHOLD ] = 0
-    }
+  }
   else
-    {
+  {
     var_type_specified <- rep (T, n_vars)
     #
     # Exclude NAs from the warning (NA = row added because var name missing)
     #
     non_valid <- ( ( ! (is.na (state_order$var_type) ) )
-                 & ( ! (state_order$var_type %in% c(0,1)) ) )
+                   & ( ! (state_order$var_type %in% c(0,1)) ) )
     if ( any (non_valid) )
-      {
+    {
       msg_str <- list_to_str (state_order$var_names[non_valid], n_max=10)
       if ( sum (non_valid) == 1)
         miic_warning ("state order", "the variable ", msg_str,
-          " does not have a valid value in the var_type column,",
-          " the invalid value be ignored and type determined from data.")
+                      " does not have a valid value in the var_type column,",
+                      " the invalid value be ignored and type determined from data.")
       else
         miic_warning ("state order", sum(non_valid), " variables (", msg_str,
-          ") do not have a valid value in the var_type column,",
-          " the invalid values will be ignored and types determined from data.")
-      }
+                      ") do not have a valid value in the var_type column,",
+                      " the invalid values will be ignored and types determined from data.")
+    }
     #
     # All non 0 or 1 need to be fixed
     #
     non_valid <- ! (state_order$var_type %in% c(0,1))
     if ( any (non_valid) )
-      {
+    {
       state_order$var_type[non_valid] <- as.integer(data_is_num)[non_valid]
       var_type_specified[non_valid] <- F
-      }
+    }
     #
     # Ensure the type of var_type is numerical
     # (because when looking for NAs present before, the column type has been
@@ -354,81 +393,81 @@ check_state_order <- function (input_data, state_order, mode)
     #
     pb_continuous <- (state_order$var_type == 1) & (!data_is_num)
     if ( any (pb_continuous) )
-      {
+    {
       msg_str <- list_to_str (state_order$var_names[pb_continuous], n_max=10)
       if ( sum (pb_continuous) == 1)
         miic_warning ("state order", "the variable ", msg_str,
-          " is declared continuous in the var_type column but is not numeric.",
-          " This variable will be considered as discrete.")
+                      " is declared continuous in the var_type column but is not numeric.",
+                      " This variable will be considered as discrete.")
       else
         miic_warning ("state order", sum (pb_continuous), " variables (", msg_str,
-          ") are declared continuous in the var_type column but these variables",
-          " are not numeric. These variables will be considered as discrete.")
+                      ") are declared continuous in the var_type column but these variables",
+                      " are not numeric. These variables will be considered as discrete.")
       state_order$var_type[pb_continuous] <- 0
-      }
+    }
     #
     # In temporal mode, we store if var_type was specified by the user for a
     # future use
     #
     if (mode %in% MIIC_TEMPORAL_MODES)
       state_order$var_type_specified <- var_type_specified
-    }
+  }
   #
   # Check the number of unique values versus var_type
   #
   for (i in 1:n_vars)
-    {
+  {
     if (state_order[i, "var_type"] == 1) # Continuous
-      {
+    {
       # Less than 3 unique values does not make sense for a continuous variable
       #
       if (n_unique_vals[[i]] <= 2)
-        {
+      {
         if (var_type_specified[[i]])
           miic_warning ("state order", "variable ", data_var_names[[i]],
-              " specified as continuous has only ", n_unique_vals[[i]],
-              " non-NA unique values. It will be processed as discrete.")
+                        " specified as continuous has only ", n_unique_vals[[i]],
+                        " non-NA unique values. It will be processed as discrete.")
         state_order$var_type[[i]] <- 0
-        }
+      }
       #
       # Less than MIIC_CONTINUOUS_TRESHOLD unique variables can be discretized
       # but may not be truly continuous
       #
       else if (n_unique_vals[[i]] < MIIC_CONTINUOUS_TRESHOLD)
         miic_warning ("state order", "numerical variable ", data_var_names[[i]],
-                 " is treated as continuous but has only ", n_unique_vals[[i]],
-                 " non-NA unique values.")
-      }
+                      " is treated as continuous but has only ", n_unique_vals[[i]],
+                      " non-NA unique values.")
+    }
     else # discrete var
-      {
+    {
       if ( data_is_num[[i]] && (n_unique_vals[[i]] >= MIIC_CONTINUOUS_TRESHOLD * 2) )
         miic_warning ("state order", "numerical variable ", data_var_names[[i]],
-          " is treated as discrete but has ", n_unique_vals[[i]], " levels.")
-      }
+                      " is treated as discrete but has ", n_unique_vals[[i]], " levels.")
     }
+  }
   #
   # is_contextual
   #
   if ( ! ("is_contextual" %in% colnames (state_order) ) )
     state_order$is_contextual <- rep (0, n_vars)
   else
-    {
+  {
     # Exclude NAs from the warning (NA = row added because var name missing)
     #
     non_valid <- ( ( ! (is.na (state_order$is_contextual) ) )
-                 & ( ! (state_order$is_contextual %in% c(0,1)) ) )
+                   & ( ! (state_order$is_contextual %in% c(0,1)) ) )
     if (any (non_valid))
-      {
+    {
       msg_str <- list_to_str (state_order$var_names[non_valid], n_max=10)
       if (sum (non_valid) == 1)
         miic_warning ("state order", "the variable ", msg_str,
-          " does not have a valid value in the is_contextual column,",
-          " this variable will be considered as not contextual.")
+                      " does not have a valid value in the is_contextual column,",
+                      " this variable will be considered as not contextual.")
       else
         miic_warning ("state order", sum (non_valid), " variables (", msg_str,
-          ") do not have a valid value in the is_contextual column,",
-          " these variables will be considered as not contextual.")
-      }
+                      ") do not have a valid value in the is_contextual column,",
+                      " these variables will be considered as not contextual.")
+    }
     #
     # All non 0 or 1 are not valid => set to not contextual
     #
@@ -446,57 +485,57 @@ check_state_order <- function (input_data, state_order, mode)
     #
     if (all (state_order$is_contextual == 1))
       miic_error ("state order", "All variables have been defined as",
-        " contextual. No network can be infered with these settings.")
-    }
+                  " contextual. No network can be infered with these settings.")
+  }
   #
   # is_consequence
   #
   if ( ! ("is_consequence" %in% colnames (state_order) ) )
     state_order$is_consequence <- rep (0, n_vars)
   else
-    {
+  {
     if (mode %in% MIIC_TEMPORAL_MODES)
-      {
+    {
       # Exclude NAs from warnings (NA = row added because var name missing)
       # => Look of anything not NA and != 0
       #
       conseq_def <- ( ( ! (is.na (state_order$is_consequence) ) )
-                    & ( is.null (state_order$is_consequence)
-                      | (state_order$is_consequence != 0) ) )
+                      & ( is.null (state_order$is_consequence)
+                          | (state_order$is_consequence != 0) ) )
       if (any (conseq_def))
-        {
+      {
         msg_str <- list_to_str (state_order$var_names[conseq_def], n_max=10)
         if (sum (conseq_def) == 1)
           miic_warning ("state order", "the variable ", msg_str,
-            " is defined as consequence but consequence prior is not compatible",
-            " with temporal mode. This variable will be considered as not",
-            " consequence")
+                        " is defined as consequence but consequence prior is not compatible",
+                        " with temporal mode. This variable will be considered as not",
+                        " consequence")
         else
           miic_warning ("state order", sum (conseq_def), " variables (", msg_str,
-            ") are defined as consequence but consequence prior is not compatible",
-            " with temporal mode. These variables will be considered as not",
-            " consequence")
+                        ") are defined as consequence but consequence prior is not compatible",
+                        " with temporal mode. These variables will be considered as not",
+                        " consequence")
         state_order$is_consequence <- rep (0, n_vars)
-        }
       }
+    }
     else # Not temporal mode
-      {
+    {
       # Exclude NAs from warnings (NA = row added because var name missing)
       #
       non_valid <- ( ( ! (is.na (state_order$is_consequence) ) )
-                   & ( ! (state_order$is_consequence %in% c(0,1)) ) )
+                     & ( ! (state_order$is_consequence %in% c(0,1)) ) )
       if (any (non_valid))
-        {
+      {
         msg_str <- list_to_str (state_order$var_names[non_valid], n_max=10)
         if (sum (non_valid) == 1)
           miic_warning ("state order", "the variable ", msg_str,
-            " does not have a valid value in the is_consequence column,",
-            " this variable will be considered as not consequence")
+                        " does not have a valid value in the is_consequence column,",
+                        " this variable will be considered as not consequence")
         else
           miic_warning ("state order", sum (non_valid), " variables (", msg_str,
-            ") do not have a valid value in the is_consequence column,",
-            " these variables will be considered as not consequence")
-        }
+                        ") do not have a valid value in the is_consequence column,",
+                        " these variables will be considered as not consequence")
+      }
       #
       # All non 0 or 1 are not valid => set to not consequence
       #
@@ -514,34 +553,34 @@ check_state_order <- function (input_data, state_order, mode)
       #
       if (all (state_order$is_consequence == 1))
         miic_error ("state order", "All variables have been defined as",
-          " consequences. No network can be infered with these settings.")
-      }
+                    " consequences. No network can be infered with these settings.")
     }
+  }
   #
   # levels_increasing_order
   #
   if ( ! ("levels_increasing_order" %in% colnames (state_order) ) )
     state_order$levels_increasing_order <- NA
   else
-    {
+  {
     for (i in 1:n_vars)
-      {
+    {
       order_str <- state_order[i, "levels_increasing_order"]
       if ( is.na (order_str) )
         next
       if (order_str == "")
-        {
+      {
         state_order[i, "levels_increasing_order"] <- NA
         next
-        }
+      }
       if (state_order[i, "var_type"] == 1)
-        {
+      {
         miic_warning ("state order", "variable ", state_order[i, "var_names"],
                       " is considered as a continuous variable,",
                       " the provided levels order will be ignored.")
         state_order[i, "levels_increasing_order"] <- NA
         next
-        }
+      }
       #
       # Discrete var, check the match of unique values in data and values
       # in levels_increasing_order
@@ -555,20 +594,20 @@ check_state_order <- function (input_data, state_order, mode)
       # leave the value unchanged to display a meaningful warning laterly
       #
       if (is.logical (values))
-        {
+      {
         suppressWarnings ( { orders_log <- as.logical(orders) } )
         orders[!is.na (orders_log)] <- orders_log[!is.na (orders_log)]
-        }
+      }
       else if (is.integer (values))
-        {
+      {
         suppressWarnings ( { orders_int <- as.integer(orders) } )
         orders[!is.na (orders_int)] <- orders_int[!is.na (orders_int)]
-        }
+      }
       else if (is.numeric (values))
-        {
+      {
         suppressWarnings ( { orders_num <- as.numeric(orders) } )
         orders[!is.na (orders_num)] <- orders_num[!is.na (orders_num)]
-        }
+      }
       orders <- as.character(orders)
       values <- as.character (values)
       #
@@ -580,59 +619,59 @@ check_state_order <- function (input_data, state_order, mode)
       # will however be discarded later with a less specific warning
       #
       if ( (! ("NA" %in% values)) && ("NA" %in% orders) )
-        {
+      {
         miic_warning ("state order", "variable ", state_order[i, "var_names"],
-          " has a NA value in the provided levels order. NA can not be used to",
-          " order levels and should not be included in the provided levels order.")
+                      " has a NA value in the provided levels order. NA can not be used to",
+                      " order levels and should not be included in the provided levels order.")
         orders <- orders[ orders != "NA"]
         if ( length (orders) == 0 )
-          {
+        {
           state_order[i, "levels_increasing_order"] <- NA
           next
-          }
         }
+      }
       #
       # Check if some provided levels are not in the data
       #
       not_in_data <- is.na (match (orders, values) )
       if ( any (not_in_data) )
-        {
+      {
         msg_str <- list_to_str (orders[not_in_data], n_max=10)
         if (sum (not_in_data) == 1)
           miic_warning ("state order", "variable ", state_order[i, "var_names"],
-            " has value ", msg_str, " in the provided levels order not present",
-            " in the data. This value will be ignored.")
+                        " has value ", msg_str, " in the provided levels order not present",
+                        " in the data. This value will be ignored.")
         else
           miic_warning ("state order", "variable ", state_order[i, "var_names"],
-            " has values ", msg_str, " in the provided levels order not present",
-            " in the data. These values will be ignored.")
+                        " has values ", msg_str, " in the provided levels order not present",
+                        " in the data. These values will be ignored.")
         orders <- orders[!not_in_data]
         if ( length (orders) == 0 )
-          {
+        {
           state_order[i, "levels_increasing_order"] <- NA
           next
-          }
         }
+      }
       #
       # Check if missing levels compared to data
       #
       absent <- is.na (match (values, orders) )
       if ( any (absent) )
-        {
+      {
         msg_str <- list_to_str (values[absent], n_max=10)
         if (sum (absent) == 1)
           miic_warning ("state order", "variable ", state_order[i, "var_names"],
-            " has value ", msg_str, " in the data that can not be found",
-            " in the provided levels order.",
-            " The provided levels order for this variable will be ignored.")
+                        " has value ", msg_str, " in the data that can not be found",
+                        " in the provided levels order.",
+                        " The provided levels order for this variable will be ignored.")
         else
           miic_warning ("state order", "variable ", state_order[i, "var_names"],
-            " has values ", msg_str, " in the data that can not be found",
-            " in the provided levels order.",
-            " The provided levels order for this variable will be ignored.")
+                        " has values ", msg_str, " in the data that can not be found",
+                        " in the provided levels order.",
+                        " The provided levels order for this variable will be ignored.")
         state_order[i, "levels_increasing_order"] <- NA
         next
-        }
+      }
       #
       # If the levels_increasing_order was not turned into NA,
       # update the levels_increasing_order to have a clean string without
@@ -641,29 +680,73 @@ check_state_order <- function (input_data, state_order, mode)
       # state_order will be converted as TRUE/FALSE )
       #
       state_order[i, "levels_increasing_order"] <- paste0 (orders, collapse=",")
-      }
     }
+  }
   #
-  # Cross checks : check that no var is both contextual and consequence
+  # Cross checks : check that no var is both consequence, perturbation or contextual
   #
   ctx_and_csq = state_order$is_contextual + state_order$is_consequence
   ctx_and_csq = (ctx_and_csq >= 2)
+  # -> NEW
+  # Add the check between the columns is_contextual and is_perturbation
+  #
+  ctx_and_prt = (state_order$is_contextual >= 1 & state_order$is_perturbation >= 1)
+  # -> NEW
+  # Add the check between the columns is_consequence and is_perturbation
+  #
+  csq_and_prt = (state_order$is_consequence >= 1 & state_order$is_perturbation >= 1)
   if (any (ctx_and_csq))
-    {
+  {
     msg_str <- list_to_str (state_order$var_names[ctx_and_csq], n_max=10)
     if (sum (ctx_and_csq) == 1)
       miic_warning ("state order", "the variable ", msg_str,
-        " can not be defined as both contextual and consequence. This variable",
-        " will be considered as neither contextual nor consequence.")
+                    " can not be defined as both contextual and consequence. This variable",
+                    " will be considered as neither contextual nor consequence.")
     else
       miic_warning ("state order", sum (ctx_and_csq), " variables (", msg_str,
-        ") can not be defined as both contextual and consequence. These",
-        " variables will be considered as neither contextual nor consequence.")
+                    ") can not be defined as both contextual and consequence. These",
+                    " variables will be considered as neither contextual nor consequence.")
     state_order$is_contextual[ctx_and_csq] = 0
     state_order$is_consequence[ctx_and_csq] = 0
-    }
-  return (state_order)
   }
+  # -> NEW
+  # Proceeding to check if there is contextual and perturbation on the same rows and passing the var as neither if this is the case
+  #
+  if (any (ctx_and_prt))
+  {
+    msg_str <- list_to_str (state_order$var_names[ctx_and_prt], n_max=10)
+    if (sum (ctx_and_prt) == 1)
+      miic_warning ("state order", "the variable ", msg_str,
+                    " can not be defined as both contextual and consequence. This variable",
+                    " will be considered as neither contextual nor consequence.")
+    else
+      miic_warning ("state order", sum (ctx_and_prt), " variables (", msg_str,
+                    ") can not be defined as both contextual and consequence. These",
+                    " variables will be considered as neither contextual nor consequence.")
+    state_order$is_contextual[ctx_and_prt] = 0
+    state_order$is_perturbation[ctx_and_prt] = 0
+  }
+  # -> NEW
+  # Proceeding to check if there is consequence and perturbation on the same rows and passing the var as neither if this is the case
+  #
+  if (any (csq_and_prt))
+  {
+    msg_str <- list_to_str (state_order$var_names[csq_and_prt], n_max=10)
+    if (sum (csq_and_prt) == 1)
+      miic_warning ("state order", "the variable ", msg_str,
+                    " can not be defined as both contextual and consequence. This variable",
+                    " will be considered as neither contextual nor consequence.")
+    else
+      miic_warning ("state order", sum (csq_and_prt), " variables (", msg_str,
+                    ") can not be defined as both contextual and consequence. These",
+                    " variables will be considered as neither contextual nor consequence.")
+    state_order$is_consequence[csq_and_prt] = 0
+    state_order$is_perturbation[csq_and_prt] = 0
+  }
+  return (state_order)
+}
+
+
 
 #-------------------------------------------------------------------------------
 # check_other_df
