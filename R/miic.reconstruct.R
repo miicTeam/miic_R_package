@@ -2,6 +2,8 @@ miic.reconstruct <- function(input_data = NULL,
                              is_contextual = NULL,
                              is_consequence = NULL,
                              is_continuous = NULL,
+                             is_perturbation = NULL, #Ajout des données de perturbation
+                             var_perturbation = NULL, #Ajout des des informations concernant les variables perturbées
                              black_box = NULL,
                              n_threads = 1,
                              n_eff = -1,
@@ -22,12 +24,12 @@ miic.reconstruct <- function(input_data = NULL,
                              n_layers = NULL,
                              delta_t = NULL,
                              negative_info = FALSE
-                             ) {
+) {
   n_samples <- nrow(input_data)
   n_nodes <- ncol(input_data)
   # Numeric factor matrix, level starts from 0, NA mapped to -1
   input_factor <- apply(input_data, 2, function(x)
-                        (as.numeric(factor(x, levels = unique(x))) - 1))
+    (as.numeric(factor(x, levels = unique(x))) - 1))
   input_factor[is.na(input_factor)] <- -1
   max_level_list <- as.numeric(apply(input_factor, 2, max)) + 1
   input_factor <- as.vector(as.matrix(input_factor))
@@ -49,10 +51,10 @@ miic.reconstruct <- function(input_data = NULL,
   }
   input_order <- as.vector(input_order)
   input_double <- as.vector(input_double)
-
+  
   var_names <- colnames(input_data)
   n_vars <- length (var_names)
-
+  
   arg_list <- list(
     "conf_threshold" = conf_threshold,
     "consistent" = consistent,
@@ -88,6 +90,15 @@ miic.reconstruct <- function(input_data = NULL,
     black_box[] <- black_box[stats::complete.cases(black_box),]
     arg_list[["black_box"]] <- as.vector(as.matrix(t(black_box)))
   }
+  if (!is.null(var_perturbation)) {
+    # -> NEW
+    # Préparation des données target pour le C++
+    var_perturbation <- match(var_perturbation, colnames(input_data)) - 1
+    var_perturbation[is.na(var_perturbation)] <- -1
+    arg_list[["var_perturbation"]] <- as.vector(var_perturbation)
+    
+  }
+  
   if (!is.null(sample_weights))
     arg_list[["sample_weights"]] <- sample_weights
   if (!is.null(is_contextual))
@@ -98,14 +109,20 @@ miic.reconstruct <- function(input_data = NULL,
     arg_list[["n_layers"]] <- n_layers
   if (!is.null(delta_t))
     arg_list[["delta_t"]] <- delta_t
+  # -> NEW
+  # Ajout dans arg_list des informations concernant les perturbations
+  #
+  if (!is.null(is_perturbation))
+    arg_list[["is_perturbation"]] <- is_perturbation
 
+  
   cpp_input <- list("factor" = input_factor, "double" = input_double,
                     "order" = input_order)
   # Call C++ function
   res <- reconstruct(cpp_input, arg_list)
   if (res$interrupted)
     return(list(interrupted = TRUE))
-
+  
   # R-formalize returned object
   #
   # Table of edges information
@@ -130,7 +147,7 @@ miic.reconstruct <- function(input_data = NULL,
   res$adj_matrix <- matrix (unlist (res$adj_matrix),
                             ncol=n_vars, nrow=n_vars, byrow=TRUE,
                             dimnames=list (var_names, var_names) )
-
+  
   res$proba_adj_matrix <- matrix (unlist(res$proba_adj_matrix),
                                   ncol=n_vars, nrow=n_vars, byrow=TRUE,
                                   dimnames=list (var_names, var_names) )
@@ -138,17 +155,17 @@ miic.reconstruct <- function(input_data = NULL,
   # Same : reshape items returned when consistent parameter is turned on
   #
   if (length (res$adj_matrices) > 0)
-    {
+  {
     tmp_reshape = list()
     for (i in 1:length (res$adj_matrices) )
       tmp_reshape[[i]] = matrix (unlist (res$adj_matrices[[i]]),
                                  ncol=n_vars, nrow=n_vars, byrow=TRUE,
                                  dimnames=list (var_names, var_names) )
     res$adj_matrices = tmp_reshape
-    }
-
+  }
+  
   if (length (res$proba_adj_matrices) > 0)
-    {
+  {
     # First reshape with n_vars * n_vars rows, n_cycles columns to compute mean
     #
     tmp_reshape <- matrix (unlist (res$proba_adj_matrices),
@@ -167,20 +184,20 @@ miic.reconstruct <- function(input_data = NULL,
       res$proba_adj_matrices[[i]] = matrix (unlist (tmp_reshape[,i]),
                                             ncol=n_vars, nrow=n_vars, byrow=TRUE,
                                             dimnames=list (var_names, var_names) )
-    }
-
+  }
+  
   # save time
   time <- strsplit(as.character(res$time), " ")
   time[which(time == 0)] <- NA
-
+  
   res$time <- stats::setNames(
     as.numeric(time),
     c("init", "iter", "cut", "ort", "cpp")
   )
-
+  
   # create the data frame of the structures after orientation
   orientations_prob <- res$triples
-
+  
   if (length(res$triples) > 0) {
     a <- length(orientations_prob[[1]])
     b <- length(unlist(orientations_prob))
@@ -194,15 +211,15 @@ miic.reconstruct <- function(input_data = NULL,
     stringsAsFactors = FALSE
     )
     colnames(orientations_prob) <- tmp
-
+    
     orientations_prob[, c(2:3)] <- sapply(orientations_prob[, c(2:3)], as.numeric)
     orientations_prob[, c(5:6)] <- sapply(orientations_prob[, c(5:6)], as.numeric)
     orientations_prob[, c(8:9)] <- sapply(orientations_prob[, c(8:9)], as.numeric)
   }
   # update the returned matrix
   res$triples <- orientations_prob
-
+  
   res$interrupted <- FALSE
-
+  
   res
 }
