@@ -115,7 +115,8 @@ the recursion.}
 
 \item{plot}{[a boolean, optional, FALSE by default]
 
-If set to TRUE, a plot with the top features is generated.
+If set to TRUE, a plot with the top features is generated
+(requires `ggplot2`).
 
 Please note on the plot rendering that positions are indicative with
 a tendency to be displayed to the left side: a feature can appear multiple
@@ -196,14 +197,12 @@ ret <- selectFeaturesPath (df_data,
 message ("Features selected: ", paste (ret$features, collapse=", ") )
 
 # Same features selection with reuse of the MIs computed above and plot
-if ( require(ggplot2) ) {
-  ret <- selectFeaturesPath (df_data,
-                             var_of_interest_values_side1=df_external_meta,
-                             var_of_interest_names_side2="TP53",
-                             precomputed_mis=ret$mis,
-                             plot=TRUE)
-  print (ret$plot)
-}
+ret <- selectFeaturesPath (df_data,
+                           var_of_interest_values_side1=df_external_meta,
+                           var_of_interest_names_side2="TP53",
+                           precomputed_mis=ret$mis,
+                           plot=TRUE)
+print (ret$plot)
 
 # Features selection using multiple variables on each side
 # (reusing the MIs computed above and selecting only one feature per round
@@ -217,14 +216,12 @@ message ("Features selected: ", paste (ret$features, collapse=", ") )
 # Similar features selection with plotting using a customized rendering
 # (reusing the MIs computed above and limiting the recursion depth
 # to speed up the example)
-if ( require(ggplot2) ) {
-  ret <- selectFeaturesPath (cosmicCancer,
-                             var_of_interest_names_side1=c("TP53", "Ploidy"),
-                             var_of_interest_names_side2=c("FOXM1", "AURKA"),
-                             depth_max=2, plot=TRUE, font_size=12,
-                             x_lab="My features selection on CosmicCancer")
-  print (ret$plot)
-}
+ret <- selectFeaturesPath (cosmicCancer,
+                           var_of_interest_names_side1=c("TP53", "Ploidy"),
+                           var_of_interest_names_side2=c("FOXM1", "AURKA"),
+                           depth_max=2, plot=TRUE, font_size=12,
+                           x_lab="My features selection on CosmicCancer")
+print (ret$plot)
 }
 
 }

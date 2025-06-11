@@ -492,12 +492,12 @@ jointplot_hist <- function(X, Y, result, nameDist1, nameDist2,
 
   hist2d <- ggplot2::ggplot(fill_density_flat) +
     ggplot2::geom_rect(
-      ggplot2::aes_string(
-        xmin = "xstart",
-        xmax = "xend",
-        ymin = "ystart",
-        ymax = "yend",
-        fill = "logdensity"
+      ggplot2::aes(
+        xmin = .data[["xstart"]],
+        xmax = .data[["xend"]],
+        ymin = .data[["ystart"]],
+        ymax = .data[["yend"]],
+        fill = .data[["logdensity"]]
       ),
       na.rm = TRUE,
       show.legend = FALSE

@@ -104,7 +104,7 @@ interest, 3=same as 2 with display of estimated time remaining.}
 \item{plot}{[a boolean, optional, FALSE by default]
 
 If set to TRUE, a plot with the top features for each variable of
-interest is generated.}
+interest is generated (requires `ggplot2`).}
 
 \item{...}{If plotting is requested, extra parameters can be used to customize the plot
 rendering:
@@ -183,13 +183,11 @@ ret <- selectFeatures (df_data,
 message ("Tops 10 features: ", paste (ret$features, collapse=", ") )
 
 # Same features selection with plotting of the result
-if ( require(ggplot2) ) {
-  ret <- selectFeatures (df_data,
-                         var_of_interest_values=df_external_meta,
-                         n_features=10,
-                         plot=TRUE)
-  print (ret$plots[[1]])
-}
+ret <- selectFeatures (df_data,
+                       var_of_interest_values=df_external_meta,
+                       n_features=10,
+                       plot=TRUE)
+print (ret$plots[[1]])
 
 # Features selection using variables of interest coming both from
 # the dataset ("tp53", "TP53") and an external metadata ("Ploidy")
@@ -203,7 +201,7 @@ ret <- selectFeatures (df_data,
 message ("Tops 20 features: ", paste (ret$features, collapse=", ") )
 
 # Same features selection with plotting using a customized rendering
-if ( require(ggplot2) && require(gridExtra) ) {
+if ( require(gridExtra) ) {
   ret <- selectFeatures (df_data,
                          var_of_interest_names=c("TP53", "tp53"),
                          var_of_interest_values=df_external_meta,

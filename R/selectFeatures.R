@@ -408,7 +408,8 @@ sfo_plot <- function (mis, var_of_interest_name, n_plots=25,
         ggplot2::xlim (0, 1) +
         ggplot2::ylim (0, 1)
   else
-    p <- ggplot2::ggplot (df, mapping=ggplot2::aes_string (x="Features", y="MI")) +
+    p <- ggplot2::ggplot (df,
+          mapping=ggplot2::aes (x=.data[["Features"]], y=.data[["MI"]]) ) +
         ggplot2::geom_bar (stat="identity", fill=box_fill) +
         ggplot2::scale_x_discrete (limits=df$Features ) +
         ggplot2::theme_classic() +
@@ -443,8 +444,8 @@ sfo_plot <- function (mis, var_of_interest_name, n_plots=25,
     else
       annotation <- data.frame (x=nrow(df), y=mi_max, label=label_text)
 
-    p <- p + ggplot2::geom_text (annotation,
-        mapping=ggplot2::aes_string( x="x", y="y", label="label"),
+    p <- p + ggplot2::geom_text (annotation, mapping=ggplot2::aes(
+          x=.data[["x"]], y=.data[["y"]], label=.data[["label"]]),
         size=font_size*0.8/ggplot2::.pt, hjust=1, vjust=1)
     }
   return (p)
@@ -1295,7 +1296,7 @@ sfp_plot <- function (vois, df_plots, depth_plot=4, annotate=T,
 #' @param plot [a boolean, optional, FALSE by default]
 #'
 #' If set to TRUE, a plot with the top features for each variable of
-#' interest is generated.
+#' interest is generated (requires `ggplot2`).
 #'
 #' @param ...
 #'
@@ -1364,13 +1365,11 @@ sfp_plot <- function (vois, df_plots, depth_plot=4, annotate=T,
 #' message ("Tops 10 features: ", paste (ret$features, collapse=", ") )
 #'
 #' # Same features selection with plotting of the result
-#' if ( require(ggplot2) ) {
-#'   ret <- selectFeatures (df_data,
-#'                          var_of_interest_values=df_external_meta,
-#'                          n_features=10,
-#'                          plot=TRUE)
-#'   print (ret$plots[[1]])
-#' }
+#' ret <- selectFeatures (df_data,
+#'                        var_of_interest_values=df_external_meta,
+#'                        n_features=10,
+#'                        plot=TRUE)
+#' print (ret$plots[[1]])
 #'
 #' # Features selection using variables of interest coming both from
 #' # the dataset ("tp53", "TP53") and an external metadata ("Ploidy")
@@ -1384,7 +1383,7 @@ sfp_plot <- function (vois, df_plots, depth_plot=4, annotate=T,
 #' message ("Tops 20 features: ", paste (ret$features, collapse=", ") )
 #'
 #' # Same features selection with plotting using a customized rendering
-#' if ( require(ggplot2) && require(gridExtra) ) {
+#' if ( require(gridExtra) ) {
 #'   ret <- selectFeatures (df_data,
 #'                          var_of_interest_names=c("TP53", "tp53"),
 #'                          var_of_interest_values=df_external_meta,
@@ -1625,7 +1624,8 @@ selectFeatures <- function (input_data, n_features, var_of_interest_names=NULL,
 #'
 #' @param plot [a boolean, optional, FALSE by default]
 #'
-#' If set to TRUE, a plot with the top features is generated.
+#' If set to TRUE, a plot with the top features is generated
+#' (requires `ggplot2`).
 #'
 #' Please note on the plot rendering that positions are indicative with
 #' a tendency to be displayed to the left side: a feature can appear multiple
@@ -1689,14 +1689,12 @@ selectFeatures <- function (input_data, n_features, var_of_interest_names=NULL,
 #' message ("Features selected: ", paste (ret$features, collapse=", ") )
 #'
 #' # Same features selection with reuse of the MIs computed above and plot
-#' if ( require(ggplot2) ) {
-#'   ret <- selectFeaturesPath (df_data,
-#'                              var_of_interest_values_side1=df_external_meta,
-#'                              var_of_interest_names_side2="TP53",
-#'                              precomputed_mis=ret$mis,
-#'                              plot=TRUE)
-#'   print (ret$plot)
-#' }
+#' ret <- selectFeaturesPath (df_data,
+#'                            var_of_interest_values_side1=df_external_meta,
+#'                            var_of_interest_names_side2="TP53",
+#'                            precomputed_mis=ret$mis,
+#'                            plot=TRUE)
+#' print (ret$plot)
 #'
 #' # Features selection using multiple variables on each side
 #' # (reusing the MIs computed above and selecting only one feature per round
@@ -1710,14 +1708,12 @@ selectFeatures <- function (input_data, n_features, var_of_interest_names=NULL,
 #' # Similar features selection with plotting using a customized rendering
 #' # (reusing the MIs computed above and limiting the recursion depth
 #' # to speed up the example)
-#' if ( require(ggplot2) ) {
-#'   ret <- selectFeaturesPath (cosmicCancer,
-#'                              var_of_interest_names_side1=c("TP53", "Ploidy"),
-#'                              var_of_interest_names_side2=c("FOXM1", "AURKA"),
-#'                              depth_max=2, plot=TRUE, font_size=12,
-#'                              x_lab="My features selection on CosmicCancer")
-#'   print (ret$plot)
-#' }
+#' ret <- selectFeaturesPath (cosmicCancer,
+#'                            var_of_interest_names_side1=c("TP53", "Ploidy"),
+#'                            var_of_interest_names_side2=c("FOXM1", "AURKA"),
+#'                            depth_max=2, plot=TRUE, font_size=12,
+#'                            x_lab="My features selection on CosmicCancer")
+#' print (ret$plot)
 #' }
 #'
 #' @export
