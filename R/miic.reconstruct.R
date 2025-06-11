@@ -1,111 +1,141 @@
-miic.reconstruct <- function(input_data = NULL,
-                             is_contextual = NULL,
-                             is_consequence = NULL,
-                             is_continuous = NULL,
-                             black_box = NULL,
-                             n_threads = 1,
-                             n_eff = -1,
-                             cplx = "nml",
-                             eta = 1,
-                             latent = "orientation",
-                             n_shuffles = 0,
-                             orientation = TRUE,
-                             ort_proba_ratio = 1,
-                             propagation = FALSE,
-                             conf_threshold = 0,
-                             verbose = FALSE,
-                             sample_weights = NULL,
-                             test_mar = TRUE,
-                             consistent = "no",
-                             max_iteration = NULL,
-                             mode = "S",
-                             n_layers = NULL,
-                             delta_t = NULL,
-                             negative_info = FALSE
-                             ) {
-  n_samples <- nrow(input_data)
-  n_nodes <- ncol(input_data)
+#*******************************************************************************
+# Filename   : miic.reconstruct.R
+#
+# Description: interface between the R and C++ of the miic package
+#*******************************************************************************
+
+#===============================================================================
+# FUNCTIONS
+#===============================================================================
+# miic.reconstruct
+#-------------------------------------------------------------------------------
+# miic.reconstruct takes as input as named list with input_data, params,
+# state_order and, if supplied, black_box (true_edges is not used here)
+# It will ensure the parsing of the inputs to the C++ core
+# and the parsing back of C++ structures returned into the R format
+#-------------------------------------------------------------------------------
+miic.reconstruct <- function (list_in)
+  {
+  n_samples <- nrow (list_in$input_data)
+  n_nodes <- ncol (list_in$input_data)
+  #
+  # Convert discrete vars as factors
+  #
+  for ( i in 1:nrow(list_in$state_order) )
+    if (list_in$state_order[i, "var_type"] == 0)
+      list_in$input_data[, i] <- factor (list_in$input_data[, i])
+  #
   # Numeric factor matrix, level starts from 0, NA mapped to -1
-  input_factor <- apply(input_data, 2, function(x)
+  #
+  input_factor <- apply(list_in$input_data, 2, function(x)
                         (as.numeric(factor(x, levels = unique(x))) - 1))
   input_factor[is.na(input_factor)] <- -1
   max_level_list <- as.numeric(apply(input_factor, 2, max)) + 1
   input_factor <- as.vector(as.matrix(input_factor))
+  #
   # Data list, numeric for continuous columns, -1 for discrete columns
+  #
   input_double <- matrix(nrow = n_samples, ncol = n_nodes)
-  # Order list, order(column) for continuous columns (index starting from 0, NA
-  # mapped to -1), -1 for discrete columns
+  #
+  # Order list, order(column) for continuous columns (index starting from 0,
+  # NA mapped to -1), -1 for discrete columns
+  #
   input_order <- matrix(nrow = n_samples, ncol = n_nodes)
-  for (i in c(1:ncol(input_data))) {
-    if (is_continuous[i]) {
-      input_double[, i] <- as.numeric(input_data[, i])
-      n_NAs <- sum(is.na(input_data[, i]))
-      input_order[, i] <- c(order(input_data[, i], na.last=NA) - 1,
+  for ( i in c (1:ncol(list_in$input_data)) )
+    {
+    if (list_in$state_order[i,"var_type"] == 1)
+      {
+      input_double[, i] <- as.numeric(list_in$input_data[, i])
+      n_NAs <- sum(is.na(list_in$input_data[, i]))
+      input_order[, i] <- c(order(list_in$input_data[, i], na.last=NA) - 1,
                             rep_len(-1, n_NAs))
-    } else {
+      }
+    else
+      {
       input_double[, i] <- rep_len(-1, n_samples)
       input_order[, i] <- rep_len(-1, n_samples)
+      }
     }
-  }
   input_order <- as.vector(input_order)
   input_double <- as.vector(input_double)
 
-  var_names <- colnames(input_data)
+  var_names <- colnames(list_in$input_data)
   n_vars <- length (var_names)
-
+  #
+  # Parameters always supplied to C++ reconstruct
+  #
   arg_list <- list(
-    "conf_threshold" = conf_threshold,
-    "consistent" = consistent,
-    "cplx" = cplx,
-    "degenerate" = FALSE,
-    "eta" = eta,
-    "half_v_structure" = 0,
-    "is_continuous" = as.numeric(is_continuous),
-    "is_k23" = TRUE,
-    "latent" = latent,
-    "levels" = max_level_list,
-    "max_iteration" = max_iteration,
-    "n_eff" = n_eff,
+    #
+    # Parameters coming from miic parameters (can be defined by the user)
+    #
+    "n_threads" = list_in$params$n_threads,
+    "cplx" = list_in$params$cplx,
+    "orientation" = list_in$params$orientation,
+    "ort_proba_ratio" = list_in$params$ort_proba_ratio,
+    "propagation" = list_in$params$propagation,
+    "latent" = list_in$params$latent,
+    "n_eff" = list_in$params$n_eff,
+    "n_shuffles" = list_in$params$n_shuffles,
+    "conf_threshold" = list_in$params$conf_threshold,
+    "test_mar" = list_in$params$test_mar,
+    "consistent" = list_in$params$consistent,
+    "max_iteration" = list_in$params$max_iteration,
+    "negative_info" = list_in$params$negative_info,
+    "mode" = list_in$params$mode,
+    "verbose" = list_in$params$verbose,
+    #
+    # Parameters part of miic state order (can be defined by the user)
+    #
+    "is_continuous" = as.numeric (list_in$state_order$var_type),
+    #
+    # Parameters deduced from data
+    #
+    "var_names" = var_names,
     "n_nodes" = n_nodes,
     "n_samples" = n_samples,
-    "n_shuffles" = n_shuffles,
-    "n_threads" = n_threads,
-    "no_init_eta" = FALSE,
-    "orientation" = orientation,
-    "ort_proba_ratio" = ort_proba_ratio,
-    "propagation" = propagation,
-    "test_mar" = test_mar,
-    "mode" = mode,
-    "negative_info" = negative_info,
+    "levels" = max_level_list,
     "max_bins" = min(50, n_samples),
-    "var_names" = var_names,
-    "verbose" = verbose
-  )
-  if (!is.null(black_box)) {
-    # transform var names to var indices
+    #
+    # Parameters fixed to a default value, not supplied by the user to miic
+    #
+    "degenerate" = FALSE,
+    "half_v_structure" = 0,
+    "no_init_eta" = FALSE
+    # TODO see "eta" in utilities.cpp (was init to 1 before)
+    )
+  #
+  # Optional parameters
+  #
+  if ( ! is.null(list_in$black_box) )
+    {
+    # Transform var names to var indices
+    #
+    black_box <- list_in$black_box
     black_box[] <- sapply(black_box, function(x) {
-      match(as.character(x), colnames(input_data)) - 1 } )
+      match(as.character(x), colnames(list_in$input_data)) - 1 } )
     black_box[] <- black_box[stats::complete.cases(black_box),]
     arg_list[["black_box"]] <- as.vector(as.matrix(t(black_box)))
-  }
-  if (!is.null(sample_weights))
-    arg_list[["sample_weights"]] <- sample_weights
-  if (!is.null(is_contextual))
-    arg_list[["is_contextual"]] <- is_contextual
-  if (!is.null(is_consequence))
-    arg_list[["is_consequence"]] <- is_consequence
-  if (!is.null(n_layers))
-    arg_list[["n_layers"]] <- n_layers
-  if (!is.null(delta_t))
-    arg_list[["delta_t"]] <- delta_t
+    }
+  if ( ! is.null (list_in$params$sample_weights) )
+    arg_list[["sample_weights"]] <- list_in$params$sample_weights
+  if ( ! is.null (list_in$state_order$is_contextual) )
+    arg_list[["is_contextual"]] <- list_in$state_order$is_contextual
+  if ( ! is.null (list_in$state_order$is_consequence) )
+    arg_list[["is_consequence"]] <- list_in$state_order$is_consequence
+  if ( ! is.null (list_in$state_order$n_layers) )
+    arg_list[["n_layers"]] <- list_in$non_lagged$state_order$n_layers
+  if ( ! is.null (list_in$state_order$delta_t) )
+    arg_list[["delta_t"]] <- list_in$non_lagged$state_order$delta_t
 
-  cpp_input <- list("factor" = input_factor, "double" = input_double,
-                    "order" = input_order)
+  cpp_input <- list ("factor" = input_factor, "double" = input_double,
+                     "order" = input_order)
+  #
   # Call C++ function
-  res <- reconstruct(cpp_input, arg_list)
+  #
+  res <- reconstruct (cpp_input, arg_list)
   if (res$interrupted)
     return(list(interrupted = TRUE))
-
+  #
   # R-formalize returned object
   #
   # Table of edges information
@@ -117,6 +147,7 @@ miic.reconstruct <- function(input_data = NULL,
   colnames(df) <- header
   df[df == "NA"] <- NA
   df$i_xy <- as.numeric(df$i_xy)
+  df$n_xy <- as.numeric(df$n_xy)
   df$i_xy_ai <- as.numeric(df$i_xy_ai)
   df$cplx <- as.numeric(df$cplx)
   df$r_xyz_ai <- as.numeric(df$r_xyz_ai)
@@ -168,41 +199,39 @@ miic.reconstruct <- function(input_data = NULL,
                                             ncol=n_vars, nrow=n_vars, byrow=TRUE,
                                             dimnames=list (var_names, var_names) )
     }
-
-  # save time
+  #
+  # Execution time
+  #
   time <- strsplit(as.character(res$time), " ")
   time[which(time == 0)] <- NA
-
-  res$time <- stats::setNames(
-    as.numeric(time),
-    c("init", "iter", "cut", "ort", "cpp")
-  )
-
-  # create the data frame of the structures after orientation
+  res$time <- stats::setNames (as.numeric(time),
+                               c("init", "iter", "cut", "ort", "cpp") )
+  #
+  # Create the data frame of the structures after orientation
+  #
   orientations_prob <- res$triples
 
-  if (length(res$triples) > 0) {
+
+  if (length(res$triples) > 0)
+    {
     a <- length(orientations_prob[[1]])
     b <- length(unlist(orientations_prob))
     tmp <- unlist(res$triples)[1:a]
     res1 <- unlist(res$triples)[(a + 1):b]
-    orientations_prob <- data.frame(matrix(
-      res1,
-      nrow = length(orientations_prob) - 1,
-      byrow = TRUE
-    ),
-    stringsAsFactors = FALSE
-    )
+    orientations_prob <- data.frame (matrix (res1,
+                                          nrow = length(orientations_prob) - 1,
+                                          byrow = TRUE),
+                                     stringsAsFactors = FALSE)
     colnames(orientations_prob) <- tmp
 
     orientations_prob[, c(2:3)] <- sapply(orientations_prob[, c(2:3)], as.numeric)
     orientations_prob[, c(5:6)] <- sapply(orientations_prob[, c(5:6)], as.numeric)
     orientations_prob[, c(8:9)] <- sapply(orientations_prob[, c(8:9)], as.numeric)
-  }
-  # update the returned matrix
+    }
+  #
+  # Update the returned matrix
+  #
   res$triples <- orientations_prob
-
   res$interrupted <- FALSE
-
-  res
-}
+  return (res)
+  }

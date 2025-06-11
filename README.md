@@ -24,6 +24,8 @@ MIIC has been applied to a wide range of biological and biomedical data,
 such as single cell gene expression data, genomic alterations in tumors, 
 live-cell time-lapse imaging data (CausalXtract), 
 as well as medical records of patients. 
+The latest version 2.1 introduces methods to perform features selection 
+around variable(s) of interest or on the path between variables of interest.
 MIIC brings unique insights based on causal interpretation and could be used 
 in a broad range of other data science domains (technology, climatology, 
 economy, ...).

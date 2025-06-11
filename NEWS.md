@@ -1,3 +1,23 @@
+# v2.1.0
+
+## Features
+
+* new featuresSelection() and featuresSelectionPath() to perform features 
+  selection around variable(s) of interest or on the path between variables 
+  of interest.
+  
+* introduction of tMiicStat() dedicated to causal discovery on stationary 
+  time series. 
+  
+* miic() is refocused on non temporal datasets. 
+  The mode and associated temporal parameters are deprecated.
+
+## Fixes and improvements
+
+* miic() verbosity extended with no display level.  
+
+* estimateTemporalDynamic() has more detailed returned value.
+
 # v2.0.3
 
 ## Features

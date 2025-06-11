@@ -1,11 +1,398 @@
 #*******************************************************************************
 # Filename   : computeInformation.R
 #
-# Description: Compute 2 and 3 point (conditional) mutual information
+# Description: Compute 2 and 3 points (conditional) mutual information
 #*******************************************************************************
 
 #===============================================================================
-# FUNCTIONS
+# FUNCTIONS (internal)
+#===============================================================================
+# compute_mi_batch
+#-------------------------------------------------------------------------------
+# Compute mutual information (MI) between a set of variables and variable(s)
+# of interest.
+#
+# @param input_data [a data frame or a matrix, required]
+#
+# Expected layout is samples as rows and variables as columns. Column names
+# correspond to the names of the variables.
+#
+# @param var_of_interest_names [a string or vector of strings, optional,
+# NULL by default]
+#
+# For the variable(s) of interest that are part of the \emph{input_data},
+# you should supply their names here.
+#
+# @param var_of_interest_values [a data frame, optional, NULL by default]
+#
+# For the variables of interest that are not in \emph{input_data},
+# a data frame can be supplied. The column names are the names
+# of the variables of interest and rows are the samples
+# ordered in the same way as in \emph{input_data}.
+# Typically, such variables are metadata associated to samples
+# but not stored in \emph{input_data}, e.g. a "Treatment" vs "Control"
+# variable in an experiment and a count matrix with the expression of genes
+# in \emph{input_data}.
+#
+# @param units [a string, optional, "log_conf" by default]
+#
+# Indicates the "unit" of MIs s returned.
+# Possible values are "log_conf" or "bits".
+#
+# @param corrected [a boolean, optional, TRUE by default]
+#
+# When set to TRUE, the mutual information values are corrected by subtracting
+# a complexity term (computed with the Normalized Maximum Likelihood).
+# For dataset having very few samples, the complexity term can have
+# a disproportionate impact. Setting \emph{corrected} to FALSE switches
+# to the use of non corrected mutual information.
+#
+# @param precomputed_mis [a matrix, optional, NULL by default]
+#
+# if MIs has been previously computed between some variables
+# in the \emph{input_data} and variable(s) of interest,
+# supplying these precomputed MIs will speed up the process as the existing
+# MIs (values present and different from NA) will not be recomputed.
+# This matrix must have variables names from the \emph{input_data}
+# as row names and variables of interest names as column names
+# (the layout is the same as the matrix returned).
+# To be valid, the pre-computed MI values must have been computed using
+# the same \emph{unit} and \emph{corrected} parameters.
+#
+# @param skip_cheks [a boolean, optional, FALSE by default]
+#
+# Before computing MI between the variable of interest and the features,
+# \emph{input_data} is checked to filter out constant features and rows full
+# of NAs. When the \emph{input_data} does not need such filtering,
+# these checks can be skipped to speed up the process.
+#
+# @param n_threads [a positive integer, optional, 1 by default]
+#
+# When set greater than 1, \emph{n_threads} parallel threads will be used for
+# computation. Make sure your compiler is compatible with openmp
+# if you wish to use multithreading.
+#
+# @param verbose [an integer, optional, 3 by default]
+#
+# Level of verbosity: 0=no display, 1=summary, 2=progress per variable of
+# interest, 3=same as 2 with display of estimated time remaining.
+#
+# @return A matrix with the MI values between the variables in \emph{input_data}
+# as rows and variables of interest as columns. Row and column names are sorted
+# alphabetically.
+# Depending of the \emph{unit} parameter, the values can be expressed as
+# log confidence or bits
+# ( log confidence = MI in bits * number of complete samples * ln(2) )
+# and, depending on the \emph{corrected} parameter, include a correction or not.
+# When \emph{precomputed_mis} is supplied, newly computed values are added
+# to the matrix.
+#-------------------------------------------------------------------------------
+compute_mi_batch <- function (input_data,
+  var_of_interest_names=NULL, var_of_interest_values=NULL, unit="log_conf",
+  corrected=T, precomputed_mis=NULL, skip_cheks=F, n_threads=1, verbose=3)
+  {
+  LN_2 <- log(2)
+  all_voi_names <- c ( var_of_interest_names, colnames (var_of_interest_values) )
+  #
+  # MIs matrix preparation
+  #
+  if ( is.null (precomputed_mis) )
+    mat_mis <- matrix (NA_real_,
+                      nrow=ncol (input_data),
+                      ncol=length (all_voi_names),
+                      dimnames=list ( sort (colnames (input_data)),
+                                      sort (all_voi_names) ) )
+  else
+    {
+    # Add missing row / columns (these MIs needs to be computed)
+    #
+    mat_mis <- precomputed_mis
+    missing_row_names <- colnames (input_data)[
+      ! ( colnames (input_data) %in% rownames (mat_mis) ) ]
+    if (length (missing_row_names) > 0)
+      {
+      mat_tmp <- matrix (NA_real_,
+        nrow=length (missing_row_names), ncol=ncol (mat_mis),
+        dimnames=list (missing_row_names, colnames (mat_mis) ) )
+      mat_mis <- rbind (mat_mis, mat_tmp)
+      mat_mis <- mat_mis[order( rownames (mat_mis) ), , drop=F]
+      }
+    missing_col_names <- all_voi_names[
+      ! ( all_voi_names %in% colnames (mat_mis) ) ]
+    if (length (missing_col_names) > 0)
+      {
+      mat_tmp <- matrix (NA_real_,
+        nrow=nrow (mat_mis), ncol=length (missing_col_names),
+        dimnames=list ( rownames (mat_mis), missing_col_names) )
+      mat_mis <- cbind (mat_mis, mat_tmp)
+      mat_mis <- mat_mis[, order( colnames (mat_mis) ), drop=F]
+      }
+    }
+  # print (mat_mis[1:5,1:4])
+  #
+  # The bin size controls the number of features evaluated in one go
+  #
+  if ( (ncol (input_data) < 750) || (nrow(input_data) <= 2000) )
+    bin_size <- 100
+  else if (nrow(input_data) <= 4000)
+    bin_size <- 75
+  else if (nrow(input_data) <= 7000)
+    bin_size <- 50
+  else
+    bin_size <- 20
+  #
+  # For each variable of interest (voi), compute MI
+  #
+  n_all_vois <- length (all_voi_names)
+  max_voi_name <- max (unlist (lapply (all_voi_names, FUN=nchar) ) )
+  n_vars <- ncol (input_data)
+  time_start <- Sys.time()
+  for (one_voi_idx in 1:n_all_vois)
+    {
+    data_for_compute <- input_data
+    one_voi_name <- all_voi_names[[one_voi_idx]]
+    str_progress_start <- paste0 ("Computing MI for ", one_voi_name,
+      paste (rep ( ' ', max_voi_name - nchar(one_voi_name) ), collapse="" ), " : ")
+    if (verbose >= 2)
+      cat (paste0 (str_progress_start, "0 %\r") )
+
+    if (one_voi_name %in% var_of_interest_names)
+      one_voi_values <- data_for_compute[, one_voi_name]
+    else
+      one_voi_values <- var_of_interest_values[, one_voi_name]
+
+    var_to_recomp <- rownames (mat_mis) [is.na (mat_mis [, one_voi_name]) ]
+    #
+    # The MI matrix, if pre-computed, can contain more features (rows)
+    # than in input_data (columnsà). e.g. we computed MI with some voi
+    # on all genes and now we send only the TFs in input_data
+    #
+    var_to_recomp <- var_to_recomp[var_to_recomp %in% colnames (input_data)]
+    #
+    # Exclude the voi itself
+    #
+    one_voi_name_in_recomp_idx <- which (var_to_recomp == one_voi_name)
+    if (length (one_voi_name_in_recomp_idx) > 0)
+      var_to_recomp <- var_to_recomp[ -one_voi_name_in_recomp_idx ]
+    #
+    # If several vois are also variables in input_data, the MI can have been
+    # already computed. e.g. 1st voi "Col3a1" computed for all genes, including
+    # "Tcf4", now we want to compute for the 2nd voi "Tcf4", the MI between
+    # "Col3a1" and "Tcf4" is known, no need to recompute
+    #
+    if (  (one_voi_name %in% var_of_interest_names)
+       && (length (var_to_recomp) > 0) )
+      {
+      mis_for_the_voi <- mat_mis[one_voi_name, ] # drop
+      mis_for_the_voi <- mis_for_the_voi[ !is.na (mis_for_the_voi) ]
+      if (length (mis_for_the_voi) > 0)
+        {
+        # print ("case with MI already computed !!!")
+        # print (paste0 (length (var_to_recomp), " vars to recomp before (",
+        #                list_to_str(var_to_recomp, max=10), ")") )
+        # print ("mis_for_the_voi:")
+        # print (mis_for_the_voi)
+        # for (one_var in names (mis_for_the_voi))
+        #   if ( one_var %in% rownames (mat_mis) )
+        #     {
+        #     print (paste0 ("value in mat_mi before: ", mat_mis[one_var, one_voi_name]) )
+        #     print (paste0 ("value already computed: ", mat_mis[one_voi_name, one_var]) )
+        #     }
+        for ( one_var in names (mis_for_the_voi) )
+          if ( one_var %in% rownames (mat_mis) )
+            mat_mis[one_var, one_voi_name] <- mis_for_the_voi[one_var]
+        # for ( one_var in names (mis_for_the_voi) )
+        #   if ( one_var %in% rownames (mat_mis) )
+        #     print (paste0 ("value in mat_mi after: ", mat_mis[one_var, one_voi_name]) )
+        var_to_recomp <- var_to_recomp[ !(var_to_recomp %in% names (mis_for_the_voi)) ]
+        # print (paste0 (length (var_to_recomp), " vars to recomp after (",
+        #                list_to_str(var_to_recomp, max=10), ")") )
+        }
+      }
+    #
+    # If all MIs known, done
+    #
+    if (length (var_to_recomp) == 0)
+      {
+      if (verbose >= 2)
+        cat (paste0 (str_progress_start, "already computed\n") )
+      next
+      }
+    #
+    # Init all the MIs to 0 (some variables with a 0 MI would not be set
+    # properly be looking at miic returned value as miic will not include
+    # in the summary the edges removed without conditioning)
+    #
+    data_for_compute <- input_data[, var_to_recomp, drop=F]
+    n_vars <- ncol (data_for_compute)
+    mat_mis [colnames(data_for_compute), one_voi_name] <- 0
+    #
+    # Compute the mutual information by group of bin_size variables using miic
+    #
+    start_idx <- 1
+    while (start_idx <= n_vars)
+      {
+      end_idx <- min (start_idx + bin_size - 1, n_vars)
+      # print(paste0 ("From ", start_idx, " to ", end_idx, " (n_vars=", n_vars, ")") )
+      time_str <- ""
+      if (verbose >= 3)
+        {
+        curr_time <- Sys.time()
+        elapsed_time <- as.numeric (curr_time - time_start, units="secs")
+        curr_progress <- ( (one_voi_idx-1) + (start_idx - 1) / n_vars) / n_all_vois
+        if (curr_progress > 0)
+          {
+          remain_time <- (elapsed_time / curr_progress) - elapsed_time
+          if (remain_time >= 3600)
+            {
+            time_str <- paste0 (remain_time %/% 3600, "h " )
+            remain_time <- remain_time - (remain_time %/% 3600) * 3600
+            }
+          if (remain_time >= 60)
+            {
+            time_str <- paste0 (time_str, remain_time %/% 60, "m " )
+            remain_time <- remain_time - (remain_time %/% 60) * 60
+            }
+         time_str <- paste0 (", ", time_str, round (remain_time), "s to go" )
+         }
+        }
+      if (verbose >= 2)
+        cat (paste0 (str_progress_start,
+          format (round ( ((start_idx-1) / n_vars) * 100, 2), nsmall=2), " %",
+          time_str, "                \r") )
+
+      data_loop <- data_for_compute [, start_idx:end_idx, drop=FALSE]
+      if ( ! is.data.frame(data_loop) )
+        data_loop <- as.data.frame (data_loop)
+      if (one_voi_name %in% colnames (data_loop))
+        {
+        stop ("TODO can not occur")
+        data_loop[ , one_voi_name] <- NULL
+        mat_mis [one_voi_name, one_voi_name] <- NA_real_
+        }
+
+      data_loop$var_interest <- one_voi_values
+      if (!skip_cheks)
+        {
+        # Remove rows full of NAs and constant variables
+        # (would generate warnings if sent to miic function)
+        #
+        count_vals <- unlist (apply (data_loop, MARGIN=2, FUN=function (x) {
+          length (unique (x[!is.na(x)] ) ) }) )
+        data_loop <- data_loop[, count_vals >= 2, drop=F]
+
+        count_nas <- apply (data_loop, MARGIN=1, FUN=function(x) { sum (is.na(x) ) } )
+        data_loop <- data_loop[ count_nas < ncol(data_loop), , drop=F]
+        }
+
+      # print (paste0 ("nrow: ", nrow (data_loop),
+      #               ", ncol: ", ncol (data_loop) ) )
+      #
+      if ( (nrow (data_loop) > 0) && (ncol (data_loop) > 0) )
+        {
+        so <- data.frame ("var_names"=colnames(data_loop),
+                          "is_consequence"=1,
+                          stringsAsFactors=FALSE)
+        so[so$var_names == "var_interest", "is_consequence"] = 0
+        miic_res <- miic (data_loop, state_order=so,
+          orientation=F, latent="no", n_threads=n_threads, verbose=0)
+        miic_res <- miic_res$summary
+        rownames (miic_res) <- NULL
+        rownames (miic_res)[miic_res$x != "var_interest"] <- (
+          miic_res[miic_res$x != "var_interest", "x"] )
+        rownames (miic_res)[miic_res$y != "var_interest"] <- (
+          miic_res[miic_res$y != "var_interest", "y"] )
+        if (unit == "bits")
+          {
+          if (corrected)
+            mis_vals <- (miic_res$info_shifted / miic_res$n_xy_ai) / LN_2
+          else
+            mis_vals <- (miic_res$info / miic_res$n_xy_ai) / LN_2
+          }
+        else
+          {
+          if (corrected)
+            mis_vals <- miic_res$info_shifted
+          else
+            mis_vals <- miic_res$info
+          }
+        mat_mis[rownames(miic_res), one_voi_name] <- mis_vals
+        }
+      start_idx <- start_idx + bin_size
+      }
+    if (verbose >= 1)
+      cat (paste0 (str_progress_start, "100 %                           \n") )
+    }
+  if (verbose >= 1)
+    cat (paste0 (length (all_voi_names),
+                 " variables of interest evaluated.\n") )
+  return (mat_mis)
+  }
+
+#-------------------------------------------------------------------------------
+# grid_plot
+#-------------------------------------------------------------------------------
+grid_plot <- function(X, Y, nameDist1, nameDist2) {
+  plot_df <- data.frame(table(X, Y), stringAsFactors = TRUE)
+  hist2d <- ggplot2::ggplot(plot_df, ggplot2::aes(x=X, y=Y)) +
+    ggplot2::geom_tile(
+      ggplot2::aes(fill=plot_df$Freq),
+      show.legend = FALSE
+    ) +
+    ggplot2::scale_fill_gradient2(
+      low = "#f4f5fc",
+      high = "#0013a3",
+      position = "left"
+    ) +
+    ggplot2::xlab(nameDist1) + ggplot2::ylab(nameDist2) +
+    ggplot2::theme_classic()
+
+  g <- ggplot2::ggplot_build(hist2d)
+  labels <- g$layout$panel_params[[1]]$y$get_labels()
+  labels <- labels[labels != "NA"]
+
+  side_hist_top <- ggplot2::ggplot(data.frame(X), ggplot2::aes(x = X)) +
+    ggplot2::geom_bar(color="black", fill="white") +
+    theme_side_hist() +
+    ggplot2::theme(
+      plot.margin = ggplot2::margin(
+      5.5, 5.5, -30, 5.5, "pt")) +
+    ggplot2::scale_y_continuous(
+      labels = labels, # Pass hist2d's labels to align cutpoints on X axis
+      breaks = seq(0, 0.1, length.out = length(labels))
+    ) +
+    ggplot2::ylab("X")
+
+  side_hist_right <- ggplot2::ggplot(data.frame(Y), ggplot2::aes(x = Y)) +
+    ggplot2::geom_bar(color="black", fill="white") +
+    theme_side_hist() +
+    ggplot2::theme(
+      plot.margin = ggplot2::margin(
+      5.5, 5.5, 5.5, -30, "pt")) +
+    ggplot2::scale_y_continuous(expand = c(0, 0)) +
+    ggplot2::ylab("Y") +
+    ggplot2::coord_flip()
+
+  empty <- ggplot2::ggplot() +
+    ggplot2::geom_point(ggplot2::aes(1, 1), colour = "white") +
+    theme_side_hist()
+
+  return(
+    gridExtra::grid.arrange(
+      side_hist_top,
+      empty,
+      hist2d,
+      side_hist_right,
+      ncol = 2,
+      nrow = 2,
+      widths = c(4.2, 1),
+      heights = c(1, 4.2)
+    )
+  )
+}
+
+#===============================================================================
+# FUNCTIONS (exported)
 #===============================================================================
 # computeMutualInfo
 #-------------------------------------------------------------------------------
@@ -520,61 +907,3 @@ computeThreePointInfo <- function(x, y, z,
   return(rescpp)
 }
 
-grid_plot <- function(X, Y, nameDist1, nameDist2) {
-  plot_df <- data.frame(table(X, Y), stringAsFactors = TRUE)
-  hist2d <- ggplot2::ggplot(plot_df, ggplot2::aes(x=X, y=Y)) +
-    ggplot2::geom_tile(
-      ggplot2::aes(fill=plot_df$Freq),
-      show.legend = FALSE
-    ) +
-    ggplot2::scale_fill_gradient2(
-      low = "#f4f5fc",
-      high = "#0013a3",
-      position = "left"
-    ) +
-    ggplot2::xlab(nameDist1) + ggplot2::ylab(nameDist2) +
-    ggplot2::theme_classic()
-
-  g <- ggplot2::ggplot_build(hist2d)
-  labels <- g$layout$panel_params[[1]]$y$get_labels()
-  labels <- labels[labels != "NA"]
-
-  side_hist_top <- ggplot2::ggplot(data.frame(X), ggplot2::aes(x = X)) +
-    ggplot2::geom_bar(color="black", fill="white") +
-    theme_side_hist() +
-    ggplot2::theme(
-      plot.margin = ggplot2::margin(
-      5.5, 5.5, -30, 5.5, "pt")) +
-    ggplot2::scale_y_continuous(
-      labels = labels, # Pass hist2d's labels to align cutpoints on X axis
-      breaks = seq(0, 0.1, length.out = length(labels))
-    ) +
-    ggplot2::ylab("X")
-
-  side_hist_right <- ggplot2::ggplot(data.frame(Y), ggplot2::aes(x = Y)) +
-    ggplot2::geom_bar(color="black", fill="white") +
-    theme_side_hist() +
-    ggplot2::theme(
-      plot.margin = ggplot2::margin(
-      5.5, 5.5, 5.5, -30, "pt")) +
-    ggplot2::scale_y_continuous(expand = c(0, 0)) +
-    ggplot2::ylab("Y") +
-    ggplot2::coord_flip()
-
-  empty <- ggplot2::ggplot() +
-    ggplot2::geom_point(ggplot2::aes(1, 1), colour = "white") +
-    theme_side_hist()
-
-  return(
-    gridExtra::grid.arrange(
-      side_hist_top,
-      empty,
-      hist2d,
-      side_hist_right,
-      ncol = 2,
-      nrow = 2,
-      widths = c(4.2, 1),
-      heights = c(1, 4.2)
-    )
-  )
-}

@@ -25,13 +25,13 @@ miic(
   max_iteration = 100,
   consensus_threshold = 0.8,
   negative_info = FALSE,
-  mode = "S",
+  mode = NULL,
   n_layers = NULL,
   delta_t = NULL,
   mov_avg = NULL,
-  keep_max_data = FALSE,
-  max_nodes = 50,
-  verbose = FALSE
+  keep_max_data = NULL,
+  max_nodes = NULL,
+  verbose = 1
 )
 }
 \arguments{
@@ -39,19 +39,12 @@ miic(
 
 A n*d data frame (n samples, d variables) that contains the observational data.
 
-In standard mode, each column corresponds to one variable and each row is a
+Each column corresponds to one variable and each row is a
 sample that gives the values for all the observed variables.
 The column names correspond to the names of the observed variables.
 Numeric columns with at least 5 distinct values will be treated as continuous
 by default whilst numeric columns with less than 5 distinct values, factors
-and characters will be considered as categorical.
-
-In temporal mode, the expected data frame layout is variables as columns
-and time series/time steps as rows.
-The time step information must be supplied in the first column and,
-for each time series, be consecutive and in ascending order (increment of 1).
-Multiple trajectories can be provided, miic will consider that a new trajectory
-starts each time a smaller time step than the one of the previous row is encountered.}
+and characters will be considered as categorical.}
 
 \item{state_order}{[a data frame, optional, NULL by default]
 
@@ -61,8 +54,7 @@ below. For optional columns, if they are not provided or contain missing
 values, default values suitable for \emph{input_data} will be used.
 
 \emph{"var_names"} (required) contains the name of each variable as specified
-by colnames(input_data). In temporal mode, the time steps column should
-not be mentioned in the variables list.
+by colnames(input_data).
 
 \emph{"var_type"} (optional) contains a binary value that specifies if each
 variable is to be considered as discrete (0) or continuous (1).
@@ -83,45 +75,17 @@ variable is to be considered as a consequence variable (1) or not (0).
 Edges between consequence variables are ignored, consequence variables
 cannot be the parent node of any other variable and cannot be used as
 contributors. Edges between a non consequence and consequence variables
-are pre-oriented toward the consequence.
-
-Several other columns are possible in temporal mode:
-
-\emph{"n_layers"} (optional) contains an integer value that specifies the
-number of layers to be considered for the variable.
-Note that if a \emph{"n_layers"} column is present in the \emph{state_order},
-its values will overwrite the function parameter.
-
-\emph{"delta_t"} (optional) contains an integer value that specifies the number
-of time steps between each layer for the variable.
-Note that if a \emph{"delta_t"} column is present in the \emph{state_order},
-its values will overwrite the function parameter.
-
-\emph{"mov_avg"} (optional) contains an integer value that specifies the size
-of the moving average window to be applied to the variable.
-Note that if \emph{"mov_avg"} column is present in the \emph{state_order},
-its values will overwrite the function parameter.}
+are pre-oriented toward the consequence.}
 
 \item{true_edges}{[a data frame, optional, NULL by default]
 
 A data frame containing the edges of the true graph for
 computing performance after the run.\cr
-In standard mode, the expected layout is a two columns data frame, each row
+The expected layout is a two columns data frame, each row
 representing a true edge with in each column, the variable names.
 Variables names must exist in the \emph{input_data} data frame.\cr
-In temporal mode, the expected layout is a three columns data frame,
-with the first two columns being variable names and the third the lag.
-Variables names must exist in the \emph{input_data} data frame and the lag
-must be valid in the time unfolded graph. e.g. a row var1, var2, 3 is valid
-with \emph{n_layers} = 4 + \emph{delta_t} = 1 or
-\emph{n_layers} = 2 + \emph{delta_t} = 3
-but not for \emph{n_layers} = 2 + \emph{delta_t} = 2 as there is no matching
-edge in the time unfolded graph.\cr
-Please note that the order is important: in standard mode, "var1 var2" will
-be interpreted as var1 -> var2 and in temporal mode, "var1 var2 3" is
-interpreted as var1_lag3 -> var2_lag0. Please note also that, in temporal
-mode, for contextual variables that are not lagged, the expected value in the
-third column for the time lag is NA.}
+Please note that the order is important: "var1 var2" will be interpreted
+as var1 -> var2.}
 
 \item{black_box}{[a data frame, optional, NULL by default]
 
@@ -129,20 +93,9 @@ A data frame containing pairs of variables that will be considered
 as independent during the network reconstruction. In practice, these edges
 will not be included in the skeleton initialization and cannot be part of
 the final result.\cr
-In standard mode, the expected layout is a two columns data frame, each row
+The expected layout is a two columns data frame, each row
 representing a forbidden edge with in each column, the variable names.
-Variables names must exist in the \emph{input_data} data frame.\cr
-In temporal mode, the expected layout is a three columns data frame,
-with the first two columns being variable names and the third the lag.
-Variables names must exist in the \emph{input_data} data frame and the lag
-must be valid in the time unfolded graph. e.g. a row var1, var2, 3 is valid
-with \emph{n_layers} = 4 + \emph{delta_t} = 1 or
-\emph{n_layers} = 2 + \emph{delta_t} = 3
-but not for \emph{n_layers} = 2 + \emph{delta_t} = 2 as there is no matching
-edge in the time unfolded graph. Please note that the order is important:
-var1, var2, 3 is interpreted as var1_lag3 - var2_lag0. Please note also that,
-for contextual variables that are not lagged, the expected value in the
-third column for the time lag is NA.}
+Variables names must exist in the \emph{input_data} data frame.\cr}
 
 \item{n_threads}{[a positive integer, optional, 1 by default]
 
@@ -166,7 +119,7 @@ criterion can be used (see Affeldt 2015).}
 
 The miic network skeleton can be partially directed by orienting
 edge directions, based on the sign and magnitude of the conditional
-3-point information of unshielded triples and, in temporal mode, using time.
+3-point information of unshielded triples.
 If set to FALSE, the orientation step is not performed.}
 
 \item{ort_proba_ratio}{[a floating point between 0 and 1, optional,
@@ -215,7 +168,7 @@ edges.summary and by a bi-directed edge in the (partially) oriented graph.}
 
 \item{n_eff}{[a positive integer, optional, -1 by default]
 
-In standard mode, the n samples given in the \emph{input_data} data frame are
+The n samples given in the \emph{input_data} data frame are
 expected to be independent. In case of correlated samples such as in
 Monte Carlo sampling approaches, the effective number of independent samples
 \emph{n_eff} can be estimated using the decay of the autocorrelation function
@@ -305,58 +258,29 @@ As a consequence, the reliability of certain orientations is not guaranteed.
 By contrast, keeping this parameter as FALSE is more conservative and leads
 to more reliable orientations (see Cabeli 2021 and Ribeiro-Dantas 2024).}
 
-\item{mode}{[a string, optional, "S" by default, possible values are
-"S": Standard (non temporal data) or "TS": Temporal Stationary data]
+\item{mode}{[deprecated, use tMiicStat() for time series]
 
-When temporal mode is activated, the time information must be provided
-in the first column of \emph{input_data}. For more details about temporal
-stationary mode (see Simon 2024).}
+Since v2.1.0, miic() is reserved for non temporal datasets, corresponding
+to the standard mode (the default) of earlier version.}
 
-\item{n_layers}{[an integer, optional, NULL by default, must be >= 2
-if supplied]
+\item{n_layers}{[deprecated, use tMiicStat() for time series]}
 
-Used only in temporal mode, \emph{n_layers} defines the number of layers
-that will be considered for the variables in the time unfolded graph.
-The layers will be distant of \emph{delta_t} time steps.
-If not supplied, the number of layers is estimated from the dynamic of the
-dataset and the maximum number of nodes \emph{max_nodes} allowed in the
-final lagged graph.}
+\item{delta_t}{[deprecated, use tMiicStat() for time series]}
 
-\item{delta_t}{[an integer, optional, NULL by default, must be >= 1
-if supplied]
+\item{mov_avg}{[deprecated, use tMiicStat() for time series]}
 
-Used only in temporal mode, \emph{delta_t} defines the number of time steps
-between each layer.
-i.e. on 1000 time steps with \emph{n_layers} = 3 and \emph{delta_t} = 7,
-the time steps kept for the samples conversion will be 1, 8, 15
-for the first sample, the next sample will use 2, 9, 16 and so on.
-If not supplied, the number of time steps between layers is estimated
-from the dynamic of the dataset and the number of layers.}
+\item{keep_max_data}{[deprecated, use tMiicStat() for time series]}
 
-\item{mov_avg}{[an integer, optional, NULL by default, must be >= 2
-if supplied]
+\item{max_nodes}{[deprecated, use tMiicStat() for time series]}
 
-Used only in temporal mode. When supplied, a moving average operation is
-applied to all integer and numeric variables that are not contextual
-variables.}
+\item{verbose}{[an integer value, optional, 1 by default]
 
-\item{keep_max_data}{[a boolean value, optional, FALSE by default]
-
-Used only in temporal mode. If TRUE, rows where some NAs have been
-introduced during the moving averages and lagging will be kept
-whilst they will be dropped if FALSE.}
-
-\item{max_nodes}{[an integer, optional, 50 by default]
-
-Used only in temporal mode and if the \emph{n_layers} or \emph{delta_t}
-parameters are not supplied. \emph{max_nodes} is used as the maximum number
-of nodes in the final time-unfolded graph to compute \emph{n_layers} and/or \emph{delta_t}.
-The default is 50 to produce quick runs and can be increased up to 200
-or 300 on recent computers to produce more precise results.}
-
-\item{verbose}{[a boolean value, optional, FALSE by default]
-
-If TRUE, debugging output is printed.}
+Define the level of verbosity, possible values are:
+\itemize{
+\item{ \emph{0:} no display excepted warnings and errors if any}
+\item{ \emph{1:} synthetic display with progress status}
+\item{ \emph{1:} debug display}
+}}
 }
 \value{
 A \emph{miic-like} object that contains:
@@ -580,6 +504,9 @@ A \emph{miic-like} object that contains:
  }
  }
 
+ \item {\emph{input_data:} the data used for the network
+ reconstruction, checked and and corrected if necessary.}
+
  \item {\emph{params:} the list of parameters used for the network
  reconstruction. The parameters not supplied are initialized to their default
  values. Otherwise, the parameters are checked and corrected if necessary. }
@@ -597,17 +524,15 @@ reconstruction.}
 the true edges, checked and corrected if necessary, used for the network
 evaluation.}
 
- \item {\emph{tmiic:} present only in temporal mode.
- Named list containing the full list of edges completed by stationarity,
- the lagged state order and, if a black box or true edges have been supplied,
- the lagged versions of these inputs.}
+ \item {\emph{tmiic:} deprecated. Specific information in temporal mode.
+ use tMiicStat() for time series. }
 }
 }
 \description{
-MIIC (Multivariate Information-based Inductive Causation) combines
-constraint-based and information-theoretic approaches to disentangle direct
-from indirect effects amongst correlated variables, including cause-effect
-relationships and the effect of unobserved latent causes.
+MIIC (Multivariate Information-based Inductive Causation)
+combines constraint-based and information-theoretic approaches to disentangle
+direct from indirect effects amongst correlated variables, including
+cause-effect relationships and the effect of unobserved latent causes.
 }
 \details{
 Starting from a complete graph, the method iteratively removes
@@ -618,16 +543,6 @@ of causality in observational data. Miic distinguishes genuine causal edges
 (with both reliable arrow heads and tails) from putative causal edges (with
 one reliable arrow head only) and latent causal edges (with both reliable
 arrow heads). (see Ribeiro-Dantas 2024)
-
-In temporal mode, miic reorganizes the dataset using the \emph{n_layers} and
-\emph{delta_t} parameters to transform the time steps into lagged samples.
-As starting point, a lagged graph is created with only edges having at
-least one node laying on the last time step.
-Then, miic standard algorithm is applied to remove dispensable edges.
-The remaining edges are then duplicated to ensure time invariance
-(stationary dynamic) and oriented using the temporality and the
-signature of causality in observational data. The use of temporal mode
-is presented in Simon 2024.
 
 The method relies on information theoretic principles which replace
 (conditional) independence tests as described in Affeldt 2015, Cabeli 2020,
@@ -640,6 +555,9 @@ the conditional independence test, see the function discretizeMutual.
 The user may also choose to run miic with scheme presented in Li 2019
 and Ribeiro-Dantas 2024 to improve the end result's interpretability
 by ensuring consistent separating sets.
+
+The temporal mode have been moved to a separate function,
+use \code{\link{tMiicStat}} for times series.
 }
 \examples{
 library(miic)
@@ -681,33 +599,10 @@ if(require(igraph)) {
 # write graph to graphml format. Note that to correctly visualize
 # the network we created the miic style for Cytoscape (http://www.cytoscape.org/).
 writeCytoscapeNetwork(miic_obj, file = file.path(tempdir(), "temp"))
-
-# EXAMPLE COVID CASES (time series demo)
-data(covidCases)
-# execute MIIC (reconstruct graph in temporal mode)
-tmiic_obj <- miic(input_data = covidCases, mode = "TS", n_layers = 3, delta_t = 1, mov_avg = 14)
-
-# to plot the default graph (compact)
-if(require(igraph)) {
- plot(tmiic_obj)
 }
-
-# to plot the raw temporal network
-if(require(igraph)) {
-  plot(tmiic_obj, display="raw")
-}
-
-# to plot the full temporal network
-if(require(igraph)) {
-  plot(tmiic_obj, display="lagged")
-}
-
-}
-
 }
 \references{
 \itemize{
-\item Simon \emph{et al.}, eLife 2024, \href{https://www.biorxiv.org/content/10.1101/2024.02.06.579177v1.abstract}{CausalXtract: a flexible pipeline to extract causal effects from live-cell time-lapse imaging data}
 \item Ribeiro-Dantas \emph{et al.}, iScience 2024, \href{https://arxiv.org/pdf/2303.06423}{Learning interpretable causal networks from very large datasets, application to 400,000 medical records of breast cancer patients}
 \item Cabeli \emph{et al.}, NeurIPS 2021, \href{https://why21.causalai.net/papers/WHY21_24.pdf}{Reliable causal discovery based on mutual information supremum principle for finite dataset}
 \item Cabeli \emph{et al.}, PLoS Comput. Biol. 2020, \href{https://journals.plos.org/ploscompbiol/article?id=10.1371/journal.pcbi.1007866}{Learning clinical networks from medical records based on information estimates in mixed-type data}
@@ -717,6 +612,7 @@ if(require(igraph)) {
 }
 }
 \seealso{
-\code{\link{discretizeMutual}} for optimal discretization and
+\code{\link{tMiicStat}} for causal discovery on stationary
+time series, \code{\link{discretizeMutual}} for optimal discretization and
 (conditional) independence test.
 }
