@@ -131,7 +131,7 @@ rendering:
 \item \emph{x_lab}: a string, optional, "Features for
   variables_of_interest_side1-variables_of_interest_side2" by default,
   the X axis label.
-\item \emph{depth_plot}: an integer, optional, 4 by default,
+\item \emph{depth_plot}: an integer between 1 and 10, optional, 4 by default,
   maximal depth used for the plot.
 \item \emph{annotate}: a boolean, optional, TRUE by default,
   When activated, displays the maximal depth of the recursion

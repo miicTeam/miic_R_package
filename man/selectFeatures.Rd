@@ -30,7 +30,9 @@ Column names must contain the names of the variables.}
 The total number of features to select, must be in the range
 [0, number of variables in \emph{input_data}].
 If several variables of interest are supplied,
-the function tries to select an equal number of features per variable.
+the function tries to select an equal number of features per variable
+and \emph{n_features} (if > 0) is expected to be greater or equal
+than the number of variables of interest
 
 When \emph{n_features} is 0, no feature selection is performed
 but the MIs between the variables in \emph{input_data} and the variable(s)

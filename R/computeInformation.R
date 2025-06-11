@@ -1,7 +1,7 @@
 #*******************************************************************************
 # Filename   : computeInformation.R
 #
-# Description: Compute 2 and 3 point (conditional) mutual information
+# Description: Compute 2 and 3 points (conditional) mutual information
 #*******************************************************************************
 
 #===============================================================================
@@ -230,7 +230,7 @@ compute_mi_batch <- function (input_data,
     # Compute the mutual information by group of bin_size variables using miic
     #
     start_idx <- 1
-    while (start_idx < n_vars)
+    while (start_idx <= n_vars)
       {
       end_idx <- min (start_idx + bin_size - 1, n_vars)
       # print(paste0 ("From ", start_idx, " to ", end_idx, " (n_vars=", n_vars, ")") )
@@ -271,6 +271,7 @@ compute_mi_batch <- function (input_data,
         mat_mis [one_voi_name, one_voi_name] <- NA_real_
         }
 
+      data_loop$var_interest <- one_voi_values
       if (!skip_cheks)
         {
         # Remove rows full of NAs and constant variables
@@ -289,10 +290,10 @@ compute_mi_batch <- function (input_data,
       #
       if ( (nrow (data_loop) > 0) && (ncol (data_loop) > 0) )
         {
-        so <- data.frame ("var_names"=c (colnames(data_loop), "var_interest"),
-                          "is_consequence"=c (rep(1, ncol(data_loop)), 0),
+        so <- data.frame ("var_names"=colnames(data_loop),
+                          "is_consequence"=1,
                           stringsAsFactors=FALSE)
-        data_loop$var_interest <- one_voi_values
+        so[so$var_names == "var_interest", "is_consequence"] = 0
         miic_res <- miic (data_loop, state_order=so,
           orientation=F, latent="no", n_threads=n_threads, verbose=0)
         miic_res <- miic_res$summary
@@ -306,7 +307,7 @@ compute_mi_batch <- function (input_data,
           if (corrected)
             mis_vals <- (miic_res$info_shifted / miic_res$n_xy_ai) / LN_2
           else
-            mis_vals <- (miic_res$info_shifted / miic_res$n_xy_ai) / LN_2
+            mis_vals <- (miic_res$info / miic_res$n_xy_ai) / LN_2
           }
         else
           {
