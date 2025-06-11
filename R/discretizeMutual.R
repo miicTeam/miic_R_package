@@ -490,14 +490,16 @@ jointplot_hist <- function(X, Y, result, nameDist1, nameDist2,
   fill_density_flat[fill_density_flat$density == 0, "density"] <- NA
   fill_density_flat$logdensity = log(fill_density_flat$density)
 
-  hist2d <- ggplot2::ggplot(fill_density_flat) +
+  # with is a bad fix to avoid warnings from ggplot2 or notes from CRAN checks
+  hist2d <- with (fill_density_flat,
+    ggplot2::ggplot(fill_density_flat) +
     ggplot2::geom_rect(
       ggplot2::aes(
-        xmin = .data[["xstart"]],
-        xmax = .data[["xend"]],
-        ymin = .data[["ystart"]],
-        ymax = .data[["yend"]],
-        fill = .data[["logdensity"]]
+        xmin = xstart,
+        xmax = xend,
+        ymin = ystart,
+        ymax = yend,
+        fill = logdensity
       ),
       na.rm = TRUE,
       show.legend = FALSE
@@ -531,7 +533,7 @@ jointplot_hist <- function(X, Y, result, nameDist1, nameDist2,
       size = 2
     ) +
     ggplot2::xlab(nameDist1) + ggplot2::ylab(nameDist2) +
-    ggplot2::theme_classic()
+    ggplot2::theme_classic() )
 
   g <- ggplot2::ggplot_build(hist2d)
   labels <- g$layout$panel_params[[1]]$y$get_labels()

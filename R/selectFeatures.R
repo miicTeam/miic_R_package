@@ -408,15 +408,16 @@ sfo_plot <- function (mis, var_of_interest_name, n_plots=25,
         ggplot2::xlim (0, 1) +
         ggplot2::ylim (0, 1)
   else
-    p <- ggplot2::ggplot (df,
-          mapping=ggplot2::aes (x=.data[["Features"]], y=.data[["MI"]]) ) +
+    # with is a bad fix to avoid warnings from ggplot2 or notes from CRAN checks
+    p <- with (df, ggplot2::ggplot (,
+          mapping=ggplot2::aes (x=Features, y=MI) ) +
         ggplot2::geom_bar (stat="identity", fill=box_fill) +
         ggplot2::scale_x_discrete (limits=df$Features ) +
         ggplot2::theme_classic() +
         ggplot2::theme ( text=ggplot2::element_text(size=font_size),
           axis.text.x=ggplot2::element_text (angle=30, vjust=1, hjust=1) ) +
         ggplot2::xlab (x_lab) +
-        ggplot2::ylab (y_lab)
+        ggplot2::ylab (y_lab) )
 
   if (values)
     {
@@ -444,9 +445,11 @@ sfo_plot <- function (mis, var_of_interest_name, n_plots=25,
     else
       annotation <- data.frame (x=nrow(df), y=mi_max, label=label_text)
 
-    p <- p + ggplot2::geom_text (annotation, mapping=ggplot2::aes(
-          x=.data[["x"]], y=.data[["y"]], label=.data[["label"]]),
-        size=font_size*0.8/ggplot2::.pt, hjust=1, vjust=1)
+    # with is a bad fix to avoid warnings from ggplot2 or notes from CRAN checks
+    p <- with (annotation,
+      p + ggplot2::geom_text (annotation,
+        mapping=ggplot2::aes(x=x, y=y, label=label),
+        size=font_size*0.8/ggplot2::.pt, hjust=1, vjust=1) )
     }
   return (p)
   }
