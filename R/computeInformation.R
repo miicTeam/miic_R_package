@@ -302,7 +302,7 @@ compute_mi_batch <- function (input_data,
       # print (paste0 ("nrow: ", nrow (data_loop),
       #               ", ncol: ", ncol (data_loop) ) )
       #
-      if ( (nrow (data_loop) > 0) && (ncol (data_loop) > 0) )
+      if ( (nrow (data_loop) > 0) && (ncol (data_loop) > 1) )
         {
         so <- data.frame ("var_names"=colnames(data_loop),
                           "is_consequence"=1,
