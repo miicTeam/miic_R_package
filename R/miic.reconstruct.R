@@ -26,9 +26,28 @@ miic.reconstruct <- function (list_in)
       list_in$input_data[, i] <- factor (list_in$input_data[, i])
   #
   # Numeric factor matrix, level starts from 0, NA mapped to -1
-  #
-  input_factor <- apply(list_in$input_data, 2, function(x)
-                        (as.numeric(factor(x, levels = unique(x))) - 1))
+  #  
+  input_factor <- apply(list_in$input_data, 2, function(x) {
+    if (is.numeric(x)) {
+      # safety measure
+      # it's extreemely unlikely that this will happen, but if the input data has more than 15 digits 
+      # and difference occurs after the 15 digits
+      # unique() will not work properly , it still sees the difference and will return the same value twice
+      # so in the final unique list you get duplicates which might lead to problems
+      # in the factorization step, as it will return a two identical values,
+
+      # e.g. if the input data is: 
+      # print(list_in$input_data[c("AGTAACCGTGAGAACC-1_7","AGGGAGTAGCTGTACT-1_6"),"var_interest"])
+      # [1] -0.445322763306908 -0.445322763306908
+      
+      # meanwhile in reality the two values are different and Unique can still see that difference
+      # print(list_in$input_data[c("AGTAACCGTGAGAACC-1_7","AGGGAGTAGCTGTACT-1_6"),"var_interest"],digits = 20)
+      # [1] -0.44532276330690834243 -0.44532276330690823141
+      #
+      x <- round(x, 12) # considering two values have the same first 12 digits
+    }
+    as.numeric(factor(x, levels = unique(x))) - 1
+  })
   input_factor[is.na(input_factor)] <- -1
   max_level_list <- as.numeric(apply(input_factor, 2, max)) + 1
   input_factor <- as.vector(as.matrix(input_factor))
