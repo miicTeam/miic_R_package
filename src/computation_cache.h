@@ -10,7 +10,7 @@
 #include <limits>
 #include <map>
 #include <set>
-
+#include <algorithm> // needed for std::sort, std::unique in windwows compiler
 #include "structure.h"
 
 namespace miic {
