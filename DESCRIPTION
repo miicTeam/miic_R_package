@@ -1,13 +1,13 @@
 Package: miic
 Title: Learning Causal or Non-Causal Graphical Models Using Information Theory
-Version: 2.0.3
+Version: 2.0.4
 Authors@R:
     c(person(given = "Franck",
              family = "Simon",
              role = c("aut", "cre"),
              email = "franck.simon@curie.fr"),
-      person(given = "Chemkhi",
-             family = "Ali",
+      person(given = "Ali",
+             family = "Chemkhi",
              role = "aut",
              email = "ali.chemkhi@curie.fr"),
       person(given = "Tiziana",

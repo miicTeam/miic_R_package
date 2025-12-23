@@ -114,6 +114,7 @@ or use R functions `help()` and `?`.
   
 ## Authors
 
+- Chemkhi Ali
 - Tiziana Tocci
 - Nikita Lagrange
 - Orianne Debeaupuis
