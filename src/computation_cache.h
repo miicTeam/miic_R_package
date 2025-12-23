@@ -10,7 +10,7 @@
 #include <limits>
 #include <map>
 #include <set>
-#include <algorithm> // needed for std::sort, std::unique in windwows compiler
+#include <algorithm>
 #include "structure.h"
 
 namespace miic {
@@ -87,8 +87,11 @@ struct MutualInfoKey {
 
 // Forward declaration for lookup helper
 struct Info3PointLookup;
-
 // Persistent key
+// value: Info3PointBlock
+// 3-point information is permutation invariant with respect to {X, Y, Z}, but
+// shifted 3-point information is permutation invariant with respect to only {X,
+// Y} because of the complexity term.
 struct Info3PointKey {
   set<int> XY;
   int Z;
@@ -125,7 +128,7 @@ struct Info3PointLookup {
 
 // Transparent comparator for std::map
 struct Info3PointCompare {
-  using is_transparent = void;  // Enable transparent lookup (C++14)
+  using is_transparent = void;  // Enable transparent lookup
 
   // Key vs Key
   bool operator()(const Info3PointKey& lhs, const Info3PointKey& rhs) const {
