@@ -1,3 +1,12 @@
+# v2.0.4
+
+* Memory optimization 
+
+## Known issues
+
+* Conditioning on a (very) large number of contributors can lead to a memory 
+  fault.
+
 # v2.0.3
 
 ## Features
