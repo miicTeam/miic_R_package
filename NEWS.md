@@ -1,5 +1,9 @@
 # v2.0.4
 
+## Fixes and improvements
+
+* Fix factor conversion of mixed input data
+
 * Memory optimization 
 
 ## Known issues
