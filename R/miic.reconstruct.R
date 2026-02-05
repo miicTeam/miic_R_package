@@ -26,7 +26,7 @@ miic.reconstruct <- function(input_data = NULL,
   n_samples <- nrow(input_data)
   n_nodes <- ncol(input_data)
   # Numeric factor matrix, level starts from 0, NA mapped to -1
-  input_factor <- apply(input_data, 2, function(x)
+  input_factor <- sapply(input_data, function(x)
                         (as.numeric(factor(x, levels = unique(x))) - 1))
   input_factor[is.na(input_factor)] <- -1
   max_level_list <- as.numeric(apply(input_factor, 2, max)) + 1
