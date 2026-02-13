@@ -309,8 +309,9 @@ discretizeMutual <- function(x,
   if(!all(is.na(matrix_u_NA))) input_data = cbind(input_data, matrix_u_NA)
   n_samples <- nrow(input_data)
   n_nodes <- ncol(input_data)
-  input_factor <- apply(input_data, 2, function(x)
-                        (as.numeric(factor(x, levels = unique(x))) - 1))
+
+  input_factor <- as.matrix (sapply (input_data, function(x)
+                        (as.numeric(factor(x, levels = unique(x))) - 1) ) )
   input_factor[is.na(input_factor)] <- -1
   max_level_list <- as.numeric(apply(input_factor, 2, max)) + 1
   input_factor <- as.vector(as.matrix(input_factor))

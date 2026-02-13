@@ -87,9 +87,10 @@
 # When \emph{precomputed_mis} is supplied, newly computed values are added
 # to the matrix.
 #-------------------------------------------------------------------------------
-compute_mi_batch <- function (input_data,
-  var_of_interest_names=NULL, var_of_interest_values=NULL, unit="log_conf",
-  corrected=T, precomputed_mis=NULL, skip_cheks=F, n_threads=1, verbose=3)
+compute_mi_batch <- function (input_data, var_of_interest_names=NULL,
+  var_of_interest_values=NULL, df_conditioning=NULL, unit="log_conf",
+  corrected=T, precomputed_mis=NULL, skip_cheks=F, n_threads=1, verbose=3,
+  verbose_start="", verbose_end="\n")
   {
   LN_2 <- log(2)
   all_voi_names <- c ( var_of_interest_names, colnames (var_of_interest_values) )
@@ -144,17 +145,21 @@ compute_mi_batch <- function (input_data,
   # For each variable of interest (voi), compute MI
   #
   n_all_vois <- length (all_voi_names)
-  max_voi_name <- max (unlist (lapply (all_voi_names, FUN=nchar) ) )
+  max_voi_name <- max ( nchar (all_voi_names) )
   n_vars <- ncol (input_data)
   time_start <- Sys.time()
   for (one_voi_idx in 1:n_all_vois)
     {
     data_for_compute <- input_data
     one_voi_name <- all_voi_names[[one_voi_idx]]
-    str_progress_start <- paste0 ("Computing MI for ", one_voi_name,
+    if (verbose_start == "")
+      str_progress_start <- paste0 ("Computing MI for ")
+    else
+      str_progress_start <- paste0 (verbose_start, ", computing MI for ")
+    str_progress_start <- paste0 (str_progress_start, one_voi_name,
       paste (rep ( ' ', max_voi_name - nchar(one_voi_name) ), collapse="" ), " : ")
     if (verbose >= 2)
-      cat (paste0 (str_progress_start, "0 %\r") )
+      cat_for_rewrite (paste0 (str_progress_start, "0 %") )
 
     if (one_voi_name %in% var_of_interest_names)
       one_voi_values <- data_for_compute[, one_voi_name]
@@ -164,16 +169,24 @@ compute_mi_batch <- function (input_data,
     var_to_recomp <- rownames (mat_mis) [is.na (mat_mis [, one_voi_name]) ]
     #
     # The MI matrix, if pre-computed, can contain more features (rows)
-    # than in input_data (columnsà). e.g. we computed MI with some voi
+    # than in input_data (columns). e.g. we computed MI with some voi
     # on all genes and now we send only the TFs in input_data
     #
     var_to_recomp <- var_to_recomp[var_to_recomp %in% colnames (input_data)]
     #
     # Exclude the voi itself
     #
-    one_voi_name_in_recomp_idx <- which (var_to_recomp == one_voi_name)
-    if (length (one_voi_name_in_recomp_idx) > 0)
-      var_to_recomp <- var_to_recomp[ -one_voi_name_in_recomp_idx ]
+    one_voi_name_in_recomp <- (var_to_recomp == one_voi_name)
+    if ( any (one_voi_name_in_recomp) )
+      var_to_recomp <- var_to_recomp[ !one_voi_name_in_recomp ]
+    #
+    # If conditioning, exclude vars used to condition from vars to recompute
+    #
+    if ( ! is.null (df_conditioning) )
+      {
+      cond_in_recomp <- ( var_to_recomp %in% colnames (df_conditioning) )
+      var_to_recomp <- var_to_recomp[ !cond_in_recomp ]
+      }
     #
     # If several vois are also variables in input_data, the MI can have been
     # already computed. e.g. 1st voi "Col3a1" computed for all genes, including
@@ -215,7 +228,7 @@ compute_mi_batch <- function (input_data,
     if (length (var_to_recomp) == 0)
       {
       if (verbose >= 2)
-        cat (paste0 (str_progress_start, "already computed\n") )
+        cat_for_rewrite (paste0 (str_progress_start, "already computed", verbose_end) )
       next
       }
     #
@@ -227,7 +240,31 @@ compute_mi_batch <- function (input_data,
     n_vars <- ncol (data_for_compute)
     mat_mis [colnames(data_for_compute), one_voi_name] <- 0
     #
+    # If vois is constant, no info for all variables
+    #
+    vois_count <- length (unique ( one_voi_values[!is.na (one_voi_values)] ) )
+    if (vois_count < 2)
+      next
+    #
+    # If conditioning is used, we will do several calls to computeMutualInfo
+    # => prepare all the needed values that are computed only once
+    #
+    if ( ! is.null(df_conditioning) )
+      {
+      voi_continuous <- ( is.numeric (one_voi_values)
+        && (length (unique (one_voi_values[!is.na(one_voi_values)]) ) >= MIIC_CONTINUOUS_TRESHOLD) )
+      cond_continuous <- sapply (df_conditioning, function(x) {
+        is.numeric (x) &&
+        (length (unique (x[!is.na(x)])) >= MIIC_CONTINUOUS_TRESHOLD) } )
+      cond_continuous <- c(voi_continuous, cond_continuous)
+      cond_rows_with_nas <- apply (df_conditioning, 1, anyNA)
+      cond_rows_with_nas <- cond_rows_with_nas | is.na (one_voi_values)
+      }
+    #
     # Compute the mutual information by group of bin_size variables using miic
+    # NB: when no conditioning is used, we benefit of miic to compute bin_size
+    # mis in one go, when the conditioning is used, there is no added value
+    # to split data in bin_size except showing the progress
     #
     start_idx <- 1
     while (start_idx <= n_vars)
@@ -257,9 +294,9 @@ compute_mi_batch <- function (input_data,
          }
         }
       if (verbose >= 2)
-        cat (paste0 (str_progress_start,
+        cat_for_rewrite (paste0 (str_progress_start,
           format (round ( ((start_idx-1) / n_vars) * 100, 2), nsmall=2), " %",
-          time_str, "                \r") )
+          time_str) )
 
       data_loop <- data_for_compute [, start_idx:end_idx, drop=FALSE]
       if ( ! is.data.frame(data_loop) )
@@ -270,62 +307,116 @@ compute_mi_batch <- function (input_data,
         data_loop[ , one_voi_name] <- NULL
         mat_mis [one_voi_name, one_voi_name] <- NA_real_
         }
-
-      data_loop$var_interest <- one_voi_values
-      if (!skip_cheks)
-        {
-        # Remove rows full of NAs and constant variables
-        # (would generate warnings if sent to miic function)
-        #
-        count_vals <- unlist (apply (data_loop, MARGIN=2, FUN=function (x) {
-          length (unique (x[!is.na(x)] ) ) }) )
-        data_loop <- data_loop[, count_vals >= 2, drop=F]
-
-        count_nas <- apply (data_loop, MARGIN=1, FUN=function(x) { sum (is.na(x) ) } )
-        data_loop <- data_loop[ count_nas < ncol(data_loop), , drop=F]
-        }
-
-      # print (paste0 ("nrow: ", nrow (data_loop),
-      #               ", ncol: ", ncol (data_loop) ) )
       #
-      if ( (nrow (data_loop) > 0) && (ncol (data_loop) > 0) )
+      # If no conditioning is required, we can use miic to compute mis in batch
+      #
+      if ( is.null (df_conditioning) )
         {
-        so <- data.frame ("var_names"=colnames(data_loop),
-                          "is_consequence"=1,
-                          stringsAsFactors=FALSE)
-        so[so$var_names == "var_interest", "is_consequence"] = 0
-        miic_res <- miic (data_loop, state_order=so,
-          orientation=F, latent="no", n_threads=n_threads, verbose=0)
-        miic_res <- miic_res$summary
-        rownames (miic_res) <- NULL
-        rownames (miic_res)[miic_res$x != "var_interest"] <- (
-          miic_res[miic_res$x != "var_interest", "x"] )
-        rownames (miic_res)[miic_res$y != "var_interest"] <- (
-          miic_res[miic_res$y != "var_interest", "y"] )
-        if (unit == "bits")
+        data_loop$var_interest <- one_voi_values
+        if (!skip_cheks)
           {
-          if (corrected)
-            mis_vals <- (miic_res$info_shifted / miic_res$n_xy_ai) / LN_2
-          else
-            mis_vals <- (miic_res$info / miic_res$n_xy_ai) / LN_2
+          # Remove rows full of NAs and constant variables
+          # (would generate warnings if sent to miic function)
+          #
+          count_vals <- sapply (data_loop,
+            function(x) length (unique (x[!is.na(x)]) ) )
+          data_loop <- data_loop[, count_vals >= 2, drop=F]
+
+          count_nas <- sum (apply (data_loop, 1, anyNA) )
+          data_loop <- data_loop[ count_nas < ncol(data_loop), , drop=F]
           }
-        else
+
+        # print (paste0 ("nrow: ", nrow (data_loop),
+        #               ", ncol: ", ncol (data_loop) ) )
+        #
+        # TODO change for ncol 1 ?
+        if ( (nrow (data_loop) > 0) && (ncol (data_loop) > 0) )
           {
-          if (corrected)
-            mis_vals <- miic_res$info_shifted
+          so <- data.frame ("var_names"=colnames(data_loop),
+                            "is_consequence"=1,
+                            stringsAsFactors=FALSE)
+          so[so$var_names == "var_interest", "is_consequence"] <- 0
+          miic_res <- miic (data_loop, state_order=so,
+            orientation=F, latent="no", n_threads=n_threads, verbose=0)
+          miic_res <- miic_res$summary
+          rownames (miic_res) <- NULL
+          rownames (miic_res)[miic_res$x != "var_interest"] <- (
+            miic_res[miic_res$x != "var_interest", "x"] )
+          rownames (miic_res)[miic_res$y != "var_interest"] <- (
+            miic_res[miic_res$y != "var_interest", "y"] )
+          if (unit == "bits")
+            {
+            if (corrected)
+              mis_vals <- (miic_res$info_shifted / miic_res$n_xy_ai) / LN_2
+            else
+              mis_vals <- (miic_res$info / miic_res$n_xy_ai) / LN_2
+            }
           else
-            mis_vals <- miic_res$info
+            {
+            if (corrected)
+              mis_vals <- miic_res$info_shifted
+            else
+              mis_vals <- miic_res$info
+            }
+          mat_mis[rownames(miic_res), one_voi_name] <- mis_vals
           }
-        mat_mis[rownames(miic_res), one_voi_name] <- mis_vals
+        }
+      else # df_conditioning is not null
+        {
+        mis_cond <- rep(NA_real_, ncol(data_loop))
+        names (mis_cond) <- colnames(data_loop)
+        for (i in 1:ncol(data_loop) )
+          {
+          x <- data_loop[, i]
+          voi_loop <- one_voi_values
+          df_cond_loop <- as.data.frame (df_conditioning)
+          if (!skip_cheks)
+            {
+            incomplete_samples <- cond_rows_with_nas | is.na (x)
+            voi_loop <- voi_loop[!incomplete_samples]
+            x <- x[!incomplete_samples]
+            df_cond_loop <- df_cond_loop[!incomplete_samples, , drop=F]
+            if ( (length(x) <= 0) || (length(voi_loop) <= 0)
+               || (nrow(df_cond_loop) <= 0) )
+              return (0)
+            }
+          count_x <- length (unique ( x[!is.na(x)] ) )
+          count_voi <- length (unique ( voi_loop[!is.na(voi_loop)] ) )
+          count_cond <- min (sapply( df_cond_loop, FUN=function(z) {
+            length (unique (z [!is.na(z)] ) ) } ) )
+          if ( (count_x < 2) || (count_voi < 2) || (count_cond < 2) )
+            {
+            mis_cond[[i]] <- 0
+            next
+            }
+          x_continuous <- ( is.numeric (x)
+              && (length (unique (x[!is.na(x)]) ) >= MIIC_CONTINUOUS_TRESHOLD) )
+          continuous_loop <- c (x_continuous, cond_continuous)
+
+          mi_tmp <- computeMutualInfo  (x, voi_loop, df_conditioning=df_cond_loop)
+          if ("infok" %in% names (mi_tmp))
+            mi_tmp <- ifelse (corrected, mi_tmp$infok, mi_tmp$info)
+          else
+            mi_tmp <- NA_real_
+          mis_cond[[i]] <- mi_tmp
+          }
+        mat_mis[names(mis_cond), one_voi_name] <- mis_cond
         }
       start_idx <- start_idx + bin_size
       }
     if (verbose >= 1)
-      cat (paste0 (str_progress_start, "100 %                           \n") )
+      cat_for_rewrite (paste0 (str_progress_start, "100 %", verbose_end) )
     }
+  # head (mat_mis["Uba52",])
   if (verbose >= 1)
-    cat (paste0 (length (all_voi_names),
-                 " variables of interest evaluated.\n") )
+    {
+    if (verbose_start == "")
+      cat_for_rewrite (paste0 (length (all_voi_names),
+        " variables of interest evaluated.", verbose_end) )
+    else
+      cat_for_rewrite (paste0 (verbose_start, ", ", length (all_voi_names),
+        " variables of interest evaluated.", verbose_end) )
+    }
   return (mat_mis)
   }
 
@@ -461,6 +552,10 @@ grid_plot <- function(X, Y, nameDist1, nameDist2) {
 #' @param plot [a boolean]
 #' Specify whether the resulting XY optimum discretization is to be plotted
 #' (requires `ggplot2` and `gridExtra`).
+#' @param x_lab [a string]
+#' Optional label for the x-axis of the plot
+#' @param y_lab [a string]
+#' Optional label for the y-axis of the plot
 #'
 #' @return A list that contains :
 #' \itemize{
@@ -524,7 +619,9 @@ computeMutualInfo <- function(x, y,
                               n_eff = -1,
                               sample_weights = NULL,
                               is_continuous = NULL,
-                              plot = FALSE) {
+                              plot = FALSE,
+                              x_lab = NULL,
+                              y_lab = NULL) {
   cplx <- tryCatch(
     {match.arg(cplx)},
     error = function(e) {
@@ -550,10 +647,10 @@ computeMutualInfo <- function(x, y,
     ))
   }
 
-  complete_row <- stats::complete.cases(input_data)
+  complete_row <- rowSums(is.na(input_data)) == 0
   n_rows_na <- sum(!complete_row)
   if (n_rows_na > 0) {
-    input_data <- input_data[complete_row, ]
+    input_data <- input_data[complete_row, , drop = FALSE]
     warning(paste0(
       "Removed ", n_rows_na, " rows containing at least one NA value."
     ))
@@ -577,7 +674,7 @@ computeMutualInfo <- function(x, y,
   }
 
   # Numeric factor matrix, level starts from 0
-  input_factor <- as.matrix(apply(input_data, 2,
+  input_factor <- as.matrix(sapply(input_data,
     function(x) (as.numeric(factor(x, levels = unique(x))) - 1))
   )
   max_level_list <- as.numeric(apply(input_factor, 2, max)) + 1
@@ -613,7 +710,7 @@ computeMutualInfo <- function(x, y,
     arg_list[["max_bins"]] <- maxbins
   }
   if (!is.null(sample_weights)) {
-    arg_list[["sample_weights"]] <- sample_weights[complete_row, ]
+    arg_list[["sample_weights"]] <- sample_weights[complete_row]
   }
   cpp_input <- list(
     "factor" = as.vector(input_factor),
@@ -630,54 +727,72 @@ computeMutualInfo <- function(x, y,
   X_num <- if (is_continuous[1]) input_double[, 1] else input_factor[, 1]
   Y_num <- if (is_continuous[2]) input_double[, 2] else input_factor[, 2]
 
-  if (any(is_continuous)) {
+  if ( any(is_continuous) && ("cutpointsmatrix" %in% names(rescpp)) )
+    {
     # Parse cutpointsmatrix
     epsilon <- min(c(sd(X_num), sd(Y_num))) / 100
     niterations <- nrow(rescpp$cutpointsmatrix) / maxbins
     result$n_iterations <- niterations
-    for (i in 0:(niterations - 1)) {
-      result[[paste0("iteration", i + 1)]] <- list()
-      for (l in 1:2) {
-        if (!is_continuous[l]) next
+    if (niterations > 0)
+      {
+      for (i in 0:(niterations - 1))
+        {
+        result[[paste0("iteration", i + 1)]] <- list()
+        for (l in 1:2)
+          {
+          if (!is_continuous[l]) next
 
-        data <- if (l == 1) X_num else Y_num
-        clean_cutpoints <- rescpp$cutpointsmatrix[, l][(maxbins*i) + (1:maxbins)]
-        clean_cutpoints <- clean_cutpoints[clean_cutpoints != -1]
-        clean_cutpoints <- sort(data)[clean_cutpoints + 1]
+          data <- if (l == 1) X_num else Y_num
+          clean_cutpoints <- rescpp$cutpointsmatrix[, l][(maxbins*i) + (1:maxbins)]
+          clean_cutpoints <- clean_cutpoints[clean_cutpoints != -1]
+          clean_cutpoints <- sort(data)[clean_cutpoints + 1]
 
-        uniquedata <- sort(unique(data))
-        if (length(clean_cutpoints) > 0) {
-          # Take midpoints between two consecutive unique values instead of
-          # the values themselves
-          clean_cutpoints <- sapply(clean_cutpoints, function(x) {
-            if (x < uniquedata[length(uniquedata)]) {
-              return((min(uniquedata[uniquedata > x]) +
-                max(uniquedata[uniquedata <= x])) / 2)
-            } else {
-              return(x)
+          uniquedata <- sort(unique(data))
+          if (length(clean_cutpoints) > 0)
+            {
+            # Take midpoints between two consecutive unique values instead of
+            # the values themselves
+            clean_cutpoints <- sapply(clean_cutpoints, function(x)
+              {
+              if (x < uniquedata[length(uniquedata)])
+                {
+                return((min(uniquedata[uniquedata > x]) +
+                  max(uniquedata[uniquedata <= x])) / 2)
+                }
+              else
+                {
+                return(x)
+                }
+              })
             }
-          })
+          clean_cutpoints <- c(uniquedata[1] - epsilon, clean_cutpoints)
+          if (max(clean_cutpoints) < uniquedata[length(uniquedata)])
+            {
+            clean_cutpoints <- c(
+              clean_cutpoints,
+              uniquedata[length(uniquedata)] + epsilon
+            )
+            }
+          result[[paste0("iteration", i + 1)]][[paste0("cutpoints", l)]] <-
+            clean_cutpoints
+          }
         }
-        clean_cutpoints <- c(uniquedata[1] - epsilon, clean_cutpoints)
-        if (max(clean_cutpoints) < uniquedata[length(uniquedata)]) {
-          clean_cutpoints <- c(
-            clean_cutpoints,
-            uniquedata[length(uniquedata)] + epsilon
-          )
-        }
-        result[[paste0("iteration", i + 1)]][[paste0("cutpoints", l)]] <-
-          clean_cutpoints
+      for (l in 1:n_nodes) {
+        result[[paste0("cutpoints", l)]] <-
+          result[[paste0("iteration", niterations)]][[paste0("cutpoints", l)]]
       }
-    }
-    for (l in 1:n_nodes) {
-      result[[paste0("cutpoints", l)]] <-
-        result[[paste0("iteration", niterations)]][[paste0("cutpoints", l)]]
     }
   }
 
   if (plot) {
-    nameDist1 <- deparse(substitute(x))
-    nameDist2 <- deparse(substitute(y))
+    if ( ! is.null(x_lab) )
+      nameDist1 <- x_lab
+    else
+      nameDist1 <- deparse(substitute(x))
+    if ( ! is.null(y_lab) )
+      nameDist2 <- y_lab
+    else
+      nameDist2 <- deparse(substitute(y))
     if (base::requireNamespace("ggplot2", quietly = TRUE) &&
         base::requireNamespace("gridExtra", quietly = TRUE)) {
       if (all(is_continuous[1:2])) {
@@ -831,7 +946,7 @@ computeThreePointInfo <- function(x, y, z,
     ))
   }
 
-  complete_row <- stats::complete.cases(input_data)
+  complete_row <- rowSums(is.na(input_data)) == 0
   n_rows_na <- sum(!complete_row)
   if (n_rows_na > 0) {
     input_data <- input_data[complete_row, ]
@@ -858,7 +973,7 @@ computeThreePointInfo <- function(x, y, z,
   }
 
   # Numeric factor matrix, level starts from 0
-  input_factor <- as.matrix(apply(input_data, 2,
+  input_factor <- as.matrix(sapply(input_data,
     function(x) (as.numeric(factor(x, levels = unique(x))) - 1))
   )
   max_level_list <- as.numeric(apply(input_factor, 2, max)) + 1

@@ -13,7 +13,9 @@ computeMutualInfo(
   n_eff = -1,
   sample_weights = NULL,
   is_continuous = NULL,
-  plot = FALSE
+  plot = FALSE,
+  x_lab = NULL,
+  y_lab = NULL
 )
 }
 \arguments{
@@ -57,6 +59,12 @@ considered as discrete, and numerical vectors as continuous.}
 \item{plot}{[a boolean]
 Specify whether the resulting XY optimum discretization is to be plotted
 (requires `ggplot2` and `gridExtra`).}
+
+\item{x_lab}{[a string]
+Optional label for the x-axis of the plot}
+
+\item{y_lab}{[a string]
+Optional label for the y-axis of the plot}
 }
 \value{
 A list that contains :

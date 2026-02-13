@@ -27,8 +27,8 @@ miic.reconstruct <- function (list_in)
   #
   # Numeric factor matrix, level starts from 0, NA mapped to -1
   #
-  input_factor <- apply(list_in$input_data, 2, function(x)
-                        (as.numeric(factor(x, levels = unique(x))) - 1))
+  input_factor <- sapply (list_in$input_data, function(x)
+                         (as.numeric(factor(x, levels = unique(x))) - 1))
   input_factor[is.na(input_factor)] <- -1
   max_level_list <- as.numeric(apply(input_factor, 2, max)) + 1
   input_factor <- as.vector(as.matrix(input_factor))
@@ -142,8 +142,25 @@ miic.reconstruct <- function (list_in)
   #
   n_row <- length(res$edges) - 1
   header <- unlist(res$edges[1])
-  df <- data.frame(matrix(unlist(res$edges[2:(n_row + 1)]), nrow = n_row,
-                          byrow = TRUE), stringsAsFactors = FALSE)
+  if (n_row >= 1)
+    df <- data.frame(matrix(unlist(res$edges[2:(n_row + 1)]), nrow = n_row,
+                            byrow = TRUE), stringsAsFactors = FALSE)
+  else
+    df <- data.frame ("x"=character(),
+                      "y"=character(),
+                      "z_name"=character(),
+                      "ai"=character(),
+                      "raw_contributions"=character(),
+                      "contributions"=character(),
+                      "zi"=character(),
+                      "i_xy"=double(),
+                      "i_xy_ai"=double(),
+                      "cplx"=double(),
+                      "r_xyz_ai"=double(),
+                      "category"=character(),
+                      "n_xy"=double(),
+                      "n_xy_ai"=double(),
+                      "confidence"=double())
   colnames(df) <- header
   df[df == "NA"] <- NA
   df$i_xy <- as.numeric(df$i_xy)
