@@ -2,6 +2,7 @@
 
 #include <algorithm>  // std::copy_if, std::count
 #include <queue>
+#include <iterator>  // std::inserter, std::back_inserter
 
 #include "linear_allocator.h"
 
@@ -17,14 +18,14 @@ set<int> BiconnectedComponent::getCandidateZ(int x, int y) const {
   TempAllocatorScope scope;
 
   set<int> set_z;
-  auto insert_it = inserter(set_z, set_z.begin());
+  auto insert_it = std::inserter(set_z, set_z.begin());
 
   if (degree_of_[x] < 1 || degree_of_[y] < 1) return set_z;
 
   TempVector<int> common_bcc;
   set_intersection(bcc_set_indices_[x].begin(), bcc_set_indices_[x].end(),
       bcc_set_indices_[y].begin(), bcc_set_indices_[y].end(),
-      inserter(common_bcc, common_bcc.begin()));
+      std::inserter(common_bcc, common_bcc.begin()));
   if (common_bcc.empty()) {
     int start = bc_tree_rep_[x];
     int end = bc_tree_rep_[y];
@@ -61,7 +62,7 @@ void BiconnectedComponent::setCandidateZ(int x, int y, vector<int>& zi_list) {
         return false;
       return true;
     };
-    copy_if(begin(set_z), end(set_z), back_inserter(zi_list), is_consistent);
+    copy_if(begin(set_z), end(set_z), std::back_inserter(zi_list), is_consistent);
   } else {
     for (int z = 0; z < n_nodes_; ++z) {
       if (z == x || z == y) continue;

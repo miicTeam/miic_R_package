@@ -5,6 +5,7 @@
 #include <stack>
 #include <utility>  // std::pair
 #include <vector>
+#include <algorithm> // std::fill
 
 #include "structure.h"
 
