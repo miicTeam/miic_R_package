@@ -1,5 +1,13 @@
 # v2.0.4
 
+## Features
+
+* Release to CRAN
+
+## Fixes and improvements
+
+* Fix missing C++ standard library includes
+
 * Memory optimization 
 
 ## Known issues
