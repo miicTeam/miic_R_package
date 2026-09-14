@@ -17,7 +17,7 @@ cells (3934 cells).
 }
 \references{
 Moignard et al. (2015) Nat Biotechnol 33(3):269-76
-(\href{https://pubmed.ncbi.nlm.nih.gov/25355519/}{PubMed link})
+(\doi{10.1038/nbt.3154}).
 }
 \keyword{data}
 \keyword{datasets}
